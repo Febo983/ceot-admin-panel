@@ -1,0 +1,3766 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CEOT — Portal Profesionales</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #f5efe4;
+  color: #1a1a1a;
+  min-height: 100vh;
+  padding: 12px 10px 28px;
+}
+.app { max-width: 480px; margin: 0 auto; }
+
+/* ── LOGIN ── */
+.login-wrap { padding-top: 28px; }
+.login-card {
+  background: #fdf8f0; border-radius: 12px;
+  padding: 28px 22px 22px;
+  box-shadow: 0 2px 16px rgba(0,0,0,.10);
+  border: 1px solid #e2dbd0;
+}
+.logo-area { text-align: center; margin-bottom: 24px; }
+.logo-icon {
+  width: 52px; height: 52px; background: #1a1a1a;
+  border-radius: 10px; display: inline-flex;
+  align-items: center; justify-content: center;
+  font-size: 22px; margin-bottom: 10px;
+}
+.logo-area h2 { font-size: 1.2rem; font-weight: 800; color: #1a1a1a; }
+.logo-area p  { color: #6b7280; font-size: 0.8rem; margin-top: 3px; }
+.field { margin-bottom: 11px; }
+.field label {
+  display: block; font-size: 0.68rem; font-weight: 600;
+  color: #374151; margin-bottom: 5px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.field input {
+  width: 100%; padding: 10px 14px;
+  border: 1.5px solid #e5e7eb; border-radius: 7px;
+  font-size: 0.95rem; font-family: inherit;
+  background: white; color: #1a1a1a; transition: border-color .15s;
+}
+.field input:focus { border-color: #1a1a1a; outline: none; }
+.btn-login {
+  width: 100%; padding: 11px;
+  background: #1a1a1a; color: white; border: none;
+  border-radius: 7px; font-size: 0.93rem; font-weight: 700;
+  cursor: pointer; margin-top: 8px; font-family: inherit;
+  transition: opacity .15s;
+}
+.btn-login:hover { opacity: .82; }
+.login-error {
+  background: #fef2f2; color: #991b1b; border-radius: 7px;
+  border: 1px solid #fecaca;
+  padding: 9px 13px; font-size: 0.8rem;
+  margin-top: 10px; text-align: center; display: none;
+}
+.login-hint { text-align: center; margin-top: 14px; font-size: 0.72rem; color: #9ca3af; }
+
+/* ── PORTAL HEADER ── */
+.portal-header {
+  background: #1a1a1a;
+  border-radius: 10px 10px 0 0;
+  padding: 13px 15px;
+  display: flex; align-items: center;
+  justify-content: space-between; color: white;
+}
+.ph-left { display: flex; align-items: center; gap: 10px; }
+.ph-avatar {
+  width: 32px; height: 32px;
+  background: rgba(255,255,255,.12);
+  border-radius: 50%; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; flex-shrink: 0;
+}
+.ph-info h3 { font-size: 0.87rem; font-weight: 700; }
+.ph-info p  { font-size: 0.67rem; opacity: .45; margin-top: 1px; }
+.btn-logout {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  color: rgba(255,255,255,.8); padding: 4px 11px; border-radius: 5px;
+  font-size: 0.72rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+
+/* ── CARD Y TABS ── */
+.portal-card {
+  background: white; border-radius: 0 0 10px 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.07);
+  border: 1px solid #e5e7eb; border-top: none;
+  overflow: hidden; margin-bottom: 12px;
+}
+.period-tabs {
+  display: flex; overflow-x: auto;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb; scrollbar-width: none;
+}
+.period-tabs::-webkit-scrollbar { display: none; }
+.period-tab {
+  flex: 0 0 auto; padding: 10px 13px;
+  font-size: 0.76rem; font-weight: 600;
+  cursor: pointer; border: none; background: none;
+  color: #9ca3af; border-bottom: 2px solid transparent;
+  margin-bottom: -1px; white-space: nowrap;
+  font-family: inherit; transition: color .15s;
+}
+.period-tab:hover { color: #374151; }
+.period-tab.act-abril,
+.period-tab.act-mayo,
+.period-tab.act-junio,
+.period-tab.act-julio,
+.period-tab.act-agosto,
+.period-tab.act-septiembre,
+.period-tab.act-octubre,
+.period-tab.act-noviembre,
+.period-tab.act-diciembre,
+.period-tab.act-historial { color: #1a1a1a; border-bottom-color: #1a1a1a; }
+.tbadge {
+  display: inline-block; font-size: 0.56rem; font-weight: 600;
+  padding: 1px 6px; border-radius: 3px;
+  text-transform: uppercase; letter-spacing: .2px; margin-left: 4px;
+  border: 1px solid #e5e7eb;
+}
+.tb-act  { background: white; color: #166534; border-color: #bbf7d0; }
+.tb-ind  { background: white; color: #374151; border-color: #e5e7eb; }
+.tb-ant  { background: white; color: #9ca3af; border-color: #e5e7eb; }
+
+/* ── TAB PANES ── */
+.tab-pane { display: none; padding: 14px 12px 16px; }
+.tab-pane.active { display: block; }
+
+/* ── DISCLAIMER ── */
+.disclaimer {
+  background: #fafafa; border: 1px solid #e5e7eb;
+  border-left: 3px solid #1a1a1a; border-radius: 6px;
+  padding: 8px 11px; margin-bottom: 12px;
+  font-size: 0.74rem; color: #4b5563; line-height: 1.5;
+}
+.disclaimer strong { color: #1a1a1a; }
+
+/* ── SUMMARY CHIP ── */
+.schip {
+  border-radius: 8px; padding: 11px 13px; margin-bottom: 9px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: #f9fafb; border: 1px solid #e5e7eb;
+}
+.schip-abril, .schip-mayo,
+.schip-junio, .schip-julio,
+.schip-gastosa, .schip-gastosa-pend { background: #f9fafb; }
+.schip-lbl  { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: #6b7280; margin-bottom: 3px; }
+.schip-val  { font-size: 1.3rem; font-weight: 800; color: #1a1a1a; line-height: 1; }
+.schip-abril .schip-val, .schip-mayo  .schip-val,
+.schip-junio .schip-val, .schip-julio .schip-val { color: #1a1a1a; }
+.schip-sub  { font-size: 0.65rem; color: #9ca3af; margin-top: 2px; }
+.schip-icon { font-size: 1.5rem; opacity: .12; }
+
+/* ── CHEQUE CARDS ── */
+.ch {
+  border-radius: 7px; padding: 10px 11px; margin-bottom: 7px;
+  background: #f9fafb; border: 1px solid #e5e7eb;
+  border-left: 3px solid #d1d5db;
+}
+.ch.abril, .ch.mayo, .ch.junio, .ch.julio { border-left-color: #1a1a1a; }
+.ch.total-row {
+  background: #f9fafb; border-color: #d1d5db;
+  border-left: 3px solid #1a1a1a;
+}
+.ch-top {
+  font-size: 0.72rem; font-weight: 600; color: #6b7280;
+  margin-bottom: 7px; display: flex;
+  align-items: center; justify-content: space-between;
+}
+.chtag {
+  font-size: 0.59rem; font-weight: 600;
+  padding: 2px 7px; border-radius: 3px;
+  background: #e5e7eb; color: #374151;
+}
+.chtag-gray, .chtag-green, .chtag-blue,
+.chtag-violet, .chtag-teal { background: #e5e7eb; color: #374151; }
+.ch.total-row .chtag { background: #dcfce7; color: #166534; }
+
+.ch-items { display: flex; flex-wrap: wrap; gap: 5px; }
+.chi {
+  background: white; border: 1px solid #e5e7eb;
+  border-radius: 6px; padding: 8px 10px;
+  flex: 1 1 calc(50% - 3px); min-width: 110px;
+}
+.chi.full { flex: 1 1 100%; }
+.chi-lbl { font-size: 0.61rem; color: #9ca3af; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 3px; }
+.chi-val  { font-size: 0.94rem; font-weight: 700; color: #1a1a1a; }
+.chi-val.ind-mayo, .chi-val.ind-junio,
+.chi-val.ind-julio, .chi-val.ind-agosto { color: #1a1a1a; font-size: 0.98rem; }
+.chi-val.total-v   { color: #166534; }
+
+.nota-pill {
+  background: #f9fafb; border: 1px solid #e5e7eb;
+  border-radius: 5px; padding: 7px 10px;
+  font-size: 0.74rem; color: #374151; margin-top: 5px;
+}
+.sin-datos {
+  text-align: center; padding: 28px 16px;
+  color: #9ca3af; font-size: 0.8rem;
+}
+.footer-note {
+  text-align: center; color: #9ca3af;
+  font-size: 0.67rem; padding: 4px 0 6px;
+}
+
+/* ── MI PANEL ── */
+.mp-section-label {
+  font-size: 0.63rem; font-weight: 700; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: .5px;
+  display: flex; align-items: center; gap: 6px;
+  margin: 14px 0 8px;
+}
+.mp-section-label::before,.mp-section-label::after {
+  content:''; flex:1; height:1px; background:#e5e7eb;
+}
+.mp-card {
+  background: #f9fafb; border: 1px solid #e5e7eb;
+  border-radius: 7px; padding: 12px 13px; margin-bottom: 9px;
+}
+.mp-card-dark {
+  background: #1a1a1a; border-radius: 8px;
+  padding: 14px 14px 12px; margin-bottom: 9px; color: white;
+}
+.mp-label {
+  font-size: 0.63rem; font-weight: 700; color: #6b7280;
+  text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px;
+}
+.mp-label-dark {
+  font-size: 0.63rem; font-weight: 700; color: rgba(255,255,255,.4);
+  text-transform: uppercase; letter-spacing: .4px; margin-bottom: 10px;
+}
+.mp-big { font-size: 1.3rem; font-weight: 800; }
+.mp-sub { font-size: 0.6rem; color: #9ca3af; margin-top: 2px; }
+.mp-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mp-mini {
+  background: white; border: 1px solid #e5e7eb;
+  border-radius: 6px; padding: 9px 10px;
+}
+.mp-mini-val { font-size: 1.4rem; font-weight: 800; color: #1a1a1a; line-height:1; }
+.mp-mini-lbl { font-size: 0.58rem; color: #9ca3af; text-transform: uppercase; margin-top: 3px; }
+.mp-bar-row { margin-bottom: 5px; }
+.mp-bar-row-head {
+  display: flex; justify-content: space-between;
+  font-size: 0.68rem; color: #374151; margin-bottom: 2px;
+}
+.mp-bar-track { height: 5px; background: #e5e7eb; border-radius: 3px; }
+.mp-bar-fill  { height: 100%; border-radius: 3px; background: #1a1a1a; }
+.mp-chart-bars {
+  display: flex; align-items: flex-end; gap: 5px;
+  height: 54px; margin-bottom: 8px;
+}
+.mp-chart-col {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 3px; flex: 1;
+}
+.mp-chart-bar {
+  background: rgba(255,255,255,.22); border-radius: 3px 3px 0 0; width: 100%;
+}
+.mp-chart-bar.current { background: white; }
+.mp-chart-month { font-size: 0.58rem; color: rgba(255,255,255,.4); }
+.mp-chart-month.current { color: rgba(255,255,255,.7); font-weight: 600; }
+.mp-totals {
+  display: flex; justify-content: space-between; align-items: baseline;
+  border-top: 1px solid rgba(255,255,255,.1); padding-top: 9px;
+}
+.mp-mov-row {
+  display: flex; justify-content: space-between;
+  font-size: 0.7rem; padding: 4px 0; border-bottom: 1px solid #f3f4f6;
+}
+.mp-mov-pos { color: #166534; font-weight: 600; }
+.mp-mov-neg { color: #dc2626; font-weight: 600; }
+.mp-link-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 9px; }
+.mp-link-card {
+  text-decoration: none; background: white; border: 1px solid #e5e7eb;
+  border-radius: 7px; padding: 10px 11px;
+  display: flex; align-items: center; gap: 8px;
+}
+.mp-link-card-icon { font-size: 20px; }
+.mp-link-card-title { font-size: 0.75rem; font-weight: 600; color: #1a1a1a; }
+.mp-link-card-sub   { font-size: 0.6rem; color: #9ca3af; }
+.mp-loading { text-align:center; padding: 24px; color: #9ca3af; font-size: 0.8rem; }
+.mp-nun-tag {
+  display: inline-block; font-size: 0.65rem; background: white;
+  border: 1px solid #e5e7eb; padding: 3px 8px; border-radius: 4px;
+  color: #374151; margin: 0 4px 4px 0;
+}
+.mp-link-more {
+  display: block; text-align: center; margin-top: 10px;
+  font-size: 0.72rem; color: #374151; font-weight: 600;
+  text-decoration: none; border-top: 1px solid #f3f4f6; padding-top: 8px;
+}
+.btn-pdf {
+  width: 100%; padding: 11px;
+  background: #1a1a1a; color: white; border: none;
+  border-radius: 7px; font-size: 0.88rem; font-weight: 700;
+  cursor: pointer; margin-top: 14px; font-family: inherit;
+  transition: opacity .15s;
+}
+.btn-pdf:hover { opacity: .82; }
+
+/* ── HISTORIAL ── */
+.hist-newspaper {
+  background: white; border: 1px solid #e5e7eb;
+  border-radius: 8px; overflow: hidden;
+}
+.hist-masthead {
+  text-align: center; padding: 14px 10px 10px;
+  background: #1a1a1a;
+}
+.hist-masthead-title {
+  font-size: 0.95rem; font-weight: 800;
+  letter-spacing: 4px; text-transform: uppercase;
+  color: white; line-height: 1;
+}
+.hist-masthead-sub {
+  font-size: 0.59rem; letter-spacing: 1px;
+  text-transform: uppercase; color: rgba(255,255,255,.4);
+  margin-top: 5px;
+}
+.hist-period-section {
+  padding: 11px 13px; border-bottom: 1px solid #e5e7eb;
+}
+.hist-period-section:last-child { border-bottom: none; }
+.hist-period-headline {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 0.63rem; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase; color: #1a1a1a;
+  border-bottom: 1px solid #1a1a1a;
+  padding-bottom: 5px; margin-bottom: 8px;
+}
+.hist-period-badge {
+  font-size: 0.55rem;
+  background: #f1f5f9; border: 1px solid #e5e7eb;
+  padding: 1px 6px; border-radius: 3px;
+  color: #9ca3af; letter-spacing: 0; font-weight: 500;
+}
+.hist-dline {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 0.8rem; padding: 3px 0;
+}
+.hist-dline-lbl { color: #6b7280; }
+.hist-dline-val { font-weight: 600; color: #1a1a1a; }
+.hist-dline-val.neg    { color: #dc2626; }
+.hist-dline-val.exento { color: #16a34a; font-size: .72rem; }
+.hist-dline-val.cm     { color: #1a1a1a; }
+.hist-rule { border: none; border-top: 1px solid #e5e7eb; margin: 7px 0; }
+.hist-neto-line {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 0.9rem; font-weight: 800; color: #1a1a1a;
+}
+.hist-total-section {
+  background: #1a1a1a; padding: 12px 13px;
+}
+.hist-total-headline {
+  font-size: 0.59rem; letter-spacing: 1.5px; text-transform: uppercase;
+  color: rgba(255,255,255,.4);
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  padding-bottom: 5px; margin-bottom: 8px;
+}
+.hist-total-dline {
+  display: flex; justify-content: space-between;
+  font-size: 0.8rem; padding: 2px 0;
+  color: rgba(255,255,255,.55);
+}
+.hist-total-neto {
+  display: flex; justify-content: space-between;
+  font-size: 0.95rem; font-weight: 800; color: white;
+  border-top: 1px solid rgba(255,255,255,.15);
+  padding-top: 7px; margin-top: 6px;
+}
+.hist-empty, .hist-loading {
+  text-align: center; padding: 24px 16px;
+  color: #9ca3af; font-size: .8rem;
+}
+
+/* ── LISTA COMPACTA DE CHEQUES ── */
+.period-total {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 13px; margin-bottom: 7px;
+  background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 7px;
+}
+.pt-left {}
+.pt-lbl  { font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: #6b7280; margin-bottom: 2px; }
+.pt-val  { font-size: 1.25rem; font-weight: 800; color: #1a1a1a; }
+.pt-sub  { font-size: 0.63rem; color: #9ca3af; margin-top: 1px; }
+.pt-icon { font-size: 1.4rem; opacity: .1; }
+
+.cheque-list {
+  background: white; border: 1px solid #e5e7eb;
+  border-radius: 7px; overflow: hidden; margin-bottom: 7px;
+}
+.cl-row {
+  display: flex; align-items: center;
+  padding: 8px 12px; font-size: 0.82rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+.cl-row:last-child { border-bottom: none; }
+.cl-date { font-size: 0.72rem; color: #9ca3af; width: 40px; flex-shrink: 0; }
+.cl-lbl  { flex: 1; color: #374151; font-size: 0.79rem; }
+.cl-amt  { font-weight: 700; color: #1a1a1a; text-align: right; font-size: 0.88rem; }
+.cl-row.cl-sep-row { border-top: 1px solid #e5e7eb; background: #fafafa; }
+.cl-row.cl-sep-row .cl-lbl  { color: #6b7280; }
+.cl-row.cl-neg .cl-amt { color: #dc2626; }
+
+.mini-disc {
+  font-size: 0.68rem; color: #9ca3af;
+  text-align: center; padding: 5px 0 10px;
+}
+
+/* ── ESTADO DE CHEQUES ── */
+.cl-row.cl-acreditado .cl-date { color: #16a34a; }
+.cl-status-icon { font-size: 0.62rem; color: #16a34a; margin-left: 3px; }
+.cl-row.cl-pendiente  .cl-date { color: #9ca3af; }
+
+/* ── NETO EN TAB ── */
+.period-tab { flex-direction: column; align-items: flex-start; }
+.tab-top    { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.tab-neto   { font-size: 0.58rem; font-weight: 600; color: #6b7280; margin-top: 2px; }
+.period-tab.act-mayo .tab-neto,
+.period-tab.act-junio .tab-neto,
+.period-tab.act-julio .tab-neto,
+.period-tab.act-agosto .tab-neto,
+.period-tab.act-septiembre .tab-neto,
+.period-tab.act-octubre .tab-neto,
+.period-tab.act-noviembre .tab-neto,
+.period-tab.act-diciembre .tab-neto { color: #1a1a1a; }
+
+/* ── BOTÓN ACTUALIZAR ── */
+.btn-refresh {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  color: rgba(255,255,255,.8); padding: 4px 9px; border-radius: 5px;
+  font-size: 0.9rem; cursor: pointer; font-family: inherit;
+  transition: opacity .15s; line-height: 1;
+}
+.btn-refresh:hover { opacity: .7; }
+.btn-refresh:disabled { opacity: .35; cursor: default; }
+
+/* ── ADMIN PANEL — tema marfil/periódico ── */
+#adminView { background: #f5efe4; }
+.adm-header {
+  background: #0f0f0f; border-radius: 0;
+  padding: 13px 15px; display: flex; align-items: center;
+  justify-content: space-between; color: white;
+  border-bottom: 3px solid #0f0f0f;
+}
+.adm-badge {
+  background: #c9933a; color: white; font-size: 0.56rem; font-weight: 700;
+  padding: 2px 7px; border-radius: 3px; letter-spacing: .5px; text-transform: uppercase;
+}
+/* Layout sidebar + contenido */
+.adm-layout {
+  display: flex; gap: 0; align-items: flex-start;
+}
+.adm-sidenav {
+  width: 175px; flex-shrink: 0;
+  background: #131313; border-right: 1px solid #000;
+  border-bottom: 1px solid #000;
+  padding: 14px 10px; display: flex; flex-direction: column; gap: 2px;
+  max-height: calc(100vh - 80px); overflow-y: auto; position: sticky; top: 0;
+}
+/* Hamburger — solo mobile */
+.adm-hamburger {
+  display: none; background: none; border: none;
+  color: rgba(255,255,255,.8); font-size: 1.3rem;
+  cursor: pointer; padding: 2px 6px; line-height: 1;
+}
+.adm-sidenav-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.5); z-index: 200;
+}
+@media (max-width: 600px) {
+  .adm-hamburger { display: block; }
+  .adm-sidenav {
+    position: fixed; top: 0; left: -200px; height: 100vh;
+    max-height: 100vh; z-index: 300; width: 200px;
+    transition: left .25s ease; box-shadow: none;
+  }
+  .adm-sidenav.open {
+    left: 0; box-shadow: 4px 0 20px rgba(0,0,0,.4);
+  }
+  .adm-sidenav-overlay.open { display: block; }
+  .adm-main { width: 100%; min-width: 0; }
+  .adm-kpis { flex-direction: column; }
+  .adm-table-wrap { font-size: 0.65rem; }
+  .adm-table th, .adm-table td { padding: 5px 6px; }
+}
+.adm-sidenav::-webkit-scrollbar { width: 4px; }
+.adm-sidenav::-webkit-scrollbar-track { background: transparent; }
+.adm-sidenav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 4px; }
+.adm-sidenav-title {
+  font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: rgba(255,255,255,.35); margin-bottom: 6px;
+  padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.adm-sidenav-btn {
+  width: 100%; text-align: left; padding: 7px 10px;
+  font-size: 0.78rem; font-weight: 600; font-family: inherit;
+  background: none; border: none; border-radius: 6px;
+  color: rgba(255,255,255,.55); cursor: pointer; transition: all .15s;
+  line-height: 1.3;
+}
+.adm-sidenav-btn:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.9); }
+.adm-sidenav-btn.active { background: rgba(255,255,255,.12); color: #fff; }
+.adm-sidenav-sep {
+  font-size: 0.58rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .8px; color: rgba(255,255,255,.3); margin: 10px 0 4px;
+  padding: 4px 10px 4px; border-top: 1px solid rgba(255,255,255,.07);
+}
+.adm-sidenav-link {
+  display: block; padding: 5px 10px;
+  font-size: 0.74rem; font-weight: 400; color: rgba(255,255,255,.5);
+  text-decoration: none; border-radius: 5px; line-height: 1.3;
+  transition: all .13s; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis;
+}
+.adm-sidenav-link:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.9); }
+.adm-sidenav-search {
+  width: 100%; padding: 6px 9px; margin-bottom: 6px;
+  border: 1px solid rgba(255,255,255,.12); border-radius: 6px;
+  font-size: 0.75rem; font-family: inherit; background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.8); box-sizing: border-box; outline: none;
+}
+.adm-sidenav-search:focus { border-color: rgba(255,255,255,.3); }
+.adm-sidenav-search::placeholder { color: rgba(255,255,255,.25); }
+.adm-main { flex: 1; min-width: 0; }
+.adm-card {
+  background: #faf6ee; border-radius: 0;
+  border: 1px solid #d5cfc0; border-top: none;
+  overflow: hidden; margin-bottom: 0;
+}
+.adm-tabs {
+  display: flex; border-bottom: 2px solid #1a1a1a;
+  background: #ece6da; scrollbar-width: none; overflow-x: auto;
+}
+.adm-tabs::-webkit-scrollbar { display: none; }
+.adm-tab {
+  flex: 1; padding: 10px 13px; font-size: 0.76rem; font-weight: 600;
+  cursor: pointer; border: none; background: none; color: #9a8c78;
+  border-bottom: 3px solid transparent; margin-bottom: -2px;
+  white-space: nowrap; font-family: inherit; transition: color .15s;
+}
+.adm-tab:hover { color: #1a1a1a; }
+.adm-tab.adm-tab-act { color: #1a1a1a; border-bottom-color: #1a1a1a; background: #f5efe4; }
+.adm-body { padding: 14px 13px 18px; background: #f5efe4; }
+/* ── ACCESOS ── */
+.acc-toolbar { display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.acc-filter-btn { padding:5px 12px; border:1.5px solid #e5e7eb; border-radius:20px; font-size:0.72rem; font-weight:600; font-family:inherit; background:#fff; color:#6b7280; cursor:pointer; transition:all .15s; }
+.acc-filter-btn:hover { border-color:#1a1a1a; color:#1a1a1a; }
+.acc-filter-btn.active { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
+.acc-add-btn { margin-left:auto; padding:6px 14px; background:#1a1a1a; color:#fff; border:none; border-radius:7px; font-size:0.76rem; font-weight:700; font-family:inherit; cursor:pointer; }
+.acc-add-btn:hover { opacity:.82; }
+.acc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; }
+.acc-card { background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:13px 13px 10px; display:flex; flex-direction:column; gap:6px; position:relative; transition:box-shadow .15s, border-color .15s; }
+.acc-card:hover { border-color:#d1d5db; box-shadow:0 2px 10px rgba(0,0,0,.08); }
+.acc-card-cat { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#9ca3af; }
+.acc-card-title { font-size:0.85rem; font-weight:700; color:#1a1a1a; line-height:1.25; }
+.acc-card-desc { font-size:0.73rem; color:#6b7280; line-height:1.4; flex:1; }
+.acc-card-actions { display:flex; gap:6px; margin-top:4px; align-items:center; }
+.acc-open-btn { flex:1; padding:6px 10px; background:#1a1a1a; color:#fff; border:none; border-radius:6px; font-size:0.72rem; font-weight:600; font-family:inherit; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:5px; }
+.acc-open-btn:hover { opacity:.82; }
+.acc-del-btn { width:28px; height:28px; border:1.5px solid #fecaca; border-radius:6px; background:#fef2f2; color:#dc2626; font-size:0.78rem; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.acc-del-btn:hover { background:#dc2626; color:#fff; }
+/* Modal accesos */
+.acc-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:3000; align-items:center; justify-content:center; }
+.acc-modal-bg.open { display:flex; }
+.acc-modal { background:#fff; border-radius:12px; padding:22px; width:360px; max-width:95vw; box-shadow:0 12px 40px rgba(0,0,0,.18); }
+.acc-modal h3 { font-size:1rem; font-weight:700; margin-bottom:16px; color:#1a1a1a; }
+.acc-modal label { display:block; font-size:0.7rem; font-weight:600; color:#374151; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; margin-top:10px; }
+.acc-modal input, .acc-modal select { width:100%; padding:8px 11px; border:1.5px solid #e5e7eb; border-radius:7px; font-size:0.85rem; font-family:inherit; background:#fff; color:#1a1a1a; }
+.acc-modal input:focus, .acc-modal select:focus { border-color:#1a1a1a; outline:none; }
+.acc-modal-btns { display:flex; gap:8px; margin-top:18px; }
+.acc-modal-btns button { flex:1; padding:9px; border-radius:7px; font-size:0.82rem; font-weight:700; font-family:inherit; cursor:pointer; }
+.acc-modal-save { background:#1a1a1a; color:#fff; border:none; }
+.acc-modal-cancel { background:#fff; color:#6b7280; border:1.5px solid #e5e7eb; }
+
+/* ── DÉBITOS ── */
+.deb-toolbar { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+.deb-mes-sel { padding:6px 10px; border:1.5px solid #e5e7eb; border-radius:7px; font-size:0.78rem; font-family:inherit; background:#fff; color:#1a1a1a; cursor:pointer; }
+.deb-mes-sel:focus { border-color:#1a1a1a; outline:none; }
+.deb-btn { padding:6px 12px; border:1.5px solid #e5e7eb; border-radius:7px; font-size:0.76rem; font-weight:600; font-family:inherit; background:#fff; color:#374151; cursor:pointer; white-space:nowrap; }
+.deb-btn:hover { background:#f3f4f6; }
+.deb-btn-pri { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
+.deb-btn-pri:hover { opacity:.82; }
+.deb-saved-msg { font-size:0.72rem; color:#16a34a; display:none; }
+.deb-table-wrap { overflow-x:auto; }
+.deb-table { width:100%; border-collapse:collapse; font-size:0.74rem; }
+.deb-table th { background:#1a1a1a; color:#fff; padding:7px 8px; text-align:right; font-weight:600; white-space:nowrap; }
+.deb-table th:first-child,.deb-table th:nth-child(2) { text-align:left; }
+.deb-table th.th-nota { text-align:left; }
+.deb-table td { padding:5px 7px; border-bottom:1px solid #f0f0f0; text-align:right; vertical-align:top; }
+.deb-table td:first-child,.deb-table td:nth-child(2) { text-align:left; }
+.deb-table tr:nth-child(even) td { background:#f9fafb; }
+.deb-table tr:hover td { background:#f3f4f6; }
+.deb-neg { color:#991b1b; font-weight:600; }
+.deb-zero { color:#9ca3af; font-style:italic; }
+.deb-nota-inp { width:100%; min-width:160px; border:1px solid #e5e7eb; border-radius:5px; padding:4px 6px; font-size:0.72rem; font-family:inherit; resize:vertical; line-height:1.4; background:#fffef0; color:#1a1a1a; }
+.deb-nota-inp:focus { border-color:#1a1a1a; outline:none; background:#fff; }
+.deb-nota-inp.tiene-nota { border-color:#f59e0b; background:#fffbeb; }
+.deb-total-row td { background:#f3f4f6 !important; font-weight:700; font-size:0.75rem; }
+.deb-empty { padding:24px; text-align:center; color:#9ca3af; font-size:0.83rem; }
+.deb-stats { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+.deb-stat { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px 12px; flex:1; min-width:100px; }
+.deb-stat-lbl { font-size:0.65rem; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+.deb-stat-val { font-size:1rem; font-weight:700; color:#1a1a1a; margin-top:2px; }
+@media print {
+  #adminView .adm-header, #adminView .adm-tabs, #adminView .adm-footer,
+  .deb-toolbar button, .deb-btn { display:none !important; }
+  .deb-nota-inp { border:none; background:transparent; resize:none; }
+}
+.adm-kpis { display: flex; gap: 8px; margin-bottom: 14px; }
+.adm-kpi {
+  flex: 1; background: #f5f0e4; border: 1px solid #d5cfc0;
+  border-radius: 8px; padding: 10px 11px; border-left: 4px solid #1a1a1a;
+}
+.adm-kpi-lbl { font-size: 0.61rem; color: #9a8c78; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 4px; }
+.adm-kpi-val { font-size: 0.95rem; font-weight: 800; color: #1a1a1a; line-height: 1.1; }
+.adm-kpi-sub { font-size: 0.59rem; color: #9a8c78; margin-top: 3px; }
+.adm-sec-title {
+  font-size: 0.65rem; font-weight: 700; color: #5c5040; text-transform: uppercase;
+  letter-spacing: .6px; margin: 14px 0 7px; border-bottom: 1px solid #d5cfc0; padding-bottom: 4px;
+}
+.adm-breakdown { display: flex; flex-direction: column; gap: 5px; }
+.adm-br-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 11px; border-radius: 6px;
+}
+.adm-br-lbl { font-size: 0.74rem; color: #3a3028; font-weight: 500; }
+.adm-br-val { font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+.adm-table-wrap { overflow-x: auto; border: 1px solid #d5cfc0; }
+.adm-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+.adm-table thead tr { background: #1a1a1a; }
+.adm-table th {
+  padding: 8px 9px; text-align: right; font-weight: 700; color: #faf6ee;
+  text-transform: uppercase; font-size: 0.59rem; letter-spacing: .4px;
+  border-bottom: 2px solid #1a1a1a; white-space: nowrap;
+}
+.adm-table th:first-child { text-align: left; }
+.adm-table td {
+  padding: 7px 9px; text-align: right;
+  border-bottom: 1px solid #e8e0cc; font-weight: 600; color: #3a3028;
+}
+.adm-table td:first-child { text-align: left; font-weight: 700; color: #1a1a1a; }
+.adm-table tbody tr:nth-child(even) td { background: #f5f0e4; }
+.adm-table tbody tr:last-child td { border-bottom: none; }
+.adm-table tr.adm-totals td {
+  font-weight: 800; color: #1a1a1a; background: #ede7d4;
+  border-top: 2px solid #1a1a1a; border-bottom: none;
+}
+.adm-neg { color: #dc2626 !important; }
+.adm-pos { color: #16a34a !important; }
+.adm-neto { color: #1a1a1a !important; font-weight: 800 !important; }
+.adm-exento { font-size: 0.59rem; color: #16a34a; font-weight: 700; background: #f0fdf4; padding: 1px 5px; border-radius: 3px; }
+.adm-pend { color: #b8a898; font-weight: 400; }
+.adm-est-badge { font-size: 0.56rem; background: #fef3c7; color: #92400e; padding: 1px 5px; border-radius: 3px; font-weight: 700; vertical-align: middle; }
+.adm-footer { text-align: center; font-size: 0.63rem; color: #9a8c78; padding: 6px 0 2px; border-top: 1px solid #d5cfc0; margin-top: 4px; }
+
+/* ── IMPORTAR LIQUIDACIÓN ── */
+.btn-importar {
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.22);
+  color: white; padding: 4px 10px; border-radius: 5px;
+  font-size: 0.72rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.btn-importar:hover { background: rgba(255,255,255,.22); }
+.imp-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.62); z-index: 999;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 16px 10px 32px; overflow-y: auto;
+}
+.imp-box {
+  width: 100%; max-width: 540px;
+  background: white; border-radius: 12px;
+  overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,.25);
+}
+.imp-hdr {
+  background: #1a1a1a; padding: 14px 16px;
+  display: flex; align-items: center; justify-content: space-between; color: white;
+}
+.imp-hdr h3 { font-size: 0.95rem; font-weight: 800; margin-bottom: 2px; }
+.imp-hdr p  { font-size: 0.67rem; opacity: .45; }
+.imp-close {
+  background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2);
+  color: white; padding: 4px 11px; border-radius: 5px;
+  cursor: pointer; font-size: 0.82rem; font-family: inherit;
+}
+.imp-body  { padding: 16px; }
+.imp-sep   { border: none; border-top: 1px solid #e5e7eb; margin: 14px 0; }
+.imp-sec-title {
+  font-size: 0.63rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; color: #374151; margin-bottom: 8px;
+}
+.imp-field { margin-bottom: 10px; }
+.imp-label {
+  display: block; font-size: 0.63rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .5px; color: #374151; margin-bottom: 4px;
+}
+.imp-select {
+  width: 100%; padding: 9px 12px;
+  border: 1.5px solid #e5e7eb; border-radius: 7px;
+  font-size: 0.9rem; background: white; font-family: inherit;
+}
+.imp-file-input {
+  width: 100%; padding: 8px 10px;
+  border: 1.5px dashed #d1d5db; border-radius: 7px;
+  font-size: 0.82rem; cursor: pointer; font-family: inherit;
+}
+.imp-btn-primary {
+  width: 100%; padding: 11px; background: #1a1a1a; color: white;
+  border: none; border-radius: 7px; font-size: 0.9rem; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: opacity .15s;
+}
+.imp-btn-primary:hover  { opacity: .82; }
+.imp-btn-primary:disabled { opacity: .45; cursor: default; }
+.imp-btn-blue {
+  width: 100%; padding: 10px; background: #1d4ed8; color: white;
+  border: none; border-radius: 7px; font-size: 0.84rem; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: opacity .15s; margin-bottom: 6px;
+}
+.imp-btn-blue:hover { opacity: .85; }
+.imp-btn-gray {
+  width: 100%; padding: 10px; background: #374151; color: white;
+  border: none; border-radius: 7px; font-size: 0.84rem; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: opacity .15s;
+}
+.imp-btn-gray:hover { opacity: .85; }
+.imp-error {
+  display: none; margin-top: 10px; padding: 9px 13px;
+  background: #fef2f2; color: #991b1b;
+  border: 1px solid #fecaca; border-radius: 7px; font-size: 0.8rem;
+}
+.imp-table-wrap { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 7px; margin-bottom: 10px; }
+.imp-table { width: 100%; border-collapse: collapse; font-size: 0.74rem; }
+.imp-table thead tr { background: #f9fafb; }
+.imp-table th {
+  padding: 7px 10px; font-size: 0.61rem; text-transform: uppercase;
+  color: #6b7280; font-weight: 700; letter-spacing: .4px;
+  border-bottom: 1px solid #e5e7eb; text-align: right;
+}
+.imp-table th:first-child { text-align: left; }
+.ipt-name { padding: 6px 10px; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #1a1a1a; }
+.ipt-num  { padding: 6px 10px; border-bottom: 1px solid #f3f4f6; text-align: right; color: #374151; font-weight: 500; }
+.imp-input {
+  width: 100%; padding: 8px 10px;
+  border: 1.5px solid #e5e7eb; border-radius: 6px;
+  font-size: 0.88rem; font-family: inherit;
+}
+.imp-colon-row {
+  display: grid; grid-template-columns: 64px 1fr 80px;
+  gap: 5px; align-items: center; margin-bottom: 5px;
+}
+.imp-colon-lbl { font-size: 0.72rem; color: #6b7280; font-weight: 600; }
+.imp-colon-input { padding: 7px 9px; border: 1.5px solid #e5e7eb; border-radius: 6px; font-size: 0.84rem; font-family: inherit; width: 100%; }
+.imp-colon-fecha { padding: 7px 9px; border: 1.5px solid #e5e7eb; border-radius: 6px; font-size: 0.84rem; font-family: inherit; width: 100%; }
+.imp-sheet-msg { text-align: center; font-size: 0.82rem; color: #6b7280; padding: 8px 0 2px; min-height: 28px; }
+.imp-sheet-msg.imp-ok  { color: #15803d; }
+.imp-sheet-msg.imp-err { color: #dc2626; }
+.imp-undo-area { display:none; text-align:center; padding: 4px 0 2px; }
+.imp-btn-undo {
+  background: #f9fafb; color: #374151;
+  border: 1px solid #e5e7eb; padding: 6px 16px;
+  border-radius: 6px; font-size: 0.79rem; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.imp-btn-undo:hover { background: #f3f4f6; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- LOGIN -->
+  <div id="loginView" class="login-wrap">
+    <div class="login-card">
+      <div class="logo-area">
+        <div class="logo-icon">🏥</div>
+        <h2>CEOT</h2>
+        <p>Portal de profesionales</p>
+      </div>
+      <div class="field">
+        <label>Usuario</label>
+        <input type="text" id="usernameInput" placeholder="Tu apellido en minúscula" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Matrícula</label>
+        <input type="password" id="passwordInput" placeholder="Número de matrícula">
+      </div>
+      <button class="btn-login" id="loginBtn">Ingresar</button>
+      <div class="login-error" id="loginError">Usuario o matrícula incorrectos.</div>
+      <p class="login-hint">Ingresá tu apellido y número de matrícula</p>
+    </div>
+  </div>
+
+  <!-- PORTAL -->
+  <div id="portalView" style="display:none;">
+    <div class="portal-header">
+      <div class="ph-left">
+        <div class="ph-avatar" id="phAvatar">?</div>
+        <div class="ph-info">
+          <h3 id="phNombre"></h3>
+          <p>CEOT · Portal profesionales</p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="btn-refresh" id="refreshBtn" title="Actualizar datos">↻</button>
+        <button class="btn-logout" id="logoutBtn">Salir ✕</button>
+      </div>
+    </div>
+
+    <div id="notifBanner" style="display:none;background:#fef3c7;border-bottom:1px solid #fcd34d;padding:9px 14px;font-size:0.79rem;color:#92400e;line-height:1.6"></div>
+
+    <div class="portal-card">
+      <!-- TABS -->
+      <div class="period-tabs">
+        <button class="period-tab" id="tab-mipanel" data-tab="mipanel">
+          <span class="tab-top">⭐ Mi panel</span>
+        </button>
+        <button class="period-tab" id="tab-historial" data-tab="historial">
+          <span class="tab-top">📊 Historial</span>
+        </button>
+        <button class="period-tab" id="tab-abril" data-tab="abril">
+          <span class="tab-top">Abr 2026 <span class="tbadge tb-ant" id="badge-abril">anterior</span></span>
+        </button>
+        <button class="period-tab" id="tab-mayo" data-tab="mayo">
+          <span class="tab-top">May 2026 <span class="tbadge tb-ant" id="badge-mayo">anterior</span></span>
+          <span class="tab-neto" id="tabneto-mayo"></span>
+        </button>
+        <button class="period-tab" id="tab-junio" data-tab="junio">
+          <span class="tab-top">Jun 2026 <span class="tbadge tb-ant" id="badge-junio">anterior</span></span>
+          <span class="tab-neto" id="tabneto-junio"></span>
+        </button>
+        <button class="period-tab" id="tab-julio" data-tab="julio">
+          <span class="tab-top">Jul 2026 <span class="tbadge tb-ant" id="badge-julio">anterior</span></span>
+          <span class="tab-neto" id="tabneto-julio"></span>
+        </button>
+        <button class="period-tab" id="tab-agosto" data-tab="agosto">
+          <span class="tab-top">Ago 2026 <span class="tbadge tb-act" id="badge-agosto">actual</span></span>
+          <span class="tab-neto" id="tabneto-agosto"></span>
+        </button>
+        <button class="period-tab" id="tab-septiembre" data-tab="septiembre">
+          <span class="tab-top">Sep 2026 <span class="tbadge tb-ant" id="badge-septiembre">anterior</span></span>
+          <span class="tab-neto" id="tabneto-septiembre"></span>
+        </button>
+        <button class="period-tab" id="tab-octubre" data-tab="octubre">
+          <span class="tab-top">Oct 2026 <span class="tbadge tb-ant" id="badge-octubre">anterior</span></span>
+          <span class="tab-neto" id="tabneto-octubre"></span>
+        </button>
+        <button class="period-tab" id="tab-noviembre" data-tab="noviembre">
+          <span class="tab-top">Nov 2026 <span class="tbadge tb-ant" id="badge-noviembre">anterior</span></span>
+          <span class="tab-neto" id="tabneto-noviembre"></span>
+        </button>
+        <button class="period-tab" id="tab-diciembre" data-tab="diciembre">
+          <span class="tab-top">Dic 2026 <span class="tbadge tb-ant" id="badge-diciembre">anterior</span></span>
+          <span class="tab-neto" id="tabneto-diciembre"></span>
+        </button>
+      </div>
+
+      <div class="tab-pane" id="pane-abril"></div>
+      <div class="tab-pane" id="pane-mayo"></div>
+      <div class="tab-pane" id="pane-junio"></div>
+      <div class="tab-pane" id="pane-julio"></div>
+      <div class="tab-pane" id="pane-agosto"></div>
+      <div class="tab-pane" id="pane-septiembre"></div>
+      <div class="tab-pane" id="pane-octubre"></div>
+      <div class="tab-pane" id="pane-noviembre"></div>
+      <div class="tab-pane" id="pane-diciembre"></div>
+      <div class="tab-pane" id="pane-historial"></div>
+      <div class="tab-pane" id="pane-mipanel"></div>
+    </div>
+
+    <div class="footer-note">Informe privado · solo para el profesional</div>
+  </div>
+
+</div>
+
+<!-- ADMIN VIEW — fuera del .app para no heredar max-width 480px -->
+<div id="adminView" style="display:none; max-width:none; margin:-12px -10px -28px; padding:0 0 28px; font-family:'Segoe UI',system-ui,sans-serif;">
+  <div class="adm-header">
+    <div class="ph-left">
+      <div class="ph-avatar">⚙</div>
+      <div class="ph-info">
+        <h3>Panel Admin <span class="adm-badge">CEOT</span></h3>
+        <p>Distribución de honorarios</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="adm-hamburger" onclick="toggleAdmSidenav()" title="Menú">☰</button>
+      <button class="btn-importar" id="btnImportar" onclick="abrirImportModal()">⬆ Importar</button>
+      <button class="btn-refresh" id="adminRefreshBtn" title="Actualizar datos">↻</button>
+      <button class="btn-logout" id="adminLogoutBtn">Salir ✕</button>
+    </div>
+  </div>
+  <div id="admOverlay" class="adm-sidenav-overlay" onclick="toggleAdmSidenav()"></div>
+  <div class="adm-layout">
+    <!-- Sidebar izquierdo -->
+    <div class="adm-sidenav" id="admSidenav">
+      <div class="adm-sidenav-title">Módulos</div>
+      <button class="adm-sidenav-btn" id="adm-sidenav-debitos"     onclick="renderDebitos()">⚠ Débitos</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-pendientes" onclick="renderPendientes()">📋 Pendientes</button>
+      <div class="adm-sidenav-sep" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
+        <span>Accesos</span>
+        <button id="btnEditLinks" onclick="toggleEditLinks()" title="Editar links" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:rgba(255,255,255,.35);padding:0 2px">✏</button>
+      </div>
+      <input class="adm-sidenav-search" id="accSearch" type="text" placeholder="🔍 Buscar..." oninput="filtrarSidenavLinks(this.value)">
+      <div id="adm-sidenav-links"></div>
+      <div id="btnAddLink" style="display:none;padding:4px 8px">
+        <button onclick="accAbrirModal(null)" style="width:100%;background:none;border:1px dashed #c4b5a0;border-radius:5px;color:#9a8c78;font-size:0.7rem;padding:5px;cursor:pointer">+ Agregar link</button>
+      </div>
+    </div>
+    <!-- Panel principal -->
+    <div class="adm-main">
+      <div class="adm-card">
+        <div class="adm-tabs">
+          <button class="adm-tab" id="adm-tab-mayo"       onclick="renderAdminPanel('mayo')">May</button>
+          <button class="adm-tab" id="adm-tab-junio"      onclick="renderAdminPanel('junio')">Jun</button>
+          <button class="adm-tab" id="adm-tab-julio"      onclick="renderAdminPanel('julio')">Jul</button>
+          <button class="adm-tab" id="adm-tab-agosto"     onclick="renderAdminPanel('agosto')">Ago</button>
+          <button class="adm-tab" id="adm-tab-septiembre" onclick="renderAdminPanel('septiembre')">Sep</button>
+          <button class="adm-tab" id="adm-tab-octubre"    onclick="renderAdminPanel('octubre')">Oct</button>
+          <button class="adm-tab" id="adm-tab-noviembre"  onclick="renderAdminPanel('noviembre')">Nov</button>
+          <button class="adm-tab" id="adm-tab-diciembre"  onclick="renderAdminPanel('diciembre')">Dic</button>
+        </div>
+        <div class="adm-body" id="adm-content">
+          <div style="padding:20px;text-align:center;color:#9a8c78">Cargando…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="adm-footer">CEOT · Informe administrativo interno</div>
+</div>
+
+<!-- Modal nuevo acceso -->
+<!-- Modal WA Gastos A -->
+<div id="waModalBg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:4000;align-items:flex-start;justify-content:center;padding:20px 10px;overflow-y:auto" onclick="if(event.target===this)cerrarWAModal()">
+  <div style="background:#fdf8f0;border-radius:12px;width:100%;max-width:520px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25)">
+    <div style="background:#0f0f0f;padding:14px 16px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="color:#fff;font-size:0.9rem;font-weight:700">📲 Notificación Gastos A</div>
+        <div id="waModalSub" style="color:rgba(255,255,255,.4);font-size:0.67rem;margin-top:2px"></div>
+      </div>
+      <button onclick="cerrarWAModal()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:4px 11px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:0.8rem">✕</button>
+    </div>
+    <div style="padding:14px 16px">
+      <div style="font-size:0.72rem;color:#5c5040;margin-bottom:10px">Hacé clic en <strong>Enviar</strong> para abrir WhatsApp con el mensaje pre-escrito. Podés editar el texto antes de enviarlo.</div>
+      <div id="waListado" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+  </div>
+</div>
+
+<div id="accModalBg" class="acc-modal-bg" onclick="if(event.target===this)accCerrarModal()">
+  <div class="acc-modal">
+    <h3 id="accModalTitulo">Nuevo acceso</h3>
+    <label>Título</label>
+    <input id="accFormTitle" type="text" placeholder="Nombre del recurso">
+    <label>URL</label>
+    <input id="accFormUrl" type="url" placeholder="https://...">
+    <label>Descripción (opcional)</label>
+    <input id="accFormDesc" type="text" placeholder="Breve descripción">
+    <label>Categoría</label>
+    <select id="accFormCat">
+      <option value="Finanzas">Finanzas</option>
+      <option value="Clínica">Clínica</option>
+      <option value="Admin" selected>Admin</option>
+      <option value="Otros">Otros</option>
+    </select>
+    <div class="acc-modal-btns">
+      <button class="acc-modal-cancel" onclick="accCerrarModal()">Cancelar</button>
+      <button class="acc-modal-save" onclick="accGuardarNuevo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════ DATOS ════════════════════════════════════════════════
+
+const DOCTORES = [
+  { user:"delacolina", pass:"95943", nombre:"DR. DE LA COLINA",  ini:"DC", apellido:"DE LA COLINA", junioKey:"DE LA COLINA, Juan Pablo", wapp:"5492235832116" },
+  { user:"bruni",      pass:"94435", nombre:"DR. BRUNI",         ini:"B",  apellido:"BRUNI",        junioKey:"BRUNI, Maximiliano",        wapp:"5492236357897" },
+  { user:"corelich",   pass:"92859", nombre:"DR. CORELICH",      ini:"C",  apellido:"CORELICH",     junioKey:"CORELICH, Daniel",          wapp:"5492236876857" },
+  { user:"deganutti",  pass:"94391", nombre:"DR. DEGANUTTI",     ini:"D",  apellido:"DEGANUTTI",    junioKey:"DEGANUTTI, Cristian",       wapp:"5492236237130" },
+  { user:"fisser",     pass:"92793", nombre:"DR. FISSER",        ini:"F",  apellido:"FISSER",       junioKey:"",                          wapp:"" },
+  { user:"guilera",    pass:"94743", nombre:"DR. GUILERA",       ini:"G",  apellido:"GUILERA",      junioKey:"",                          wapp:"" },
+  { user:"labayen",    pass:"18863", nombre:"DR. LABAYEN",       ini:"L",  apellido:"LABAYEN",      junioKey:"LABAYEN, Daniel",           wapp:"5492235837723" },
+  { user:"mazzola",    pass:"95178", nombre:"DR. MAZZOLA",       ini:"M",  apellido:"MAZZOLA",      junioKey:"MAZZOLA, Maximiliano",      wapp:"5492236021105" },
+  { user:"trivellini", pass:"93078", nombre:"DR. TRIVELLINI",    ini:"T",  apellido:"TRIVELLINI",   junioKey:"TRIVELLINI, Amilcar",       wapp:"5492236803383" },
+  { user:"leon",       pass:"96521", nombre:"DR. LEON",          ini:"L",  apellido:"LEON",         junioKey:"LEON, Joaquin",             wapp:"5492235033679" },
+  { user:"perlasco",   pass:"95074", nombre:"DR. PERLASCO",      ini:"P",  apellido:"PERLASCO",     junioKey:"PERLASCO, Camilo",          wapp:"5492235399935" },
+  { user:"soule",      pass:"96211", nombre:"DR. SOULE",         ini:"S",  apellido:"SOULE",        junioKey:"SOULE, Ivan",               wapp:"5492235726565" },
+  { user:"garmendia",  pass:"96117", nombre:"DRA. GARMENDIA",    ini:"VG", apellido:"GARMENDIA",    junioKey:"",                          wapp:"" },
+];
+
+const MAYO = [
+  { fecha:"04/05", items:[["Cheque", 2353953.18]] },
+  { fecha:"08/05", items:[["Cheque", 267456]] },
+  { fecha:"15/05", items:[["Cheque bruto",964752],["IIBB",530453],["A distribuir",434299]] },
+  { fecha:"22/05", items:[["Cheque bruto",964752],["CPSM",757790.01],["A distribuir",206961.99]] },
+  { fecha:"29/05", items:[["Cheque",522799.06]] },
+];
+
+var PERIODO_IIBB = { mayo:null, junio:null, julio:null, agosto:null, septiembre:null, octubre:null, noviembre:null, diciembre:null };
+var PERIODO_CPSM = { mayo:null, junio:null, julio:null, agosto:null, septiembre:null, octubre:null, noviembre:null, diciembre:null };
+
+// ── OSDE y Centro Médico por período ─────────────────────────
+// pendiente:true → mostrar "Pendiente" con nota de timing
+// pendiente:false → m tiene los importes individuales
+const PERIOD_EXTRAS = {
+  mayo: {
+    osde: { pendiente: false, fecha: "~3ra sem. de Junio", m: {
+      "BRUNI":        2852488,
+      "CORELICH":     4074983,
+      "DE LA COLINA": 2586496,
+      "DEGANUTTI":    5180664,
+      "LABAYEN":      3365236,
+      "LEON":         1323011,
+      "MAZZOLA":      1885359,
+      "PERLASCO":     1624560,
+      "SOULE":        1434395,
+      "TRIVELLINI":   2842621,
+    }},
+    cm: { pendiente: true, fecha: "", m: {} },  // CM de Mayo → se acredita en Junio (ver tab Junio)
+  },
+  junio: {
+    osde: { pendiente: false, fecha: "Jun 2026", m: {
+      "BRUNI":        4571883.44,
+      "CORELICH":     2869216.75,
+      "DE LA COLINA": 2938713.35,
+      "DEGANUTTI":    6251211.94,
+      "LABAYEN":      3824795,
+      "LEON":         836441.22,
+      "MAZZOLA":      982880.48,
+      "PERLASCO":     476548.11,
+      "SOULE":        987844.52,
+      "TRIVELLINI":   1079679.31,
+    }},
+    // CEM de Junio = liquidación de Mayo — acreditado 01/06/2026
+    cm: { pendiente: false, fecha: "Liquid. Mayo", m: {
+      "BRUNI":        1274938,
+      "CORELICH":     2182505,
+      "DE LA COLINA": 1029425,
+      "DEGANUTTI":    2361968,
+      "LABAYEN":      215415,
+      "LEON":         750227,
+      "MAZZOLA":      1123420,
+      "PERLASCO":     295991,
+      "SOULE":        1345730,
+      "TRIVELLINI":   3403479,
+    }},
+  },
+  julio: {
+    osde: { pendiente: true, fecha: "~3ra sem. de Agosto", m: {} },
+    cm:   { pendiente: true, fecha: "1ra sem. de Julio",   m: {} },  // CEM Junio → acredita 1ra sem. Julio
+  },
+  agosto: {
+    osde: { pendiente: true, fecha: "~3ra sem. de Sep",    m: {} },
+    cm:   { pendiente: true, fecha: "1ra sem. de Ago",     m: {} },
+  },
+  septiembre: {
+    osde: { pendiente: true, fecha: "~3ra sem. de Oct",    m: {} },
+    cm:   { pendiente: true, fecha: "1ra sem. de Sep",     m: {} },
+  },
+  octubre: {
+    osde: { pendiente: true, fecha: "~3ra sem. de Nov",    m: {} },
+    cm:   { pendiente: true, fecha: "1ra sem. de Oct",     m: {} },
+  },
+  noviembre: {
+    osde: { pendiente: true, fecha: "~3ra sem. de Dic",    m: {} },
+    cm:   { pendiente: true, fecha: "1ra sem. de Nov",     m: {} },
+  },
+  diciembre: {
+    osde: { pendiente: true, fecha: "~3ra sem. de Ene",    m: {} },
+    cm:   { pendiente: true, fecha: "1ra sem. de Dic",     m: {} },
+  },
+};
+
+function getExtra(periodo, tipo, apellido) {
+  var p = PERIOD_EXTRAS[periodo];
+  if (!p || !p[tipo]) return { val: null, pendiente: true, fecha: "" };
+  var e = p[tipo];
+  var val = (!e.pendiente && (apellido in e.m)) ? e.m[apellido] : null;
+  return { val: val, pendiente: e.pendiente || val === null, fecha: e.fecha };
+}
+
+const ABRIL = [
+  { fecha:"13/03", items:[["Cheque bruto",4195470],["IIBB",596088.81],["A distribuir",3599381.19]] },
+  { fecha:"20/03", items:[["Cheque bruto",4195470],["CPSM",851555.45],["A distribuir",3343914.55]] },
+  { fecha:"27/03", items:[["Cheque bruto",2387886.59],["CPSM dic",690636.11],["A distribuir",1697250.48]] },
+  { fecha:"01/04", items:[["Cheque",3792074.71]] },
+  { fecha:"10/04", items:[["Cheque",840000]] },
+  { fecha:"17/04", items:[["Cheque bruto",2870000],["IIBB",622472.31],["A distribuir",2247527.69]] },
+  { fecha:"24/04", items:[["Cheque bruto",2870000],["CAJA",889246.16],["A distribuir",1980753.84]] },
+  { fecha:"30/04", items:[["Cheque",1703089.66]] },
+];
+
+const JUNIO_RAW = [
+  { k:"BRUNI, Maximiliano",      f1:4018182, f2:782320,  f3:2770000, f4:2770000, f5:1610000 },
+  { k:"CORELICH, Daniel",        f1:1291234, f2:251403,  f3:890000,  f4:890000,  f5:517000  },
+  { k:"DE LA COLINA, Juan Pablo",f1:4607554, f2:897107,  f3:3176000, f4:3176000, f5:1846000 },
+  { k:"DEGANUTTI, Cristian",     f1:8273217, f2:1610797, f3:5702000, f4:5702000, f5:3308000 },
+  { k:"LABAYEN, Daniel",         f1:956057,   f2:186143,  f3:659000,  f4:659000,  f5:383000  },
+  { k:"LEON, Joaquin",           f1:1456969,  f2:283699,  f3:1004000, f4:1004000, f5:583000  },
+  { k:"MAZZOLA, Maximiliano",    f1:3614789,  f2:703866,  f3:2492000, f4:2492000, f5:1446000 },
+  { k:"PERLASCO, Camilo",        f1:1844425,  f2:359141,  f3:1271000, f4:1271000, f5:738000  },
+  { k:"SOULE, Ivan",             f1:1860629,  f2:362283,  f3:1282000, f4:1282000, f5:744000  },
+  { k:"TRIVELLINI, Amilcar",     f1:3990530,  f2:776941,  f3:2751000, f4:2751000, f5:1598000 },
+];
+const JUNIO_FECHAS = ["01/06","09/06","16/06","23/06","30/06"];
+
+const JULIO_RAW = [
+  { k:"BRUNI",        f1:4953088,  f2:859853,  f3:3057254, f4:3057254, f5:1728182 },
+  { k:"CORELICH",     f1:1592633,  f2:276480,  f3:983040,  f4:983040,  f5:555686  },
+  { k:"DE LA COLINA", f1:5677736,  f2:985651,  f3:3504538, f4:3504538, f5:1981019 },
+  { k:"DEGANUTTI",    f1:10196832, f2:1770163, f3:6293914, f4:6293914, f5:3557776 },
+  { k:"LABAYEN",      f1:1178548,  f2:204595,  f3:727450,  f4:727450,  f5:411207  },
+  { k:"LEON",         f1:1795693,  f2:311731,  f3:1108378, f4:1108378, f5:626535  },
+  { k:"MAZZOLA",      f1:4455390,  f2:773453,  f3:2750054, f4:2750054, f5:1554530 },
+  { k:"PERLASCO",     f1:2273483,  f2:394675,  f3:1403290, f4:1403290, f5:793241  },
+  { k:"SOULE",        f1:2293391,  f2:398131,  f3:1415578, f4:1415578, f5:800187  },
+  { k:"TRIVELLINI",   f1:5395044,  f2:936576,  f3:3330048, f4:3330048, f5:1882385 },
+];
+const JULIO_FECHAS = ["01/07","10/07","17/07","24/07","31/07"];
+
+// Agosto en adelante — se llenan dinámicamente desde el endpoint al cargar
+var AGOSTO_RAW        = []; var AGOSTO_FECHAS        = [];
+var SEPTIEMBRE_RAW    = []; var SEPTIEMBRE_FECHAS    = [];
+var OCTUBRE_RAW       = []; var OCTUBRE_FECHAS       = [];
+var NOVIEMBRE_RAW     = []; var NOVIEMBRE_FECHAS     = [];
+var DICIEMBRE_RAW     = []; var DICIEMBRE_FECHAS     = [];
+
+// ── Cheques diferidos Colón Mayo 2026 — importes individuales por profesional ──
+const MAYO_RAW = [
+  { k:"BRUNI",        f1:2700726, f2:309127, f3:1115064, f4:1115064, f5:604253  },
+  { k:"CORELICH",     f1:1989512, f2:227721, f3:821421,  f4:821421,  f5:445128  },
+  { k:"DE LA COLINA", f1:2336715, f2:267462, f3:964773,  f4:964773,  f5:522810  },
+  { k:"DEGANUTTI",    f1:6492380, f2:743122, f3:2680547, f4:2680547, f5:1452588 },
+  { k:"LABAYEN",      f1:1484225, f2:169885, f3:612800,  f4:612800,  f5:332077  },
+  { k:"LEON",         f1:1397332, f2:159939, f3:576925,  f4:576925,  f5:312635  },
+  { k:"MAZZOLA",      f1:2355502, f2:269612, f3:972530,  f4:972530,  f5:527014  },
+  { k:"PERLASCO",     f1:1451346, f2:166122, f3:599226,  f4:599226,  f5:324720  },
+  { k:"SOULE",        f1:1019230, f2:116662, f3:420816,  f4:420816,  f5:228040  },
+  { k:"TRIVELLINI",   f1:2257093, f2:258348, f3:931899,  f4:931899,  f5:504996  },
+];
+const MAYO_FECHAS = ["04/05","08/05","15/05","22/05","29/05"];
+
+// Totales brutos de los cheques diferidos Colón — Julio 2026
+const JULIO_CHEQUES = [
+  { fecha:"01/07", bruto:41474813,  ret:1658992.51, neto:39815820.27 },
+  { fecha:"10/07", bruto:7200000,   ret:288000,     neto:6912000     },
+  { fecha:"17/07", bruto:25600000,  ret:1024000,    neto:24576000    },
+  { fecha:"24/07", bruto:25600000,  ret:1024000,    neto:24576000    },
+  { fecha:"31/07", bruto:14470977,  ret:578839.07,  neto:13892137.93 },
+];
+
+const GASTOS_A = {
+  mayo:  25344799.60,
+  junio: 23868442.00,
+  julio: null, agosto: null, septiembre: null, octubre: null, noviembre: null, diciembre: null,
+};
+
+// Aporte CEOT — aplica desde Agosto 2026 en adelante
+// Base de cálculo: bruto total (cheques Colón + OSDE + CEM)
+// Socios A (5%): Bruni, Corelich, Deganutti, Labayen, Trivellini
+// Resto socios (20%): De la Colina, Leon, Mazzola, Perlasco, Soule
+// null = porcentaje pendiente de definir
+const APORTE_CEOT_PCT = {
+  "BRUNI":        0.05,
+  "CORELICH":     0.05,
+  "DEGANUTTI":    0.05,
+  "LABAYEN":      0.05,
+  "TRIVELLINI":   0.05,
+  "DE LA COLINA": 0.20,
+  "LEON":         0.20,
+  "MAZZOLA":      0.20,
+  "PERLASCO":     0.20,
+  "SOULE":        0.20,
+  "FISSER":       null,
+  "GUILERA":      null,
+  "GARMENDIA":    0.20,
+};
+const APORTE_CEOT_DESDE = ["agosto","septiembre","octubre","noviembre","diciembre"]; // desde Agosto 2026 en adelante
+
+// ── URL del Apps Script Web App (pegar después de desplegar) ──────
+// Instrucciones: ceot_gastos_a_script.gs → sección "CÓMO DESPLEGAR"
+const GASTOS_A_ENDPOINT  = "https://script.google.com/macros/s/AKfycbwaMlP7F0oghuVC4ec0MX_pOXqg-l_vToI287NZ71eCiy8Qh-0SSdJzeLg4InAXG-fp/exec";
+const CIRUGIAS_ENDPOINT  = "https://script.google.com/macros/s/AKfycbzsc65Bpupizt_sZReTofTv-b_PXfqJAWoD4RkD8eb0UYz7BRNdn0GHuzgT7jSqzsjSXw/exec";
+const CAJAS_ENDPOINT     = "https://script.google.com/macros/s/AKfycbxCY7AV3jWU_cLi1yVyRflywhu72huBQItaD-vhEtA_Q36slPN9Ue1k8i3W9qKaLxidKw/exec";
+
+async function cargarGastosARemoto() {
+  if (!GASTOS_A_ENDPOINT) return;
+  try {
+    var resp = await fetch(GASTOS_A_ENDPOINT);
+    var data = await resp.json();
+    if (data.error) { console.warn("Gastos A API error:", data.error); return; }
+    ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre",
+     "enero","febrero","marzo","abril"].forEach(function(m) {
+      if ((m in data) && data[m] !== null) GASTOS_A[m] = data[m];
+    });
+    console.log("Gastos A actualizados desde el sheet ✓");
+  } catch(e) {
+    console.warn("No se pudo cargar Gastos A remotos — usando valores locales:", e.message);
+  }
+}
+
+// Lanzar la carga en segundo plano (sin bloquear el login)
+cargarGastosARemoto();
+
+// ── URL del Apps Script Web App para liquidaciones (ceot_liquidacion_api.gs) ──
+const LIQUIDACION_ENDPOINT = "https://script.google.com/macros/s/AKfycbyTQSTf6gQEXFZYgrI2MPnS8RcxKOy7M-C-UD4PZsNtqtse8iK_Jy46oK-yFAAJ8kt3yw/exec";
+
+// Datos completos del endpoint — usados para Historial
+var liquidacionData = {};
+
+async function cargarLiquidacionRemota() {
+  if (!LIQUIDACION_ENDPOINT) return;
+  try {
+    var resp = await fetch(LIQUIDACION_ENDPOINT);
+    var data = await resp.json();
+    if (data.error) { return; }
+
+    // Guardar datos completos para Historial
+    liquidacionData = data;
+
+    // ── Extraer OSDE y CM para cada período ────────────────
+    ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(pid) {
+      if (!data[pid] || !data[pid].cheques) return;
+      var cheques = data[pid].cheques;
+
+      ["osde","cm"].forEach(function(tipo) {
+        var chq = cheques.find(function(c){ return c.tipo === tipo; });
+        if (!chq || !chq.m) return;
+        var pe = PERIOD_EXTRAS[pid] && PERIOD_EXTRAS[pid][tipo];
+        if (!pe) return;
+        if (!chq.pendiente) {
+          Object.keys(chq.m).forEach(function(k){
+            var v = chq.m[k];
+            if (v != null && typeof v === "number") pe.m[k] = v;
+          });
+          pe.pendiente = false;
+        }
+      });
+    });
+
+    // ── IIBB y CPSM por profesional desde endpoint ───────────
+    // Mayo/junio/julio: marcar como "cargado" aunque no haya dato (= 0, no fallback 3.5%)
+    ["mayo","junio","julio"].forEach(function(pid) {
+      if (!data[pid] || !data[pid].cheques) return;
+      PERIODO_IIBB[pid] = {};
+      PERIODO_CPSM[pid] = {};
+
+      ["iibb","cpsm"].forEach(function(tipo) {
+        var chq = data[pid].cheques.find(function(c){ return c.tipo === tipo; });
+        if (!chq || chq.pendiente || !chq.m) return;
+        var map = {};
+        Object.keys(chq.m).forEach(function(k) {
+          var entry = chq.m[k];
+          if (typeof entry === "object" && entry !== null && "desc" in entry) {
+            map[k] = entry.desc;
+          }
+        });
+        if (Object.keys(map).length > 0) {
+          if (tipo === "iibb") PERIODO_IIBB[pid] = map;
+          else                 PERIODO_CPSM[pid] = map;
+        }
+      });
+    });
+
+    // Agosto: solo cargar si hay datos reales; si no, mantener null → fallback 3.5%/5%
+    if (data.agosto && data.agosto.cheques) {
+      ["iibb","cpsm"].forEach(function(tipo) {
+        var chq = data.agosto.cheques.find(function(c){ return c.tipo === tipo; });
+        if (!chq || chq.pendiente || !chq.m) return;
+        var map = {};
+        Object.keys(chq.m).forEach(function(k) {
+          var entry = chq.m[k];
+          if (typeof entry === "object" && entry !== null && "desc" in entry) {
+            map[k] = entry.desc;
+          }
+        });
+        if (Object.keys(map).length > 0) {
+          if (tipo === "iibb") PERIODO_IIBB.agosto = map;
+          else                 PERIODO_CPSM.agosto = map;
+        }
+      });
+    }
+
+    // ── Junio: reconstruir JUNIO_RAW y JUNIO_FECHAS ─────────
+    if (data.junio && data.junio.cheques) {
+      var colonJunio = data.junio.cheques.filter(function(c){ return c.tipo !== "osde" && c.tipo !== "cm"; });
+      if (colonJunio.length > 0) {
+        JUNIO_FECHAS.length = 0;
+        colonJunio.forEach(function(c){ JUNIO_FECHAS.push(c.fecha); });
+        JUNIO_RAW.length = 0;
+        Object.keys(colonJunio[0].m).forEach(function(apiKey) {
+          var doc = DOCTORES.find(function(d){ return d.apellido === apiKey; });
+          var k = doc ? doc.junioKey : apiKey;
+          if (!k) return; // externos no tienen junioKey
+          var row = { k: k };
+          colonJunio.forEach(function(chq, idx) {
+            var v = chq.m[apiKey];
+            row["f"+(idx+1)] = v == null ? 0 : (typeof v === "object" ? (v.bruto || 0) : v);
+          });
+          JUNIO_RAW.push(row);
+        });
+      }
+    }
+
+    // ── Julio: reconstruir JULIO_RAW y JULIO_FECHAS ─────────
+    if (data.julio && data.julio.cheques) {
+      var colonJulio = data.julio.cheques.filter(function(c){ return c.tipo !== "osde" && c.tipo !== "cm"; });
+      if (colonJulio.length > 0) {
+        JULIO_FECHAS.length = 0;
+        colonJulio.forEach(function(c){ JULIO_FECHAS.push(c.fecha); });
+        JULIO_RAW.length = 0;
+        Object.keys(colonJulio[0].m).forEach(function(apiKey) {
+          var row = { k: apiKey };
+          colonJulio.forEach(function(chq, idx) {
+            var v = chq.m[apiKey];
+            row["f"+(idx+1)] = v == null ? 0 : (typeof v === "object" ? (v.bruto || 0) : v);
+          });
+          JULIO_RAW.push(row);
+        });
+      }
+    }
+
+    // ── Reconstruir RAW/FECHAS para agosto en adelante ──────
+    var mesesDin = {
+      agosto:     { RAW: AGOSTO_RAW,     FECHAS: AGOSTO_FECHAS     },
+      septiembre: { RAW: SEPTIEMBRE_RAW, FECHAS: SEPTIEMBRE_FECHAS },
+      octubre:    { RAW: OCTUBRE_RAW,    FECHAS: OCTUBRE_FECHAS    },
+      noviembre:  { RAW: NOVIEMBRE_RAW,  FECHAS: NOVIEMBRE_FECHAS  },
+      diciembre:  { RAW: DICIEMBRE_RAW,  FECHAS: DICIEMBRE_FECHAS  },
+    };
+    Object.keys(mesesDin).forEach(function(pid) {
+      if (!data[pid] || !data[pid].cheques) return;
+      var colon = data[pid].cheques.filter(function(c){ return c.tipo !== "osde" && c.tipo !== "cm"; });
+      if (!colon.length) return;
+      var ref = mesesDin[pid];
+      ref.FECHAS.length = 0; colon.forEach(function(c){ ref.FECHAS.push(c.fecha); });
+      ref.RAW.length = 0;
+      Object.keys(colon[0].m).forEach(function(apiKey) {
+        var row = { k: apiKey };
+        colon.forEach(function(chq, idx) {
+          var v = chq.m[apiKey];
+          row["f"+(idx+1)] = v == null ? 0 : (typeof v === "object" ? (v.bruto || 0) : v);
+        });
+        ref.RAW.push(row);
+      });
+      // IIBB / CPSM
+      ["iibb","cpsm"].forEach(function(tipo) {
+        var chq = data[pid].cheques.find(function(c){ return c.tipo === tipo; });
+        if (!chq || chq.pendiente || !chq.m) return;
+        var map = {};
+        Object.keys(chq.m).forEach(function(k) {
+          var entry = chq.m[k];
+          if (typeof entry === "object" && entry !== null && "desc" in entry) map[k] = entry.desc;
+        });
+        if (Object.keys(map).length > 0) {
+          if (tipo === "iibb") PERIODO_IIBB[pid] = map;
+          else                 PERIODO_CPSM[pid] = map;
+        }
+      });
+    });
+
+    // Si ya hay un doctor logueado, actualizar el historial con los nuevos datos
+    if (doctorActual) renderHistorial(doctorActual);
+
+    console.log("Liquidación actualizada desde el sheet ✓");
+  } catch(e) {
+    console.warn("No se pudo cargar liquidación remota — usando valores locales:", e.message);
+  }
+}
+
+cargarLiquidacionRemota();
+
+// ══════ UTILIDADES ════════════════════════════════════════════
+
+function fmt(n) {
+  if (typeof n === "string") return n;
+  return new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",minimumFractionDigits:0}).format(n);
+}
+
+// ══════ TABS ══════════════════════════════════════════════════
+
+function cambiarTab(tab) {
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".period-tab").forEach(b => {
+    b.className = "period-tab";
+  });
+  document.getElementById("pane-" + tab).classList.add("active");
+  document.getElementById("tab-"  + tab).classList.add("act-" + tab);
+}
+
+// Vincular tabs via addEventListener (no onclick en HTML → evita problemas de scope)
+document.querySelectorAll(".period-tab").forEach(btn => {
+  btn.addEventListener("click", function() {
+    cambiarTab(this.dataset.tab);
+  });
+});
+
+// ── Helper: fila extra (OSDE / CM) con estado pendiente ─────
+function extraRow(label, ext) {
+  var note = ext.fecha || (label === "OSDE" ? "~3ra semana del mes" : "1ra semana del mes");
+  if (!ext.pendiente && ext.val !== null) {
+    return '<div class="cl-row cl-sep-row">'
+      + '<span class="cl-date">—</span>'
+      + '<span class="cl-lbl">' + label + '</span>'
+      + '<span class="cl-amt">' + fmt(ext.val) + '</span>'
+      + '</div>';
+  }
+  return '<div class="cl-row cl-sep-row">'
+    + '<span class="cl-date">—</span>'
+    + '<span class="cl-lbl">' + label
+    +   ' <span style="font-size:.68rem;color:#9ca3af">· acredita ' + note + '</span></span>'
+    + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">pendiente</span>'
+    + '</div>';
+}
+
+// ══════ RENDER MAYO (datos individuales por profesional) ════
+
+function renderMayo(containerId, doctor) {
+  var container = document.getElementById(containerId);
+
+  // Match en MAYO_RAW por apellido
+  var row = null;
+  for (var i = 0; i < MAYO_RAW.length; i++) {
+    if (MAYO_RAW[i].k === doctor.apellido) { row = MAYO_RAW[i]; break; }
+  }
+
+  var osdeExt = getExtra("mayo", "osde", doctor.apellido);
+  var cmExt   = getExtra("mayo", "cm",   doctor.apellido);
+  var html = '';
+
+  if (row) {
+    var vals = [row.f1, row.f2, row.f3, row.f4, row.f5];
+    var colonTotal = vals.reduce(function(a,b){return a+b;}, 0);
+
+    html += '<div class="period-total">'
+      + '<div class="pt-left">'
+      + '<div class="pt-lbl">Mayo 2026</div>'
+      + '<div class="pt-val">' + fmt(colonTotal) + '</div>'
+      + '<div class="pt-sub">5 cheques Colón · bruto</div>'
+      + '</div><div class="pt-icon">💰</div></div>';
+
+    html += '<div class="cheque-list">';
+    vals.forEach(function(monto, idx) {
+      var fecha = MAYO_FECHAS[idx];
+      var acred = chequeAcreditado(fecha);
+      html += '<div class="cl-row' + (acred ? ' cl-acreditado' : ' cl-pendiente') + '">'
+        + '<span class="cl-date">' + fecha + '</span>'
+        + '<span class="cl-lbl">Cheque ' + (idx+1) + (acred ? ' <span class="cl-status-icon">✓</span>' : '') + '</span>'
+        + '<span class="cl-amt">' + fmt(monto) + '</span>'
+        + '</div>';
+    });
+    // OSDE — siempre presente
+    html += extraRow("OSDE", osdeExt);
+    // Centro Médico de Mayo se acredita en Junio — no se muestra en este tab
+    html += '<div class="cl-row cl-sep-row">'
+      + '<span class="cl-date">—</span>'
+      + '<span class="cl-lbl">Centro Médico <span style="font-size:.68rem;color:#9ca3af">· incluido en Jun 2026</span></span>'
+      + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">ver Junio</span>'
+      + '</div>';
+    // Gastos A
+    var gaTotal = GASTOS_A["mayo"];
+    var gaPP    = gaTotal ? Math.round(gaTotal / 13) : null;
+    if (gaPP) {
+      html += '<div class="cl-row cl-sep-row cl-neg">'
+        + '<span class="cl-date">—</span>'
+        + '<span class="cl-lbl">Gastos A</span>'
+        + '<span class="cl-amt">−' + fmt(gaPP) + '</span>'
+        + '</div>';
+    } else {
+      html += '<div class="cl-row cl-sep-row">'
+        + '<span class="cl-date">—</span>'
+        + '<span class="cl-lbl">Gastos A</span>'
+        + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">pendiente</span>'
+        + '</div>';
+    }
+    html += '</div>';
+
+  } else {
+    html += '<div class="sin-datos">Sin datos Colón para Mayo.</div>';
+  }
+
+  html += '<div class="mini-disc">⚠ Importes brutos · no incluyen IIBB 3,5% ni CPSM 5%<br>📅 Los cheques se acreditan 48 hs. posteriores a la fecha indicada</div>';
+  html += '<button class="btn-pdf" onclick="generarComprobante(\'mayo\')">📄 Comprobante Mayo</button>';
+  container.innerHTML = html;
+}
+
+// ══════ RENDER GENERAL (Abril) ════════════════════════════════
+
+function renderGeneral(data, periodo, containerId) {
+  var mes = periodo === "mayo" ? "Mayo 2026" : "Abril 2026";
+  var count = data.filter(m => m.items.some(i => typeof i[1]==="number")).length;
+
+  var html = '<div class="period-total">'
+    + '<div class="pt-left">'
+    + '<div class="pt-lbl">' + mes + '</div>'
+    + '<div class="pt-val">' + count + ' cheques</div>'
+    + '<div class="pt-sub">Historial de movimientos</div>'
+    + '</div><div class="pt-icon">📋</div></div>';
+
+  html += '<div class="cheque-list">';
+  data.forEach(function(m, idx) {
+    var isOsde = m.items.some(i => i[0]==="OSDE");
+    // Tomar el último item con número como el monto principal
+    var principal = null;
+    m.items.forEach(function(it) { if (typeof it[1]==="number") principal = it; });
+
+    var lbl = isOsde ? "OSDE" : (principal ? principal[0] : "Cheque " + (idx+1));
+    var val = principal ? fmt(principal[1]) : "—";
+
+    var acred = chequeAcreditado(m.fecha);
+    html += '<div class="cl-row' + (acred ? ' cl-acreditado' : ' cl-pendiente') + '">'
+      + '<span class="cl-date">' + m.fecha + '</span>'
+      + '<span class="cl-lbl">' + lbl + (acred ? ' <span class="cl-status-icon">✓</span>' : '') + '</span>'
+      + '<span class="cl-amt">' + val + '</span>'
+      + '</div>';
+
+    if (m.nota) {
+      html += '<div class="cl-row" style="padding-top:2px;padding-bottom:5px;background:#fafafa">'
+        + '<span class="cl-date"></span>'
+        + '<span class="cl-lbl" style="font-size:.7rem;color:#9ca3af">📌 ' + m.nota + '</span>'
+        + '<span class="cl-amt"></span></div>';
+    }
+  });
+  html += '</div>';
+
+  html += '<div class="mini-disc">Datos generales del período · sin desglose individual</div>';
+  document.getElementById(containerId).innerHTML = html;
+}
+
+// ══════ RENDER INDIVIDUAL (Junio / Julio) ════════════════════
+
+var DISCLAIMER = '<div class="disclaimer">'
+  + '<strong>⚠️ Importes brutos:</strong> No incluyen deducciones de '
+  + '<strong>IIBB (3,5%)</strong>, <strong>CPSM (5%)</strong> '
+  + 'ni el <strong>cheque de OSDE</strong>.'
+  + '</div>';
+
+function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
+  var container = document.getElementById(containerId);
+  var mesLabels = { junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026", septiembre:"Septiembre 2026", octubre:"Octubre 2026", noviembre:"Noviembre 2026", diciembre:"Diciembre 2026" };
+  var mes = mesLabels[periodo] || (periodo.charAt(0).toUpperCase() + periodo.slice(1) + " 2026");
+  var valCls = "ind-" + periodo;
+  var tagClsMap = { junio:"chtag-teal", julio:"chtag-violet", agosto:"chtag-violet" };
+  var tagCls = tagClsMap[periodo] || "chtag-violet";
+
+  // Match
+  var row = null;
+  for (var i=0; i<rawData.length; i++) {
+    var key = rawData[i].k;
+    if (periodo === "junio" && key === doctor.junioKey) { row = rawData[i]; break; }
+    if (key === doctor.apellido) { row = rawData[i]; break; }
+  }
+
+  if (!row) {
+    container.innerHTML = DISCLAIMER + '<div class="sin-datos">Sin datos para este período.</div>';
+    return;
+  }
+
+  var vals = [row.f1, row.f2, row.f3, row.f4, row.f5];
+  var total = vals.reduce(function(a,b){return a+b;}, 0);
+  var gaTotal = GASTOS_A[periodo];
+  var gaPP    = gaTotal ? Math.round(gaTotal / 13) : null;
+  var osdeExt = getExtra(periodo, "osde", doctor.apellido);
+  var cmExt   = getExtra(periodo, "cm",   doctor.apellido);
+
+  var html = '<div class="period-total">'
+    + '<div class="pt-left">'
+    + '<div class="pt-lbl">' + mes + '</div>'
+    + '<div class="pt-val">' + fmt(total) + '</div>'
+    + '<div class="pt-sub">5 cheques Colón · bruto</div>'
+    + '</div><div class="pt-icon">💰</div></div>';
+
+  html += '<div class="cheque-list">';
+  vals.forEach(function(monto, idx) {
+    var fecha = fechas[idx];
+    var acred = chequeAcreditado(fecha);
+    html += '<div class="cl-row' + (acred ? ' cl-acreditado' : ' cl-pendiente') + '">'
+      + '<span class="cl-date">' + fecha + '</span>'
+      + '<span class="cl-lbl">Cheque ' + (idx+1) + (acred ? ' <span class="cl-status-icon">✓</span>' : '') + '</span>'
+      + '<span class="cl-amt">' + fmt(monto) + '</span>'
+      + '</div>';
+  });
+  // OSDE — siempre presente
+  html += extraRow("OSDE", osdeExt);
+  // Centro Médico — liquidación del mes anterior, acreditado 1ra semana del mes actual
+  var prevMesNombre = {"mayo":"Abril","junio":"Mayo","julio":"Junio","agosto":"Julio","septiembre":"Agosto","octubre":"Sep","noviembre":"Oct","diciembre":"Nov"};
+  var cmLabel = "Centro Médico" + (prevMesNombre[periodo] ? " · Liquid. " + prevMesNombre[periodo] : "");
+  html += extraRow(cmLabel, cmExt);
+  // Gastos A
+  if (gaPP) {
+    html += '<div class="cl-row cl-sep-row cl-neg">'
+      + '<span class="cl-date">—</span>'
+      + '<span class="cl-lbl">Gastos A</span>'
+      + '<span class="cl-amt">−' + fmt(gaPP) + '</span>'
+      + '</div>';
+  } else {
+    html += '<div class="cl-row cl-sep-row">'
+      + '<span class="cl-date">—</span>'
+      + '<span class="cl-lbl">Gastos A</span>'
+      + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">pendiente</span>'
+      + '</div>';
+  }
+  html += '</div>';
+
+  // Aporte CEOT (desde julio en adelante)
+  var periodoConAporteInd = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
+  if (periodoConAporteInd) {
+    var pctAp = APORTE_CEOT_PCT[doctor.apellido];
+    var osdeValInd = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
+    var cmValInd   = (!cmExt.pendiente   && cmExt.val)   ? cmExt.val   : 0;
+    var baseAp     = total + osdeValInd + cmValInd;
+    if (pctAp !== null && pctAp !== undefined && pctAp > 0) {
+      var montoAp = Math.round(baseAp * pctAp);
+      html += '<div class="cl-row cl-sep-row cl-neg">'
+        + '<span class="cl-date">—</span>'
+        + '<span class="cl-lbl">Aporte CEOT (' + (pctAp*100) + '%)</span>'
+        + '<span class="cl-amt">−' + fmt(montoAp) + '</span>'
+        + '</div>';
+    } else if (pctAp === null || pctAp === undefined) {
+      html += '<div class="cl-row cl-sep-row">'
+        + '<span class="cl-date">—</span>'
+        + '<span class="cl-lbl">Aporte CEOT</span>'
+        + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">pendiente</span>'
+        + '</div>';
+    }
+  }
+  var discText = '⚠ Importes brutos · no incluyen IIBB 3,5% ni CPSM 5%';
+  if (periodoConAporteInd) discText += ' ni Aporte CEOT';
+  discText += '<br>📅 Los cheques se acreditan 48 hs. posteriores a la fecha indicada';
+  html += '<div class="mini-disc">' + discText + '</div>';
+  html += '<button class="btn-pdf" onclick="generarComprobante(\'' + periodo + '\')">📄 Comprobante ' + mes + '</button>';
+  container.innerHTML = html;
+}
+
+// ══════ HISTORIAL ════════════════════════════════════════════
+
+// Calcula neto desde datos locales hardcodeados (no depende del API remoto)
+function calcularNetoLocal(pid, doc) {
+  var rawMap   = { mayo:MAYO_RAW, junio:JUNIO_RAW, julio:JULIO_RAW, agosto:AGOSTO_RAW,
+                   septiembre:SEPTIEMBRE_RAW, octubre:OCTUBRE_RAW, noviembre:NOVIEMBRE_RAW, diciembre:DICIEMBRE_RAW };
+  var labelMap = { mayo:"Mayo 2026", junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026",
+                   septiembre:"Septiembre 2026", octubre:"Octubre 2026", noviembre:"Noviembre 2026", diciembre:"Diciembre 2026" };
+  var raw = rawMap[pid];
+  if (!raw) return null;
+
+  // JUNIO_RAW usa junioKey ("BRUNI, Maximiliano"); el resto usa apellido ("BRUNI")
+  var matchKey = (pid === "junio") ? doc.junioKey : doc.apellido;
+  if (!matchKey) return null;  // profesional sin datos para este período
+
+  var row = null;
+  for (var i = 0; i < raw.length; i++) {
+    if (raw[i].k === matchKey) { row = raw[i]; break; }
+  }
+  if (!row) return null;
+
+  var colonBruto = (row.f1||0)+(row.f2||0)+(row.f3||0)+(row.f4||0)+(row.f5||0);
+
+  var osdeExt = getExtra(pid, "osde", doc.apellido);
+  var cmExt   = getExtra(pid, "cm",   doc.apellido);
+
+  var osdeVal      = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
+  var cmVal        = (!cmExt.pendiente   && cmExt.val)   ? cmExt.val   : 0;
+  var hayPendiente = osdeExt.pendiente || cmExt.pendiente;
+  var bruto        = colonBruto + osdeVal;
+
+  if (bruto === 0 && cmVal === 0) return null;
+
+  var esLab    = (doc.user === "labayen");
+  var iibbData = PERIODO_IIBB[pid];
+  var iibb     = iibbData === null
+               ? Math.round(bruto * 0.035)
+               : Math.round(iibbData[doc.apellido] || 0);
+  var cpsmData = PERIODO_CPSM[pid];
+  var cpsm     = esLab ? 0
+               : (cpsmData === null
+                  ? Math.round(bruto * 0.05)
+                  : Math.round(cpsmData[doc.apellido] || 0));
+  var gaT   = GASTOS_A[pid];
+  var ga    = gaT ? Math.round(gaT / 13) : 0;
+  // Aporte CEOT — aplica desde Julio 2026; base = Colón + OSDE + CEM
+  var periodoConAporte = APORTE_CEOT_DESDE.indexOf(pid) !== -1;
+  var pctAporte  = APORTE_CEOT_PCT[doc.apellido];
+  var baseAporte = colonBruto + osdeVal + cmVal;
+  var aporteCeot = (periodoConAporte && pctAporte) ? Math.round(baseAporte * pctAporte) : 0;
+  var neto  = bruto - iibb - cpsm - ga - aporteCeot + cmVal;
+
+  return {
+    label: labelMap[pid] || pid,
+    bruto: bruto, colonBruto: colonBruto, osde: osdeVal,
+    iibb: iibb, cpsm: cpsm,
+    ga: ga, cm: cmVal, aporteCeot: aporteCeot, pctAporte: pctAporte,
+    neto: neto, pendiente: hayPendiente, osdePendiente: osdeExt.pendiente, esLab: esLab
+  };
+}
+
+function renderHistorial(doctor) {
+  var pane = document.getElementById("pane-historial");
+  if (!pane) return;
+
+  // Períodos con datos locales disponibles
+  var meses = ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var resultados = [];
+
+  meses.forEach(function(pid) {
+    var calc = calcularNetoLocal(pid, doctor);
+    if (calc) resultados.push({ pid: pid, calc: calc });
+  });
+
+  if (resultados.length === 0) {
+    pane.innerHTML = '<div class="hist-empty">📭 Sin historial individual disponible aún.</div>';
+    return;
+  }
+
+  // ── Masthead ──────────────────────────────────────────────
+  var html = '<div class="hist-newspaper">'
+    + '<div class="hist-masthead">'
+    + '<div class="hist-masthead-title">Honorarios · CEOT</div>'
+    + '<div class="hist-masthead-sub">Registro histórico · ' + doctor.nombre + '</div>'
+    + '</div>';
+
+  // ── Mini gráfico de barras ────────────────────────────────
+  if (resultados.length > 1) {
+    var maxNeto = Math.max.apply(null, resultados.map(function(r){ return Math.max(1, r.calc.neto); }));
+    html += '<div style="padding:11px 13px 4px;background:white;border-bottom:1px solid #e5e7eb">';
+    html += '<div style="font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#9ca3af;margin-bottom:7px">Neto por período</div>';
+    html += '<div style="display:flex;gap:5px;align-items:flex-end;height:48px">';
+    resultados.forEach(function(r) {
+      var h = Math.max(4, Math.round(Math.max(0, r.calc.neto) / maxNeto * 44));
+      var color = r.calc.pendiente ? '#d1d5db' : '#1a1a1a';
+      var lbl = r.calc.label.split(' ')[0].substring(0,3).toUpperCase();
+      html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end">'
+        + '<div style="width:100%;background:'+color+';height:'+h+'px;border-radius:3px 3px 0 0"></div>'
+        + '<div style="font-size:0.52rem;color:#9ca3af">'+lbl+'</div>'
+        + '</div>';
+    });
+    html += '</div></div>';
+  }
+
+  // ── Períodos ──────────────────────────────────────────────
+  resultados.forEach(function(r) {
+    var c = r.calc;
+    var pendBadge = c.pendiente ? '<span class="hist-period-badge">estimado</span>' : '';
+
+    var cpsmHtml = c.esLab
+      ? '<div class="hist-dline"><span class="hist-dline-lbl">CPSM (5%)</span><span class="hist-dline-val exento">EXENTO ✓</span></div>'
+      : '<div class="hist-dline"><span class="hist-dline-lbl">CPSM (5%)</span><span class="hist-dline-val neg">−' + fmt(c.cpsm) + '</span></div>';
+
+    var gaHtml = c.ga
+      ? '<div class="hist-dline"><span class="hist-dline-lbl">Gastos A</span><span class="hist-dline-val neg">−' + fmt(c.ga) + '</span></div>'
+      : '<div class="hist-dline"><span class="hist-dline-lbl">Gastos A</span><span class="hist-dline-val" style="color:#9ca3af">pendiente</span></div>';
+
+    var aporteHtml = '';
+    if (c.aporteCeot > 0) {
+      aporteHtml = '<div class="hist-dline"><span class="hist-dline-lbl">Aporte CEOT (' + (c.pctAporte*100) + '%)</span><span class="hist-dline-val neg">−' + fmt(c.aporteCeot) + '</span></div>';
+    } else if (APORTE_CEOT_DESDE.indexOf(r.pid) !== -1 && c.pctAporte === null) {
+      aporteHtml = '<div class="hist-dline"><span class="hist-dline-lbl">Aporte CEOT</span><span class="hist-dline-val" style="color:#9ca3af">pendiente</span></div>';
+    }
+
+    var cmHtml = c.cm > 0
+      ? '<div class="hist-dline"><span class="hist-dline-lbl">Centro Médico</span><span class="hist-dline-val cm">+' + fmt(c.cm) + '</span></div>'
+      : '';
+
+    html += '<div class="hist-period-section">'
+      + '<div class="hist-period-headline"><span>' + c.label.toUpperCase() + '</span>' + pendBadge + '</div>'
+      + '<div class="hist-dline"><span class="hist-dline-lbl">Bruto</span><span class="hist-dline-val">' + fmt(c.bruto) + '</span></div>'
+      + '<div class="hist-dline"><span class="hist-dline-lbl">IIBB (3,5%)</span><span class="hist-dline-val neg">−' + fmt(c.iibb) + '</span></div>'
+      + cpsmHtml + gaHtml + aporteHtml + cmHtml
+      + '<hr class="hist-rule">'
+      + '<div class="hist-neto-line"><span>NETO</span><span>' + fmt(c.neto) + '</span></div>'
+      + '</div>';
+  });
+
+  // ── Acumulado (fondo invertido) ───────────────────────────
+  if (resultados.length > 1) {
+    var totBruto = resultados.reduce(function(s,r){ return s + r.calc.bruto; }, 0);
+    var totNeto  = resultados.reduce(function(s,r){ return s + r.calc.neto; }, 0);
+    var hayPend  = resultados.some(function(r){ return r.calc.pendiente; });
+    html += '<div class="hist-total-section">'
+      + '<div class="hist-total-headline">ACUMULADO — ' + resultados.length + ' PERÍODOS' + (hayPend ? ' · ESTIMADO' : '') + '</div>'
+      + '<div class="hist-total-dline"><span>Bruto total</span><span>' + fmt(totBruto) + '</span></div>'
+      + '<div class="hist-total-neto"><span>NETO TOTAL</span><span>' + fmt(totNeto) + '</span></div>'
+      + '</div>';
+  }
+
+  html += '</div>';
+  pane.innerHTML = html;
+}
+
+// ══════ MI PANEL ══════════════════════════════════════════════
+
+// Mapeo de prefijos NUN → descripción de parte del cuerpo
+const NUN_PARTES = {
+  MS: 'Miembro superior', MI: 'Miembro inferior', CO: 'Columna',
+  RO: 'Rodilla', CA: 'Cadera', HO: 'Hombro', PI: 'Pie',
+  MA: 'Mano', TO: 'Tobillo', CO2: 'Codo', MU: 'Muñeca',
+};
+function nunParte(cod) {
+  if (!cod) return 'Sin código';
+  var p = cod.substring(0, 2).toUpperCase();
+  return NUN_PARTES[p] || p;
+}
+
+function renderMiPanel(doctor) {
+  var pane = document.getElementById('pane-mipanel');
+  if (!pane) return;
+
+  var mesActual = tabMesActual();
+  var fmt = function(n) { return '$' + Math.round(n).toLocaleString('es-AR'); };
+
+  // ── 1. Honorarios desde datos locales (síncronos) ──────────
+  var PERIODOS_HON = [
+    { label:'Abr', raw:null,           key:'abril' },
+    { label:'May', raw:MAYO_RAW,       key:'mayo' },
+    { label:'Jun', raw:JUNIO_RAW,      key:'junio', altKey: doctor.junioKey || null },
+    { label:'Jul', raw:JULIO_RAW,      key:'julio' },
+    { label:'Ago', raw:AGOSTO_RAW,     key:'agosto' },
+    { label:'Sep', raw:SEPTIEMBRE_RAW, key:'septiembre' },
+  ];
+  var honorarios = PERIODOS_HON.map(function(p) {
+    var val = 0;
+    if (p.raw) {
+      var searchKey = p.altKey || doctor.apellido;
+      for (var i = 0; i < p.raw.length; i++) {
+        if (p.raw[i].k === searchKey || p.raw[i].k === doctor.apellido) {
+          val = p.raw[i].neto || p.raw[i].total || 0; break;
+        }
+      }
+    }
+    return { label: p.label, val: val, current: p.key === mesActual };
+  });
+  var maxHon    = Math.max(1, Math.max.apply(null, honorarios.map(function(h){ return h.val; })));
+  var honActual = honorarios.find(function(h){ return h.current; }) || honorarios[honorarios.length-1];
+  var honAcum   = honorarios.reduce(function(s,h){ return s + h.val; }, 0);
+  var gastosTotal = GASTOS_A[mesActual] || 0;
+
+  var barsHtml = honorarios.map(function(h) {
+    var pct = Math.round((h.val / maxHon) * 54);
+    return '<div class="mp-chart-col">'
+      + '<div class="mp-chart-bar' + (h.current ? ' current' : '') + '" style="height:' + Math.max(4, pct) + 'px">'
+      + (h.current ? '<span style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:white;color:#1a1a1a;font-size:0.55rem;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;">actual</span>' : '')
+      + '</div>'
+      + '<div class="mp-chart-month' + (h.current ? ' current' : '') + '">' + h.label + '</div>'
+      + '</div>';
+  }).join('');
+
+  // ── 2. Render estático completo (sin esperar fetches) ──────
+  var html = '<div class="mp-section-label">Mis datos</div>';
+
+  html += '<div class="mp-card-dark">'
+    + '<div class="mp-label-dark">Mis honorarios netos</div>'
+    + '<div class="mp-chart-bars" style="position:relative;">' + barsHtml + '</div>'
+    + '<div class="mp-totals">'
+    + '<div><div style="font-size:0.6rem;color:rgba(255,255,255,.4);">Este mes</div>'
+    + '<div style="font-size:1.3rem;font-weight:800;">' + (honActual.val ? fmt(honActual.val) : '—') + '</div></div>'
+    + '<div style="text-align:right;"><div style="font-size:0.6rem;color:rgba(255,255,255,.4);">Acumulado 2026</div>'
+    + '<div style="font-size:1.05rem;font-weight:700;color:rgba(255,255,255,.8);">' + (honAcum ? fmt(honAcum) : '—') + '</div></div>'
+    + '</div></div>';
+
+  // NUN card con skeleton mientras carga
+  html += '<div class="mp-card" id="mp-nun-card" style="border-left:3px solid #1a1a1a;">'
+    + '<div class="mp-label">Mis NUN cargados · 2026</div>'
+    + '<div class="mp-grid2" style="margin-bottom:10px;">'
+    + '<div class="mp-mini"><div class="mp-mini-val" id="mp-nun-total">—</div><div class="mp-mini-lbl">Total año</div></div>'
+    + '<div class="mp-mini"><div class="mp-mini-val" id="mp-nun-mes">—</div><div class="mp-mini-lbl">Este mes</div></div>'
+    + '</div>'
+    + '<div id="mp-nun-bars"><div class="mp-loading" style="padding:8px 0;">Cargando NUN...</div></div>'
+    + '<a href="https://historial-cx-ceot.netlify.app/" target="_blank" class="mp-link-more">Ver historial completo →</a>'
+    + '</div>';
+
+  // Accesos rápidos
+  html += '<div class="mp-link-grid">'
+    + '<a href="https://generador-de-ordenes-ceot.netlify.app/" target="_blank" class="mp-link-card">'
+    + '<span class="mp-link-card-icon">📋</span>'
+    + '<div><div class="mp-link-card-title">Órdenes CX</div><div class="mp-link-card-sub">Fuera de horario</div></div></a>'
+    + '<a href="https://cirugias-progamadas.netlify.app/" target="_blank" class="mp-link-card">'
+    + '<span class="mp-link-card-icon">📅</span>'
+    + '<div><div class="mp-link-card-title">CX programadas</div><div class="mp-link-card-sub">Mi calendario</div></div></a>'
+    + '<a href="https://historial-cx-ceot.netlify.app/" target="_blank" class="mp-link-card">'
+    + '<span class="mp-link-card-icon">📊</span>'
+    + '<div><div class="mp-link-card-title">Historial CX</div><div class="mp-link-card-sub">Estadísticas</div></div></a>'
+    + '<a href="https://drive.google.com/drive/folders/1eOUfTKOEkFZTsgsctzwNhq0IJ-Wdp3N7" target="_blank" class="mp-link-card">'
+    + '<span class="mp-link-card-icon">📁</span>'
+    + '<div><div class="mp-link-card-title">Documentación</div><div class="mp-link-card-sub">Google Drive</div></div></a>'
+    + '</div>';
+
+  html += '<div class="mp-section-label">Institucional</div>';
+
+  html += '<div class="mp-card" style="margin-bottom:7px;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">'
+    + '<div class="mp-label" style="margin:0;">Gastos del mes</div>'
+    + '<div style="font-size:0.63rem;color:#9ca3af;">' + (new Date().toLocaleString('es-AR',{month:'long',year:'numeric'})) + '</div>'
+    + '</div>'
+    + '<div style="font-size:1.1rem;font-weight:800;color:#1a1a1a;">' + (gastosTotal ? fmt(gastosTotal) : 'Actualizá para ver') + '</div>'
+    + '</div>';
+
+  // Cajas con skeleton mientras carga
+  html += '<div class="mp-grid2">'
+    + '<div class="mp-card" style="margin-bottom:0;">'
+    + '<div class="mp-label">Casa 2067</div>'
+    + '<div id="mp-saldo-2067" style="font-size:1.1rem;font-weight:800;color:#9ca3af;">...</div>'
+    + '<div class="mp-sub">Saldo actual</div>'
+    + '</div>'
+    + '<div class="mp-card" style="margin-bottom:0;">'
+    + '<div class="mp-label">Caja Gerling</div>'
+    + '<div id="mp-saldo-gerling" style="font-size:1.1rem;font-weight:800;color:#9ca3af;">...</div>'
+    + '<div class="mp-sub">Saldo actual</div>'
+    + '</div>'
+    + '</div>';
+
+  pane.innerHTML = html;
+
+  // ── 3. Fetches en paralelo, actualizan DOM cuando llegan ───
+  // Cajas
+  fetch(CAJAS_ENDPOINT)
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      if (d.status !== 'ok') return;
+      var el2067    = document.getElementById('mp-saldo-2067');
+      var elGerling = document.getElementById('mp-saldo-gerling');
+      if (el2067) {
+        el2067.textContent = fmt(d.casa2067);
+        el2067.style.color = d.casa2067 >= 0 ? '#166534' : '#dc2626';
+      }
+      if (elGerling) {
+        elGerling.textContent = fmt(d.gerling);
+        elGerling.style.color = d.gerling >= 0 ? '#166534' : '#dc2626';
+      }
+    })
+    .catch(function(){ /* sin conexión */ });
+
+  // NUN
+  fetch(CIRUGIAS_ENDPOINT + '?doctor=' + encodeURIComponent(doctor.apellido))
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      if (d.status !== 'ok') return;
+      var cirugias = d.cirugias || [];
+      var nunMap = {}, nunTotal = 0, nunMes = 0;
+      var mesActualNum = new Date().getMonth() + 1;
+      cirugias.forEach(function(cx) {
+        var nunVal = (cx.nun || '').trim();
+        if (!nunVal) return;
+        nunTotal++;
+        if (cx.fechaIso && parseInt((cx.fechaIso.split('-')[1]||'0'),10) === mesActualNum) nunMes++;
+        var key = 'NUN ' + nunVal;
+        nunMap[key] = (nunMap[key] || 0) + 1;
+      });
+      var elTotal = document.getElementById('mp-nun-total');
+      var elMes   = document.getElementById('mp-nun-mes');
+      var elBars  = document.getElementById('mp-nun-bars');
+      if (elTotal) elTotal.textContent = nunTotal;
+      if (elMes)   elMes.textContent   = nunMes;
+      if (elBars) {
+        if (nunTotal === 0) {
+          elBars.innerHTML = '<div style="font-size:0.75rem;color:#9ca3af;text-align:center;padding:12px 0;">Sin NUN registrados aún</div>';
+        } else {
+          var entries = Object.keys(nunMap).map(function(k){ return {parte:k, n:nunMap[k]}; });
+          entries.sort(function(a,b){ return b.n - a.n; });
+          var maxN = entries[0].n;
+          elBars.innerHTML = entries.slice(0,5).map(function(e) {
+            var pct = Math.round((e.n / maxN) * 100);
+            return '<div class="mp-bar-row">'
+              + '<div class="mp-bar-row-head"><span>' + e.parte + '</span><span style="font-weight:700;">' + e.n + '</span></div>'
+              + '<div class="mp-bar-track"><div class="mp-bar-fill" style="width:' + pct + '%"></div></div>'
+              + '</div>';
+          }).join('');
+        }
+      }
+    })
+    .catch(function(){
+      var elBars = document.getElementById('mp-nun-bars');
+      if (elBars) elBars.innerHTML = '<div style="font-size:0.75rem;color:#9ca3af;text-align:center;padding:8px 0;">No disponible desde archivo local — usá el portal online</div>';
+    });
+}
+
+// ══════ NOTIFICACIONES ════════════════════════════════════════
+
+function mostrarNotificaciones(doctor) {
+  var banner = document.getElementById('notifBanner');
+  if (!banner) return;
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  var anio = hoy.getFullYear();
+  var msgs = [];
+
+  var periodos = [
+    { label:'Mayo',      raw:MAYO_RAW,       fechas:MAYO_FECHAS,       key:doctor.apellido },
+    { label:'Junio',     raw:JUNIO_RAW,      fechas:JUNIO_FECHAS,      key:doctor.junioKey||doctor.apellido },
+    { label:'Julio',     raw:JULIO_RAW,      fechas:JULIO_FECHAS,      key:doctor.apellido },
+    { label:'Agosto',    raw:AGOSTO_RAW,     fechas:AGOSTO_FECHAS,     key:doctor.apellido },
+    { label:'Sep',       raw:SEPTIEMBRE_RAW, fechas:SEPTIEMBRE_FECHAS, key:doctor.apellido },
+    { label:'Oct',       raw:OCTUBRE_RAW,    fechas:OCTUBRE_FECHAS,    key:doctor.apellido },
+    { label:'Nov',       raw:NOVIEMBRE_RAW,  fechas:NOVIEMBRE_FECHAS,  key:doctor.apellido },
+    { label:'Dic',       raw:DICIEMBRE_RAW,  fechas:DICIEMBRE_FECHAS,  key:doctor.apellido },
+  ];
+
+  periodos.forEach(function(p) {
+    if (!p.raw.length || !p.fechas.length) return;
+    var row = null;
+    for (var i = 0; i < p.raw.length; i++) { if (p.raw[i].k === p.key) { row = p.raw[i]; break; } }
+    if (!row) return;
+    p.fechas.forEach(function(fecha, idx) {
+      if (!fecha || fecha === '—') return;
+      var parts = fecha.split('/');
+      if (parts.length < 2) return;
+      var cheqDate = new Date(anio, parseInt(parts[1])-1, parseInt(parts[0]));
+      cheqDate.setHours(0,0,0,0);
+      var acred = new Date(cheqDate); acred.setDate(acred.getDate() + 2);
+      var diff = Math.round((acred - hoy) / 86400000);
+      if (diff >= 0 && diff <= 3) {
+        var cuando = diff === 0 ? 'hoy' : diff === 1 ? 'mañana' : 'en ' + diff + ' días';
+        var monto = row['f'+(idx+1)];
+        msgs.push('💰 Cheque ' + (idx+1) + ' <strong>' + p.label + '</strong> (' + fecha + ') acredita <strong>' + cuando + '</strong>' + (monto ? ' · ' + fmt(monto) : ''));
+      }
+    });
+  });
+
+  if (msgs.length) {
+    banner.innerHTML = '📅 <strong>Próximas acreditaciones:</strong><br>' + msgs.join('<br>');
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+// ══════ PENDIENTES ADMIN ═══════════════════════════════════════
+
+function renderPendientes() {
+  cerrarAdmSidenav();
+  admDesactivarSidebar();
+  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+    var t = document.getElementById("adm-tab-" + p);
+    if (t) t.className = "adm-tab";
+  });
+  var sp = document.getElementById("adm-sidenav-pendientes");
+  if (sp) sp.className = "adm-sidenav-btn active";
+
+  var periodos = ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var labels   = {mayo:"Mayo",junio:"Jun",julio:"Jul",agosto:"Ago",septiembre:"Sep",octubre:"Oct",noviembre:"Nov",diciembre:"Dic"};
+  var rawMap   = {mayo:MAYO_RAW,junio:JUNIO_RAW,julio:JULIO_RAW,agosto:AGOSTO_RAW,
+                  septiembre:SEPTIEMBRE_RAW,octubre:OCTUBRE_RAW,noviembre:NOVIEMBRE_RAW,diciembre:DICIEMBRE_RAW};
+
+  function cel(ok, txt) {
+    return ok
+      ? '<td style="text-align:center;color:#16a34a;font-weight:700">' + (txt||'✓') + '</td>'
+      : '<td style="text-align:center;color:#d1d5db">·</td>';
+  }
+
+  var html = '<div class="adm-sec-title">Estado de carga por período</div>';
+  html += '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>';
+  html += '<th>Período</th><th>Colón</th><th>OSDE</th><th>CEM</th><th>IIBB</th><th>CPSM</th><th>Gastos A</th></tr></thead><tbody>';
+
+  periodos.forEach(function(pid) {
+    var raw        = rawMap[pid];
+    var tieneColon = raw && raw.length > 0;
+    var pe         = PERIOD_EXTRAS[pid];
+    var tieneOsde  = pe && pe.osde && !pe.osde.pendiente && Object.keys(pe.osde.m||{}).length > 0;
+    var tieneCM    = pe && pe.cm   && !pe.cm.pendiente   && Object.keys(pe.cm.m||{}).length > 0;
+    var tieneIIBB  = PERIODO_IIBB[pid] !== null;
+    var tieneCPSM  = PERIODO_CPSM[pid] !== null;
+    var tieneGA    = GASTOS_A[pid] != null;
+    var todo       = tieneColon && tieneOsde && tieneCM && tieneIIBB && tieneCPSM && tieneGA;
+    html += '<tr' + (todo ? ' style="background:#f0fdf4"' : '') + '>';
+    html += '<td style="font-weight:700">' + labels[pid] + ' 2026</td>';
+    html += cel(tieneColon) + cel(tieneOsde) + cel(tieneCM) + cel(tieneIIBB) + cel(tieneCPSM) + cel(tieneGA);
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  html += '<div style="font-size:0.7rem;color:#9a8c78;margin-top:10px">✓ datos cargados &nbsp;·&nbsp; · pendiente</div>';
+  document.getElementById("adm-content").innerHTML = html;
+}
+
+// ══════ LOGIN / LOGOUT ════════════════════════════════════════
+
+// ── Helper: cheque acreditado (fecha + 48hs <= hoy) ──────────
+function chequeAcreditado(fechaDDMM) {
+  if (!fechaDDMM || fechaDDMM === "—") return false;
+  var p = fechaDDMM.split("/");
+  if (p.length < 2) return false;
+  var acred = new Date(new Date().getFullYear(), parseInt(p[1])-1, parseInt(p[0])+2);
+  return new Date() >= acred;
+}
+
+// ── Tab del mes actual ──────────────────────────────────────
+function tabMesActual() {
+  var m = new Date().getMonth() + 1;
+  var map = {4:"abril",5:"mayo",6:"junio",7:"julio",8:"agosto",9:"septiembre",10:"octubre",11:"noviembre",12:"diciembre"};
+  return map[m] || (m < 4 ? "abril" : "diciembre");
+}
+
+// ── Actualiza badges y neto estimado en tabs ───────────────
+function actualizarTabsNeto(doctor) {
+  var act = tabMesActual();
+  ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(t) {
+    var b = document.getElementById("badge-"+t);
+    if (!b) return;
+    b.className = (t===act) ? "tbadge tb-act" : "tbadge tb-ant";
+    b.textContent = (t===act) ? "actual" : "anterior";
+  });
+  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(pid) {
+    var el = document.getElementById("tabneto-"+pid);
+    if (!el) return;
+    var c = calcularNetoLocal(pid, doctor);
+    el.textContent = c ? (c.pendiente ? "neto est. ~" : "neto est. ") + fmt(c.neto) : "";
+  });
+}
+
+var doctorActual = null;
+
+// ══════ ADMIN ════════════════════════════════════════════════════
+
+const ADMIN = { user: "marcelo", pass: "lalepra" };
+var adminPeriodoAct = "agosto";
+
+function toggleAdmSidenav() {
+  var nav = document.getElementById("admSidenav");
+  var ov  = document.getElementById("admOverlay");
+  if (!nav) return;
+  var open = nav.classList.toggle("open");
+  if (ov) ov.classList.toggle("open", open);
+}
+
+function admDesactivarSidebar() {
+  ["debitos","accesos","pendientes"].forEach(function(k) {
+    var b = document.getElementById("adm-sidenav-" + k);
+    if (b) b.className = "adm-sidenav-btn";
+  });
+}
+
+function cerrarAdmSidenav() {
+  var nav = document.getElementById("admSidenav");
+  var ov  = document.getElementById("admOverlay");
+  if (nav) nav.classList.remove("open");
+  if (ov)  ov.classList.remove("open");
+}
+
+function renderAdminPanel(periodo) {
+  cerrarAdmSidenav();
+  adminPeriodoAct = periodo;
+  admDesactivarSidebar();
+  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+    var t = document.getElementById("adm-tab-" + p);
+    if (t) t.className = "adm-tab" + (p === periodo ? " adm-tab-act" : "");
+  });
+
+  var container = document.getElementById("adm-content");
+  var rawMap = { mayo:MAYO_RAW, junio:JUNIO_RAW, julio:JULIO_RAW, agosto:AGOSTO_RAW,
+                 septiembre:SEPTIEMBRE_RAW, octubre:OCTUBRE_RAW, noviembre:NOVIEMBRE_RAW, diciembre:DICIEMBRE_RAW };
+  if (!rawMap[periodo] || rawMap[periodo].length === 0) {
+    container.innerHTML = '<div style="padding:20px;text-align:center;color:#9ca3af">Sin datos individuales para este período.</div>';
+    return;
+  }
+
+  // Calcular por profesional
+  var rows = [];
+  DOCTORES.forEach(function(doc) {
+    var c = calcularNetoLocal(periodo, doc);
+    if (!c) return;
+    rows.push({ doc: doc, calc: c });
+  });
+
+  if (rows.length === 0) {
+    container.innerHTML = '<div style="padding:20px;text-align:center;color:#9ca3af">Sin datos disponibles.</div>';
+    return;
+  }
+
+  // Ordenar por neto desc
+  rows.sort(function(a, b) { return b.calc.neto - a.calc.neto; });
+
+  var totBruto=0, totIIBB=0, totCPSM=0, totGA=0, totAporte=0, totCM=0, totNeto=0;
+  rows.forEach(function(r) {
+    var c = r.calc;
+    totBruto   += (c.bruto       || 0);
+    totIIBB    += (c.iibb        || 0);
+    totCPSM    += (c.cpsm        || 0);
+    totGA      += (c.ga          || 0);
+    totAporte  += (c.aporteCeot  || 0);
+    totCM      += (c.cm          || 0);
+    totNeto    += (c.neto        || 0);
+  });
+
+  var tieneAporte  = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
+  var hayPendientes = rows.some(function(r){ return r.calc.pendiente; });
+  var totDesc = totIIBB + totCPSM + totGA + totAporte;
+  var totBrutoTotal = totBruto + totCM;
+
+  var html = "";
+
+  // ── KPIs ──
+  html += '<div class="adm-kpis">';
+  html += '<div class="adm-kpi" style="border-left-color:#1a1a1a">'
+    + '<div class="adm-kpi-lbl">Bruto total</div>'
+    + '<div class="adm-kpi-val">' + fmt(totBrutoTotal) + '</div>'
+    + '<div class="adm-kpi-sub">' + rows.length + ' profesionales</div>'
+    + '</div>';
+  html += '<div class="adm-kpi" style="border-left-color:#dc2626">'
+    + '<div class="adm-kpi-lbl">Descuentos</div>'
+    + '<div class="adm-kpi-val">' + fmt(totDesc) + '</div>'
+    + '<div class="adm-kpi-sub">' + (totBrutoTotal > 0 ? Math.round(totDesc / totBrutoTotal * 100) : 0) + '% del bruto</div>'
+    + '</div>';
+  html += '<div class="adm-kpi" style="border-left-color:#16a34a">'
+    + '<div class="adm-kpi-lbl">Neto total</div>'
+    + '<div class="adm-kpi-val">' + fmt(totNeto) + '</div>'
+    + '<div class="adm-kpi-sub">' + (hayPendientes ? '⚠ incl. estimados' : 'acreditado') + '</div>'
+    + '</div>';
+  html += '</div>';
+
+  // ── Desglose descuentos ──
+  html += '<div class="adm-sec-title">Descuentos — desglose</div>';
+  html += '<div class="adm-breakdown">';
+  html += '<div class="adm-br-row" style="background:#fef2f2"><span class="adm-br-lbl">IIBB (3,5%)</span><span class="adm-br-val" style="color:#dc2626">− ' + fmt(totIIBB) + '</span></div>';
+  html += '<div class="adm-br-row" style="background:#fff7ed"><span class="adm-br-lbl">CPSM (5%) · Labayen exento</span><span class="adm-br-val" style="color:#ea580c">− ' + fmt(totCPSM) + '</span></div>';
+  if (totGA > 0) {
+    html += '<div class="adm-br-row" style="background:#fefce8"><span class="adm-br-lbl">Gastos A (÷ 13)</span><span class="adm-br-val" style="color:#ca8a04">− ' + fmt(totGA) + '</span></div>';
+  }
+  if (tieneAporte && totAporte > 0) {
+    html += '<div class="adm-br-row" style="background:#f5f3ff"><span class="adm-br-lbl">Aporte CEOT</span><span class="adm-br-val" style="color:#7c3aed">− ' + fmt(totAporte) + '</span></div>';
+  }
+  if (totCM > 0) {
+    html += '<div class="adm-br-row" style="background:#f0fdf4"><span class="adm-br-lbl">Centro Médico (ingreso)</span><span class="adm-br-val" style="color:#16a34a">+ ' + fmt(totCM) + '</span></div>';
+  }
+  html += '</div>';
+
+  // ── Botón WA Gastos A ──
+  if (totGA > 0) {
+    html += '<div style="text-align:right;margin:10px 0 4px">'
+      + '<button onclick="abrirWAGastosA(\''+periodo+'\')" style="background:#25d366;color:#fff;border:none;border-radius:7px;padding:7px 15px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit">📲 Notificar Gastos A por WA</button>'
+      + '</div>';
+  }
+
+  // ── Tabla por profesional ──
+  // Totales separados Colón / OSDE
+  var totColon = 0, totOsde = 0;
+  rows.forEach(function(r) { totColon += (r.calc.colonBruto||0); totOsde += (r.calc.osde||0); });
+  var hayOsdePend = rows.some(function(r){ return r.calc.osdePendiente; });
+
+  html += '<div class="adm-sec-title">Detalle por profesional '
+    + (hayPendientes ? '<span class="adm-est-badge">incluye estimados</span>' : '') + '</div>';
+  html += '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>';
+  html += '<th>Profesional</th><th>Col\xF3n</th>';
+  html += '<th>OSDE' + (hayOsdePend ? ' <span class="adm-est-badge">pend</span>' : '') + '</th>';
+  if (totCM > 0) html += '<th>CEM</th>';
+  html += '<th>IIBB</th><th>CPSM</th><th>Gtos A</th>';
+  if (tieneAporte) html += '<th>Ap. CEOT</th>';
+  html += '<th>NETO</th>';
+  var prevPeriodoMap = {junio:"mayo",julio:"junio",agosto:"julio",septiembre:"agosto",octubre:"septiembre",noviembre:"octubre",diciembre:"noviembre"};
+  var prevPeriodo = prevPeriodoMap[periodo];
+  var prevNetoMap = {};
+  if (prevPeriodo) {
+    DOCTORES.forEach(function(doc) {
+      var pv = calcularNetoLocal(prevPeriodo, doc);
+      if (pv) prevNetoMap[doc.apellido] = pv.neto;
+    });
+  }
+  var hayDelta = prevPeriodo && Object.keys(prevNetoMap).length > 0;
+  if (hayDelta) html += '<th>Δ vs ' + prevPeriodo.charAt(0).toUpperCase() + prevPeriodo.slice(1,3) + '</th>';
+  html += '</tr></thead><tbody>';
+
+  rows.forEach(function(r) {
+    var c = r.calc;
+    html += '<tr>';
+    html += '<td>' + r.doc.apellido + (c.pendiente ? ' <span class="adm-est-badge">est</span>' : '') + '</td>';
+    html += '<td>' + fmt(c.colonBruto) + '</td>';
+    html += '<td>' + (c.osdePendiente
+      ? '<span class="adm-pend" style="font-size:.68rem">pendiente</span>'
+      : (c.osde ? fmt(c.osde) : '<span class="adm-pend">—</span>')) + '</td>';
+    if (totCM > 0) html += '<td class="adm-pos">' + (c.cm ? '+' + fmt(c.cm) : '<span class="adm-pend">—</span>') + '</td>';
+    html += '<td class="adm-neg">−' + fmt(c.iibb) + '</td>';
+    html += '<td class="adm-neg">' + (c.esLab ? '<span class="adm-exento">EXENTO</span>' : '−' + fmt(c.cpsm)) + '</td>';
+    html += '<td class="adm-neg">' + (c.ga ? '−' + fmt(c.ga) : '<span class="adm-pend">—</span>') + '</td>';
+    if (tieneAporte) {
+      html += '<td class="adm-neg">'
+        + (c.aporteCeot
+            ? '−' + fmt(c.aporteCeot) + ' <span style="font-size:.58rem;color:#a78bfa">' + Math.round((c.pctAporte||0)*100) + '%</span>'
+            : '<span class="adm-pend">n/d</span>')
+        + '</td>';
+    }
+    html += '<td class="adm-neto">' + fmt(c.neto) + '</td>';
+    if (hayDelta) {
+      var prev = prevNetoMap[r.doc.apellido];
+      if (prev && prev !== 0) {
+        var pct = Math.round((c.neto - prev) / Math.abs(prev) * 100);
+        var col = pct >= 0 ? '#16a34a' : '#dc2626';
+        var arr = pct >= 0 ? '↑' : '↓';
+        html += '<td style="text-align:right;font-size:.75rem;font-weight:600;color:'+col+'">'+arr+' '+Math.abs(pct)+'%</td>';
+      } else {
+        html += '<td style="text-align:right;color:#d1d5db;font-size:.7rem">—</td>';
+      }
+    }
+    html += '</tr>';
+  });
+
+  // Fila totales
+  html += '<tr class="adm-totals">';
+  html += '<td>TOTAL</td>';
+  html += '<td>' + fmt(totColon) + '</td>';
+  html += '<td>' + (hayOsdePend ? '<span class="adm-pend">pend</span>' : fmt(totOsde)) + '</td>';
+  if (totCM > 0)   html += '<td>+' + fmt(totCM) + '</td>';
+  html += '<td>−' + fmt(totIIBB) + '</td>';
+  html += '<td>−' + fmt(totCPSM) + '</td>';
+  html += '<td>−' + fmt(totGA) + '</td>';
+  if (tieneAporte) html += '<td>−' + fmt(totAporte) + '</td>';
+  html += '<td>' + fmt(totNeto) + '</td>';
+  if (hayDelta) html += '<td></td>';
+  html += '</tr>';
+
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+function handleLogin() {
+  var user = document.getElementById("usernameInput").value.trim().toLowerCase();
+  var pass = document.getElementById("passwordInput").value.trim();
+  var errDiv = document.getElementById("loginError");
+  errDiv.style.display = "none";
+
+  // Login admin
+  if (user === ADMIN.user && pass.toLowerCase() === ADMIN.pass) {
+    document.getElementById("loginView").style.display  = "none";
+    document.getElementById("adminView").style.display  = "block";
+    accCargarCustom();
+    renderSidenavLinks();
+    renderAdminPanel(tabMesActual());
+    document.getElementById("usernameInput").value = "";
+    document.getElementById("passwordInput").value = "";
+    return;
+  }
+
+  var doctor = null;
+  for (var i=0; i<DOCTORES.length; i++) {
+    if (DOCTORES[i].user===user && DOCTORES[i].pass===pass) { doctor=DOCTORES[i]; break; }
+  }
+  if (!doctor) {
+    errDiv.style.display = "block";
+    document.getElementById("passwordInput").value = "";
+    document.getElementById("passwordInput").focus();
+    return;
+  }
+
+  doctorActual = doctor;
+  document.getElementById("phAvatar").textContent  = doctor.ini;
+  document.getElementById("phNombre").textContent  = doctor.nombre;
+
+  renderGeneral(ABRIL, "abril", "pane-abril");
+  renderMayo("pane-mayo", doctor);
+  renderIndividual(JUNIO_RAW,       JUNIO_FECHAS,       "junio",       "pane-junio",       doctor);
+  renderIndividual(JULIO_RAW,       JULIO_FECHAS,       "julio",       "pane-julio",       doctor);
+  renderIndividual(AGOSTO_RAW,      AGOSTO_FECHAS,      "agosto",      "pane-agosto",      doctor);
+  renderIndividual(SEPTIEMBRE_RAW,  SEPTIEMBRE_FECHAS,  "septiembre",  "pane-septiembre",  doctor);
+  renderIndividual(OCTUBRE_RAW,     OCTUBRE_FECHAS,     "octubre",     "pane-octubre",     doctor);
+  renderIndividual(NOVIEMBRE_RAW,   NOVIEMBRE_FECHAS,   "noviembre",   "pane-noviembre",   doctor);
+  renderIndividual(DICIEMBRE_RAW,   DICIEMBRE_FECHAS,   "diciembre",   "pane-diciembre",   doctor);
+  renderHistorial(doctor);
+  renderMiPanel(doctor);
+  mostrarNotificaciones(doctor);
+
+  actualizarTabsNeto(doctor);
+  cambiarTab(tabMesActual());
+
+  document.getElementById("loginView").style.display  = "none";
+  document.getElementById("portalView").style.display = "block";
+  document.getElementById("usernameInput").value = "";
+  document.getElementById("passwordInput").value = "";
+}
+
+function handleLogout() {
+  doctorActual = null;
+  document.getElementById("portalView").style.display = "none";
+  document.getElementById("loginView").style.display  = "block";
+  ["pane-abril","pane-mayo","pane-junio","pane-julio","pane-agosto",
+   "pane-septiembre","pane-octubre","pane-noviembre","pane-diciembre","pane-historial","pane-mipanel"].forEach(function(id){
+    document.getElementById(id).innerHTML = "";
+  });
+  var nb = document.getElementById("notifBanner"); if (nb) nb.style.display = "none";
+}
+
+document.getElementById("loginBtn").addEventListener("click", handleLogin);
+document.getElementById("refreshBtn").addEventListener("click", async function() {
+  var btn = this;
+  btn.disabled = true; btn.textContent = "⏳";
+  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota()]);
+  if (doctorActual) {
+    renderMayo("pane-mayo", doctorActual);
+    renderIndividual(JUNIO_RAW,      JUNIO_FECHAS,      "junio",      "pane-junio",      doctorActual);
+    renderIndividual(JULIO_RAW,      JULIO_FECHAS,      "julio",      "pane-julio",      doctorActual);
+    renderIndividual(AGOSTO_RAW,     AGOSTO_FECHAS,     "agosto",     "pane-agosto",     doctorActual);
+    renderIndividual(SEPTIEMBRE_RAW, SEPTIEMBRE_FECHAS, "septiembre", "pane-septiembre", doctorActual);
+    renderIndividual(OCTUBRE_RAW,    OCTUBRE_FECHAS,    "octubre",    "pane-octubre",    doctorActual);
+    renderIndividual(NOVIEMBRE_RAW,  NOVIEMBRE_FECHAS,  "noviembre",  "pane-noviembre",  doctorActual);
+    renderIndividual(DICIEMBRE_RAW,  DICIEMBRE_FECHAS,  "diciembre",  "pane-diciembre",  doctorActual);
+    renderHistorial(doctorActual);
+    actualizarTabsNeto(doctorActual);
+    mostrarNotificaciones(doctorActual);
+  }
+  btn.disabled = false; btn.textContent = "↻";
+});
+
+document.getElementById("logoutBtn").addEventListener("click", handleLogout);
+document.getElementById("adminLogoutBtn").addEventListener("click", function() {
+  document.getElementById("adminView").style.display = "none";
+  document.getElementById("loginView").style.display = "block";
+});
+document.getElementById("adminRefreshBtn").addEventListener("click", async function() {
+  var btn = this;
+  btn.disabled = true; btn.textContent = "⏳";
+  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota()]);
+  renderAdminPanel(adminPeriodoAct);
+  btn.disabled = false; btn.textContent = "↻";
+});
+document.getElementById("usernameInput").addEventListener("keypress", function(e){ if(e.key==="Enter") handleLogin(); });
+document.getElementById("passwordInput").addEventListener("keypress", function(e){ if(e.key==="Enter") handleLogin(); });
+
+// ══════ COMPROBANTES PDF ════════════════════════════════════════
+
+function fmtPDF(n) {
+  // Formato pesos argentinos: $ 1.234.567
+  return "$ " + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+function generarComprobante(periodo) {
+  var doctor = doctorActual;
+  if (!doctor) return;
+
+  if (!window.jspdf) {
+    alert("La librería PDF aún se está cargando. Esperá un segundo y volvé a intentar.");
+    return;
+  }
+
+  var jsPDF = window.jspdf.jsPDF;
+  var doc   = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  var W = 210, H = 297, LM = 20, RM = 190, CW = 170;
+  var today = new Date();
+  var todayStr = String(today.getDate()).padStart(2,"0") + "/" +
+                 String(today.getMonth()+1).padStart(2,"0") + "/" +
+                 today.getFullYear();
+
+  var periodoLabel = { mayo:"Mayo 2026", junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026" }[periodo] || periodo;
+
+  // ── HEADER ────────────────────────────────────────────────────
+  doc.setFillColor(11, 43, 74);
+  doc.rect(LM, 15, CW, 26, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("CEOT — CLÍNICA TRAUMATOLÓGICA COLÓN", W/2, 24, { align:"center" });
+  doc.setFontSize(9.5);
+  doc.text("COMPROBANTE DE HONORARIOS", W/2, 31, { align:"center" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text("Período: " + periodoLabel, W/2, 37, { align:"center" });
+
+  var y = 50;
+
+  // ── DATOS DEL PROFESIONAL ─────────────────────────────────────
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(9);
+  [
+    ["Doctor:",     doctor.nombre],
+    ["Matrícula:",  doctor.pass],
+    ["Emitido:",    todayStr],
+  ].forEach(function(pair) {
+    doc.setFont("helvetica", "bold");   doc.text(pair[0], LM, y);
+    doc.setFont("helvetica", "normal"); doc.text(pair[1], LM + 28, y);
+    y += 7;
+  });
+
+  doc.setDrawColor(180, 180, 180);
+  doc.line(LM, y, RM, y);
+  y += 8;
+
+  // ── CONTENIDO SEGÚN PERÍODO ───────────────────────────────────
+  if (periodo === "junio" || periodo === "julio") {
+    var rawData = periodo === "junio" ? JUNIO_RAW : JULIO_RAW;
+    var fechas  = periodo === "junio" ? JUNIO_FECHAS : JULIO_FECHAS;
+    var rowKey  = periodo === "junio" ? doctor.junioKey : doctor.apellido;
+
+    var row = null;
+    for (var i = 0; i < rawData.length; i++) {
+      if (rawData[i].k === rowKey) { row = rawData[i]; break; }
+    }
+
+    if (!row) {
+      doc.setFont("helvetica", "italic");
+      doc.text("Sin datos individuales disponibles para este período.", LM, y);
+    } else {
+      var vals  = [row.f1, row.f2, row.f3, row.f4, row.f5];
+      var bruto = vals.reduce(function(a,b){ return a+b; }, 0);
+      var esLab       = (doctor.user === "labayen");
+      var iibbDataPDF = PERIODO_IIBB[periodo];
+      var iibb        = iibbDataPDF === null
+                      ? Math.round(bruto * 0.035)
+                      : Math.round(iibbDataPDF[doctor.apellido] || 0);
+      var cpsmDataPDF = PERIODO_CPSM[periodo];
+      var cpsm  = esLab ? 0
+                : (cpsmDataPDF === null
+                   ? Math.round(bruto * 0.05)
+                   : Math.round(cpsmDataPDF[doctor.apellido] || 0));
+      var gaTotal = GASTOS_A[periodo];
+      var gaInd   = gaTotal ? Math.round(gaTotal / 13) : 0;
+      var cmExtPDF = getExtra(periodo, "cm", doctor.apellido);
+      var cmInd    = cmExtPDF.val || 0;
+      var periodoConAportePDF = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
+      var pctAportePDF   = APORTE_CEOT_PCT[doctor.apellido];
+      var baseAportePDF  = bruto + cmInd;
+      var aporteCeotPDF  = (periodoConAportePDF && pctAportePDF) ? Math.round(baseAportePDF * pctAportePDF) : 0;
+      var subtot = bruto - iibb - cpsm - gaInd - aporteCeotPDF + cmInd;
+
+      // Sección cheques
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+      doc.setTextColor(100, 100, 100);
+      doc.text("HONORARIOS COLÓN — CHEQUES DIFERIDOS", LM, y);
+      doc.setTextColor(0,0,0); y += 6;
+
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+      vals.forEach(function(monto, idx) {
+        doc.text("Cheque " + (idx+1) + "   —   " + fechas[idx], LM + 5, y);
+        doc.text(fmtPDF(monto), RM, y, { align:"right" });
+        y += 7;
+      });
+
+      // Total bruto
+      doc.setDrawColor(180,180,180); doc.line(LM, y, RM, y); y += 5;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9.5);
+      doc.text("TOTAL BRUTO", LM + 5, y);
+      doc.text(fmtPDF(bruto), RM, y, { align:"right" });
+      y += 12;
+
+      // Deducciones
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+      doc.setTextColor(100,100,100);
+      doc.text("DEDUCCIONES", LM, y);
+      doc.setTextColor(0,0,0); y += 6;
+
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+      doc.text("IIBB — Ingresos Brutos (3,5%)", LM + 5, y);
+      doc.setTextColor(180, 0, 0);
+      doc.text("- " + fmtPDF(iibb), RM, y, { align:"right" });
+      doc.setTextColor(0,0,0); y += 7;
+
+      if (esLab) {
+        doc.text("CPSM — Caja Previsión (5,0%)", LM + 5, y);
+        doc.setTextColor(0, 130, 0);
+        doc.text("EXENTO", RM, y, { align:"right" });
+        doc.setTextColor(0,0,0);
+      } else {
+        doc.text("CPSM — Caja Previsión (5,0%)", LM + 5, y);
+        doc.setTextColor(180, 0, 0);
+        doc.text("- " + fmtPDF(cpsm), RM, y, { align:"right" });
+        doc.setTextColor(0,0,0);
+      }
+      y += 7;
+
+      if (gaInd) {
+        doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+        doc.text("Gastos A — Operativos clínica (1/13)", LM + 5, y);
+        doc.setTextColor(180, 0, 0);
+        doc.text("- " + fmtPDF(gaInd), RM, y, { align:"right" });
+        doc.setTextColor(0,0,0); y += 7;
+      }
+
+      if (aporteCeotPDF) {
+        doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+        doc.text("Aporte CEOT (" + Math.round(pctAportePDF*100) + "%)", LM + 5, y);
+        doc.setTextColor(180, 0, 0);
+        doc.text("- " + fmtPDF(aporteCeotPDF), RM, y, { align:"right" });
+        doc.setTextColor(0,0,0); y += 7;
+      }
+
+      // Centro Médico
+      if (cmInd) {
+        doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+        doc.setTextColor(100,100,100);
+        doc.text("OTROS INGRESOS", LM, y);
+        doc.setTextColor(0,0,0); y += 6;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+        doc.text("Centro Médico — 1ra semana del mes", LM + 5, y);
+        doc.setTextColor(0, 120, 0);
+        doc.text("+ " + fmtPDF(cmInd), RM, y, { align:"right" });
+        doc.setTextColor(0,0,0); y += 7;
+      }
+
+      // Neto final
+      doc.setDrawColor(11, 43, 74); doc.line(LM, y, RM, y); y += 5;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+      doc.text("NETO FINAL", LM + 5, y);
+      doc.setTextColor(11, 43, 74);
+      doc.text(fmtPDF(subtot), RM, y, { align:"right" });
+      doc.setTextColor(0,0,0); y += 14;
+
+      doc.setFont("helvetica", "italic"); doc.setFontSize(7.5);
+      doc.setTextColor(120,120,120);
+      doc.text("* Este comprobante cubre los 5 cheques Colón diferidos del período.", LM, y); y += 5;
+      if (!gaInd) {
+        doc.text("* Gastos A pendientes de liquidar; OSDE se informa por separado.", LM, y);
+      } else {
+        doc.text("* OSDE del período se informa por separado.", LM, y);
+      }
+      doc.setTextColor(0,0,0);
+    }
+
+  } else if (periodo === "mayo") {
+    var osdeExtMayo = getExtra("mayo", "osde", doctor.apellido);
+    var osde = osdeExtMayo.val;
+
+    if (osde) {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+      doc.setTextColor(100,100,100);
+      doc.text("OSDE — IMPORTE INDIVIDUAL MAYO 2026", LM, y);
+      doc.setTextColor(0,0,0); y += 6;
+
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+      doc.text("Cheque OSDE — Mayo 2026", LM + 5, y);
+      doc.text(fmtPDF(osde), RM, y, { align:"right" });
+      y += 7;
+
+      doc.setDrawColor(11, 43, 74); doc.line(LM, y, RM, y); y += 5;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+      doc.text("TOTAL OSDE", LM + 5, y);
+      doc.setTextColor(11, 43, 74);
+      doc.text(fmtPDF(osde), RM, y, { align:"right" });
+      doc.setTextColor(0,0,0); y += 10;
+
+      var gaTotalMayoPDF = GASTOS_A.mayo;
+      if (gaTotalMayoPDF) {
+        var gaPorPersonaMayoPDF = Math.round(gaTotalMayoPDF / 13);
+        doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+        doc.setTextColor(100,100,100);
+        doc.text("GASTOS A — DEDUCCIÓN MENSUAL", LM, y);
+        doc.setTextColor(0,0,0); y += 6;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+        doc.text("Gastos A — 1/13 del total " + fmtPDF(gaTotalMayoPDF), LM + 5, y);
+        doc.setTextColor(180, 0, 0);
+        doc.text("- " + fmtPDF(gaPorPersonaMayoPDF), RM, y, { align:"right" });
+        doc.setTextColor(0,0,0); y += 12;
+      }
+    }
+
+    var cmExtMayoPDF = getExtra("mayo", "cm", doctor.apellido);
+    if (cmExtMayoPDF.val) {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+      doc.setTextColor(100,100,100);
+      doc.text("CENTRO MÉDICO — IMPORTE INDIVIDUAL MAYO 2026", LM, y);
+      doc.setTextColor(0,0,0); y += 6;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+      doc.text("Centro Médico — 1ra semana del mes", LM + 5, y);
+      doc.setTextColor(0, 120, 0);
+      doc.text("+ " + fmtPDF(cmExtMayoPDF.val), RM, y, { align:"right" });
+      doc.setTextColor(0,0,0); y += 12;
+    }
+
+    var rowMayoPDF = null;
+    for (var i = 0; i < MAYO_RAW.length; i++) {
+      if (MAYO_RAW[i].k === doctor.apellido) { rowMayoPDF = MAYO_RAW[i]; break; }
+    }
+
+    if (rowMayoPDF) {
+      var valsMayoPDF = [rowMayoPDF.f1, rowMayoPDF.f2, rowMayoPDF.f3, rowMayoPDF.f4, rowMayoPDF.f5];
+      var brutoColonMayoPDF = valsMayoPDF.reduce(function(a,b){ return a+b; }, 0);
+
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+      doc.setTextColor(100,100,100);
+      doc.text("HONORARIOS COLÓN — CHEQUES DIFERIDOS", LM, y);
+      doc.setTextColor(0,0,0); y += 6;
+
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+      valsMayoPDF.forEach(function(monto, idx) {
+        doc.text("Cheque " + (idx+1) + "   —   " + MAYO_FECHAS[idx], LM + 5, y);
+        doc.text(fmtPDF(monto), RM, y, { align:"right" });
+        y += 7;
+      });
+
+      doc.setDrawColor(180,180,180); doc.line(LM, y, RM, y); y += 5;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9.5);
+      doc.text("TOTAL COLÓN", LM + 5, y);
+      doc.text(fmtPDF(brutoColonMayoPDF), RM, y, { align:"right" });
+      y += 12;
+    }
+
+    y += 2;
+    doc.setFont("helvetica", "italic"); doc.setFontSize(7.5);
+    doc.setTextColor(120,120,120);
+    doc.text("* IIBB y CPSM se calculan sobre el bruto individual de cada profesional.", LM, y); y += 5;
+    doc.text("* OSDE y Colón informados como importes individuales netos.", LM, y);
+    doc.setTextColor(0,0,0);
+  }
+
+  // ── FOOTER ────────────────────────────────────────────────────
+  doc.setDrawColor(11, 43, 74);
+  doc.line(LM, H - 20, RM, H - 20);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+  doc.setTextColor(90, 90, 90);
+    doc.text("CLINICA COLON P.B. CONSUL 11  —  CEOT 14 DE JULIO 2155  —  TEL: 2236 157452", W/2, H - 14, { align:"center" });
+  doc.text("Informe privado y confidencial · emitido a solicitud del profesional", W/2, H - 9, { align:"center" });
+
+  // ── GUARDAR ─────────────────────────────────────────────
+  var fileName = "Comprobante_" + doctor.apellido + "_" + periodo.toUpperCase() + "_2026.pdf";
+  doc.save(fileName);
+}
+
+// ══════ IMPORTAR LIQUIDACIÓN ════════════════════════════════════
+
+const SOCIOS_IMP = ['BRUNI','CORELICH','DE LA COLINA','DEGANUTTI','LABAYEN',
+                    'LEON','MAZZOLA','PERLASCO','SOULE','TRIVELLINI'];
+
+const MAPE_MAP = {
+  '40796362':'BRUNI',      '41796362':'CORELICH',    '42796362':'DEGANUTTI',
+  '43796362':'LABAYEN',    '44796362':'TRIVELLINI',  '45796362':'MAZZOLA',
+  '46796362':'DE LA COLINA','47796362':'PERLASCO',   '48796362':'LEON',
+  '49796362':'SOULE'
+};
+
+var impOsdeBilling = {}, impDifBilling = {}, impOsdeNeto = {};
+var impColonCheques = [], impArtTotal = 0;
+var impUndo   = { tipo: null, mes: null, data: null };
+var impCMTotales = {};
+var impCMUndo = { tipo: null, mes: null, data: null };
+
+function abrirImportModal() {
+  impOsdeBilling = {}; impDifBilling = {}; impOsdeNeto = {};
+  impColonCheques = []; impArtTotal = 0;
+  impCMTotales = {}; impCMUndo = { tipo: null, mes: null, data: null };
+  document.getElementById('impStep2').style.display      = 'none';
+  document.getElementById('impResultados').style.display = 'none';
+  document.getElementById('impSheetMsg').textContent     = '';
+  document.getElementById('impSheetMsg').className       = 'imp-sheet-msg';
+  document.getElementById('impError').style.display      = 'none';
+  document.getElementById('impCMResultados').style.display = 'none';
+  document.getElementById('impCMMsg').textContent        = '';
+  document.getElementById('impCMError').style.display    = 'none';
+  document.getElementById('impCMUndoArea').style.display = 'none';
+  document.getElementById('fileCEOT').value = '';
+  document.getElementById('fileART').value  = '';
+  document.getElementById('fileCM').value   = '';
+  document.getElementById('importModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarImportModal() {
+  document.getElementById('importModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function normDocImp(nombre) {
+  var up = String(nombre).toUpperCase().trim();
+  var coma = up.indexOf(',');
+  var ap = coma !== -1 ? up.substring(0, coma).trim() : up.split(/\s+/)[0];
+  var MAPA = {
+    'DE LA COLINA':'DE LA COLINA','BRUNI':'BRUNI','CORELICH':'CORELICH',
+    'DEGANUTTI':'DEGANUTTI','LABAYEN':'LABAYEN','LEON':'LEON',
+    'MAZZOLA':'MAZZOLA','PERLASCO':'PERLASCO','SOULE':'SOULE','TRIVELLINI':'TRIVELLINI'
+  };
+  if (MAPA[ap]) return MAPA[ap];
+  for (var k in MAPA) {
+    if (ap.indexOf(k) !== -1 || k.indexOf(ap) !== -1) return MAPA[k];
+  }
+  return null;
+}
+
+function fmtImp(n) {
+  return '$ ' + Math.round(n).toLocaleString('es-AR');
+}
+
+function parsearMontoImp(str) {
+  if (!str) return 0;
+  var s = String(str).replace(/\$\s*/g,'').replace(/\./g,'').replace(',','.').trim();
+  return parseFloat(s) || 0;
+}
+
+async function leerXLSX(file) {
+  return new Promise(function(resolve, reject) {
+    var esCSV = /\.csv$/i.test(file.name);
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        var wb = esCSV
+          ? XLSX.read(ev.target.result, { type: 'string' })
+          : XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+        resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, raw:true }));
+      } catch(e) { reject(e); }
+    };
+    reader.onerror = function() { reject(new Error('No se pudo leer el archivo')); };
+    if (esCSV) reader.readAsText(file, 'UTF-8');
+    else        reader.readAsArrayBuffer(file);
+  });
+}
+
+function mostrarImpError(msg) {
+  var el = document.getElementById('impError');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+async function detectarTotalART() {
+  var fileART = document.getElementById('fileART').files[0];
+  if (!fileART) return;
+  var row = document.getElementById('impArtTotalRow');
+  var inp = document.getElementById('impArtManual');
+  row.style.display = 'block';
+  inp.value = 'Leyendo...';
+  try {
+    var artRows = await leerXLSX(fileART);
+    // Sumar todos los valores numéricos de columna P (índice 15), saltar encabezado
+    var totalVal = 0;
+    for (var r = 0; r < artRows.length; r++) {
+      var v = artRows[r] && artRows[r][15];
+      var val = typeof v === 'number' ? v : parsearMontoImp(v);
+      if (val > 0) totalVal += val;
+    }
+    inp.value = totalVal > 0
+      ? totalVal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : '';
+  } catch(e) {
+    inp.value = '';
+  }
+}
+
+async function procesarArchivosImport() {
+  var fileCEOT = document.getElementById('fileCEOT').files[0];
+  if (!fileCEOT) { mostrarImpError('Seleccioná el archivo CEOT.xlsx'); return; }
+  var btn = document.getElementById('btnProcesarArchivos');
+  btn.textContent = 'Procesando…'; btn.disabled = true;
+  document.getElementById('impError').style.display = 'none';
+
+  try {
+    // ── CEOT.xlsx: col D=3 importe, H=7 institución, M=12 profesional, P=15 observación
+    var osdeBill = {}, difBill = {};
+    SOCIOS_IMP.forEach(function(k){ osdeBill[k] = 0; difBill[k] = 0; });
+
+    var rows = await leerXLSX(fileCEOT);
+    for (var r = 0; r < rows.length; r++) {
+      var row = rows[r];
+      if (!row || row.length < 13) continue;
+      var imp  = typeof row[3] === 'number' ? row[3] : parsearMontoImp(row[3]);
+      if (!imp) continue;
+      var inst = String(row[7]  || '').trim().toUpperCase();
+      var prof = String(row[12] || '').trim();
+      var obs  = String(row[15] || '').trim().toUpperCase();
+      var key  = normDocImp(prof);
+      if (!key) continue;
+      var sgn  = (obs.indexOf('DEB') !== -1 && obs.indexOf('HONORARIOS') !== -1) ? -1 : 1;
+      if (inst === 'OSDE') osdeBill[key] += imp * sgn;
+      else                 difBill[key]  += imp * sgn;
+    }
+
+    // ── ART: usar el total del campo editable (detectado o ingresado manualmente)
+    var artTotal = 0;
+    var fileART = document.getElementById('fileART').files[0];
+    if (fileART) {
+      artTotal = parsearMontoImp(document.getElementById('impArtManual').value);
+      if (artTotal > 0) {
+        difBill['DEGANUTTI']  += artTotal * 0.35;
+        difBill['TRIVELLINI'] += artTotal * 0.35;
+        difBill['MAZZOLA']    += artTotal * 0.30;
+      }
+    }
+
+    impOsdeBilling = osdeBill;
+    impDifBilling  = difBill;
+    impArtTotal    = artTotal;
+
+    // ── Preview table
+    var totOSDE = SOCIOS_IMP.reduce(function(s,k){ return s+(osdeBill[k]||0); }, 0);
+    var totDIF  = SOCIOS_IMP.reduce(function(s,k){ return s+(difBill[k]||0);  }, 0);
+
+    var tbody = document.getElementById('impPreviewBody');
+    tbody.innerHTML = '';
+    SOCIOS_IMP.forEach(function(k) {
+      var pO = totOSDE > 0 ? (osdeBill[k]||0)/totOSDE*100 : 0;
+      var pD = totDIF  > 0 ? (difBill[k]||0)/totDIF*100   : 0;
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td class="ipt-name">' + k + '</td>' +
+        '<td class="ipt-num">' + pO.toFixed(2) + '%</td>' +
+        '<td class="ipt-num">' + fmtImp(difBill[k]||0) + '</td>' +
+        '<td class="ipt-num">' + pD.toFixed(2) + '%</td>';
+      tbody.appendChild(tr);
+    });
+
+    // ART footnote
+    var prevTfoot = document.getElementById('impPreviewTable').querySelector('tfoot');
+    if (prevTfoot) prevTfoot.remove();
+    if (artTotal > 0) {
+      var tfoot = document.getElementById('impPreviewTable').createTFoot();
+      tfoot.innerHTML = '<tr style="background:#f0fdf4"><td colspan="4" style="padding:6px 10px;font-size:0.7rem;color:#15803d;font-weight:600;">' +
+        'ART incluida: ' + fmtImp(artTotal) + ' → DEG 35% + TRI 35% + MAZ 30%</td></tr>';
+    }
+
+    // ── Colón cheque rows
+    var colonDiv = document.getElementById('impColonFields');
+    colonDiv.innerHTML = '';
+    for (var i = 1; i <= 5; i++) {
+      colonDiv.innerHTML +=
+        '<div class="imp-colon-row">' +
+        '<span class="imp-colon-lbl">Colón ' + i + '</span>' +
+        '<input type="text" id="impChqColon' + i + '" class="imp-colon-input" placeholder="Importe bruto $">' +
+        '<input type="text" id="impFechaColon' + i + '" class="imp-colon-fecha" placeholder="DD/MM">' +
+        '</div>';
+    }
+
+    document.getElementById('impStep2').style.display = 'block';
+    document.getElementById('impResultados').style.display = 'none';
+
+  } catch(err) {
+    mostrarImpError('Error procesando archivos: ' + err.message);
+  }
+
+  btn.textContent = 'Reprocesar ▸'; btn.disabled = false;
+}
+
+function calcularDistribucionFinal() {
+  var totOSDE = SOCIOS_IMP.reduce(function(s,k){ return s+(impOsdeBilling[k]||0); }, 0);
+  var totDIF  = SOCIOS_IMP.reduce(function(s,k){ return s+(impDifBilling[k]||0);  }, 0);
+
+  // OSDE neto por profesional
+  var chqOSDE  = parsearMontoImp(document.getElementById('impChqOSDE').value);
+  var netoOSDE = chqOSDE * 0.96;
+  impOsdeNeto  = {};
+  SOCIOS_IMP.forEach(function(k) {
+    impOsdeNeto[k] = totOSDE > 0 ? netoOSDE * (impOsdeBilling[k]||0) / totOSDE : 0;
+  });
+
+  // Colón cheques con fecha
+  impColonCheques = [];
+  for (var i = 1; i <= 5; i++) {
+    var monto = parsearMontoImp(document.getElementById('impChqColon' + i).value);
+    var fecha = (document.getElementById('impFechaColon' + i).value || '').trim();
+    if (monto > 0 && fecha) {
+      var neto = monto * 0.96;
+      var d = {};
+      SOCIOS_IMP.forEach(function(k) {
+        d[k] = totDIF > 0 ? neto * (impDifBilling[k]||0) / totDIF : 0;
+      });
+      impColonCheques.push({ fecha: fecha, d: d });
+    }
+  }
+
+  // Render resultado
+  var totColon = {};
+  SOCIOS_IMP.forEach(function(k) {
+    totColon[k] = impColonCheques.reduce(function(s,c){ return s+(c.d[k]||0); }, 0);
+  });
+
+  var sumOSDE = 0, sumDIF = 0;
+  var html = '<div class="imp-table-wrap"><table class="imp-table"><thead><tr>' +
+    '<th style="text-align:left">Profesional</th><th>OSDE neto</th><th>Total Colón</th><th>Total neto</th>' +
+    '</tr></thead><tbody>';
+  SOCIOS_IMP.forEach(function(k) {
+    var osde = impOsdeNeto[k]||0, col = totColon[k]||0, tot = osde + col;
+    sumOSDE += osde; sumDIF += col;
+    html += '<tr><td class="ipt-name">' + k + '</td>' +
+      '<td class="ipt-num">' + fmtImp(osde) + '</td>' +
+      '<td class="ipt-num">' + fmtImp(col) + '</td>' +
+      '<td class="ipt-num" style="font-weight:800;color:#1a1a1a">' + fmtImp(tot) + '</td></tr>';
+  });
+  html += '<tr style="background:#f9fafb;border-top:2px solid #e5e7eb">' +
+    '<td style="padding:6px 10px;font-weight:800">TOTAL</td>' +
+    '<td class="ipt-num" style="font-weight:700">' + fmtImp(sumOSDE) + '</td>' +
+    '<td class="ipt-num" style="font-weight:700">' + fmtImp(sumDIF) + '</td>' +
+    '<td class="ipt-num" style="font-weight:800;color:#1a1a1a">' + fmtImp(sumOSDE+sumDIF) + '</td></tr>';
+  html += '</tbody></table></div>';
+  document.getElementById('impResultBody').innerHTML = html;
+  document.getElementById('impResultados').style.display = 'block';
+}
+
+async function cargarEnSheet(tipo) {
+  var mes   = document.getElementById('impMes').value;
+  var msgEl = document.getElementById('impSheetMsg');
+  var undoArea = document.getElementById('impUndoArea');
+  msgEl.textContent = 'Guardando backup…';
+  msgEl.className   = 'imp-sheet-msg';
+  undoArea.style.display = 'none';
+
+  // Validaciones previas
+  if (tipo === 'osde' && !Object.keys(impOsdeNeto).length) {
+    msgEl.textContent = 'Calculá la distribución OSDE primero';
+    msgEl.className = 'imp-sheet-msg imp-err'; return;
+  }
+  if (tipo === 'dist' && !impColonCheques.length) {
+    msgEl.textContent = 'Calculá los cheques Colón primero';
+    msgEl.className = 'imp-sheet-msg imp-err'; return;
+  }
+
+  // Leer estado actual del sheet (backup para deshacer)
+  try {
+    var bkpResp = await fetch(LIQUIDACION_ENDPOINT + '?action=leer&tipo=' + tipo + '&mes=' + mes);
+    var bkpData = await bkpResp.json();
+    if (bkpData.ok) {
+      impUndo = { tipo: tipo, mes: mes, data: bkpData.valores || bkpData.cheques };
+    } else {
+      impUndo = { tipo: null, mes: null, data: null };
+    }
+  } catch(e) {
+    impUndo = { tipo: null, mes: null, data: null };
+  }
+
+  // Escribir nuevos valores
+  msgEl.textContent = 'Cargando en Sheet…';
+  try {
+    var url = LIQUIDACION_ENDPOINT + '?action=import&tipo=' + tipo + '&mes=' + mes;
+    if (tipo === 'diferidos') {
+      url += '&valores=' + encodeURIComponent(JSON.stringify(impDifBilling));
+    } else if (tipo === 'osde') {
+      url += '&valores=' + encodeURIComponent(JSON.stringify(impOsdeNeto));
+    } else if (tipo === 'dist') {
+      url += '&cheques=' + encodeURIComponent(JSON.stringify(impColonCheques));
+    }
+    var resp = await fetch(url);
+    var data = await resp.json();
+    if (data.ok) {
+      msgEl.textContent = '✓ Cargado — ' + (data.escritos||0) + ' celdas escritas';
+      msgEl.className   = 'imp-sheet-msg imp-ok';
+      if (impUndo.tipo) {
+        var labels = { diferidos: 'Diferidos', osde: 'OSDE', dist: 'Colón' };
+        document.getElementById('impUndoLabel').textContent = labels[tipo] + ' — ' + mes;
+        undoArea.style.display = 'block';
+      }
+    } else {
+      msgEl.textContent = '✗ ' + (data.error || 'Error');
+      msgEl.className   = 'imp-sheet-msg imp-err';
+    }
+  } catch(err) {
+    msgEl.textContent = '✗ ' + err.message;
+    msgEl.className   = 'imp-sheet-msg imp-err';
+  }
+}
+
+async function procesarCentroMedico() {
+  var files = document.getElementById('fileCM').files;
+  var errEl = document.getElementById('impCMError');
+  errEl.style.display = 'none';
+  if (!files.length) { errEl.textContent='Seleccioná al menos un archivo CM'; errEl.style.display='block'; return; }
+
+  var totales = {};
+  SOCIOS_IMP.forEach(function(k){ totales[k] = 0; });
+
+  try {
+    for (var f = 0; f < files.length; f++) {
+      var rows = await leerXLSX(files[f]);
+      for (var r = 0; r < rows.length; r++) {
+        var row = rows[r];
+        if (!row) continue;
+        // Formato A: col N(13)=matrícula, col Q(16)=importe
+        var mapeA = String(row[13] || '').trim();
+        var profA = MAPE_MAP[mapeA];
+        if (profA) {
+          var vA = row[16];
+          var valA = typeof vA === 'number' ? vA : parsearMontoImp(vA);
+          totales[profA] += valA;
+          continue;
+        }
+        // Formato B: col H(7)=matrícula, col J(9)=importe
+        var mapeB = String(row[7] || '').trim();
+        var profB = MAPE_MAP[mapeB];
+        if (profB) {
+          var vB = row[9];
+          var valB = typeof vB === 'number' ? vB : parsearMontoImp(vB);
+          totales[profB] += valB;
+        }
+      }
+    }
+
+    impCMTotales = totales;
+    var total = SOCIOS_IMP.reduce(function(s,k){ return s+(totales[k]||0); }, 0);
+
+    var tbody = document.getElementById('impCMBody');
+    tbody.innerHTML = '';
+    SOCIOS_IMP.forEach(function(k) {
+      var imp = totales[k]||0;
+      var pct = total > 0 ? (imp/total*100) : 0;
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td class="ipt-name">' + k + '</td>' +
+        '<td class="ipt-num">' + fmtImp(imp) + '</td>' +
+        '<td class="ipt-num">' + pct.toFixed(2) + '%</td>';
+      tbody.appendChild(tr);
+    });
+    var tf = document.createElement('tr');
+    tf.style.cssText = 'background:#f9fafb;border-top:2px solid #e5e7eb';
+    tf.innerHTML = '<td style="padding:6px 10px;font-weight:800">TOTAL</td>' +
+      '<td class="ipt-num" style="font-weight:700">' + fmtImp(total) + '</td>' +
+      '<td class="ipt-num" style="font-weight:700">100%</td>';
+    tbody.appendChild(tf);
+
+    document.getElementById('impCMResultados').style.display = 'block';
+    document.getElementById('impCMMsg').textContent = '';
+    document.getElementById('impCMUndoArea').style.display = 'none';
+  } catch(err) {
+    errEl.textContent = 'Error procesando CM: ' + err.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function cargarCMenSheet() {
+  var mes = document.getElementById('impMesCM').value;
+  var msgEl = document.getElementById('impCMMsg');
+  var undoArea = document.getElementById('impCMUndoArea');
+  msgEl.textContent = 'Guardando backup…'; msgEl.className = 'imp-sheet-msg';
+  undoArea.style.display = 'none';
+  try {
+    var bkp = await fetch(LIQUIDACION_ENDPOINT + '?action=leer&tipo=cm&mes=' + mes);
+    var bd  = await bkp.json();
+    impCMUndo = bd.ok ? { tipo:'cm', mes:mes, data:bd.valores||{} } : { tipo:null, mes:null, data:null };
+  } catch(e) { impCMUndo = { tipo:null, mes:null, data:null }; }
+
+  msgEl.textContent = 'Cargando en Sheet…';
+  try {
+    var url = LIQUIDACION_ENDPOINT + '?action=import&tipo=cm&mes=' + mes +
+              '&valores=' + encodeURIComponent(JSON.stringify(impCMTotales));
+    var data = await (await fetch(url)).json();
+    if (data.ok) {
+      msgEl.textContent = '✓ CM cargado — ' + (data.escritos||0) + ' celdas escritas';
+      msgEl.className = 'imp-sheet-msg imp-ok';
+      if (impCMUndo.tipo) undoArea.style.display = 'block';
+    } else {
+      msgEl.textContent = '✗ ' + (data.error||'Error');
+      msgEl.className = 'imp-sheet-msg imp-err';
+    }
+  } catch(err) { msgEl.textContent='✗ '+err.message; msgEl.className='imp-sheet-msg imp-err'; }
+}
+
+async function deshacerCM() {
+  if (!impCMUndo.tipo) return;
+  var msgEl = document.getElementById('impCMMsg');
+  var undoArea = document.getElementById('impCMUndoArea');
+  msgEl.textContent = 'Deshaciendo CM…'; msgEl.className = 'imp-sheet-msg';
+  undoArea.style.display = 'none';
+  try {
+    var url = LIQUIDACION_ENDPOINT + '?action=import&tipo=cm&mes=' + impCMUndo.mes +
+              '&valores=' + encodeURIComponent(JSON.stringify(impCMUndo.data));
+    var data = await (await fetch(url)).json();
+    if (data.ok) {
+      msgEl.textContent = '✓ CM deshecho'; msgEl.className = 'imp-sheet-msg imp-ok';
+      impCMUndo = { tipo:null, mes:null, data:null };
+    } else {
+      msgEl.textContent = '✗ ' + (data.error||'Error al deshacer');
+      msgEl.className = 'imp-sheet-msg imp-err';
+      undoArea.style.display = 'block';
+    }
+  } catch(err) { msgEl.textContent='✗ '+err.message; msgEl.className='imp-sheet-msg imp-err'; undoArea.style.display='block'; }
+}
+
+async function deshacerImport() {
+  if (!impUndo.tipo) return;
+  var msgEl    = document.getElementById('impSheetMsg');
+  var undoArea = document.getElementById('impUndoArea');
+  msgEl.textContent = 'Deshaciendo…';
+  msgEl.className   = 'imp-sheet-msg';
+  undoArea.style.display = 'none';
+  try {
+    var url = LIQUIDACION_ENDPOINT + '?action=import&tipo=' + impUndo.tipo + '&mes=' + impUndo.mes;
+    if (impUndo.tipo === 'dist') {
+      url += '&cheques=' + encodeURIComponent(JSON.stringify(impUndo.data));
+    } else {
+      url += '&valores=' + encodeURIComponent(JSON.stringify(impUndo.data));
+    }
+    var resp = await fetch(url);
+    var data = await resp.json();
+    if (data.ok) {
+      msgEl.textContent = '✓ Deshecho — valores anteriores restaurados';
+      msgEl.className   = 'imp-sheet-msg imp-ok';
+      impUndo = { tipo: null, mes: null, data: null };
+    } else {
+      msgEl.textContent = '✗ Error al deshacer: ' + (data.error || '');
+      msgEl.className   = 'imp-sheet-msg imp-err';
+      undoArea.style.display = 'block';
+    }
+  } catch(err) {
+    msgEl.textContent = '✗ ' + err.message;
+    msgEl.className   = 'imp-sheet-msg imp-err';
+    undoArea.style.display = 'block';
+  }
+}
+
+// ══════ ACCESOS ══════════════════════════════════════════════
+
+var ACCESOS_DATA = [
+  // ── Finanzas
+  { id:1, cat:"Finanzas", title:"Liquidaciones Clínica",   desc:"Control de liquidaciones y estado de cheques",               url:"https://docs.google.com/spreadsheets/d/1NjHxZTUy3hVinrhR09Cq22gjcMiHQuSG8P4sSIPJa98/edit?usp=sharing" },
+  { id:2, cat:"Finanzas", title:"Liquidaciones CEM",        desc:"Liquidaciones del CEM y fechas de depósitos",                url:"https://docs.google.com/spreadsheets/d/10XbaaKj2DmVa4EshrD-5RJpQZvJRgz-tfMVJHnNM_TM/edit?usp=sharing" },
+  { id:3, cat:"Finanzas", title:"Gastos y Sueldos",         desc:"Gastos fijos y planillas de sueldos del personal",           url:"https://docs.google.com/spreadsheets/d/1BjKNOWI4TpijG_56XFbSVz1u5QNWVQE53SD5gA1LPAc/edit?usp=sharing" },
+  { id:4, cat:"Finanzas", title:"Caja Gerling",             desc:"Seguimiento y control de la caja Gerling",                   url:"https://docs.google.com/spreadsheets/d/13IYGUkv2FjZ8aGUxVuly7uL14b6MyQI4C9YiISXxHUY/edit?usp=drive_link" },
+  { id:5, cat:"Finanzas", title:"Liquidaciones Detalles",   desc:"Detalle de liquidaciones CEOT por profesional",              url:"https://liquidaciones-detalles-ceot.netlify.app/" },
+  { id:6, cat:"Finanzas", title:"Valores Convenios",        desc:"Aranceles y valores por convenio y obra social",             url:"https://valores-convenios-ceot.netlify.app/" },
+  { id:7, cat:"Finanzas", title:"Liquidaciones 2026",       desc:"Portal completo de liquidaciones CEOT 2026",                 url:"https://liquidaciones-ceot2026.netlify.app/" },
+  // ── Clínica
+  { id:8,  cat:"Clínica", title:"CC Clínica Colón",         desc:"Sistema interno de la Clínica Colón",                        url:"https://coloncc.com.ar/" },
+  { id:9,  cat:"Clínica", title:"CC CEM MDP",               desc:"Sistema privado del Centro Médico MDP",                     url:"https://privado.centromedicomdp.org.ar/" },
+  { id:10, cat:"Clínica", title:"Programación CX (Sheet)",  desc:"Calendario de cirugías — Google Sheets",                    url:"https://docs.google.com/spreadsheets/d/1VYIarOpfCgqinj5Uy2dAYCSsx6c5GL9J7YbAYKvCbdk/edit?usp=sharing" },
+  { id:11, cat:"Clínica", title:"Estadísticas CX",          desc:"Estadísticas de cirugías CEOT",                              url:"https://estadisticas-ceot-cx.netlify.app/" },
+  { id:12, cat:"Clínica", title:"Órdenes CX",               desc:"Gestión de órdenes de cirugías",                             url:"https://ordenes-ceot-cx.netlify.app/" },
+  { id:13, cat:"Clínica", title:"Fichas CX",                desc:"Fichas quirúrgicas — panel de control CEOT",                url:"https://fichas-cx-ceot.netlify.app/panel_control_ceot.html" },
+  { id:14, cat:"Clínica", title:"Programación CX v2",       desc:"Programación de cirugías CEOT versión 2",                   url:"https://programacion-cx-ceot-v2.netlify.app/" },
+  { id:15, cat:"Clínica", title:"Evoluciones",              desc:"Registro de evoluciones clínicas CEOT",                     url:"https://evoluciones-ceot.netlify.app/" },
+  { id:16, cat:"Clínica", title:"Cirugías Programadas",     desc:"Agenda de cirugías programadas",                            url:"https://cirugias-progamadas.netlify.app/" },
+  { id:17, cat:"Clínica", title:"Estadísticas CX 2026",     desc:"Estadísticas de cirugías CEOT 2026",                        url:"https://estadisticas-cx-ceot-2026.netlify.app/" },
+  { id:18, cat:"Clínica", title:"Historial CX",             desc:"Historial de cirugías CEOT",                                url:"https://historial-cx-ceot.netlify.app/" },
+  { id:19, cat:"Clínica", title:"Estadísticas CX 26 v2",    desc:"Estadísticas de cirugías CEOT 2026 — versión actualizada",  url:"https://ceot-estadisticas-cx-26.netlify.app/" },
+  // ── Administración
+  { id:20, cat:"Admin", title:"Portal Profesionales",       desc:"Portal individual de honorarios para cada médico",           url:"https://portal-ceot-profesionales.netlify.app/" },
+  { id:21, cat:"Admin", title:"Panel Mensajes WA",          desc:"Generar mensajes de WhatsApp para liquidaciones",            url:"https://admin-marce.netlify.app/" },
+  { id:22, cat:"Admin", title:"Admin Liquidaciones",        desc:"Panel admin: importar datos, CM y débitos",                  url:"https://liquidaciones-ceot-2026-adm.netlify.app/" },
+  { id:23, cat:"Admin", title:"Admin Panel CEOT",           desc:"Panel administrativo general CEOT",                         url:"https://admin-ceot-panel.netlify.app/" },
+  { id:24, cat:"Admin", title:"Agendas CEOT",               desc:"Agendas y calendario de actividades CEOT",                  url:"https://ceot-agendas.netlify.app/" },
+  { id:25, cat:"Admin", title:"Permisos ART",               desc:"Gestión de permisos de ART para cirugías",                  url:"https://permiso-art-ceot.netlify.app/" },
+  { id:26, cat:"Admin", title:"Panel Adm. Marce",           desc:"Panel administrativo personal de Marcelo",                  url:"https://panel-adm-ceot-marce.netlify.app/" },
+  { id:27, cat:"Admin", title:"Horarios y Asistencias",     desc:"Registro de horarios, asistencias y licencias",             url:"https://docs.google.com/spreadsheets/d/1M-l1KHAoRRFL7MLpmQY4tXCtY0SLj14Dm0ucQWsR5fA/edit?usp=sharing" },
+  { id:28, cat:"Admin", title:"Documentación CEOT",         desc:"Documentos y archivos generales del CEOT",                  url:"https://drive.google.com/drive/folders/1eOUfTKOEkFZTsgsctzwNhq0IJ-Wdp3N7?usp=drive_link" },
+  { id:29, cat:"Admin", title:"Archivos Reuniones",         desc:"Minutas y acuerdos de reuniones del equipo",                url:"https://drive.google.com/drive/folders/1jnwuKnJaNdR45_QfGvqOmURQL7yrLdTA?usp=drive_link" },
+  // ── Otros
+  { id:30, cat:"Otros", title:"Encuesta Secretarias",       desc:"Evaluación y premios a secretarias",                        url:"https://docs.google.com/spreadsheets/d/19ITME1mzL2eIYX4YIudIGwP7yeGBDP93XM6Y2gfperw/edit?usp=sharing" },
+  { id:31, cat:"Otros", title:"Encuesta Satisfacción",      desc:"Encuesta de satisfacción de pacientes CEOT",                url:"https://docs.google.com/spreadsheets/d/1T9Rck2IdVg-aYDnjZo3sQJ_0dZ0MvhDBrlWFE1EVAvs/edit?usp=sharing" },
+  { id:32, cat:"Otros", title:"Caja de Médicos",            desc:"Autogestión Caja de Médicos",                               url:"https://www.cajademedicos.com.ar/aplicaciones/jsp/m.EntidadesAutogestion/ent_principal.jsp?mensaje=S" },
+  { id:33, cat:"Otros", title:"Banco Francés CEOT",         desc:"Home banking BBVA — cuenta CEOT",                           url:"https://www.bbva.com.ar/empresas.html" },
+  { id:34, cat:"Otros", title:"WhatsApp Web",               desc:"Bandeja de entrada de WhatsApp Web",                         url:"https://web.whatsapp.com/" },
+];
+
+var accNextId = 35;
+var accFilterActual = "Todos";
+var accEditLinkMode = false;
+
+function toggleEditLinks() {
+  accEditLinkMode = !accEditLinkMode;
+  var btn = document.getElementById("btnEditLinks");
+  var add = document.getElementById("btnAddLink");
+  var search = document.getElementById("accSearch");
+  if (btn) btn.style.color = accEditLinkMode ? "#dc2626" : "#9a8c78";
+  if (add) add.style.display = accEditLinkMode ? "block" : "none";
+  if (search) search.style.display = accEditLinkMode ? "none" : "block";
+  renderSidenavLinks(accEditLinkMode ? "" : (document.getElementById("accSearch")||{}).value);
+}
+
+function renderSidenavLinks(q) {
+  var cats = ["Finanzas","Clínica","Admin","Otros"];
+  var html = "";
+  var query = accEditLinkMode ? "" : (q || "").toLowerCase().trim();
+  var hayResultados = false;
+  cats.forEach(function(cat) {
+    var items = ACCESOS_DATA.filter(function(a){
+      return a.cat === cat && (!query || a.title.toLowerCase().includes(query) || a.desc.toLowerCase().includes(query));
+    });
+    if (!items.length) return;
+    hayResultados = true;
+    if (!query || accEditLinkMode) html += '<div class="adm-sidenav-sep" style="font-size:0.6rem">' + cat + '</div>';
+    items.forEach(function(a) {
+      if (accEditLinkMode) {
+        html += '<div style="display:flex;align-items:center;gap:3px;padding:2px 6px">'
+          + '<span style="flex:1;font-size:0.7rem;color:var(--color-text,#3d2b1f);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.title+'">'+a.title+'</span>'
+          + '<button onclick="accSidenavEditar('+a.id+')" title="Editar" style="background:none;border:none;cursor:pointer;font-size:0.65rem;color:#6b7280;padding:2px 3px;flex-shrink:0">✏</button>'
+          + '<button onclick="accSidenavEliminar('+a.id+')" title="Eliminar" style="background:none;border:none;cursor:pointer;font-size:0.65rem;color:#dc2626;padding:2px 3px;flex-shrink:0">✕</button>'
+          + '</div>';
+      } else {
+        html += '<a class="adm-sidenav-link" href="' + a.url + '" target="_blank" title="' + a.title + '">' + a.title + '</a>';
+      }
+    });
+  });
+  if (!hayResultados) html = '<div style="font-size:0.71rem;color:#9a8c78;padding:6px 10px">Sin resultados</div>';
+  var el = document.getElementById("adm-sidenav-links");
+  if (el) el.innerHTML = html;
+}
+
+function filtrarSidenavLinks(q) { renderSidenavLinks(q); }
+
+function accSidenavEliminar(id) {
+  if (!confirm("¿Eliminar este link del sidebar?")) return;
+  ACCESOS_DATA = ACCESOS_DATA.filter(function(a) { return a.id !== id; });
+  accGuardarTodo();
+  renderSidenavLinks();
+}
+
+function accSidenavEditar(id) {
+  var item = ACCESOS_DATA.find(function(a){ return a.id === id; });
+  if (!item) return;
+  accAbrirModal(item);
+}
+
+function accStorageKey() { return "ceot_accesos_custom"; }
+
+function accCargarCustom() {
+  try {
+    var rawAll = localStorage.getItem("ceot_accesos_all");
+    if (rawAll) {
+      var saved = JSON.parse(rawAll);
+      // Agregar defaults que no estén en el localStorage (nuevos accesos agregados en el código)
+      var savedIds = saved.map(function(a) { return a.id; });
+      ACCESOS_DATA.forEach(function(def) {
+        if (savedIds.indexOf(def.id) === -1) saved.push(def);
+      });
+      ACCESOS_DATA = saved;
+      accNextId = Math.max.apply(null, ACCESOS_DATA.map(function(a){return a.id;}))+1;
+      return;
+    }
+    var raw = localStorage.getItem(accStorageKey());
+    if (raw) { var custom = JSON.parse(raw); custom.forEach(function(c){ ACCESOS_DATA.push(c); }); }
+  } catch(e) {}
+}
+
+function accGuardarCustom() {
+  var custom = ACCESOS_DATA.filter(function(a) { return a.id >= 34; });
+  localStorage.setItem(accStorageKey(), JSON.stringify(custom));
+}
+
+function renderAccesos(filtro) {
+  cerrarAdmSidenav();
+  if (filtro) accFilterActual = filtro;
+  // desactivar tabs de período
+  ["mayo","junio","julio","agosto"].forEach(function(p) {
+    var t = document.getElementById("adm-tab-" + p);
+    if (t) t.className = "adm-tab";
+  });
+  // activar sidebar
+  admDesactivarSidebar();
+  var sa = document.getElementById("adm-sidenav-accesos");
+  if (sa) sa.className = "adm-sidenav-btn active";
+
+  var cats = ["Todos","Finanzas","Clínica","Admin","Otros"];
+  var filtros = cats.map(function(c) {
+    return '<button class="acc-filter-btn'+(accFilterActual===c?' active':'')+'" onclick="renderAccesos(\''+c+'\')">' + c + '</button>';
+  }).join('');
+
+  var items = accFilterActual === "Todos"
+    ? ACCESOS_DATA
+    : ACCESOS_DATA.filter(function(a) { return a.cat === accFilterActual; });
+
+  var cards = items.map(function(a) {
+    return '<div class="acc-card" data-id="'+a.id+'">'
+      + '<div class="acc-card-cat">'+a.cat+'</div>'
+      + '<div class="acc-card-title">'+a.title+'</div>'
+      + '<div class="acc-card-desc">'+a.desc+'</div>'
+      + '<div class="acc-card-actions">'
+      + '<a href="'+a.url+'" target="_blank" class="acc-open-btn">↗ Abrir</a>'
+      + '<button class="acc-del-btn" onclick="accEliminar('+a.id+')" title="Eliminar">✕</button>'
+      + '</div></div>';
+  }).join('');
+
+  var html = '<div class="acc-toolbar">'
+    + filtros
+    + '<button class="acc-add-btn" onclick="accAbrirModal()">+ Agregar</button>'
+    + '</div>'
+    + '<div class="acc-grid">' + (cards || '<div style="color:#9ca3af;padding:20px;text-align:center">Sin accesos en esta categoría.</div>') + '</div>';
+
+  document.getElementById("adm-content").innerHTML = html;
+}
+
+function accEliminar(id) {
+  if (!confirm("¿Eliminar este acceso?")) return;
+  ACCESOS_DATA = ACCESOS_DATA.filter(function(a) { return a.id !== id; });
+  accGuardarCustom();
+  renderAccesos();
+}
+
+var accEditingId = null;
+
+function accAbrirModal(item) {
+  accEditingId = item ? item.id : null;
+  document.getElementById("accModalBg").classList.add("open");
+  document.getElementById("accFormTitle").value = item ? item.title : "";
+  document.getElementById("accFormUrl").value   = item ? item.url   : "";
+  document.getElementById("accFormDesc").value  = item ? item.desc  : "";
+  document.getElementById("accFormCat").value   = item ? item.cat   : "Admin";
+  var tit = document.getElementById("accModalTitulo");
+  if (tit) tit.textContent = item ? "Editar acceso" : "Nuevo acceso";
+}
+
+function accCerrarModal() {
+  document.getElementById("accModalBg").classList.remove("open");
+  accEditingId = null;
+}
+
+function accGuardarNuevo() {
+  var title = document.getElementById("accFormTitle").value.trim();
+  var url   = document.getElementById("accFormUrl").value.trim();
+  var desc  = document.getElementById("accFormDesc").value.trim();
+  var cat   = document.getElementById("accFormCat").value;
+  if (!title || !url) { alert("Título y URL son obligatorios."); return; }
+  if (accEditingId !== null) {
+    var item = ACCESOS_DATA.find(function(a){ return a.id === accEditingId; });
+    if (item) { item.title = title; item.url = url; item.desc = desc || "—"; item.cat = cat; }
+  } else {
+    ACCESOS_DATA.push({ id: accNextId++, cat: cat, title: title, desc: desc || "—", url: url });
+  }
+  accGuardarTodo();
+  accCerrarModal();
+  if (accEditLinkMode) renderSidenavLinks();
+  else renderAccesos(cat);
+}
+
+function accGuardarTodo() {
+  localStorage.setItem("ceot_accesos_all", JSON.stringify(ACCESOS_DATA));
+}
+
+// ══════ WA GASTOS A ══════════════════════════════════════════
+
+function abrirWAGastosA(periodo) {
+  var gaTotal = GASTOS_A[periodo];
+  if (!gaTotal) { alert("No hay datos de Gastos A para " + periodo + "."); return; }
+  var gaInd = Math.round(gaTotal / 13);
+  var mesLabel = periodo.charAt(0).toUpperCase() + periodo.slice(1) + " 2026";
+
+  var sub = document.getElementById("waModalSub");
+  if (sub) sub.textContent = mesLabel + " · Gastos A por persona: " + fmt(gaInd);
+
+  var listado = document.getElementById("waListado");
+  if (!listado) return;
+
+  var osdeExtra = PERIOD_EXTRAS[periodo] && PERIOD_EXTRAS[periodo].osde;
+
+  var rows = [];
+  DOCTORES.forEach(function(doc) {
+    if (!doc.wapp) return;
+    var nombre = doc.nombre.replace(/^DR[A]?\. /i, "");
+
+    var osdeVal = 0;
+    if (osdeExtra && !osdeExtra.pendiente && osdeExtra.m) {
+      osdeVal = osdeExtra.m[doc.apellido] || 0;
+    }
+
+    var diff = osdeVal - gaInd;
+    var lineaOsde = osdeVal > 0
+      ? "El importe de su cheque de OSDE es de *" + fmt(osdeVal) + "*."
+      : "El importe de su cheque de OSDE está pendiente de confirmación.";
+
+    var lineaResultado;
+    if (osdeVal > 0 && diff >= 0) {
+      lineaResultado = "Una vez aplicado el descuento, se le acreditará la diferencia de *" + fmt(diff) + "*.";
+    } else if (osdeVal > 0 && diff < 0) {
+      lineaResultado = "Como el cheque de OSDE no cubre el total, le solicitamos transferir *" + fmt(Math.abs(diff)) + "* a la cuenta del CEOT.";
+    } else {
+      lineaResultado = "Quedamos a disposición para coordinar el descuento.";
+    }
+
+    var mensaje = "Estimado/a Dr./Dra. " + nombre
+      + ", le informamos que el importe correspondiente a Gastos A de " + mesLabel
+      + " es de *" + fmt(gaInd) + "*, y será descontado del cheque de OSDE. "
+      + lineaOsde + " "
+      + lineaResultado
+      + " Saludos, Marcelo.";
+
+    rows.push({ doc: doc, nombre: nombre, osdeVal: osdeVal, diff: diff, mensaje: mensaje });
+  });
+
+  listado.innerHTML = rows.map(function(r) {
+    var url = "https://wa.me/" + r.doc.wapp + "?text=" + encodeURIComponent(r.mensaje);
+    var preview = r.mensaje.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+    var tagColor = r.osdeVal <= 0 ? '#9a8c78' : (r.diff >= 0 ? '#16a34a' : '#dc2626');
+    var tagTxt   = r.osdeVal <= 0 ? 'OSDE pend.' : (r.diff >= 0 ? 'Acredita ' + fmt(r.diff) : 'Debe ' + fmt(Math.abs(r.diff)));
+    return '<div style="background:#fff;border:1px solid #e2dbd0;border-radius:8px;padding:10px 12px">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+      + '<span style="font-size:0.78rem;font-weight:700;color:#1a1a1a">' + r.doc.nombre + '</span>'
+      + '<span style="font-size:0.65rem;font-weight:700;color:' + tagColor + ';background:' + tagColor + '18;padding:2px 7px;border-radius:4px">' + tagTxt + '</span>'
+      + '</div>'
+      + '<div style="font-size:0.7rem;color:#6b7280;line-height:1.5;margin-bottom:8px">' + preview + '</div>'
+      + '<a href="' + url + '" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:#25d366;color:#fff;border-radius:6px;padding:6px 14px;font-size:0.74rem;font-weight:700;text-decoration:none">↗ Enviar por WhatsApp</a>'
+      + '</div>';
+  }).join('');
+
+  var bg = document.getElementById("waModalBg");
+  if (bg) bg.style.display = "flex";
+}
+
+function cerrarWAModal() {
+  var bg = document.getElementById("waModalBg");
+  if (bg) bg.style.display = "none";
+}
+
+// ══════ DÉBITOS ══════════════════════════════════════════════
+
+const DEBITOS = {
+  "diciembre-2026": [], "noviembre-2026": [], "octubre-2026": [],
+  "septiembre-2026": [], "agosto-2026": [], "julio-2026": [],
+  "junio-2026": [
+    {f:"0028-00030425", os:"Swiss Medi", hon:1254789,  dh:1254789, dg:0,      total:1254789, pag:9},
+    {f:"0048-00006532", os:"PROV.ART",   hon:16709110, dh:1886276, dg:0,      total:1886276, pag:21, nota_fija:"★ valores reconstruidos manualmente (PDF mergeado)"},
+    {f:"0021-00016440", os:"OAM",        hon:1174273,  dh:1174273, dg:0,      total:1174273, pag:89},
+    {f:"0048-00006571", os:"Swiss Medi", hon:4344540,  dh:962967,  dg:0,      total:962967,  pag:47},
+    {f:"0021-00016322", os:"ASOCIART",   hon:2811700,  dh:648264,  dg:0,      total:648264,  pag:80},
+    {f:"0048-00006533", os:"PROV.ART",   hon:9582509,  dh:642915,  dg:0,      total:642915,  pag:23},
+    {f:"0048-00006522", os:"MEDICUS",    hon:3608191,  dh:533206,  dg:0,      total:533206,  pag:14},
+    {f:"0048-00006630", os:"OSDE",       hon:5549554,  dh:346371,  dg:0,      total:346371,  pag:49},
+    {f:"0048-00006547", os:"SEGUROS",    hon:1031135,  dh:154533,  dg:0,      total:154533,  pag:28},
+    {f:"0048-00006444", os:"U.PERSONAL", hon:718508,   dh:0,       dg:141770, total:141770,  pag:11, nota_fija:"débito en gastos de equipos"},
+    {f:"0048-00006569", os:"Swiss Medi", hon:2529610,  dh:136900,  dg:0,      total:136900,  pag:46},
+    {f:"0021-00016150", os:"OAM",        hon:305361,   dh:97024,   dg:0,      total:97024,   pag:75},
+    {f:"0048-00006568", os:"Swiss Medi", hon:1498041,  dh:93810,   dg:0,      total:93810,   pag:39},
+    {f:"0028-00030356", os:"PROV.ART",   hon:351745,   dh:87830,   dg:0,      total:87830,   pag:7},
+    {f:"0048-00006572", os:"Swiss Medi", hon:7055885,  dh:48089,   dg:1598,   total:49687,   pag:47},
+    {f:"0028-00030424", os:"Swiss Medi", hon:35111,    dh:35111,   dg:18372,  total:53483,   pag:9},
+    {f:"0048-00006581", os:"OSDE",       hon:2919156,  dh:35410,   dg:0,      total:35410,   pag:48},
+    {f:"0048-00006565", os:"AVALIAN",    hon:1293961,  dh:35694,   dg:0,      total:35694,   pag:35},
+    {f:"0048-00006556", os:"SEGUROS",    hon:3361985,  dh:0,       dg:51387,  total:51387,   pag:30},
+    {f:"0021-00016408", os:"SANCORMED",  hon:214624,   dh:13227,   dg:0,      total:13227,   pag:81},
+    {f:"0021-00016409", os:"SANCORMED",  hon:2200998,  dh:18234,   dg:0,      total:18234,   pag:85},
+    {f:"0021-00016338", os:"DA.SU.TEN.", hon:62704,    dh:41803,   dg:0,      total:41803,   pag:80},
+    {f:"0028-00030278", os:"Swiss Medi", hon:35447,    dh:35447,   dg:21909,  total:57356,   pag:2},
+    {f:"0021-00016225", os:"PREVEN ART", hon:1639745,  dh:23141,   dg:0,      total:23141,   pag:77},
+    {f:"0028-00030286", os:"Swiss Medi", hon:25378,    dh:25378,   dg:0,      total:25378,   pag:3},
+    {f:"0028-00030288", os:"Swiss Medi", hon:22352,    dh:22352,   dg:0,      total:22352,   pag:3},
+    {f:"0028-00030353", os:"MEDICUS",    hon:57299,    dh:17847,   dg:0,      total:17847,   pag:6},
+    {f:"0028-00030279", os:"Swiss Medi", hon:16561,    dh:16561,   dg:0,      total:16561,   pag:2},
+    {f:"0048-00006543", os:"MEDIFEASOC", hon:616950,   dh:11349,   dg:0,      total:11349,   pag:26},
+    {f:"0048-00006525", os:"GALENO",     hon:3448760,  dh:9781,    dg:0,      total:9781,    pag:15},
+    {f:"0028-00030277", os:"Swiss Medi", hon:9746,     dh:9746,    dg:0,      total:9746,    pag:1},
+    {f:"0048-00006548", os:"SEGUROS",    hon:171066,   dh:7445,    dg:0,      total:7445,    pag:28},
+    {f:"0021-00016410", os:"SANCORMED",  hon:1752647,  dh:4052,    dg:0,      total:4052,    pag:88},
+    {f:"0048-00006535", os:"PREVENCION", hon:768584,   dh:1564,    dg:0,      total:1564,    pag:25},
+    {f:"0021-00016154", os:"OAM",        hon:166312,   dh:17,      dg:0,      total:17,      pag:77},
+    {f:"0021-00016155", os:"OAM",        hon:95560,    dh:10,      dg:0,      total:10,      pag:77},
+    {f:"0048-00006631", os:"OSDE",       hon:1204752,  dh:448,     dg:0,      total:448,     pag:49},
+    {f:"0048-00006580", os:"OSDE",       hon:6741728,  dh:0,       dg:0,      total:0,       pag:48, nota_fija:"DEB.HON $0,44 — redondeo, sin impacto real"},
+  ]
+};
+
+function debStorageKey(mes, factura) {
+  return "ceot_deb_nota_" + mes + "_" + factura;
+}
+
+function debGuardarNota(mes, factura, valor) {
+  localStorage.setItem(debStorageKey(mes, factura), valor);
+}
+
+function debLeerNota(mes, factura) {
+  return localStorage.getItem(debStorageKey(mes, factura)) || "";
+}
+
+function fmtDeb(n) {
+  if (!n) return "—";
+  return "$ " + n.toLocaleString("es-AR");
+}
+
+var debMesActual = "junio-2026";
+
+function renderDebitos(mes) {
+  if (mes) debMesActual = mes;
+  cerrarAdmSidenav();
+  // desactivar tabs de período y activar sidebar
+  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+    var t = document.getElementById("adm-tab-" + p);
+    if (t) t.className = "adm-tab";
+  });
+  admDesactivarSidebar();
+  var sd = document.getElementById("adm-sidenav-debitos");
+  if (sd) sd.className = "adm-sidenav-btn active";
+
+  var filas = DEBITOS[debMesActual] || [];
+
+  // opciones de mes disponibles
+  var meses = Object.keys(DEBITOS);
+  var opsMes = meses.map(function(m) {
+    return '<option value="' + m + '"' + (m === debMesActual ? " selected" : "") + ">" + m + "</option>";
+  }).join("");
+
+  // stats
+  var totDH = 0, totDG = 0, totT = 0;
+  filas.forEach(function(d) { totDH += d.dh; totDG += d.dg; totT += d.total; });
+
+  var html = '<div class="deb-toolbar">'
+    + '<select class="deb-mes-sel" id="debMesSel" onchange="renderDebitos(this.value)">' + opsMes + '</select>'
+    + '<button class="deb-btn deb-btn-pri" onclick="imprimirDebitos()">🖨 Imprimir</button>'
+    + '<span class="deb-saved-msg" id="debSavedMsg">Guardado ✓</span>'
+    + '</div>';
+
+  html += '<div class="deb-stats">'
+    + '<div class="deb-stat"><div class="deb-stat-lbl">Facturas</div><div class="deb-stat-val">' + filas.length + '</div></div>'
+    + '<div class="deb-stat"><div class="deb-stat-lbl">Déb. Honorarios</div><div class="deb-stat-val deb-neg">' + fmtDeb(totDH) + '</div></div>'
+    + '<div class="deb-stat"><div class="deb-stat-lbl">Déb. Gastos</div><div class="deb-stat-val deb-neg">' + fmtDeb(totDG) + '</div></div>'
+    + '<div class="deb-stat"><div class="deb-stat-lbl">Total debitado</div><div class="deb-stat-val deb-neg">' + fmtDeb(totT) + '</div></div>'
+    + '</div>';
+
+  html += '<div class="deb-table-wrap"><table class="deb-table">'
+    + '<thead><tr>'
+    + '<th>#</th><th>Factura</th><th>O.Social</th>'
+    + '<th>Deb.Hon.</th><th>Deb.Gas.</th><th>Total deb.</th>'
+    + '<th style="text-align:center">Pág.</th>'
+    + '<th class="th-nota" style="min-width:180px">Anotaciones</th>'
+    + '</tr></thead><tbody>';
+
+  filas.forEach(function(d, i) {
+    var notaKey = d.f + "_" + i;
+    var notaGuardada = debLeerNota(debMesActual, notaKey);
+    var tieneNota = notaGuardada.trim().length > 0;
+    var placeholderBase = d.nota_fija || "";
+    var totalClass = d.total === 0 ? "deb-zero" : "deb-neg";
+
+    html += '<tr>'
+      + '<td style="color:#9ca3af;font-size:0.68rem;text-align:center">' + (i+1) + '</td>'
+      + '<td style="font-family:monospace;font-size:0.72rem">' + d.f + '</td>'
+      + '<td>' + d.os + '</td>'
+      + '<td class="deb-neg">' + (d.dh > 0 ? fmtDeb(d.dh) : '—') + '</td>'
+      + '<td class="deb-neg">' + (d.dg > 0 ? fmtDeb(d.dg) : '—') + '</td>'
+      + '<td class="' + totalClass + '">' + (d.total > 0 ? fmtDeb(d.total) : '—') + '</td>'
+      + '<td style="text-align:center">' + d.pag + '</td>'
+      + '<td>'
+      + (placeholderBase ? '<div style="font-size:0.65rem;color:#9ca3af;margin-bottom:3px">' + placeholderBase + '</div>' : '')
+      + '<textarea class="deb-nota-inp' + (tieneNota ? ' tiene-nota' : '') + '" rows="2"'
+      + ' data-mes="' + debMesActual + '" data-key="' + notaKey + '"'
+      + ' placeholder="Agregar anotación…">' + notaGuardada + '</textarea>'
+      + '</td>'
+      + '</tr>';
+  });
+
+  html += '<tr class="deb-total-row">'
+    + '<td colspan="3">TOTAL</td>'
+    + '<td class="deb-neg">' + fmtDeb(totDH) + '</td>'
+    + '<td class="deb-neg">' + fmtDeb(totDG) + '</td>'
+    + '<td class="deb-neg">' + fmtDeb(totT) + '</td>'
+    + '<td></td><td></td></tr>';
+
+  html += '</tbody></table></div>';
+
+  document.getElementById("adm-content").innerHTML = html;
+
+  // guardar automáticamente al escribir
+  document.querySelectorAll(".deb-nota-inp").forEach(function(el) {
+    el.addEventListener("input", function() {
+      debGuardarNota(this.dataset.mes, this.dataset.key, this.value);
+      this.className = "deb-nota-inp" + (this.value.trim().length > 0 ? " tiene-nota" : "");
+      var msg = document.getElementById("debSavedMsg");
+      if (msg) { msg.style.display = "inline"; clearTimeout(msg._t); msg._t = setTimeout(function(){ msg.style.display="none"; }, 1800); }
+    });
+  });
+}
+
+function imprimirDebitos() {
+  window.print();
+}
+</script>
+
+<!-- MODAL IMPORTAR LIQUIDACIÓN -->
+<div id="importModal" class="imp-overlay" style="display:none" onclick="if(event.target===this)cerrarImportModal()">
+  <div class="imp-box">
+    <div class="imp-hdr">
+      <div>
+        <h3>Importar Liquidación</h3>
+        <p>Procesar CEOT.xlsx + ART.xlsx → Sheet</p>
+      </div>
+      <button class="imp-close" onclick="cerrarImportModal()">✕</button>
+    </div>
+    <div class="imp-body">
+
+      <!-- Mes -->
+      <div class="imp-field">
+        <label class="imp-label">Mes a importar</label>
+        <select id="impMes" class="imp-select">
+          <option value="mayo">Mayo 2026</option>
+          <option value="junio">Junio 2026</option>
+          <option value="julio" selected>Julio 2026</option>
+          <option value="agosto">Agosto 2026</option>
+        </select>
+      </div>
+
+      <!-- Archivos -->
+      <div class="imp-field">
+        <label class="imp-label">Archivo CEOT.xlsx</label>
+        <input type="file" id="fileCEOT" accept=".xlsx,.xls" class="imp-file-input">
+      </div>
+      <div class="imp-field">
+        <label class="imp-label">Archivo ART.xlsx <span style="color:#9ca3af;font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
+        <input type="file" id="fileART" accept=".xlsx,.xls,.csv" class="imp-file-input" onchange="detectarTotalART()">
+      </div>
+      <div class="imp-field" id="impArtTotalRow" style="display:none">
+        <label class="imp-label" style="font-size:0.65rem;color:#6b7280;font-weight:500">Total ART — verificar y corregir si es necesario</label>
+        <input type="text" id="impArtManual" placeholder="$ importe total ART" style="width:100%;padding:8px 12px;border:1.5px solid #d1d5db;border-radius:7px;font-size:0.95rem;font-family:inherit">
+      </div>
+
+      <button id="btnProcesarArchivos" class="imp-btn-primary" onclick="procesarArchivosImport()">Procesar archivos ▸</button>
+      <div id="impError" class="imp-error"></div>
+
+      <!-- STEP 2 — visible tras procesar -->
+      <div id="impStep2" style="display:none">
+        <hr class="imp-sep">
+        <div class="imp-sec-title">Distribución calculada</div>
+        <div class="imp-table-wrap">
+          <table class="imp-table" id="impPreviewTable">
+            <thead>
+              <tr>
+                <th style="text-align:left">Profesional</th>
+                <th>% OSDE</th>
+                <th>Diferidos $</th>
+                <th>% Dif.</th>
+              </tr>
+            </thead>
+            <tbody id="impPreviewBody"></tbody>
+          </table>
+        </div>
+        <button class="imp-btn-blue" onclick="cargarEnSheet('diferidos')">⬆ Cargar Diferidos en Sheet</button>
+
+        <hr class="imp-sep">
+        <div class="imp-sec-title">Cheques</div>
+        <div class="imp-field">
+          <label class="imp-label">Cheque OSDE</label>
+          <input type="text" id="impChqOSDE" class="imp-input" placeholder="Importe bruto $">
+        </div>
+        <div id="impColonFields"></div>
+        <button class="imp-btn-gray" onclick="calcularDistribucionFinal()">Calcular distribución ▸</button>
+
+        <!-- Resultados -->
+        <div id="impResultados" style="display:none">
+          <hr class="imp-sep">
+          <div class="imp-sec-title">Resultado final</div>
+          <div id="impResultBody"></div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+            <button class="imp-btn-blue" onclick="cargarEnSheet('osde')">⬆ Cargar OSDE en Sheet</button>
+            <button class="imp-btn-blue" onclick="cargarEnSheet('dist')">⬆ Cargar Cheques Colón en Sheet</button>
+          </div>
+        </div>
+
+        <div id="impSheetMsg" class="imp-sheet-msg"></div>
+        <div id="impUndoArea" class="imp-undo-area">
+          <button class="imp-btn-undo" onclick="deshacerImport()">↩ Deshacer: <span id="impUndoLabel"></span></button>
+        </div>
+      </div>
+
+      <!-- SECCIÓN CENTRO MÉDICO -->
+      <hr class="imp-sep" style="margin-top:20px">
+      <div class="imp-sec-title">Centro Médico — Acreditaciones</div>
+      <div class="imp-field">
+        <label class="imp-label">Mes CM</label>
+        <select id="impMesCM" class="imp-select">
+          <option value="mayo">Mayo 2026</option>
+          <option value="junio">Junio 2026</option>
+          <option value="julio" selected>Julio 2026</option>
+          <option value="agosto">Agosto 2026</option>
+        </select>
+      </div>
+      <div class="imp-field">
+        <label class="imp-label">Archivos CM <span style="color:#9ca3af;font-weight:400;text-transform:none;letter-spacing:0">(CSV, selección múltiple)</span></label>
+        <input type="file" id="fileCM" accept=".csv" multiple class="imp-file-input">
+      </div>
+      <button class="imp-btn-gray" onclick="procesarCentroMedico()">Procesar CM ▸</button>
+      <div id="impCMError" class="imp-error"></div>
+
+      <div id="impCMResultados" style="display:none">
+        <div class="imp-table-wrap" style="margin-top:10px">
+          <table class="imp-table">
+            <thead>
+              <tr>
+                <th style="text-align:left">Profesional</th>
+                <th>Importe neto</th>
+                <th>%</th>
+              </tr>
+            </thead>
+            <tbody id="impCMBody"></tbody>
+          </table>
+        </div>
+        <button class="imp-btn-blue" style="margin-top:8px" onclick="cargarCMenSheet()">⬆ Cargar CM en Sheet</button>
+        <div id="impCMMsg" class="imp-sheet-msg"></div>
+        <div id="impCMUndoArea" class="imp-undo-area" style="display:none">
+          <button class="imp-btn-undo" onclick="deshacerCM()">↩ Deshacer CM</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
