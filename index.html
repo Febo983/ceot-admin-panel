@@ -1921,9 +1921,15 @@ function renderMiPanel(doctor) {
 
   pane.innerHTML = html;
 
-  // ── 3. Fetches en paralelo, actualizan DOM cuando llegan ───
+  // ── 3. Fetches en paralelo con timeout de 12s ─────────────
+  function fetchConTimeout(url, ms) {
+    var ctrl = new AbortController();
+    var timer = setTimeout(function(){ ctrl.abort(); }, ms);
+    return fetch(url, { signal: ctrl.signal }).finally(function(){ clearTimeout(timer); });
+  }
+
   // Cajas
-  fetch(CAJAS_ENDPOINT)
+  fetchConTimeout(CAJAS_ENDPOINT, 12000)
     .then(function(r){ return r.json(); })
     .then(function(d) {
       if (d.status !== 'ok') return;
@@ -1938,10 +1944,16 @@ function renderMiPanel(doctor) {
         elGerling.style.color = d.gerling >= 0 ? '#166534' : '#dc2626';
       }
     })
-    .catch(function(){ /* sin conexión */ });
+    .catch(function() {
+      var el2067 = document.getElementById('mp-saldo-2067');
+      var elG    = document.getElementById('mp-saldo-gerling');
+      var msg = '<span style="font-size:0.72rem;color:#9ca3af;">Sin conexión</span>';
+      if (el2067) el2067.innerHTML = msg;
+      if (elG)    elG.innerHTML    = msg;
+    });
 
   // NUN
-  fetch(CIRUGIAS_ENDPOINT + '?doctor=' + encodeURIComponent(doctor.apellido))
+  fetchConTimeout(CIRUGIAS_ENDPOINT + '?doctor=' + encodeURIComponent(doctor.apellido), 12000)
     .then(function(r){ return r.json(); })
     .then(function(d) {
       if (d.status !== 'ok') return;
@@ -1978,9 +1990,13 @@ function renderMiPanel(doctor) {
         }
       }
     })
-    .catch(function(){
+    .catch(function() {
       var elBars = document.getElementById('mp-nun-bars');
-      if (elBars) elBars.innerHTML = '<div style="font-size:0.75rem;color:#9ca3af;text-align:center;padding:8px 0;">No disponible desde archivo local — usá el portal online</div>';
+      if (elBars) elBars.innerHTML = '<div style="font-size:0.75rem;color:#9ca3af;text-align:center;padding:8px 0;">Sin conexión al calendario</div>';
+      var elTotal = document.getElementById('mp-nun-total');
+      var elMes   = document.getElementById('mp-nun-mes');
+      if (elTotal) elTotal.textContent = '—';
+      if (elMes)   elMes.textContent   = '—';
     });
 }
 
