@@ -1921,36 +1921,18 @@ function renderMiPanel(doctor) {
 
   pane.innerHTML = html;
 
-  // ── 3. JSONP helper — evita bloqueo CORS de Google ────────
-  function jsonp(url, callbackName, timeout) {
-    return new Promise(function(resolve, reject) {
-      var cbName = '__jsonp_' + callbackName + '_' + Date.now();
-      var timer = setTimeout(function() {
-        delete window[cbName];
-        if (s.parentNode) s.parentNode.removeChild(s);
-        reject(new Error('timeout'));
-      }, timeout || 12000);
-      window[cbName] = function(data) {
-        clearTimeout(timer);
-        delete window[cbName];
-        if (s.parentNode) s.parentNode.removeChild(s);
-        resolve(data);
-      };
-      var s = document.createElement('script');
-      s.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
-      s.onerror = function() {
-        clearTimeout(timer);
-        delete window[cbName];
-        reject(new Error('error'));
-      };
-      document.head.appendChild(s);
-    });
+  // ── 3. Fetch con timeout ────────────────────────────────────
+  function fetchT(url, ms) {
+    var ctrl = new AbortController();
+    var t = setTimeout(function(){ ctrl.abort(); }, ms);
+    return fetch(url, { signal: ctrl.signal }).finally(function(){ clearTimeout(t); });
   }
 
   // Cajas
-  jsonp(CAJAS_ENDPOINT, 'cajas')
+  fetchT(CAJAS_ENDPOINT, 30000)
+    .then(function(r){ return r.json(); })
     .then(function(d) {
-      if (d.status !== 'ok') return;
+      if (d.status !== 'ok') { console.warn('Cajas error:', d); return; }
       var el2067    = document.getElementById('mp-saldo-2067');
       var elGerling = document.getElementById('mp-saldo-gerling');
       if (el2067) {
@@ -1962,7 +1944,8 @@ function renderMiPanel(doctor) {
         elGerling.style.color = d.gerling >= 0 ? '#166534' : '#dc2626';
       }
     })
-    .catch(function() {
+    .catch(function(e) {
+      console.warn('Cajas fetch error:', e.message);
       var msg = '<span style="font-size:0.72rem;color:#9ca3af;">Sin conexión</span>';
       var el2067 = document.getElementById('mp-saldo-2067');
       var elG    = document.getElementById('mp-saldo-gerling');
@@ -1971,7 +1954,7 @@ function renderMiPanel(doctor) {
     });
 
   // NUN
-  jsonp(CIRUGIAS_ENDPOINT + '?doctor=' + encodeURIComponent(doctor.apellido), 'nun')
+  fetchT(CIRUGIAS_ENDPOINT + '?doctor=' + encodeURIComponent(doctor.apellido), 30000)
     .then(function(d) {
       if (d.status !== 'ok') return;
       var cirugias = d.cirugias || [];
