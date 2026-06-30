@@ -1954,10 +1954,12 @@ function renderMiPanel(doctor) {
     });
 
   // NUN
+  console.log('[NUN] fetch start, doctor:', doctor.apellido);
   fetchT(CIRUGIAS_ENDPOINT + '?doctor=' + encodeURIComponent(doctor.apellido), 30000)
-    .then(function(r) { return r.json(); })
+    .then(function(r) { console.log('[NUN] resp status:', r.status, r.url); return r.json(); })
     .then(function(d) {
-      if (d.status !== 'ok') return;
+      console.log('[NUN] json ok, cirugias:', (d.cirugias||[]).length);
+      if (d.status !== 'ok') { console.warn('[NUN] status!=ok:', d.status); return; }
       var cirugias = d.cirugias || [];
       var nunMap = {}, nunTotal = 0, nunMes = 0;
       var mesActualNum = new Date().getMonth() + 1;
@@ -1998,7 +2000,8 @@ function renderMiPanel(doctor) {
         }
       }
     })
-    .catch(function() {
+    .catch(function(e) {
+      console.error('[NUN] catch error:', e && e.message);
       var elBars = document.getElementById('mp-nun-bars');
       if (elBars) elBars.innerHTML = '<div style="font-size:0.75rem;color:#9ca3af;text-align:center;padding:8px 0;">Sin conexión al calendario</div>';
       var elTotal = document.getElementById('mp-nun-total');
