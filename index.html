@@ -1921,16 +1921,34 @@ function renderMiPanel(doctor) {
 
   pane.innerHTML = html;
 
-  // ── 3. Fetches en paralelo con timeout de 12s ─────────────
-  function fetchConTimeout(url, ms) {
-    var ctrl = new AbortController();
-    var timer = setTimeout(function(){ ctrl.abort(); }, ms);
-    return fetch(url, { signal: ctrl.signal }).finally(function(){ clearTimeout(timer); });
+  // ── 3. JSONP helper — evita bloqueo CORS de Google ────────
+  function jsonp(url, callbackName, timeout) {
+    return new Promise(function(resolve, reject) {
+      var cbName = '__jsonp_' + callbackName + '_' + Date.now();
+      var timer = setTimeout(function() {
+        delete window[cbName];
+        if (s.parentNode) s.parentNode.removeChild(s);
+        reject(new Error('timeout'));
+      }, timeout || 12000);
+      window[cbName] = function(data) {
+        clearTimeout(timer);
+        delete window[cbName];
+        if (s.parentNode) s.parentNode.removeChild(s);
+        resolve(data);
+      };
+      var s = document.createElement('script');
+      s.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cbName;
+      s.onerror = function() {
+        clearTimeout(timer);
+        delete window[cbName];
+        reject(new Error('error'));
+      };
+      document.head.appendChild(s);
+    });
   }
 
   // Cajas
-  fetchConTimeout(CAJAS_ENDPOINT, 12000)
-    .then(function(r){ return r.json(); })
+  jsonp(CAJAS_ENDPOINT, 'cajas')
     .then(function(d) {
       if (d.status !== 'ok') return;
       var el2067    = document.getElementById('mp-saldo-2067');
@@ -1945,16 +1963,15 @@ function renderMiPanel(doctor) {
       }
     })
     .catch(function() {
+      var msg = '<span style="font-size:0.72rem;color:#9ca3af;">Sin conexión</span>';
       var el2067 = document.getElementById('mp-saldo-2067');
       var elG    = document.getElementById('mp-saldo-gerling');
-      var msg = '<span style="font-size:0.72rem;color:#9ca3af;">Sin conexión</span>';
       if (el2067) el2067.innerHTML = msg;
       if (elG)    elG.innerHTML    = msg;
     });
 
   // NUN
-  fetchConTimeout(CIRUGIAS_ENDPOINT + '?doctor=' + encodeURIComponent(doctor.apellido), 12000)
-    .then(function(r){ return r.json(); })
+  jsonp(CIRUGIAS_ENDPOINT + '?doctor=' + encodeURIComponent(doctor.apellido), 'nun')
     .then(function(d) {
       if (d.status !== 'ok') return;
       var cirugias = d.cirugias || [];
@@ -1965,13 +1982,11 @@ function renderMiPanel(doctor) {
         if (!nunVal) return;
         nunTotal++;
         if (cx.fechaIso && parseInt((cx.fechaIso.split('-')[1]||'0'),10) === mesActualNum) nunMes++;
-        // Cada NUN puede ser compuesto (PP0203 + RO0406) — procesar cada parte
         nunVal.split('+').forEach(function(parte) {
           parte = parte.trim();
           if (parte.length < 4) return;
           var prefijo = parte.substring(0, 2).toUpperCase();
-          var numStr  = parte.substring(2, 4);
-          var num     = parseInt(numStr, 10);
+          var num     = parseInt(parte.substring(2, 4), 10);
           if (isNaN(num)) return;
           var key = prefijo + ' · NUN ' + num;
           nunMap[key] = (nunMap[key] || 0) + 1;
