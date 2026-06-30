@@ -1955,6 +1955,7 @@ function renderMiPanel(doctor) {
 
   // NUN
   fetchT(CIRUGIAS_ENDPOINT + '?doctor=' + encodeURIComponent(doctor.apellido), 30000)
+    .then(function(r) { return r.json(); })
     .then(function(d) {
       if (d.status !== 'ok') return;
       var cirugias = d.cirugias || [];
