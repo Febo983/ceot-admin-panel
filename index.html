@@ -1965,8 +1965,17 @@ function renderMiPanel(doctor) {
         if (!nunVal) return;
         nunTotal++;
         if (cx.fechaIso && parseInt((cx.fechaIso.split('-')[1]||'0'),10) === mesActualNum) nunMes++;
-        var key = 'NUN ' + nunVal;
-        nunMap[key] = (nunMap[key] || 0) + 1;
+        // Cada NUN puede ser compuesto (PP0203 + RO0406) — procesar cada parte
+        nunVal.split('+').forEach(function(parte) {
+          parte = parte.trim();
+          if (parte.length < 4) return;
+          var prefijo = parte.substring(0, 2).toUpperCase();
+          var numStr  = parte.substring(2, 4);
+          var num     = parseInt(numStr, 10);
+          if (isNaN(num)) return;
+          var key = prefijo + ' · NUN ' + num;
+          nunMap[key] = (nunMap[key] || 0) + 1;
+        });
       });
       var elTotal = document.getElementById('mp-nun-total');
       var elMes   = document.getElementById('mp-nun-mes');
