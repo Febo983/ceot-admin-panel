@@ -1926,8 +1926,9 @@ function renderMiPanel(doctor) {
       var el2067    = document.getElementById('mp-saldo-2067');
       var elGerling = document.getElementById('mp-saldo-gerling');
       if (el2067) {
-        el2067.textContent = fmt(d.casa2067);
-        el2067.style.color = d.casa2067 >= 0 ? '#166534' : '#dc2626';
+        var v2067 = typeof d.casa2067 === 'number' ? d.casa2067 : parseFloat(String(d.casa2067).replace(/[$\.]/g,'').replace(',','.'));
+        el2067.textContent = fmt(v2067);
+        el2067.style.color = v2067 >= 0 ? '#166534' : '#dc2626';
       }
       if (elGerling) {
         elGerling.textContent = fmt(d.gerling);
