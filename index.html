@@ -1011,6 +1011,27 @@ const MAYO = [
 var PERIODO_IIBB = { mayo:null, junio:null, julio:null, agosto:null, septiembre:null, octubre:null, noviembre:null, diciembre:null };
 var PERIODO_CPSM = { mayo:null, junio:null, julio:null, agosto:null, septiembre:null, octubre:null, noviembre:null, diciembre:null };
 
+function calcularCPSMDesde(rawData, osdeMap) {
+  var difMap = {}, totalDif = 0;
+  rawData.forEach(function(row) {
+    var dif = 0;
+    ["f1","f2","f3","f4","f5","f6","f7"].forEach(function(k){ dif += (row[k]||0); });
+    difMap[row.k] = dif;
+    totalDif += dif;
+  });
+  var totalOsde = 0;
+  Object.keys(osdeMap).forEach(function(k){ totalOsde += osdeMap[k]||0; });
+  var totalCPSM = (totalDif + totalOsde) * 0.05;
+  var result = {};
+  rawData.forEach(function(row) {
+    var k = row.k;
+    var pctDif  = totalDif  > 0 ? (difMap[k] / totalDif)        : 0;
+    var pctOsde = totalOsde > 0 ? ((osdeMap[k]||0) / totalOsde) : 0;
+    result[k] = Math.round(totalCPSM * (pctDif + pctOsde) / 2);
+  });
+  return result;
+}
+
 // ── OSDE y Centro Médico por período ─────────────────────────
 // pendiente:true → mostrar "Pendiente" con nota de timing
 // pendiente:false → m tiene los importes individuales
@@ -1150,6 +1171,8 @@ const MAYO_RAW = [
   { k:"SOULE",        f1:1019230, f2:116662, f3:420816,  f4:420816,  f5:228040  },
   { k:"TRIVELLINI",   f1:2257093, f2:258348, f3:931899,  f4:931899,  f5:504996  },
 ];
+// CPSM Junio = 5% fact. Mayo, distribuido por participacion ponderada
+PERIODO_CPSM.junio = calcularCPSMDesde(MAYO_RAW, PERIOD_EXTRAS.mayo.osde.m);
 const MAYO_FECHAS = ["04/05","08/05","15/05","22/05","29/05"];
 
 // Totales brutos de los cheques diferidos Colón — Julio 2026
@@ -1311,6 +1334,8 @@ async function cargarLiquidacionRemota() {
           });
           JUNIO_RAW.push(row);
         });
+        // CPSM Julio = 5% fact. Junio, distribuido por participacion ponderada
+        if (!PERIODO_CPSM.julio) PERIODO_CPSM.julio = calcularCPSMDesde(JUNIO_RAW, PERIOD_EXTRAS.junio.osde.m);
       }
     }
 
@@ -1684,8 +1709,8 @@ function calcularNetoLocal(pid, doc) {
                : Math.round(iibbData[doc.apellido] || 0);
   var cpsmData = PERIODO_CPSM[pid];
   var cpsm     = esLab ? 0
-               : (cpsmData === null
-                  ? Math.round(bruto * 0.05)
+               : (cpsmData === null || cpsmData[doc.apellido] == null
+                  ? 0
                   : Math.round(cpsmData[doc.apellido] || 0));
   var gaT   = GASTOS_A[pid];
   var ga    = gaT ? Math.round(gaT / 13) : 0;
