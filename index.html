@@ -1335,7 +1335,13 @@ async function cargarLiquidacionRemota() {
           JUNIO_RAW.push(row);
         });
         // CPSM Julio = 5% fact. Junio, distribuido por participacion ponderada
-        if (!PERIODO_CPSM.julio) PERIODO_CPSM.julio = calcularCPSMDesde(JUNIO_RAW, PERIOD_EXTRAS.junio.osde.m);
+        if (!PERIODO_CPSM.julio) {
+          var junioByAp = JUNIO_RAW.map(function(r) {
+            var d = DOCTORES.find(function(x){ return x.junioKey === r.k; });
+            return Object.assign({}, r, { k: d ? d.apellido : r.k });
+          });
+          PERIODO_CPSM.julio = calcularCPSMDesde(junioByAp, PERIOD_EXTRAS.junio.osde.m);
+        }
       }
     }
 
@@ -1661,10 +1667,59 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
         + '</div>';
     }
   }
-  var discText = '⚠ Importes brutos · no incluyen IIBB 3,5% ni CPSM 5%';
-  if (periodoConAporteInd) discText += ' ni Aporte CEOT';
-  discText += '<br>📅 Los cheques se acreditan 48 hs. posteriores a la fecha indicada';
-  html += '<div class="mini-disc">' + discText + '</div>';
+  // ── IIBB y CPSM en pantalla ──────────────────────────────
+  var iibbData2 = PERIODO_IIBB[periodo];
+  var cpsmData2 = PERIODO_CPSM[periodo];
+  var esLab2    = (doctor.user === "labayen");
+  var osdeForNet = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
+  var brutoParaDesc = total + osdeForNet;
+  var iibbAmt  = iibbData2 === null
+               ? Math.round(brutoParaDesc * 0.035)
+               : Math.round((iibbData2[doctor.apellido]||0));
+  var cpsmAmt  = esLab2 ? 0
+               : (cpsmData2 === null || cpsmData2[doctor.apellido] == null
+                  ? 0
+                  : Math.round(cpsmData2[doctor.apellido] || 0));
+
+  var cmForNet = (!cmExt.pendiente && cmExt.val) ? cmExt.val : 0;
+  var gaAmt    = gaPP || 0;
+  var apAmt    = 0;
+  if (periodoConAporteInd) {
+    var pctAp2 = APORTE_CEOT_PCT[doctor.apellido];
+    if (pctAp2 > 0) apAmt = Math.round((total + osdeForNet + cmForNet) * pctAp2);
+  }
+  var netoFinal = total + osdeForNet + cmForNet - iibbAmt - cpsmAmt - gaAmt - apAmt;
+
+  html += '<div class="cheque-list" style="margin-top:6px">';
+  // IIBB
+  html += '<div class="cl-row cl-sep-row cl-neg">'
+    + '<span class="cl-date">—</span>'
+    + '<span class="cl-lbl">IIBB (3,5%)</span>'
+    + '<span class="cl-amt">−' + fmt(iibbAmt) + '</span>'
+    + '</div>';
+  // CPSM
+  if (esLab2) {
+    html += '<div class="cl-row cl-sep-row">'
+      + '<span class="cl-date">—</span>'
+      + '<span class="cl-lbl">CPSM (5%)</span>'
+      + '<span class="cl-amt" style="color:#16a34a;font-size:.75rem">EXENTO ✓</span>'
+      + '</div>';
+  } else {
+    html += '<div class="cl-row cl-sep-row cl-neg">'
+      + '<span class="cl-date">—</span>'
+      + '<span class="cl-lbl">CPSM (5%)</span>'
+      + '<span class="cl-amt">−' + fmt(cpsmAmt) + '</span>'
+      + '</div>';
+  }
+  html += '</div>';
+
+  // ── NETO total ───────────────────────────────────────────
+  html += '<div class="hist-neto-line" style="margin:8px 0 4px;padding:10px 12px;background:#f0fdf4;border-radius:8px">'
+    + '<span style="font-weight:600;color:#166534">NETO ESTIMADO</span>'
+    + '<span style="font-weight:700;font-size:1.1rem;color:#166534">' + fmt(netoFinal) + '</span>'
+    + '</div>';
+
+  html += '<div class="mini-disc">📅 Los cheques se acreditan 48 hs. posteriores a la fecha indicada</div>';
   html += '<button class="btn-pdf" onclick="generarComprobante(\'' + periodo + '\')">📄 Comprobante ' + mes + '</button>';
   container.innerHTML = html;
 }
