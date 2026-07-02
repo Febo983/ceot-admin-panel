@@ -1529,7 +1529,8 @@ async function cargarLiquidacionRemota() {
     // ── FACTURAS ─────────────────────────────────────────────────
     if (data.facturas) {
       FACTURAS_DATA = data.facturas;
-      if (document.getElementById("facturas-colon-tbody")) renderFacturas();
+      var sfBtn = document.getElementById("adm-sidenav-facturas");
+      if (sfBtn && sfBtn.classList.contains("active")) renderFacturas();
     }
 
     // Si ya hay un doctor logueado, actualizar el historial con los nuevos datos
