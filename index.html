@@ -1629,22 +1629,23 @@ function renderMayo(containerId, doctor) {
       + '<span class="cl-lbl">Centro Médico <span style="font-size:.68rem;color:#9ca3af">· incluido en Jun 2026</span></span>'
       + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">ver Junio</span>'
       + '</div>';
-    // Gastos A
+    // Gastos A Mayo → cubre Junio
     var gaTotal = GASTOS_A["mayo"];
     var gaPP    = gaTotal ? Math.round(gaTotal / 13) : null;
     if (gaPP) {
       html += '<div class="cl-row cl-sep-row cl-neg">'
         + '<span class="cl-date">—</span>'
-        + '<span class="cl-lbl">Gastos A</span>'
+        + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:#9ca3af;font-weight:400"> · Junio 2026</span></span>'
         + '<span class="cl-amt">−' + fmt(gaPP) + '</span>'
         + '</div>';
     } else {
       html += '<div class="cl-row cl-sep-row">'
         + '<span class="cl-date">—</span>'
-        + '<span class="cl-lbl">Gastos A</span>'
+        + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:#9ca3af;font-weight:400"> · Junio 2026</span></span>'
         + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">pendiente</span>'
         + '</div>';
     }
+    html += '<div style="font-size:.65rem;color:#9ca3af;padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
     html += '</div>';
 
   } else {
@@ -1758,20 +1759,23 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var prevMesNombre = {"mayo":"Abril","junio":"Mayo","julio":"Junio","agosto":"Julio","septiembre":"Agosto","octubre":"Sep","noviembre":"Oct","diciembre":"Nov"};
   var cmLabel = "Centro Médico" + (prevMesNombre[periodo] ? " · Liquid. " + prevMesNombre[periodo] : "");
   html += extraRow(cmLabel, cmExt);
-  // Gastos A
+  // Gastos A — se descuenta del cheque actual para cubrir gastos del mes siguiente
+  var sigMesNombre = {"mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre"};
+  var gaLabelMes = sigMesNombre[periodo] ? " · " + sigMesNombre[periodo] + " 2026" : "";
   if (gaPP) {
     html += '<div class="cl-row cl-sep-row cl-neg">'
       + '<span class="cl-date">—</span>'
-      + '<span class="cl-lbl">Gastos A</span>'
+      + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:#9ca3af;font-weight:400">' + gaLabelMes + '</span></span>'
       + '<span class="cl-amt">−' + fmt(gaPP) + '</span>'
       + '</div>';
   } else {
     html += '<div class="cl-row cl-sep-row">'
       + '<span class="cl-date">—</span>'
-      + '<span class="cl-lbl">Gastos A</span>'
+      + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:#9ca3af;font-weight:400">' + gaLabelMes + '</span></span>'
       + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">pendiente</span>'
       + '</div>';
   }
+  html += '<div style="font-size:.65rem;color:#9ca3af;padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
   html += '</div>';
 
   // Aporte CEOT (desde julio en adelante)
