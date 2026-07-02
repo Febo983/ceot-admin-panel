@@ -2269,18 +2269,15 @@ function renderFacturas() {
     if (!lista || lista.length === 0) {
       return h + '<div style="padding:10px;color:#9a8c78;font-size:0.82rem">Sin datos cargados.</div>';
     }
-    h += '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>';
-    h += '<th>Período</th><th>PDF</th>';
-    h += '</tr></thead><tbody>';
+    h += '<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">';
     lista.forEach(function(f) {
-      h += '<tr>';
-      h += '<td>' + (f.periodo || '—') + '</td>';
-      h += '<td style="text-align:center">';
-      if (f.link) h += '<a href="' + f.link + '" target="_blank" style="font-size:0.75rem;padding:2px 7px;background:var(--iv2);border:1px solid var(--iv3);cursor:pointer;text-decoration:none;color:#1a1a1a">Ver</a>';
-      else        h += '<span style="color:#d1d5db">—</span>';
-      h += '</td></tr>';
+      h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--iv1);border-left:3px solid var(--iv3)">';
+      h += '<span style="font-size:0.88rem;font-weight:600;color:var(--ink)">' + (f.periodo || '—') + '</span>';
+      if (f.link) h += '<a href="' + f.link + '" target="_blank" style="font-size:0.75rem;padding:3px 10px;background:var(--iv2);border:1px solid var(--iv3);text-decoration:none;color:#1a1a1a">Ver PDF</a>';
+      else        h += '<span style="font-size:0.75rem;color:#d1d5db">Sin PDF</span>';
+      h += '</div>';
     });
-    h += '</tbody></table></div>';
+    h += '</div>';
     return h;
   }
 
