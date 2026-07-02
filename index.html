@@ -614,9 +614,16 @@ body {
 .deb-stat-lbl { font-size:0.65rem; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
 .deb-stat-val { font-size:1rem; font-weight:700; color:#1a1a1a; margin-top:2px; }
 @media print {
+  .no-print,
   #adminView .adm-header, #adminView .adm-tabs, #adminView .adm-footer,
+  .adm-sidenav, .adm-sidenav-overlay, #admOverlay,
   .deb-toolbar button, .deb-btn { display:none !important; }
   .deb-nota-inp { border:none; background:transparent; resize:none; }
+  .adm-layout { display:block !important; }
+  .adm-main { margin:0 !important; padding:0 !important; }
+  .adm-card { box-shadow:none !important; border:none !important; }
+  body { background:#fff !important; }
+  .adm-table { font-size:0.75rem; }
 }
 .adm-kpis { display: flex; gap: 8px; margin-bottom: 14px; }
 .adm-kpi {
@@ -2521,7 +2528,16 @@ function renderAdminPanel(periodo) {
   html += '</tr>';
 
   html += '</tbody></table></div>';
+
+  // ── Botón PDF ──
+  var periodoLabel = periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' 2026';
+  html += '<div style="text-align:right;margin-top:14px" class="no-print">'
+    + '<button onclick="window.print()" style="background:#1a1a1a;color:#fff;border:none;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit">⬇ Descargar PDF</button>'
+    + '</div>';
+
   container.innerHTML = html;
+  // Título para impresión
+  document.title = 'CEOT · Distribución ' + periodoLabel;
 }
 
 function handleLogin() {
