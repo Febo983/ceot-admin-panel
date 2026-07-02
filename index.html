@@ -3569,9 +3569,12 @@ function abrirWAGastosA(periodo) {
   if (!gaTotal) { alert("No hay datos de Gastos A para " + periodo + "."); return; }
   var gaInd = Math.round(gaTotal / 13);
   var mesLabel = periodo.charAt(0).toUpperCase() + periodo.slice(1) + " 2026";
+  var sigMes = { mayo:"Junio", junio:"Julio", julio:"Agosto", agosto:"Septiembre",
+                 septiembre:"Octubre", octubre:"Noviembre", noviembre:"Diciembre" };
+  var gaLabel = (sigMes[periodo] || mesLabel) + " 2026";
 
   var sub = document.getElementById("waModalSub");
-  if (sub) sub.textContent = mesLabel + " · Gastos A por persona: " + fmt(gaInd);
+  if (sub) sub.textContent = "OSDE " + mesLabel + " · Gastos A " + gaLabel + " · $" + fmt(gaInd) + " p/persona";
 
   var listado = document.getElementById("waListado");
   if (!listado) return;
@@ -3592,19 +3595,19 @@ function abrirWAGastosA(periodo) {
     var mensaje;
     if (osdeVal > 0 && diff >= 0) {
       mensaje = "Hola Dr./Dra. " + nombre
-        + "! El Gastos A de " + mesLabel + " es *" + fmt(gaInd) + "*."
+        + "! El Gastos A de " + gaLabel + " es *" + fmt(gaInd) + "*."
         + " Tu cheque de OSDE es *" + fmt(osdeVal) + "*,"
         + " te transferimos la diferencia de *$" + fmt(diff) + "*."
         + " Saludos, Marcelo.";
     } else if (osdeVal > 0 && diff < 0) {
       mensaje = "Hola Dr./Dra. " + nombre
-        + "! El Gastos A de " + mesLabel + " es *" + fmt(gaInd) + "*."
+        + "! El Gastos A de " + gaLabel + " es *" + fmt(gaInd) + "*."
         + " Tu cheque de OSDE es *" + fmt(osdeVal) + "*,"
         + " por favor transferi *$" + fmt(Math.abs(diff)) + "* a @cuenta.ceot."
         + " Saludos, Marcelo.";
     } else {
       mensaje = "Hola Dr./Dra. " + nombre
-        + "! El Gastos A de " + mesLabel + " es *" + fmt(gaInd) + "*."
+        + "! El Gastos A de " + gaLabel + " es *" + fmt(gaInd) + "*."
         + " El cheque de OSDE esta pendiente, te avisamos cuando este disponible."
         + " Saludos, Marcelo.";
     }    rows.push({ doc: doc, nombre: nombre, osdeVal: osdeVal, diff: diff, mensaje: mensaje });
