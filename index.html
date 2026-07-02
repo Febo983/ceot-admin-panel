@@ -1629,8 +1629,8 @@ function renderMayo(containerId, doctor) {
       + '<span class="cl-lbl">Centro Médico <span style="font-size:.68rem;color:#9ca3af">· incluido en Jun 2026</span></span>'
       + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">ver Junio</span>'
       + '</div>';
-    // Gastos A Mayo → cubre Junio
-    var gaTotal = GASTOS_A["mayo"];
+    // Gastos A Mayo → descuenta gastos de Junio
+    var gaTotal = GASTOS_A["junio"];
     var gaPP    = gaTotal ? Math.round(gaTotal / 13) : null;
     if (gaPP) {
       html += '<div class="cl-row cl-sep-row cl-neg">'
@@ -1731,7 +1731,9 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
 
   var vals = [row.f1, row.f2, row.f3, row.f4, row.f5];
   var total = vals.reduce(function(a,b){return a+b;}, 0);
-  var gaTotal = GASTOS_A[periodo];
+  // Gastos A: se descuentan del cheque actual para cubrir el mes siguiente
+  var _gaSigMes = {mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
+  var gaTotal = GASTOS_A[_gaSigMes[periodo]] !== undefined ? GASTOS_A[_gaSigMes[periodo]] : null;
   var gaPP    = gaTotal ? Math.round(gaTotal / 13) : null;
   var osdeExt = getExtra(periodo, "osde", doctor.apellido);
   var cmExt   = getExtra(periodo, "cm",   doctor.apellido);
@@ -1900,7 +1902,8 @@ function calcularNetoLocal(pid, doc) {
                : (cpsmData === null || cpsmData[doc.apellido] == null
                   ? 0
                   : Math.round(cpsmData[doc.apellido] || 0));
-  var gaT   = GASTOS_A[pid];
+  var _gaSig = {mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
+  var gaT   = GASTOS_A[_gaSig[pid]] !== undefined ? GASTOS_A[_gaSig[pid]] : null;
   var ga    = gaT ? Math.round(gaT / 13) : 0;
   // Aporte CEOT — aplica desde Julio 2026; base = Colón + OSDE + CEM
   var periodoConAporte = APORTE_CEOT_DESDE.indexOf(pid) !== -1;
@@ -3617,7 +3620,8 @@ function accGuardarTodo() {
 // ══════ WA GASTOS A ══════════════════════════════════════════
 
 function abrirWAGastosA(periodo) {
-  var gaTotal = GASTOS_A[periodo];
+  var _gaSig = {mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
+  var gaTotal = GASTOS_A[_gaSig[periodo]] || null;
   if (!gaTotal) { alert("No hay datos de Gastos A para " + periodo + "."); return; }
   var gaInd = Math.round(gaTotal / 13);
   var mesLabel = periodo.charAt(0).toUpperCase() + periodo.slice(1) + " 2026";
