@@ -3518,7 +3518,7 @@ function renderAccesos(filtro) {
 function accEliminar(id) {
   if (!confirm("¿Eliminar este acceso?")) return;
   ACCESOS_DATA = ACCESOS_DATA.filter(function(a) { return a.id !== id; });
-  accGuardarCustom();
+  accGuardarTodo();
   renderAccesos();
 }
 
