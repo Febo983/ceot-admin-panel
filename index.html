@@ -3589,34 +3589,32 @@ function abrirWAGastosA(periodo) {
     }
 
     var diff = osdeVal - gaInd;
-    var lineaOsde = osdeVal > 0
-      ? "El importe de su cheque de OSDE es de *" + fmt(osdeVal) + "*."
-      : "El importe de su cheque de OSDE está pendiente de confirmación.";
-
-    var lineaResultado;
+    var mensaje;
     if (osdeVal > 0 && diff >= 0) {
-      lineaResultado = "Una vez aplicado el descuento, se le acreditará la diferencia de *" + fmt(diff) + "*.";
+      mensaje = "Hola Dr./Dra. " + nombre
+        + "! El Gastos A de " + mesLabel + " es *" + fmt(gaInd) + "*."
+        + " Tu cheque de OSDE es *" + fmt(osdeVal) + "*,"
+        + " te transferimos la diferencia de *$" + fmt(diff) + "*."
+        + " Saludos, Marcelo.";
     } else if (osdeVal > 0 && diff < 0) {
-      lineaResultado = "Como el cheque de OSDE no cubre el total, le solicitamos transferir *" + fmt(Math.abs(diff)) + "* a la cuenta del CEOT.";
+      mensaje = "Hola Dr./Dra. " + nombre
+        + "! El Gastos A de " + mesLabel + " es *" + fmt(gaInd) + "*."
+        + " Tu cheque de OSDE es *" + fmt(osdeVal) + "*,"
+        + " por favor transferi *$" + fmt(Math.abs(diff)) + "* a @cuenta.ceot."
+        + " Saludos, Marcelo.";
     } else {
-      lineaResultado = "Quedamos a disposición para coordinar el descuento.";
-    }
-
-    var mensaje = "Estimado/a Dr./Dra. " + nombre
-      + ", le informamos que el importe correspondiente a Gastos A de " + mesLabel
-      + " es de *" + fmt(gaInd) + "*, y será descontado del cheque de OSDE. "
-      + lineaOsde + " "
-      + lineaResultado
-      + " Saludos, Marcelo.";
-
-    rows.push({ doc: doc, nombre: nombre, osdeVal: osdeVal, diff: diff, mensaje: mensaje });
+      mensaje = "Hola Dr./Dra. " + nombre
+        + "! El Gastos A de " + mesLabel + " es *" + fmt(gaInd) + "*."
+        + " El cheque de OSDE esta pendiente, te avisamos cuando este disponible."
+        + " Saludos, Marcelo.";
+    }    rows.push({ doc: doc, nombre: nombre, osdeVal: osdeVal, diff: diff, mensaje: mensaje });
   });
 
   listado.innerHTML = rows.map(function(r) {
     var url = "https://wa.me/" + r.doc.wapp + "?text=" + encodeURIComponent(r.mensaje);
     var preview = r.mensaje.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
     var tagColor = r.osdeVal <= 0 ? '#9a8c78' : (r.diff >= 0 ? '#16a34a' : '#dc2626');
-    var tagTxt   = r.osdeVal <= 0 ? 'OSDE pend.' : (r.diff >= 0 ? 'Acredita ' + fmt(r.diff) : 'Debe ' + fmt(Math.abs(r.diff)));
+    var tagTxt   = r.osdeVal <= 0 ? 'OSDE pendiente' : (r.diff >= 0 ? '+ Te transferimos ' + fmt(r.diff) : '- Debe transferir ' + fmt(Math.abs(r.diff)));
     return '<div style="background:#fff;border:1px solid #e2dbd0;border-radius:8px;padding:10px 12px">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
       + '<span style="font-size:0.78rem;font-weight:700;color:#1a1a1a">' + r.doc.nombre + '</span>'
