@@ -775,6 +775,128 @@ body {
   cursor: pointer; font-family: inherit;
 }
 .imp-btn-undo:hover { background: #f3f4f6; }
+
+/* ═══════════════════════════════════════════
+   ESTILO: MINIMALISM · MARFIL
+   Swiss Design — typography-first, sharp, clean
+   ═══════════════════════════════════════════ */
+:root {
+  --iv0: #F5F1E8;   /* marfil base — body */
+  --iv1: #FDFAF5;   /* marfil claro — tarjetas */
+  --iv2: #EDE9DF;   /* marfil medio — fondos secundarios */
+  --iv3: #D8D3C8;   /* regla / bordes */
+  --ink: #1a1a1a;
+  --ink-lt: #6b7280;
+}
+
+/* ── FONDO GENERAL ── */
+body { background: var(--iv0); }
+
+/* ── LOGIN ── */
+.login-card {
+  background: var(--iv1);
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  box-shadow: none;
+}
+.field input {
+  background: var(--iv1);
+  border-color: var(--iv3);
+  border-radius: 0;
+}
+.field input:focus { border-color: var(--ink); }
+.btn-login { border-radius: 0; }
+
+/* ── PORTAL CARD ── */
+.portal-header { border-radius: 0; }
+.portal-card {
+  background: var(--iv1);
+  border: 2px solid var(--ink);
+  border-top: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ── TABS ── */
+.period-tabs { background: var(--iv2); border-bottom-color: var(--iv3); }
+.period-tab  { border-radius: 0; }
+.tab-pane    { background: var(--iv1); }
+
+/* ── DISCLAIMER ── */
+.disclaimer  { background: var(--iv2); border-color: var(--iv3); border-radius: 0; }
+
+/* ── SUMMARY CHIP ── */
+.schip,
+.schip-abril,.schip-mayo,.schip-junio,.schip-julio,.schip-gastosa,.schip-gastosa-pend {
+  background: var(--iv2);
+  border: none;
+  border-left: 3px solid var(--ink);
+  border-radius: 0;
+}
+
+/* ── CHEQUE CARDS ── */
+.ch {
+  background: var(--iv2);
+  border-color: var(--iv3);
+  border-radius: 0;
+  border-left-width: 2px;
+}
+.ch.abril,.ch.mayo,.ch.junio,.ch.julio { border-left-color: var(--ink); }
+.ch.total-row { background: var(--iv2); border-color: var(--iv3); }
+.chtag,.chtag-gray,.chtag-green,.chtag-blue,.chtag-violet,.chtag-teal {
+  background: var(--iv0); border-color: var(--iv3); border-radius: 0; color: var(--ink);
+}
+.ch.total-row .chtag { background: var(--iv0); color: #166534; border-color: #bbf7d0; }
+
+/* ── CHI ITEMS ── */
+.chi { background: var(--iv1); border-color: var(--iv3); border-radius: 0; }
+
+/* ── PERÍODO TOTAL + CHEQUE LIST ── */
+.period-total {
+  background: var(--iv2);
+  border-color: var(--iv3);
+  border-radius: 0;
+}
+.cheque-list {
+  background: var(--iv1);
+  border-color: var(--iv3);
+  border-radius: 0;
+}
+.cl-row          { border-color: var(--iv3); }
+.cl-row.cl-sep-row { background: var(--iv2); }
+
+/* ── MI PANEL ── */
+.mp-card  { background: var(--iv2); border-color: var(--iv3); border-radius: 0; }
+.mp-mini  { background: var(--iv1); border-color: var(--iv3); border-radius: 0; }
+.mp-link-card { background: var(--iv1); border-color: var(--iv3); border-radius: 0; }
+.mp-bar-track { background: var(--iv3); }
+.mp-section-label::before,.mp-section-label::after { background: var(--iv3); }
+.mp-mov-row { border-color: var(--iv3); }
+
+/* ── NOTA PILL ── */
+.nota-pill { background: var(--iv2); border-color: var(--iv3); border-radius: 0; }
+
+/* ── HISTORIAL ── */
+.hist-newspaper { background: var(--iv1); border: 2px solid var(--ink); border-radius: 0; }
+.hist-period-section { border-color: var(--iv3); }
+.hist-rule { border-color: var(--iv3); }
+.hist-period-badge { background: var(--iv2); border-color: var(--iv3); border-radius: 0; }
+
+/* ── BADGES ── */
+.tbadge { border-radius: 0; }
+.tb-act { background: var(--iv1); }
+.tb-ind { background: var(--iv1); }
+.tb-ant { background: var(--iv2); }
+
+/* ── BOTONES ── */
+.btn-pdf    { border-radius: 0; }
+.btn-logout { border-radius: 0; }
+
+/* ── NETO ESTIMADO EN VISTA INDIVIDUAL ── */
+.hist-neto-line[style] { border-radius: 0 !important; background: var(--iv2) !important; color: var(--ink) !important; }
+
+/* ── LOGO ── */
+.logo-icon { border-radius: 0; }
 </style>
 </head>
 <body>
@@ -1714,9 +1836,9 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   html += '</div>';
 
   // ── NETO total ───────────────────────────────────────────
-  html += '<div class="hist-neto-line" style="margin:8px 0 4px;padding:10px 12px;background:#f0fdf4;border-radius:8px">'
-    + '<span style="font-weight:600;color:#166534">NETO ESTIMADO</span>'
-    + '<span style="font-weight:700;font-size:1.1rem;color:#166534">' + fmt(netoFinal) + '</span>'
+  html += '<div class="hist-neto-line" style="margin:8px 0 4px;padding:10px 12px;background:#ede9df;border-radius:0;border-left:3px solid #1a1a1a">'
+    + '<span style="font-weight:700;color:#1a1a1a;letter-spacing:.05em">NETO ESTIMADO</span>'
+    + '<span style="font-weight:700;font-size:1.1rem;color:#1a1a1a">' + fmt(netoFinal) + '</span>'
     + '</div>';
 
   html += '<div class="mini-disc">📅 Los cheques se acreditan 48 hs. posteriores a la fecha indicada</div>';
