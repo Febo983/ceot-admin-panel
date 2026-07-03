@@ -1037,7 +1037,8 @@ body { background: var(--iv0); }
       <div class="adm-sidenav-title">Módulos</div>
       <button class="adm-sidenav-btn" id="adm-sidenav-debitos"     onclick="renderDebitos()">⚠ Débitos</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-pendientes" onclick="renderPendientes()">📋 Pendientes</button>
-      <button class="adm-sidenav-btn" id="adm-sidenav-facturas"   onclick="renderFacturas()">🧾 Facturas</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-facturas"       onclick="renderFacturas()">🧾 Facturas</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-transferencias" onclick="renderTransferencias()">💸 Transferencias</button>
       <div class="adm-sidenav-sep" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
         <span>Accesos</span>
         <button id="btnEditLinks" onclick="toggleEditLinks()" title="Editar links" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:rgba(255,255,255,.35);padding:0 2px">✏</button>
@@ -2291,6 +2292,120 @@ function renderFacturas() {
   document.getElementById("adm-content").innerHTML = html;
 }
 
+// ══════ TRANSFERENCIAS ═══════════════════════════════════════
+
+function renderTransferencias() {
+  cerrarAdmSidenav();
+  admDesactivarSidebar();
+  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+    var t = document.getElementById("adm-tab-" + p);
+    if (t) t.className = "adm-tab";
+  });
+  var sb = document.getElementById("adm-sidenav-transferencias");
+  if (sb) sb.className = "adm-sidenav-btn active";
+
+  var html = '<div class="adm-sec-title" style="margin-top:4px">Notificación de transferencias por WA</div>';
+  html += '<div style="margin-bottom:10px">';
+  html += '<label style="font-size:.72rem;font-weight:700;color:#5c5040;display:block;margin-bottom:3px">Texto del cierre del mensaje</label>';
+  html += '<input type="text" id="tf-label" value="hoy" placeholder="ej: hoy viernes 03/07" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--iv3);background:var(--iv1);font-family:inherit;font-size:.8rem">';
+  html += '</div>';
+  html += '<div style="margin-bottom:10px">';
+  html += '<label style="font-size:.72rem;font-weight:700;color:#5c5040;display:block;margin-bottom:3px">Pegá los datos de la planilla (con encabezado)</label>';
+  html += '<textarea id="tf-paste" rows="7" placeholder="Seleccioná las celdas en Excel/Sheets, Ctrl+C, y pegá acá..." style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--iv3);background:var(--iv1);font-family:monospace;font-size:.72rem;resize:vertical"></textarea>';
+  html += '</div>';
+  html += '<button onclick="procesarTransferencias()" style="background:#1a1a1a;color:#fff;border:none;padding:7px 18px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">Procesar</button>';
+  html += '<div id="tf-cards" style="margin-top:14px"></div>';
+  document.getElementById("adm-content").innerHTML = html;
+}
+
+function procesarTransferencias() {
+  var raw   = (document.getElementById("tf-paste").value || "").trim();
+  var label = (document.getElementById("tf-label").value || "hoy").trim();
+  if (!raw) { alert("Pegá los datos primero."); return; }
+
+  var lines = raw.split('\n').map(function(l){ return l.replace(/\r/,''); }).filter(function(l){ return l.trim(); });
+  if (lines.length < 2) { alert("Necesito al menos el encabezado y una fila de datos."); return; }
+
+  var hdrs = lines[0].split('\t');
+  var c1lbl  = (hdrs[1]||'Cheque 1').trim();
+  var c2lbl  = (hdrs[3]||'Cheque 2').trim();
+
+  var parseNum = function(s) {
+    s = String(s||'').replace(/\s/g,'').replace(/\./g,'').replace(',','.').trim();
+    var n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  };
+
+  var results = [];
+  for (var i = 1; i < lines.length; i++) {
+    var cells = lines[i].split('\t');
+    var profRaw = (cells[0]||'').trim();
+    if (!profRaw) continue;
+    var apellido = profRaw.split(',')[0].trim().toUpperCase();
+    var doc = null;
+    for (var d = 0; d < DOCTORES.length; d++) {
+      if (DOCTORES[d].apellido.toUpperCase() === apellido) { doc = DOCTORES[d]; break; }
+    }
+    var cpsmRaw = (cells[4]||'').trim().toLowerCase();
+    var esExento = cpsmRaw === 'exento';
+    results.push({
+      nombre:    doc ? doc.nombre : profRaw,
+      wapp:      doc ? doc.wapp   : '',
+      c1:        parseNum(cells[1]),
+      osde:      parseNum(cells[2]),
+      c2:        parseNum(cells[3]),
+      cpsm:      esExento ? 0 : parseNum(cells[4]),
+      exento:    esExento,
+      gastos:    parseNum(cells[5]),
+      trans:     parseNum(cells[6])
+    });
+  }
+
+  if (!results.length) { document.getElementById("tf-cards").innerHTML = '<div style="color:#9a8c78;font-size:.8rem">Sin datos reconocidos.</div>'; return; }
+
+  var fmtN = function(n){ return '$ ' + Math.round(Math.abs(n)).toLocaleString('es-AR'); };
+  var rs = 'display:flex;justify-content:space-between;font-size:.75rem;padding:3px 0;border-bottom:0.5px solid var(--iv3)';
+  var cards = '';
+
+  results.forEach(function(r) {
+    var msgLines = ['Hola ' + r.nombre + '!', '', 'Acreditaciones:',
+      '• Cheque Colón ' + c1lbl + ': ' + fmtN(r.c1),
+      '• 2do cheque OSDE: ' + fmtN(r.osde),
+      '• Cheque Colón ' + c2lbl + ': ' + fmtN(r.c2)];
+    if (r.exento) msgLines.push('• CPSM: exento');
+    else if (r.cpsm) msgLines.push('• CPSM: -' + fmtN(r.cpsm));
+    if (r.gastos) msgLines.push('• Prorrateo Gastos A: -' + fmtN(r.gastos));
+    msgLines.push('', 'Te transfiero ' + label + ': ' + fmtN(r.trans));
+    var msg = msgLines.join('\n');
+    var waUrl = r.wapp ? 'https://wa.me/' + r.wapp + '?text=' + encodeURIComponent(msg) : '';
+
+    cards += '<div style="margin-bottom:10px;padding:12px;background:var(--iv1);border-left:3px solid var(--iv3)">';
+    cards += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    cards += '<span style="font-size:.85rem;font-weight:700;color:var(--ink)">' + r.nombre + '</span>';
+    cards += '<span style="font-size:.85rem;font-weight:700;color:#16a34a">' + fmtN(r.trans) + '</span>';
+    cards += '</div>';
+    cards += '<div style="' + rs + '"><span>Cheque Colón ' + c1lbl + '</span><span>' + fmtN(r.c1) + '</span></div>';
+    cards += '<div style="' + rs + '"><span>2do cheque OSDE</span><span>' + fmtN(r.osde) + '</span></div>';
+    cards += '<div style="' + rs + '"><span>Cheque Colón ' + c2lbl + '</span><span>' + fmtN(r.c2) + '</span></div>';
+    if (r.exento) {
+      cards += '<div style="' + rs + '"><span>CPSM</span><span style="color:#9a8c78;font-size:.68rem">exento</span></div>';
+    } else if (r.cpsm) {
+      cards += '<div style="' + rs + '"><span>CPSM</span><span style="color:#dc2626">-' + fmtN(r.cpsm) + '</span></div>';
+    }
+    if (r.gastos) {
+      cards += '<div style="' + rs + '"><span>Prorrateo Gastos A</span><span style="color:#dc2626">-' + fmtN(r.gastos) + '</span></div>';
+    }
+    if (waUrl) {
+      cards += '<a href="' + waUrl + '" target="_blank" style="display:inline-block;margin-top:8px;font-size:.73rem;padding:4px 12px;background:var(--iv2);border:1px solid var(--iv3);text-decoration:none;color:#1a1a1a">Enviar por WA</a>';
+    } else {
+      cards += '<span style="display:inline-block;margin-top:8px;font-size:.7rem;color:#9a8c78">Sin número WA registrado</span>';
+    }
+    cards += '</div>';
+  });
+
+  document.getElementById("tf-cards").innerHTML = cards;
+}
+
 // ══════ LOGIN / LOGOUT ════════════════════════════════════════
 
 // ── Helper: cheque acreditado (fecha + 48hs <= hoy) ──────────
@@ -2342,7 +2457,7 @@ function toggleAdmSidenav() {
 }
 
 function admDesactivarSidebar() {
-  ["debitos","accesos","pendientes"].forEach(function(k) {
+  ["debitos","accesos","pendientes","facturas","transferencias"].forEach(function(k) {
     var b = document.getElementById("adm-sidenav-" + k);
     if (b) b.className = "adm-sidenav-btn";
   });
