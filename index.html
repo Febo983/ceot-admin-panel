@@ -2314,6 +2314,17 @@ function renderTransferencias() {
   html += '<textarea id="tf-paste" rows="7" placeholder="Seleccioná las celdas en Excel/Sheets, Ctrl+C, y pegá acá..." style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid var(--iv3);background:var(--iv1);font-family:monospace;font-size:.72rem;resize:vertical"></textarea>';
   html += '</div>';
   html += '<button onclick="procesarTransferencias()" style="background:#1a1a1a;color:#fff;border:none;padding:7px 18px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit">Procesar</button>';
+  html += '<div style="margin-top:18px;padding:12px;background:var(--iv2);border-left:3px solid var(--iv3);font-size:.75rem;color:#5c5040;line-height:1.7">';
+  html += '<strong style="font-size:.78rem;color:var(--ink)">Cómo usar esta sección</strong><br>';
+  html += '1. Escribí el texto del cierre arriba (ej: <em>hoy viernes 03/07</em>).<br>';
+  html += '2. Abrí la planilla en Excel o Google Sheets.<br>';
+  html += '3. Seleccioná las celdas <strong>con el encabezado incluido</strong> (fila de títulos + todas las filas de datos).<br>';
+  html += '4. Copiá con Ctrl+C y pegá en el área de texto de arriba.<br>';
+  html += '5. Hacé click en <strong>Procesar</strong>.<br>';
+  html += '6. Aparece una tarjeta por doctor — hacé click en <strong>Enviar por WA</strong> para abrir el chat con el mensaje listo.<br>';
+  html += '<br><strong style="font-size:.78rem;color:var(--ink)">Formato esperado de la planilla (columnas en orden)</strong><br>';
+  html += 'Profesional · Cheque fecha 1 · 2do OSDE · Cheque fecha 2 · CPSM · Gastos A · Transfiero';
+  html += '</div>';
   html += '<div id="tf-cards" style="margin-top:14px"></div>';
   document.getElementById("adm-content").innerHTML = html;
 }
