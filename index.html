@@ -1788,7 +1788,9 @@ function renderHome(doctor) {
   // Greeting según hora
   var h = new Date().getHours();
   var saludo = h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
-  document.getElementById("homeGreeting").textContent = saludo + ", " + (doctor.nombre.split(" ")[0]);
+  var partes = doctor.nombre.split(" ").filter(function(p){ return p !== "DR." && p !== "DRA." && p.length > 2; });
+  var primerNombre = partes.length ? partes[0] : doctor.apellido.split(",")[0].trim();
+  document.getElementById("homeGreeting").textContent = saludo + ", " + primerNombre;
 
   // Strip de meses
   var strip = document.getElementById("homeMesStrip");
