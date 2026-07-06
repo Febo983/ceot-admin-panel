@@ -1146,12 +1146,62 @@ body { background: var(--iv0); color: var(--ink); }
 
 /* ── LOGO ── */
 .logo-icon { border-radius: 0; }
+
+/* ── SUELDO B ── */
+.sb-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+.sb-field { display:flex; flex-direction:column; gap:4px; }
+.sb-field label { font-size:0.75rem; color:rgba(245,240,225,.5); }
+.sb-field input, .sb-field select { background:rgba(245,240,225,.07); border:1px solid rgba(245,240,225,.15); border-radius:6px; color:#f5f0e1; padding:7px 10px; font-size:0.9rem; width:100%; }
+.sb-field input:focus { outline:none; border-color:rgba(245,240,225,.4); }
+.sb-persona { background:rgba(245,240,225,.05); border:0.5px solid rgba(245,240,225,.12); border-radius:10px; padding:12px 14px; margin-bottom:8px; }
+.sb-persona-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.sb-persona-nombre { font-weight:700; font-size:0.9rem; }
+.sb-persona-legajo { font-size:0.72rem; color:rgba(245,240,225,.4); }
+.sb-persona-total { font-weight:700; font-size:0.95rem; color:#f5f0e1; }
+.sb-tag { font-size:0.68rem; background:rgba(245,240,225,.1); border-radius:4px; padding:2px 6px; margin-left:6px; color:rgba(245,240,225,.6); }
+.sb-calcular-btn { background:#f5f0e1; color:#111; border:none; border-radius:8px; padding:10px 24px; font-weight:700; font-size:0.9rem; cursor:pointer; margin-top:4px; }
+.sb-calcular-btn:hover { background:#e8e3d0; }
+.sb-print-btn { background:rgba(245,240,225,.1); color:#f5f0e1; border:1px solid rgba(245,240,225,.2); border-radius:6px; padding:6px 14px; font-size:0.8rem; cursor:pointer; }
+.sb-print-btn:hover { background:rgba(245,240,225,.18); }
+.sb-print-all-btn { background:rgba(29,158,117,.2); color:rgba(29,158,117,1); border:1px solid rgba(29,158,117,.35); border-radius:6px; padding:8px 18px; font-size:0.85rem; font-weight:700; cursor:pointer; margin-bottom:16px; }
+.sb-print-all-btn:hover { background:rgba(29,158,117,.3); }
+.sb-toggle { display:flex; align-items:center; gap:8px; font-size:0.8rem; color:rgba(245,240,225,.55); cursor:pointer; }
+.sb-toggle input[type=checkbox] { cursor:pointer; }
+
+/* ── RECIBO IMPRIMIBLE ── */
+.sb-recibo { display:none; }
+@media print {
+  body > *:not(#sb-print-area) { display:none !important; }
+  #sb-print-area { display:block !important; }
+  .sb-recibo { display:block; page-break-after:always; }
+  .sb-recibo:last-child { page-break-after:avoid; }
+  .recibo-wrap { font-family:'Segoe UI',Arial,sans-serif; font-size:11pt; color:#111; padding:1.5cm 2cm; width:21cm; box-sizing:border-box; }
+  .recibo-header { text-align:center; border-bottom:2px solid #111; padding-bottom:8px; margin-bottom:12px; }
+  .recibo-titulo { font-size:15pt; font-weight:800; margin-bottom:2px; }
+  .recibo-sub { font-size:10pt; color:#333; }
+  .recibo-periodo { font-size:12pt; font-weight:700; margin-top:6px; }
+  .recibo-datos { width:100%; border-collapse:collapse; margin-bottom:14px; font-size:10pt; }
+  .recibo-datos td { padding:4px 8px; border:1px solid #ccc; }
+  .recibo-datos td:first-child { font-weight:600; background:#f5f5f5; width:28%; }
+  .recibo-conceptos { width:100%; border-collapse:collapse; margin-bottom:14px; font-size:10.5pt; }
+  .recibo-conceptos th { background:#1a1a1a; color:#fff; padding:6px 10px; text-align:center; border:1px solid #111; }
+  .recibo-conceptos td { padding:6px 10px; border:1px solid #ccc; }
+  .recibo-conceptos td.right { text-align:right; }
+  .recibo-conceptos td.center { text-align:center; }
+  .recibo-total-row { background:#e8e3d0; font-weight:700; }
+  .recibo-son { font-size:10pt; margin-bottom:6px; }
+  .recibo-neto { font-size:13pt; font-weight:800; margin-bottom:20px; border-top:2px solid #111; padding-top:8px; }
+  .recibo-pie { display:flex; justify-content:space-between; margin-top:40px; font-size:10pt; }
+  .recibo-pie div { text-align:center; width:45%; border-top:1px solid #555; padding-top:6px; }
+}
 </style>
 </head>
 <body>
 <div class="app">
 
   <!-- LOGIN -->
+  <div id="sb-print-area" style="display:none"></div>
+
   <div id="loginView" class="login-wrap">
     <div class="login-card">
       <div class="logo-area">
@@ -1338,6 +1388,7 @@ body { background: var(--iv0); color: var(--ink); }
       <button class="adm-sidenav-btn" id="adm-sidenav-facturas"       onclick="renderFacturas()">🧾 Facturas</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-transferencias" onclick="renderTransferencias()">💸 Transferencias</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-totalceot"      onclick="renderTotalCeot()">📊 Total CEOT</button>
+<button class="adm-sidenav-btn" id="adm-sidenav-sueldob"       onclick="renderSueldoB()">💼 Sueldo B</button>
       <div class="adm-sidenav-sep" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
         <span>Accesos</span>
         <button id="btnEditLinks" onclick="toggleEditLinks()" title="Editar links" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:rgba(255,255,255,.35);padding:0 2px">✏</button>
@@ -3038,8 +3089,258 @@ function renderTotalCeot() {
   document.getElementById("adm-content").innerHTML = html;
 }
 
+// ══════ SUELDO B ══════════════════════════════════════════════════
+
+var SB_PERSONAL = [
+  { legajo:"001", nombre:"Catania, Julieta",       cuil:"27-34851315-5", ingreso:"—",          tarifa:null,  facturacion:true,  mensualidad:null },
+  { legajo:"002", nombre:"Falaschini, Laura",       cuil:"27-23478563-5", ingreso:"—",          tarifa:null,  facturacion:true,  mensualidad:null },
+  { legajo:"003", nombre:"Caminos, Paula",           cuil:"27-21750873-3", ingreso:"—",          tarifa:14437, facturacion:true,  mensualidad:null },
+  { legajo:"004", nombre:"Salgan, Elizabeth",        cuil:"27-20330902-9", ingreso:"01/10/2025", tarifa:14437, facturacion:true,  mensualidad:null },
+  { legajo:"005", nombre:"Catania, Josefina",        cuil:"27-37719584-7", ingreso:"—",          tarifa:9300,  facturacion:false, mensualidad:null },
+  { legajo:"006", nombre:"Balliro, Victoria",        cuil:"—",             ingreso:"—",          tarifa:9300,  facturacion:false, mensualidad:null },
+  { legajo:"007", nombre:"Kienitz, Tobias",          cuil:"—",             ingreso:"—",          tarifa:9300,  facturacion:false, mensualidad:null },
+  { legajo:"008", nombre:"Del Pozo, Evelina",        cuil:"—",             ingreso:"07/07/2026", tarifa:9300,  facturacion:false, mensualidad:null },
+  { legajo:"009", nombre:"Pensa, Jimena",            cuil:"—",             ingreso:"01/05/2026", tarifa:9300,  facturacion:false, mensualidad:null },
+  { legajo:"010", nombre:"Programacion CX, Marcela", cuil:"—",            ingreso:"06/07/2026", tarifa:9300,  facturacion:false, mensualidad:1343000 },
+];
+
+var SB_FACTURACION = 130000;
+
+var SB_STATE = {}; // { legajo: { horas, usaMensualidad } }
+
+function sbNumLetras(n) {
+  n = Math.floor(n);
+  var UN = ["","UNO","DOS","TRES","CUATRO","CINCO","SEIS","SIETE","OCHO","NUEVE",
+            "DIEZ","ONCE","DOCE","TRECE","CATORCE","QUINCE","DIECISEIS","DIECISIETE","DIECIOCHO","DIECINUEVE"];
+  var DE = ["","DIEZ","VEINTE","TREINTA","CUARENTA","CINCUENTA","SESENTA","SETENTA","OCHENTA","NOVENTA"];
+  var CE = ["","CIENTO","DOSCIENTOS","TRESCIENTOS","CUATROCIENTOS","QUINIENTOS","SEISCIENTOS","SETECIENTOS","OCHOCIENTOS","NOVECIENTOS"];
+  function cientos(x) {
+    if (x === 100) return "CIEN";
+    var c = Math.floor(x/100), r = x%100, p = [];
+    if (c) p.push(CE[c]);
+    if (r < 20) { if (UN[r]) p.push(UN[r]); }
+    else { var d=Math.floor(r/10),u=r%10; p.push(u ? DE[d]+" Y "+UN[u] : DE[d]); }
+    return p.join(" ");
+  }
+  if (n === 0) return "CERO";
+  var M = Math.floor(n/1000000), mi = Math.floor((n%1000000)/1000), re = n%1000, p = [];
+  if (M) p.push(cientos(M) + (M===1 ? " MILLON" : " MILLONES"));
+  if (mi) p.push((mi===1 ? "MIL" : cientos(mi)+" MIL"));
+  if (re) p.push(cientos(re));
+  return p.join(" ");
+}
+
+function sbMontoLetras(total) {
+  var ent = Math.floor(total);
+  var cts = Math.round((total - ent) * 100);
+  return sbNumLetras(ent) + " PESOS CON " + (cts < 10 ? "0"+cts : cts) + "/100";
+}
+
+function sbFmt(n) {
+  return "$ " + Math.round(n).toLocaleString("es-AR");
+}
+
+function sbCalcTotal(p, horas, usaMensualidad) {
+  var totalHoras = 0, totalFact = 0, totalMens = 0;
+  if (usaMensualidad && p.mensualidad) {
+    totalMens = p.mensualidad;
+  } else if (p.tarifa && horas > 0) {
+    totalHoras = Math.round(horas * p.tarifa);
+  }
+  if (p.facturacion) totalFact = SB_FACTURACION;
+  return { totalHoras: totalHoras, totalFact: totalFact, totalMens: totalMens,
+           total: totalHoras + totalFact + totalMens };
+}
+
+function sbReciboHTML(p, horas, usaMensualidad, periodo) {
+  var c = sbCalcTotal(p, horas, usaMensualidad);
+  if (c.total === 0) return "";
+  var conceptos = "";
+  if (c.totalMens > 0) {
+    conceptos += '<tr><td class="center">001</td><td class="center">1</td><td>Mensualidad</td><td class="right">'+sbFmt(c.totalMens)+'</td></tr>';
+  } else if (c.totalHoras > 0) {
+    conceptos += '<tr><td class="center">001</td><td class="center">'+horas+'</td><td>Horas Extras &mdash; '+horas+' hs</td><td class="right">'+sbFmt(c.totalHoras)+'</td></tr>';
+  }
+  if (c.totalFact > 0) {
+    conceptos += '<tr><td class="center">002</td><td class="center">1</td><td>Facturacion</td><td class="right">'+sbFmt(c.totalFact)+'</td></tr>';
+  }
+  var conceptoTotal = (c.totalHoras > 0 && c.totalFact > 0) ? "Hs+Fc"
+                    : (c.totalMens > 0 && c.totalFact > 0) ? "Mens+Fc"
+                    : (c.totalMens > 0) ? "Mensualidad"
+                    : (c.totalFact > 0) ? "Facturacion"
+                    : "Horas Extras";
+  return '<div class="sb-recibo"><div class="recibo-wrap">'
+    + '<div class="recibo-header">'
+    + '<div class="recibo-titulo">CEOT &mdash; Clinica de Traumatologia Colon</div>'
+    + '<div class="recibo-sub">14 de Julio 2067, Mar del Plata</div>'
+    + '<div class="recibo-periodo">RECIBO DE HABERES &mdash; SUELDO B &mdash; PERIODO '+periodo+'</div>'
+    + '</div>'
+    + '<table class="recibo-datos">'
+    + '<tr><td>Legajo</td><td>'+p.legajo+'</td><td>CUIL</td><td>'+p.cuil+'</td></tr>'
+    + '<tr><td>Apellido y Nombres</td><td colspan="3">'+p.nombre+'</td></tr>'
+    + '<tr><td>Ingreso</td><td>'+p.ingreso+'</td><td>Tarea</td><td>Administrativo</td></tr>'
+    + '<tr><td>Categoria</td><td colspan="3">Prof. de nivel medio Adm.</td></tr>'
+    + '</table>'
+    + '<table class="recibo-conceptos">'
+    + '<thead><tr><th>COD</th><th>CANTIDAD</th><th>CONCEPTO</th><th>IMPORTE</th></tr></thead>'
+    + '<tbody>'+conceptos
+    + '<tr class="recibo-total-row"><td class="center">001</td><td class="center">30</td><td>'+conceptoTotal+'</td><td class="right">'+sbFmt(c.total)+'</td></tr>'
+    + '</tbody></table>'
+    + '<div class="recibo-son"><strong>SON:</strong> '+sbMontoLetras(c.total)+'</div>'
+    + '<div class="recibo-neto"><strong>NETO A COBRAR: '+sbFmt(c.total)+'</strong></div>'
+    + '<div class="recibo-pie">'
+    + '<div>_______________________<br>Firma y Aclaracion</div>'
+    + '<div>_______________________<br>Recibi Conforme</div>'
+    + '</div></div></div>';
+}
+
+function sbActualizarCard(legajo) {
+  var p = SB_PERSONAL.find(function(x){ return x.legajo === legajo; });
+  if (!p) return;
+  var horasEl = document.getElementById("sb-h-"+legajo);
+  var mensEl  = document.getElementById("sb-mens-"+legajo);
+  var totalEl = document.getElementById("sb-total-"+legajo);
+  var horas = horasEl ? parseFloat(horasEl.value)||0 : 0;
+  var usaMens = mensEl ? mensEl.checked : false;
+  var c = sbCalcTotal(p, horas, usaMens);
+  if (totalEl) totalEl.textContent = c.total > 0 ? sbFmt(c.total) : "—";
+  if (horasEl) horasEl.disabled = usaMens;
+}
+
+function renderSueldoB() {
+  cerrarAdmSidenav();
+  admDesactivarSidebar();
+  var btn = document.getElementById("adm-sidenav-sueldob");
+  if (btn) btn.className = "adm-sidenav-btn active";
+
+  var hoy = new Date();
+  var mesActual = hoy.getMonth() + 1;
+  var anioActual = hoy.getFullYear();
+
+  var MESES = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+  // Opciones de mes
+  var opsMes = "";
+  for (var m = 1; m <= 12; m++) {
+    var sel = m === mesActual ? " selected" : "";
+    opsMes += '<option value="'+m+'"'+sel+'>'+MESES[m]+'</option>';
+  }
+
+  // Cards de personal
+  var cards = "";
+  SB_PERSONAL.forEach(function(p) {
+    var tags = "";
+    if (p.facturacion) tags += '<span class="sb-tag">Facturacion</span>';
+    if (p.tarifa) tags += '<span class="sb-tag">'+sbFmt(p.tarifa)+'/hs</span>';
+    if (p.mensualidad) tags += '<span class="sb-tag">Mens. disponible</span>';
+
+    var inputs = "";
+    if (p.tarifa) {
+      inputs += '<div class="sb-field" style="margin-bottom:6px"><label>Horas extras</label>'
+             + '<input type="number" id="sb-h-'+p.legajo+'" min="0" step="0.5" placeholder="0" '
+             + 'oninput="sbActualizarCard(\''+p.legajo+'\')" style="width:120px"></div>';
+    }
+    if (p.mensualidad) {
+      inputs += '<label class="sb-toggle"><input type="checkbox" id="sb-mens-'+p.legajo+'" '
+             + 'onchange="sbActualizarCard(\''+p.legajo+'\')"> Usar mensualidad ('+sbFmt(p.mensualidad)+')</label>';
+    }
+
+    cards += '<div class="sb-persona">'
+           + '<div class="sb-persona-header">'
+           + '<div><span class="sb-persona-nombre">'+p.nombre+'</span>'
+           + '<span class="sb-persona-legajo"> &nbsp;Leg.'+p.legajo+'</span>'+tags+'</div>'
+           + '<span class="sb-persona-total" id="sb-total-'+p.legajo+'">—</span>'
+           + '</div>'
+           + inputs
+           + '</div>';
+  });
+
+  var html = '<div class="adm-sec-title" style="margin-top:4px">Sueldo B</div>'
+    + '<div style="padding:0 2px 24px">'
+    + '<div class="sb-form-grid">'
+    + '<div class="sb-field"><label>Mes</label><select id="sb-mes">'+opsMes+'</select></div>'
+    + '<div class="sb-field"><label>Ano</label><input type="number" id="sb-anio" value="'+anioActual+'" min="2026"></div>'
+    + '</div>'
+    + cards
+    + '<button class="sb-calcular-btn" onclick="sbGenerarRecibos()">Generar recibos</button>'
+    + '</div>'
+    + '<div id="sb-resultados" style="padding:0 2px 24px;display:none">'
+    + '<hr style="border-color:rgba(245,240,225,.1);margin-bottom:16px">'
+    + '<button class="sb-print-all-btn" onclick="sbImprimirTodos()">Imprimir todos</button>'
+    + '<div id="sb-lista-recibos"></div>'
+    + '</div>';
+
+  document.getElementById("adm-content").innerHTML = html;
+}
+
+function sbGenerarRecibos() {
+  var MESES = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  var mes  = parseInt(document.getElementById("sb-mes").value);
+  var anio = parseInt(document.getElementById("sb-anio").value);
+  var periodo = MESES[mes].toUpperCase() + " " + anio;
+
+  var lista = "";
+  SB_PERSONAL.forEach(function(p) {
+    var horasEl = document.getElementById("sb-h-"+p.legajo);
+    var mensEl  = document.getElementById("sb-mens-"+p.legajo);
+    var horas    = horasEl ? parseFloat(horasEl.value)||0 : 0;
+    var usaMens  = mensEl ? mensEl.checked : false;
+    var c = sbCalcTotal(p, horas, usaMens);
+    if (c.total === 0) return;
+
+    lista += '<div style="display:flex;justify-content:space-between;align-items:center;'
+           + 'background:rgba(245,240,225,.05);border:0.5px solid rgba(245,240,225,.12);'
+           + 'border-radius:8px;padding:10px 14px;margin-bottom:8px">'
+           + '<div><span style="font-weight:700">'+p.nombre+'</span>'
+           + '<span style="font-size:0.78rem;color:rgba(245,240,225,.45);margin-left:8px">Leg.'+p.legajo+'</span></div>'
+           + '<div style="display:flex;align-items:center;gap:10px">'
+           + '<span style="font-weight:700">'+sbFmt(c.total)+'</span>'
+           + '<button class="sb-print-btn" onclick="sbImprimirUno(\''+p.legajo+'\','+horas+','+usaMens+',\''+periodo+'\')">Imprimir</button>'
+           + '</div></div>';
+  });
+
+  document.getElementById("sb-lista-recibos").innerHTML = lista || '<div style="color:rgba(245,240,225,.35);padding:12px">Sin importes para imprimir.</div>';
+  document.getElementById("sb-resultados").style.display = "block";
+
+  // guardar estado para imprimir todos
+  SB_STATE = {};
+  SB_PERSONAL.forEach(function(p) {
+    var horasEl = document.getElementById("sb-h-"+p.legajo);
+    var mensEl  = document.getElementById("sb-mens-"+p.legajo);
+    SB_STATE[p.legajo] = {
+      horas: horasEl ? parseFloat(horasEl.value)||0 : 0,
+      usaMens: mensEl ? mensEl.checked : false
+    };
+  });
+  SB_STATE._periodo = periodo;
+}
+
+function sbImprimirUno(legajo, horas, usaMens, periodo) {
+  var p = SB_PERSONAL.find(function(x){ return x.legajo === legajo; });
+  if (!p) return;
+  var html = sbReciboHTML(p, horas, usaMens, periodo);
+  var area = document.getElementById("sb-print-area");
+  area.innerHTML = html;
+  window.print();
+  area.innerHTML = "";
+}
+
+function sbImprimirTodos() {
+  var periodo = SB_STATE._periodo || "";
+  var html = "";
+  SB_PERSONAL.forEach(function(p) {
+    var st = SB_STATE[p.legajo];
+    if (!st) return;
+    html += sbReciboHTML(p, st.horas, st.usaMens, periodo);
+  });
+  var area = document.getElementById("sb-print-area");
+  area.innerHTML = html;
+  window.print();
+  area.innerHTML = "";
+}
+
 function admDesactivarSidebar() {
-  ["debitos","accesos","pendientes","facturas","transferencias","totalceot"].forEach(function(k) {
+  ["debitos","accesos","pendientes","facturas","transferencias","totalceot","sueldob"].forEach(function(k) {
     var b = document.getElementById("adm-sidenav-" + k);
     if (b) b.className = "adm-sidenav-btn";
   });
