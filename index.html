@@ -308,6 +308,144 @@ body {
 }
 .btn-pdf:hover { opacity: .82; }
 
+/* ── HOME DASHBOARD ── */
+.home-wrap {
+  background: #111;
+  border-radius: 0 0 10px 10px;
+  padding: 16px 14px 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.18);
+  margin-bottom: 12px;
+}
+.home-greeting {
+  font-size: 0.78rem;
+  color: rgba(245,240,225,0.4);
+  letter-spacing: 0.4px;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+.home-mes-strip {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  margin-bottom: 14px;
+  scrollbar-width: none;
+}
+.home-mes-strip::-webkit-scrollbar { display: none; }
+.home-mes-pill {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 4px 11px;
+  border-radius: 20px;
+  border: 0.5px solid rgba(245,240,225,0.15);
+  background: rgba(245,240,225,0.05);
+  color: rgba(245,240,225,0.4);
+  cursor: pointer;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  transition: all .15s;
+  font-family: inherit;
+}
+.home-mes-pill.active {
+  background: #f5f0e1;
+  color: #111;
+  border-color: #f5f0e1;
+}
+.home-modules-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.home-mod {
+  background: rgba(245,240,225,0.05);
+  border: 0.5px solid rgba(245,240,225,0.1);
+  border-radius: 10px;
+  padding: 12px 6px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: background .13s, border-color .13s;
+}
+.home-mod:hover {
+  background: rgba(245,240,225,0.11);
+  border-color: rgba(245,240,225,0.22);
+}
+.home-mod-highlighted {
+  background: rgba(245,240,225,0.12);
+  border-color: rgba(245,240,225,0.25);
+}
+.home-mod-ico {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+}
+.ico-fin  { background: rgba(29,158,117,0.22); }
+.ico-cli  { background: rgba(55,138,221,0.22); }
+.ico-adm  { background: rgba(127,119,221,0.22); }
+.ico-gst  { background: rgba(216,90,48,0.22); }
+.ico-inf  { background: rgba(245,240,225,0.1); }
+.home-mod-lbl {
+  font-size: 9.5px;
+  color: rgba(245,240,225,0.6);
+  text-align: center;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+.home-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.home-stat-card {
+  background: rgba(245,240,225,0.05);
+  border: 0.5px solid rgba(245,240,225,0.1);
+  border-radius: 10px;
+  padding: 11px 12px;
+  cursor: pointer;
+  transition: background .13s;
+}
+.home-stat-card:hover { background: rgba(245,240,225,0.09); }
+.home-stat-lbl {
+  font-size: 9px;
+  color: rgba(245,240,225,0.35);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.home-stat-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #f5f0e1;
+  line-height: 1;
+}
+.home-stat-sub {
+  font-size: 9.5px;
+  color: rgba(29,158,117,0.85);
+  margin-top: 3px;
+}
+.home-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9.5px;
+  color: rgba(245,240,225,0.22);
+  letter-spacing: 0.3px;
+  padding-top: 10px;
+  border-top: 0.5px solid rgba(245,240,225,0.07);
+}
+.home-dot {
+  display: inline-block;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: rgba(29,158,117,0.8);
+  margin-right: 4px;
+  vertical-align: 1px;
+}
+
 /* ── HISTORIAL ── */
 .hist-newspaper {
   background: white; border: 1px solid #e5e7eb;
@@ -955,6 +1093,7 @@ body { background: var(--iv0); }
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
+        <button class="btn-logout" id="homeBtn" onclick="volverHome()" style="display:none">← Inicio</button>
         <button class="btn-refresh" id="refreshBtn" title="Actualizar datos">↻</button>
         <button class="btn-logout" id="logoutBtn">Salir ✕</button>
       </div>
@@ -962,7 +1101,65 @@ body { background: var(--iv0); }
 
     <div id="notifBanner" style="display:none;background:#fef3c7;border-bottom:1px solid #fcd34d;padding:9px 14px;font-size:0.79rem;color:#92400e;line-height:1.6"></div>
 
-    <div class="portal-card">
+    <!-- HOME DASHBOARD -->
+    <div id="homeView" style="display:none;">
+      <div class="home-wrap">
+        <div class="home-greeting" id="homeGreeting">Buen día</div>
+        <div class="home-mes-strip" id="homeMesStrip"></div>
+        <div class="home-modules-grid">
+          <div class="home-mod" onclick="irTab(tabMesActual())">
+            <div class="home-mod-ico ico-fin">💰</div>
+            <div class="home-mod-lbl">Liquidación</div>
+          </div>
+          <div class="home-mod" onclick="irTab('mipanel')">
+            <div class="home-mod-ico ico-adm">⭐</div>
+            <div class="home-mod-lbl">Mi panel</div>
+          </div>
+          <div class="home-mod" onclick="irTab('historial')">
+            <div class="home-mod-ico ico-cli">📊</div>
+            <div class="home-mod-lbl">Historial</div>
+          </div>
+          <div class="home-mod" onclick="irTab('abril')">
+            <div class="home-mod-ico ico-gst">📋</div>
+            <div class="home-mod-lbl">Abr 2026</div>
+          </div>
+          <div class="home-mod" onclick="irTab('mayo')">
+            <div class="home-mod-ico ico-fin">📋</div>
+            <div class="home-mod-lbl">May 2026</div>
+          </div>
+          <div class="home-mod" onclick="irTab('junio')">
+            <div class="home-mod-ico ico-fin">📋</div>
+            <div class="home-mod-lbl">Jun 2026</div>
+          </div>
+          <div class="home-mod" onclick="irTab('julio')">
+            <div class="home-mod-ico ico-fin">📋</div>
+            <div class="home-mod-lbl">Jul 2026</div>
+          </div>
+          <div class="home-mod home-mod-more" onclick="irTab(tabMesActual()); setTimeout(function(){document.querySelector('.period-tabs').scrollLeft=999},50)">
+            <div class="home-mod-ico ico-inf">＋</div>
+            <div class="home-mod-lbl">Ver todo</div>
+          </div>
+        </div>
+        <div class="home-stats-row">
+          <div class="home-stat-card" id="homeStatNeto">
+            <div class="home-stat-lbl">Tu neto · mes actual</div>
+            <div class="home-stat-val" id="homeNetoVal">—</div>
+            <div class="home-stat-sub" id="homeNetoSub"></div>
+          </div>
+          <div class="home-stat-card" id="homeStatPeriodo">
+            <div class="home-stat-lbl">Período activo</div>
+            <div class="home-stat-val" id="homePeriodoVal" style="font-size:1.1rem">—</div>
+            <div class="home-stat-sub" id="homePeriodoSub"></div>
+          </div>
+        </div>
+        <div class="home-footer">
+          <span><span class="home-dot"></span>Conectado</span>
+          <span>CEOT · 2026</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="portal-card" id="portalCard" style="display:none;">
       <!-- TABS -->
       <div class="period-tabs">
         <button class="period-tab" id="tab-mipanel" data-tab="mipanel">
@@ -1565,6 +1762,65 @@ function fmt(n) {
 }
 
 // ══════ TABS ══════════════════════════════════════════════════
+
+function irTab(tab) {
+  document.getElementById("homeView").style.display = "none";
+  document.getElementById("portalCard").style.display = "block";
+  document.getElementById("homeBtn").style.display = "inline-block";
+  cambiarTab(tab);
+  var el = document.getElementById("tab-" + tab);
+  if (el) el.scrollIntoView({behavior:"smooth", block:"nearest", inline:"center"});
+}
+
+function volverHome() {
+  document.getElementById("portalCard").style.display = "none";
+  document.getElementById("homeView").style.display = "block";
+  document.getElementById("homeBtn").style.display = "none";
+}
+
+function renderHome(doctor) {
+  var MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var MESES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  var MESES_DISP = ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var mesAct = tabMesActual();
+  var mesIdx = MESES.indexOf(mesAct);
+
+  // Greeting según hora
+  var h = new Date().getHours();
+  var saludo = h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
+  document.getElementById("homeGreeting").textContent = saludo + ", " + (doctor.nombre.split(" ")[0]);
+
+  // Strip de meses
+  var strip = document.getElementById("homeMesStrip");
+  strip.innerHTML = "";
+  MESES_DISP.forEach(function(m) {
+    var btn = document.createElement("button");
+    btn.className = "home-mes-pill" + (m === mesAct ? " active" : "");
+    btn.textContent = MESES_CORTO[MESES.indexOf(m)];
+    btn.onclick = function() { irTab(m); };
+    strip.appendChild(btn);
+  });
+
+  // Highlight módulo del mes actual
+  document.querySelectorAll(".home-mod").forEach(function(el) { el.classList.remove("home-mod-highlighted"); });
+
+  // Stat: neto del mes actual
+  var netoVal = "—", netoSub = "";
+  var cn = calcularNetoLocal(mesAct, doctor);
+  if (cn && cn.neto) {
+    netoVal = fmt(cn.neto);
+    netoSub = cn.pendiente ? "estimado (pendiente)" : "neto estimado";
+  }
+  document.getElementById("homeNetoVal").textContent = netoVal;
+  document.getElementById("homeNetoSub").textContent = netoSub;
+
+  // Stat: período
+  var mesLabel = mesAct ? (mesAct.charAt(0).toUpperCase() + mesAct.slice(1) + " 2026") : "—";
+  document.getElementById("homePeriodoVal").textContent = mesLabel;
+  document.getElementById("homePeriodoSub").textContent = "período activo";
+  document.getElementById("homeStatPeriodo").onclick = function() { irTab(mesAct); };
+  document.getElementById("homeStatNeto").onclick = function() { irTab(mesAct); };
+}
 
 function cambiarTab(tab) {
   document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
@@ -2816,8 +3072,12 @@ function handleLogin() {
   actualizarTabsNeto(doctor);
   cambiarTab(tabMesActual());
 
+  renderHome(doctor);
+
   document.getElementById("loginView").style.display  = "none";
   document.getElementById("portalView").style.display = "block";
+  document.getElementById("homeView").style.display   = "block";
+  document.getElementById("portalCard").style.display = "none";
   document.getElementById("usernameInput").value = "";
   document.getElementById("passwordInput").value = "";
 }
