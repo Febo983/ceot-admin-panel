@@ -1039,6 +1039,7 @@ body { background: var(--iv0); }
       <button class="adm-sidenav-btn" id="adm-sidenav-pendientes" onclick="renderPendientes()">📋 Pendientes</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-facturas"       onclick="renderFacturas()">🧾 Facturas</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-transferencias" onclick="renderTransferencias()">💸 Transferencias</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-totalceot"      onclick="renderTotalCeot()">📊 Total CEOT</button>
       <div class="adm-sidenav-sep" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
         <span>Accesos</span>
         <button id="btnEditLinks" onclick="toggleEditLinks()" title="Editar links" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:rgba(255,255,255,.35);padding:0 2px">✏</button>
@@ -1989,6 +1990,11 @@ function renderHistorial(doctor) {
       ? '<div class="hist-dline"><span class="hist-dline-lbl">Centro Médico</span><span class="hist-dline-val cm">+' + fmt(c.cm) + '</span></div>'
       : '';
 
+    var totalCeotVal = (liquidacionData.totalCeot && liquidacionData.totalCeot[r.pid] && liquidacionData.totalCeot[r.pid][doctor.apellido]) || null;
+    var totalCeotHtml = totalCeotVal
+      ? '<div class="hist-dline" style="margin-top:4px;border-top:1px dashed #e5e7eb;padding-top:4px"><span class="hist-dline-lbl" style="color:#6b7280">Total liquidado CEOT</span><span class="hist-dline-val" style="color:#6b7280">' + fmt(totalCeotVal) + '</span></div>'
+      : '';
+
     html += '<div class="hist-period-section">'
       + '<div class="hist-period-headline"><span>' + c.label.toUpperCase() + '</span>' + pendBadge + '</div>'
       + '<div class="hist-dline"><span class="hist-dline-lbl">Bruto</span><span class="hist-dline-val">' + fmt(c.bruto) + '</span></div>'
@@ -1996,6 +2002,7 @@ function renderHistorial(doctor) {
       + cpsmHtml + gaHtml + aporteHtml + cmHtml
       + '<hr class="hist-rule">'
       + '<div class="hist-neto-line"><span>NETO</span><span>' + fmt(c.neto) + '</span></div>'
+      + totalCeotHtml
       + '</div>';
   });
 
@@ -2495,8 +2502,61 @@ function toggleAdmSidenav() {
   if (ov) ov.classList.toggle("open", open);
 }
 
+function renderTotalCeot() {
+  var main = document.getElementById("adm-main-content");
+  if (!main) return;
+  admDesactivarSidebar();
+  var btn = document.getElementById("adm-sidenav-totalceot");
+  if (btn) btn.className = "adm-sidenav-btn active";
+  document.querySelectorAll(".adm-tab").forEach(function(t){ t.className = "adm-tab"; });
+
+  var tc = liquidacionData.totalCeot;
+  if (!tc || Object.keys(tc).length === 0) {
+    main.innerHTML = '<div class="adm-sec-title">Total CEOT</div>'
+      + '<div style="padding:24px;color:#9ca3af;font-size:0.85rem">Sin datos aún. Los datos se cargan desde la sección "TOTAL CEOT" del tab RESUMEN de la planilla.</div>';
+    return;
+  }
+
+  var MESES_ORD = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var meses = MESES_ORD.filter(function(m){ return tc[m]; });
+  var SOCIOS = ["BRUNI","CORELICH","DE LA COLINA","DEGANUTTI","LABAYEN","LEON","MAZZOLA","PERLASCO","SOULE","TRIVELLINI"];
+
+  var html = '<div class="adm-sec-title" style="margin-top:4px">Total liquidado CEOT</div>'
+    + '<div style="overflow-x:auto;padding:0 2px 16px">'
+    + '<table class="adm-table" style="min-width:600px;width:100%">'
+    + '<thead><tr><th style="text-align:left">Profesional</th>';
+  meses.forEach(function(m){ html += '<th>' + m.charAt(0).toUpperCase()+m.slice(1) + '</th>'; });
+  html += '<th>Total</th></tr></thead><tbody>';
+
+  SOCIOS.forEach(function(ap) {
+    var rowTotal = 0;
+    var cells = meses.map(function(m){
+      var v = tc[m] && tc[m][ap] ? tc[m][ap] : 0;
+      rowTotal += v;
+      return v ? fmt(v) : '<span style="color:#d1d5db">—</span>';
+    });
+    html += '<tr><td style="font-weight:600">' + ap + '</td>';
+    cells.forEach(function(c){ html += '<td style="text-align:right">' + c + '</td>'; });
+    html += '<td style="text-align:right;font-weight:700">' + (rowTotal ? fmt(rowTotal) : '—') + '</td></tr>';
+  });
+
+  // fila totales columna
+  html += '<tr style="border-top:2px solid #374151">'
+    + '<td style="font-weight:700;font-size:0.78rem;text-transform:uppercase;letter-spacing:.5px">TOTAL</td>';
+  var grandTotal = 0;
+  meses.forEach(function(m){
+    var colSum = SOCIOS.reduce(function(s,ap){ return s + (tc[m][ap]||0); }, 0);
+    grandTotal += colSum;
+    html += '<td style="text-align:right;font-weight:700">' + fmt(colSum) + '</td>';
+  });
+  html += '<td style="text-align:right;font-weight:700">' + fmt(grandTotal) + '</td></tr>';
+
+  html += '</tbody></table></div>';
+  main.innerHTML = html;
+}
+
 function admDesactivarSidebar() {
-  ["debitos","accesos","pendientes","facturas","transferencias"].forEach(function(k) {
+  ["debitos","accesos","pendientes","facturas","transferencias","totalceot"].forEach(function(k) {
     var b = document.getElementById("adm-sidenav-" + k);
     if (b) b.className = "adm-sidenav-btn";
   });
