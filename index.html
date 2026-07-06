@@ -712,17 +712,17 @@ body {
 .adm-body { padding: 14px 13px 18px; background: #f5efe4; }
 /* ── ACCESOS ── */
 .acc-toolbar { display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
-.acc-filter-btn { padding:5px 12px; border:1.5px solid #e5e7eb; border-radius:20px; font-size:0.72rem; font-weight:600; font-family:inherit; background:#fff; color:#6b7280; cursor:pointer; transition:all .15s; }
+.acc-filter-btn { padding:5px 12px; border:1.5px solid #e5e7eb; border-radius:20px; font-size:0.72rem; font-weight:600; font-family:inherit; background:#fff; color:rgba(245,240,225,.45); cursor:pointer; transition:all .15s; }
 .acc-filter-btn:hover { border-color:#1a1a1a; color:#1a1a1a; }
 .acc-filter-btn.active { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
 .acc-add-btn { margin-left:auto; padding:6px 14px; background:#1a1a1a; color:#fff; border:none; border-radius:7px; font-size:0.76rem; font-weight:700; font-family:inherit; cursor:pointer; }
 .acc-add-btn:hover { opacity:.82; }
 .acc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; }
-.acc-card { background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:13px 13px 10px; display:flex; flex-direction:column; gap:6px; position:relative; transition:box-shadow .15s, border-color .15s; }
+.acc-card { background:rgba(245,240,225,.04); border:1px solid #e5e7eb; border-radius:10px; padding:13px 13px 10px; display:flex; flex-direction:column; gap:6px; position:relative; transition:box-shadow .15s, border-color .15s; }
 .acc-card:hover { border-color:#d1d5db; box-shadow:0 2px 10px rgba(0,0,0,.08); }
-.acc-card-cat { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#9ca3af; }
+.acc-card-cat { font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:rgba(245,240,225,.35); }
 .acc-card-title { font-size:0.85rem; font-weight:700; color:#1a1a1a; line-height:1.25; }
-.acc-card-desc { font-size:0.73rem; color:#6b7280; line-height:1.4; flex:1; }
+.acc-card-desc { font-size:0.73rem; color:rgba(245,240,225,.45); line-height:1.4; flex:1; }
 .acc-card-actions { display:flex; gap:6px; margin-top:4px; align-items:center; }
 .acc-open-btn { flex:1; padding:6px 10px; background:#1a1a1a; color:#fff; border:none; border-radius:6px; font-size:0.72rem; font-weight:600; font-family:inherit; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:5px; }
 .acc-open-btn:hover { opacity:.82; }
@@ -733,19 +733,19 @@ body {
 .acc-modal-bg.open { display:flex; }
 .acc-modal { background:#fff; border-radius:12px; padding:22px; width:360px; max-width:95vw; box-shadow:0 12px 40px rgba(0,0,0,.18); }
 .acc-modal h3 { font-size:1rem; font-weight:700; margin-bottom:16px; color:#1a1a1a; }
-.acc-modal label { display:block; font-size:0.7rem; font-weight:600; color:#374151; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; margin-top:10px; }
+.acc-modal label { display:block; font-size:0.7rem; font-weight:600; color:rgba(245,240,225,.65); text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; margin-top:10px; }
 .acc-modal input, .acc-modal select { width:100%; padding:8px 11px; border:1.5px solid #e5e7eb; border-radius:7px; font-size:0.85rem; font-family:inherit; background:#fff; color:#1a1a1a; }
 .acc-modal input:focus, .acc-modal select:focus { border-color:#1a1a1a; outline:none; }
 .acc-modal-btns { display:flex; gap:8px; margin-top:18px; }
 .acc-modal-btns button { flex:1; padding:9px; border-radius:7px; font-size:0.82rem; font-weight:700; font-family:inherit; cursor:pointer; }
 .acc-modal-save { background:#1a1a1a; color:#fff; border:none; }
-.acc-modal-cancel { background:#fff; color:#6b7280; border:1.5px solid #e5e7eb; }
+.acc-modal-cancel { background:#fff; color:rgba(245,240,225,.45); border:1.5px solid #e5e7eb; }
 
 /* ── DÉBITOS ── */
 .deb-toolbar { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
 .deb-mes-sel { padding:6px 10px; border:1.5px solid #e5e7eb; border-radius:7px; font-size:0.78rem; font-family:inherit; background:#fff; color:#1a1a1a; cursor:pointer; }
 .deb-mes-sel:focus { border-color:#1a1a1a; outline:none; }
-.deb-btn { padding:6px 12px; border:1.5px solid #e5e7eb; border-radius:7px; font-size:0.76rem; font-weight:600; font-family:inherit; background:#fff; color:#374151; cursor:pointer; white-space:nowrap; }
+.deb-btn { padding:6px 12px; border:1.5px solid #e5e7eb; border-radius:7px; font-size:0.76rem; font-weight:600; font-family:inherit; background:#fff; color:rgba(245,240,225,.65); cursor:pointer; white-space:nowrap; }
 .deb-btn:hover { background:#f3f4f6; }
 .deb-btn-pri { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
 .deb-btn-pri:hover { opacity:.82; }
@@ -757,18 +757,18 @@ body {
 .deb-table th.th-nota { text-align:left; }
 .deb-table td { padding:5px 7px; border-bottom:1px solid #f0f0f0; text-align:right; vertical-align:top; }
 .deb-table td:first-child,.deb-table td:nth-child(2) { text-align:left; }
-.deb-table tr:nth-child(even) td { background:#f9fafb; }
+.deb-table tr:nth-child(even) td { background:rgba(245,240,225,.04); }
 .deb-table tr:hover td { background:#f3f4f6; }
 .deb-neg { color:#991b1b; font-weight:600; }
-.deb-zero { color:#9ca3af; font-style:italic; }
+.deb-zero { color:rgba(245,240,225,.35); font-style:italic; }
 .deb-nota-inp { width:100%; min-width:160px; border:1px solid #e5e7eb; border-radius:5px; padding:4px 6px; font-size:0.72rem; font-family:inherit; resize:vertical; line-height:1.4; background:#fffef0; color:#1a1a1a; }
 .deb-nota-inp:focus { border-color:#1a1a1a; outline:none; background:#fff; }
 .deb-nota-inp.tiene-nota { border-color:#f59e0b; background:#fffbeb; }
 .deb-total-row td { background:#f3f4f6 !important; font-weight:700; font-size:0.75rem; }
-.deb-empty { padding:24px; text-align:center; color:#9ca3af; font-size:0.83rem; }
+.deb-empty { padding:24px; text-align:center; color:rgba(245,240,225,.35); font-size:0.83rem; }
 .deb-stats { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
-.deb-stat { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:8px 12px; flex:1; min-width:100px; }
-.deb-stat-lbl { font-size:0.65rem; color:#6b7280; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+.deb-stat { background:rgba(245,240,225,.04); border:1px solid #e5e7eb; border-radius:8px; padding:8px 12px; flex:1; min-width:100px; }
+.deb-stat-lbl { font-size:0.65rem; color:rgba(245,240,225,.45); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
 .deb-stat-val { font-size:1rem; font-weight:700; color:#1a1a1a; margin-top:2px; }
 @media print {
   .no-print,
@@ -1253,12 +1253,8 @@ body { background: var(--iv0); color: var(--ink); }
     <div class="portal-card" id="portalCard" style="display:none;">
       <!-- TABS -->
       <div class="period-tabs">
-        <button class="period-tab" id="tab-mipanel" data-tab="mipanel">
-          <span class="tab-top">⭐ Mi panel</span>
-        </button>
-        <button class="period-tab" id="tab-historial" data-tab="historial">
-          <span class="tab-top">📊 Historial</span>
-        </button>
+        <button class="period-tab" id="tab-mipanel" data-tab="mipanel" style="display:none"></button>
+        <button class="period-tab" id="tab-historial" data-tab="historial" style="display:none"></button>
         <button class="period-tab" id="tab-abril" data-tab="abril">
           <span class="tab-top">Abr 2026 <span class="tbadge tb-ant" id="badge-abril">anterior</span></span>
         </button>
@@ -1945,8 +1941,8 @@ function extraRow(label, ext) {
   return '<div class="cl-row cl-sep-row">'
     + '<span class="cl-date">—</span>'
     + '<span class="cl-lbl">' + label
-    +   ' <span style="font-size:.68rem;color:#9ca3af">· acredita ' + note + '</span></span>'
-    + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">pendiente</span>'
+    +   ' <span style="font-size:.68rem;color:rgba(245,240,225,.35)">· acredita ' + note + '</span></span>'
+    + '<span class="cl-amt" style="color:rgba(245,240,225,.35);font-size:.75rem">pendiente</span>'
     + '</div>';
 }
 
@@ -1991,8 +1987,8 @@ function renderMayo(containerId, doctor) {
     // Centro Médico de Mayo se acredita en Junio — no se muestra en este tab
     html += '<div class="cl-row cl-sep-row">'
       + '<span class="cl-date">—</span>'
-      + '<span class="cl-lbl">Centro Médico <span style="font-size:.68rem;color:#9ca3af">· incluido en Jun 2026</span></span>'
-      + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">ver Junio</span>'
+      + '<span class="cl-lbl">Centro Médico <span style="font-size:.68rem;color:rgba(245,240,225,.35)">· incluido en Jun 2026</span></span>'
+      + '<span class="cl-amt" style="color:rgba(245,240,225,.35);font-size:.75rem">ver Junio</span>'
       + '</div>';
     // Gastos A Mayo → descuenta gastos de Junio
     var gaTotal = GASTOS_A["junio"];
@@ -2000,17 +1996,17 @@ function renderMayo(containerId, doctor) {
     if (gaPP) {
       html += '<div class="cl-row cl-sep-row cl-neg">'
         + '<span class="cl-date">—</span>'
-        + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:#9ca3af;font-weight:400"> · Junio 2026</span></span>'
+        + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:rgba(245,240,225,.35);font-weight:400"> · Junio 2026</span></span>'
         + '<span class="cl-amt">−' + fmt(gaPP) + '</span>'
         + '</div>';
     } else {
       html += '<div class="cl-row cl-sep-row">'
         + '<span class="cl-date">—</span>'
-        + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:#9ca3af;font-weight:400"> · Junio 2026</span></span>'
-        + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">pendiente</span>'
+        + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:rgba(245,240,225,.35);font-weight:400"> · Junio 2026</span></span>'
+        + '<span class="cl-amt" style="color:rgba(245,240,225,.35);font-size:.75rem">pendiente</span>'
         + '</div>';
     }
-    html += '<div style="font-size:.65rem;color:#9ca3af;padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
+    html += '<div style="font-size:.65rem;color:rgba(245,240,225,.35);padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
     html += '</div>';
 
   } else {
@@ -2053,9 +2049,9 @@ function renderGeneral(data, periodo, containerId) {
       + '</div>';
 
     if (m.nota) {
-      html += '<div class="cl-row" style="padding-top:2px;padding-bottom:5px;background:#fafafa">'
+      html += '<div class="cl-row" style="padding-top:2px;padding-bottom:5px;background:rgba(245,240,225,.05)">'
         + '<span class="cl-date"></span>'
-        + '<span class="cl-lbl" style="font-size:.7rem;color:#9ca3af">📌 ' + m.nota + '</span>'
+        + '<span class="cl-lbl" style="font-size:.7rem;color:rgba(245,240,225,.35)">📌 ' + m.nota + '</span>'
         + '<span class="cl-amt"></span></div>';
     }
   });
@@ -2132,17 +2128,17 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   if (gaPP) {
     html += '<div class="cl-row cl-sep-row cl-neg">'
       + '<span class="cl-date">—</span>'
-      + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:#9ca3af;font-weight:400">' + gaLabelMes + '</span></span>'
+      + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:rgba(245,240,225,.35);font-weight:400">' + gaLabelMes + '</span></span>'
       + '<span class="cl-amt">−' + fmt(gaPP) + '</span>'
       + '</div>';
   } else {
     html += '<div class="cl-row cl-sep-row">'
       + '<span class="cl-date">—</span>'
-      + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:#9ca3af;font-weight:400">' + gaLabelMes + '</span></span>'
-      + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">pendiente</span>'
+      + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:rgba(245,240,225,.35);font-weight:400">' + gaLabelMes + '</span></span>'
+      + '<span class="cl-amt" style="color:rgba(245,240,225,.35);font-size:.75rem">pendiente</span>'
       + '</div>';
   }
-  html += '<div style="font-size:.65rem;color:#9ca3af;padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
+  html += '<div style="font-size:.65rem;color:rgba(245,240,225,.35);padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
   html += '</div>';
 
   // Aporte CEOT (desde julio en adelante)
@@ -2163,7 +2159,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
       html += '<div class="cl-row cl-sep-row">'
         + '<span class="cl-date">—</span>'
         + '<span class="cl-lbl">Aporte CEOT</span>'
-        + '<span class="cl-amt" style="color:#9ca3af;font-size:.75rem">pendiente</span>'
+        + '<span class="cl-amt" style="color:rgba(245,240,225,.35);font-size:.75rem">pendiente</span>'
         + '</div>';
     }
   }
@@ -2314,8 +2310,8 @@ function renderHistorial(doctor) {
   // ── Mini gráfico de barras ────────────────────────────────
   if (resultados.length > 1) {
     var maxNeto = Math.max.apply(null, resultados.map(function(r){ return Math.max(1, r.calc.neto); }));
-    html += '<div style="padding:11px 13px 4px;background:white;border-bottom:1px solid #e5e7eb">';
-    html += '<div style="font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#9ca3af;margin-bottom:7px">Neto por período</div>';
+    html += '<div style="padding:11px 13px 4px;background:rgba(245,240,225,.06);border-bottom:1px solid rgba(245,240,225,.1)">';
+    html += '<div style="font-size:0.55rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(245,240,225,.35);margin-bottom:7px">Neto por período</div>';
     html += '<div style="display:flex;gap:5px;align-items:flex-end;height:48px">';
     resultados.forEach(function(r) {
       var h = Math.max(4, Math.round(Math.max(0, r.calc.neto) / maxNeto * 44));
@@ -2323,7 +2319,7 @@ function renderHistorial(doctor) {
       var lbl = r.calc.label.split(' ')[0].substring(0,3).toUpperCase();
       html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end">'
         + '<div style="width:100%;background:'+color+';height:'+h+'px;border-radius:3px 3px 0 0"></div>'
-        + '<div style="font-size:0.52rem;color:#9ca3af">'+lbl+'</div>'
+        + '<div style="font-size:0.52rem;color:rgba(245,240,225,.35)">'+lbl+'</div>'
         + '</div>';
     });
     html += '</div></div>';
@@ -2340,13 +2336,13 @@ function renderHistorial(doctor) {
 
     var gaHtml = c.ga
       ? '<div class="hist-dline"><span class="hist-dline-lbl">Gastos A</span><span class="hist-dline-val neg">−' + fmt(c.ga) + '</span></div>'
-      : '<div class="hist-dline"><span class="hist-dline-lbl">Gastos A</span><span class="hist-dline-val" style="color:#9ca3af">pendiente</span></div>';
+      : '<div class="hist-dline"><span class="hist-dline-lbl">Gastos A</span><span class="hist-dline-val" style="color:rgba(245,240,225,.35)">pendiente</span></div>';
 
     var aporteHtml = '';
     if (c.aporteCeot > 0) {
       aporteHtml = '<div class="hist-dline"><span class="hist-dline-lbl">Aporte CEOT (' + (c.pctAporte*100) + '%)</span><span class="hist-dline-val neg">−' + fmt(c.aporteCeot) + '</span></div>';
     } else if (APORTE_CEOT_DESDE.indexOf(r.pid) !== -1 && c.pctAporte === null) {
-      aporteHtml = '<div class="hist-dline"><span class="hist-dline-lbl">Aporte CEOT</span><span class="hist-dline-val" style="color:#9ca3af">pendiente</span></div>';
+      aporteHtml = '<div class="hist-dline"><span class="hist-dline-lbl">Aporte CEOT</span><span class="hist-dline-val" style="color:rgba(245,240,225,.35)">pendiente</span></div>';
     }
 
     var cmHtml = c.cm > 0
@@ -2355,7 +2351,7 @@ function renderHistorial(doctor) {
 
     var totalCeotVal = (liquidacionData.totalCeot && liquidacionData.totalCeot[r.pid] && liquidacionData.totalCeot[r.pid][doctor.apellido]) || null;
     var totalCeotHtml = totalCeotVal
-      ? '<div class="hist-dline" style="margin-top:4px;border-top:1px dashed #e5e7eb;padding-top:4px"><span class="hist-dline-lbl" style="color:#6b7280">Total liquidado CEOT</span><span class="hist-dline-val" style="color:#6b7280">' + fmt(totalCeotVal) + '</span></div>'
+      ? '<div class="hist-dline" style="margin-top:4px;border-top:1px dashed rgba(245,240,225,.15);padding-top:4px"><span class="hist-dline-lbl" style="color:rgba(245,240,225,.45)">Total liquidado CEOT</span><span class="hist-dline-val" style="color:rgba(245,240,225,.45)">' + fmt(totalCeotVal) + '</span></div>'
       : '';
 
     html += '<div class="hist-period-section">'
@@ -2436,7 +2432,7 @@ function renderMiPanel(doctor) {
     var pct = Math.round((h.val / maxHon) * 54);
     return '<div class="mp-chart-col">'
       + '<div class="mp-chart-bar' + (h.current ? ' current' : '') + '" style="height:' + Math.max(4, pct) + 'px">'
-      + (h.current ? '<span style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:white;color:#1a1a1a;font-size:0.55rem;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;">actual</span>' : '')
+      + (h.current ? '<span style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);background:#f5f0e1;color:#111;font-size:0.55rem;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap;">actual</span>' : '')
       + '</div>'
       + '<div class="mp-chart-month' + (h.current ? ' current' : '') + '">' + h.label + '</div>'
       + '</div>';
@@ -2477,21 +2473,21 @@ function renderMiPanel(doctor) {
   html += '<div class="mp-card" style="margin-bottom:7px;">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">'
     + '<div class="mp-label" style="margin:0;">Gastos del mes</div>'
-    + '<div style="font-size:0.63rem;color:#9ca3af;">' + (new Date().toLocaleString('es-AR',{month:'long',year:'numeric'})) + '</div>'
+    + '<div style="font-size:0.63rem;color:rgba(245,240,225,.35);">' + (new Date().toLocaleString('es-AR',{month:'long',year:'numeric'})) + '</div>'
     + '</div>'
-    + '<div style="font-size:1.1rem;font-weight:800;color:#1a1a1a;">' + (gastosTotal ? fmt(gastosTotal) : 'Actualizá para ver') + '</div>'
+    + '<div style="font-size:1.1rem;font-weight:800;color:#f5f0e1;">' + (gastosTotal ? fmt(gastosTotal) : 'Actualizá para ver') + '</div>'
     + '</div>';
 
   // Cajas con skeleton mientras carga
   html += '<div class="mp-grid2">'
     + '<div class="mp-card" style="margin-bottom:0;">'
     + '<div class="mp-label">Casa 2067</div>'
-    + '<div id="mp-saldo-2067" style="font-size:1.1rem;font-weight:800;color:#9ca3af;">...</div>'
+    + '<div id="mp-saldo-2067" style="font-size:1.1rem;font-weight:800;color:rgba(245,240,225,.35);">...</div>'
     + '<div class="mp-sub">Saldo actual</div>'
     + '</div>'
     + '<div class="mp-card" style="margin-bottom:0;">'
     + '<div class="mp-label">Caja Gerling</div>'
-    + '<div id="mp-saldo-gerling" style="font-size:1.1rem;font-weight:800;color:#9ca3af;">...</div>'
+    + '<div id="mp-saldo-gerling" style="font-size:1.1rem;font-weight:800;color:rgba(245,240,225,.35);">...</div>'
     + '<div class="mp-sub">Saldo actual</div>'
     + '</div>'
     + '</div>';
@@ -2524,7 +2520,7 @@ function renderMiPanel(doctor) {
     })
     .catch(function(e) {
       console.warn('Cajas fetch error:', e.message);
-      var msg = '<span style="font-size:0.72rem;color:#9ca3af;">Sin conexión</span>';
+      var msg = '<span style="font-size:0.72rem;color:rgba(245,240,225,.35);">Sin conexión</span>';
       var el2067 = document.getElementById('mp-saldo-2067');
       var elG    = document.getElementById('mp-saldo-gerling');
       if (el2067) el2067.innerHTML = msg;
@@ -2741,7 +2737,7 @@ function renderFacturas() {
     lista.forEach(function(f) {
       h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--iv1);border-left:3px solid var(--iv3)">';
       h += '<span style="font-size:0.88rem;font-weight:600;color:var(--ink)">' + (f.periodo || '—') + '</span>';
-      if (f.link) h += '<a href="' + f.link + '" target="_blank" style="font-size:0.75rem;padding:3px 10px;background:var(--iv2);border:1px solid var(--iv3);text-decoration:none;color:#1a1a1a">Ver PDF</a>';
+      if (f.link) h += '<a href="' + f.link + '" target="_blank" style="font-size:0.75rem;padding:3px 10px;background:rgba(245,240,225,.08);border:1px solid rgba(245,240,225,.15);text-decoration:none;color:#f5f0e1">Ver PDF</a>';
       else        h += '<span style="font-size:0.75rem;color:#d1d5db">Sin PDF</span>';
       h += '</div>';
     });
@@ -2970,7 +2966,7 @@ function renderTotalCeot() {
   var tc = liquidacionData.totalCeot;
   if (!tc || Object.keys(tc).length === 0) {
     document.getElementById("adm-content").innerHTML = '<div class="adm-sec-title">Total CEOT</div>'
-      + '<div style="padding:24px;color:#9ca3af;font-size:0.85rem">Sin datos aún.</div>';
+      + '<div style="padding:24px;color:rgba(245,240,225,.35);font-size:0.85rem">Sin datos aún.</div>';
     return;
   }
 
@@ -3041,7 +3037,7 @@ function renderAdminPanel(periodo) {
   var rawMap = { mayo:MAYO_RAW, junio:JUNIO_RAW, julio:JULIO_RAW, agosto:AGOSTO_RAW,
                  septiembre:SEPTIEMBRE_RAW, octubre:OCTUBRE_RAW, noviembre:NOVIEMBRE_RAW, diciembre:DICIEMBRE_RAW };
   if (!rawMap[periodo] || rawMap[periodo].length === 0) {
-    container.innerHTML = '<div style="padding:20px;text-align:center;color:#9ca3af">Sin datos individuales para este período.</div>';
+    container.innerHTML = '<div style="padding:20px;text-align:center;color:rgba(245,240,225,.35)">Sin datos individuales para este período.</div>';
     return;
   }
 
@@ -3054,7 +3050,7 @@ function renderAdminPanel(periodo) {
   });
 
   if (rows.length === 0) {
-    container.innerHTML = '<div style="padding:20px;text-align:center;color:#9ca3af">Sin datos disponibles.</div>';
+    container.innerHTML = '<div style="padding:20px;text-align:center;color:rgba(245,240,225,.35)">Sin datos disponibles.</div>';
     return;
   }
 
@@ -3082,7 +3078,7 @@ function renderAdminPanel(periodo) {
 
   // ── KPIs ──
   html += '<div class="adm-kpis">';
-  html += '<div class="adm-kpi" style="border-left-color:#1a1a1a">'
+  html += '<div class="adm-kpi" style="border-left-color:#f5f0e1">'
     + '<div class="adm-kpi-lbl">Bruto total</div>'
     + '<div class="adm-kpi-val">' + fmt(totBrutoTotal) + '</div>'
     + '<div class="adm-kpi-sub">' + rows.length + ' profesionales</div>'
@@ -3857,13 +3853,13 @@ function calcularDistribucionFinal() {
     html += '<tr><td class="ipt-name">' + k + '</td>' +
       '<td class="ipt-num">' + fmtImp(osde) + '</td>' +
       '<td class="ipt-num">' + fmtImp(col) + '</td>' +
-      '<td class="ipt-num" style="font-weight:800;color:#1a1a1a">' + fmtImp(tot) + '</td></tr>';
+      '<td class="ipt-num" style="font-weight:800;color:#f5f0e1">' + fmtImp(tot) + '</td></tr>';
   });
-  html += '<tr style="background:#f9fafb;border-top:2px solid #e5e7eb">' +
+  html += '<tr style="background:rgba(245,240,225,.04);border-top:2px solid rgba(245,240,225,.15)">' +
     '<td style="padding:6px 10px;font-weight:800">TOTAL</td>' +
     '<td class="ipt-num" style="font-weight:700">' + fmtImp(sumOSDE) + '</td>' +
     '<td class="ipt-num" style="font-weight:700">' + fmtImp(sumDIF) + '</td>' +
-    '<td class="ipt-num" style="font-weight:800;color:#1a1a1a">' + fmtImp(sumOSDE+sumDIF) + '</td></tr>';
+    '<td class="ipt-num" style="font-weight:800;color:#f5f0e1">' + fmtImp(sumOSDE+sumDIF) + '</td></tr>';
   html += '</tbody></table></div>';
   document.getElementById('impResultBody').innerHTML = html;
   document.getElementById('impResultados').style.display = 'block';
@@ -3981,7 +3977,7 @@ async function procesarCentroMedico() {
       tbody.appendChild(tr);
     });
     var tf = document.createElement('tr');
-    tf.style.cssText = 'background:#f9fafb;border-top:2px solid #e5e7eb';
+    tf.style.cssText = 'background:rgba(245,240,225,.04);border-top:2px solid #e5e7eb';
     tf.innerHTML = '<td style="padding:6px 10px;font-weight:800">TOTAL</td>' +
       '<td class="ipt-num" style="font-weight:700">' + fmtImp(total) + '</td>' +
       '<td class="ipt-num" style="font-weight:700">100%</td>';
@@ -4167,7 +4163,7 @@ function renderSidenavLinks(q) {
       if (accEditLinkMode) {
         html += '<div style="display:flex;align-items:center;gap:3px;padding:2px 6px">'
           + '<span style="flex:1;font-size:0.7rem;color:var(--color-text,#3d2b1f);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+a.title+'">'+a.title+'</span>'
-          + '<button onclick="accSidenavEditar('+a.id+')" title="Editar" style="background:none;border:none;cursor:pointer;font-size:0.65rem;color:#6b7280;padding:2px 3px;flex-shrink:0">✏</button>'
+          + '<button onclick="accSidenavEditar('+a.id+')" title="Editar" style="background:none;border:none;cursor:pointer;font-size:0.65rem;color:rgba(245,240,225,.45);padding:2px 3px;flex-shrink:0">✏</button>'
           + '<button onclick="accSidenavEliminar('+a.id+')" title="Eliminar" style="background:none;border:none;cursor:pointer;font-size:0.65rem;color:#dc2626;padding:2px 3px;flex-shrink:0">✕</button>'
           + '</div>';
       } else {
@@ -4263,7 +4259,7 @@ function renderAccesos(filtro) {
     + filtros
     + '<button class="acc-add-btn" onclick="accAbrirModal()">+ Agregar</button>'
     + '</div>'
-    + '<div class="acc-grid">' + (cards || '<div style="color:#9ca3af;padding:20px;text-align:center">Sin accesos en esta categoría.</div>') + '</div>';
+    + '<div class="acc-grid">' + (cards || '<div style="color:rgba(245,240,225,.35);padding:20px;text-align:center">Sin accesos en esta categoría.</div>') + '</div>';
 
   document.getElementById("adm-content").innerHTML = html;
 }
@@ -4374,10 +4370,10 @@ function abrirWAGastosA(periodo) {
     var tagTxt   = r.osdeVal <= 0 ? 'OSDE pendiente' : (r.diff >= 0 ? '+ Te transferimos ' + fmt(r.diff) : '- Debe transferir ' + fmt(Math.abs(r.diff)));
     return '<div style="background:#fff;border:1px solid #e2dbd0;border-radius:8px;padding:10px 12px">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
-      + '<span style="font-size:0.78rem;font-weight:700;color:#1a1a1a">' + r.doc.nombre + '</span>'
+      + '<span style="font-size:0.78rem;font-weight:700;color:#f5f0e1">' + r.doc.nombre + '</span>'
       + '<span style="font-size:0.65rem;font-weight:700;color:' + tagColor + ';background:' + tagColor + '18;padding:2px 7px;border-radius:4px">' + tagTxt + '</span>'
       + '</div>'
-      + '<div style="font-size:0.7rem;color:#6b7280;line-height:1.5;margin-bottom:8px">' + preview + '</div>'
+      + '<div style="font-size:0.7rem;color:rgba(245,240,225,.45);line-height:1.5;margin-bottom:8px">' + preview + '</div>'
       + '<a href="' + url + '" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:#25d366;color:#fff;border-radius:6px;padding:6px 14px;font-size:0.74rem;font-weight:700;text-decoration:none">↗ Enviar por WhatsApp</a>'
       + '</div>';
   }).join('');
@@ -4510,7 +4506,7 @@ function renderDebitos(mes) {
     var totalClass = d.total === 0 ? "deb-zero" : "deb-neg";
 
     html += '<tr>'
-      + '<td style="color:#9ca3af;font-size:0.68rem;text-align:center">' + (i+1) + '</td>'
+      + '<td style="color:rgba(245,240,225,.35);font-size:0.68rem;text-align:center">' + (i+1) + '</td>'
       + '<td style="font-family:monospace;font-size:0.72rem">' + d.f + '</td>'
       + '<td>' + d.os + '</td>'
       + '<td class="deb-neg">' + (d.dh > 0 ? fmtDeb(d.dh) : '—') + '</td>'
@@ -4518,7 +4514,7 @@ function renderDebitos(mes) {
       + '<td class="' + totalClass + '">' + (d.total > 0 ? fmtDeb(d.total) : '—') + '</td>'
       + '<td style="text-align:center">' + d.pag + '</td>'
       + '<td>'
-      + (placeholderBase ? '<div style="font-size:0.65rem;color:#9ca3af;margin-bottom:3px">' + placeholderBase + '</div>' : '')
+      + (placeholderBase ? '<div style="font-size:0.65rem;color:rgba(245,240,225,.35);margin-bottom:3px">' + placeholderBase + '</div>' : '')
       + '<textarea class="deb-nota-inp' + (tieneNota ? ' tiene-nota' : '') + '" rows="2"'
       + ' data-mes="' + debMesActual + '" data-key="' + notaKey + '"'
       + ' placeholder="Agregar anotación…">' + notaGuardada + '</textarea>'
@@ -4582,11 +4578,11 @@ function imprimirDebitos() {
         <input type="file" id="fileCEOT" accept=".xlsx,.xls" class="imp-file-input">
       </div>
       <div class="imp-field">
-        <label class="imp-label">Archivo ART.xlsx <span style="color:#9ca3af;font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
+        <label class="imp-label">Archivo ART.xlsx <span style="color:rgba(245,240,225,.35);font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
         <input type="file" id="fileART" accept=".xlsx,.xls,.csv" class="imp-file-input" onchange="detectarTotalART()">
       </div>
       <div class="imp-field" id="impArtTotalRow" style="display:none">
-        <label class="imp-label" style="font-size:0.65rem;color:#6b7280;font-weight:500">Total ART — verificar y corregir si es necesario</label>
+        <label class="imp-label" style="font-size:0.65rem;color:rgba(245,240,225,.45);font-weight:500">Total ART — verificar y corregir si es necesario</label>
         <input type="text" id="impArtManual" placeholder="$ importe total ART" style="width:100%;padding:8px 12px;border:1.5px solid #d1d5db;border-radius:7px;font-size:0.95rem;font-family:inherit">
       </div>
 
@@ -4651,7 +4647,7 @@ function imprimirDebitos() {
         </select>
       </div>
       <div class="imp-field">
-        <label class="imp-label">Archivos CM <span style="color:#9ca3af;font-weight:400;text-transform:none;letter-spacing:0">(CSV, selección múltiple)</span></label>
+        <label class="imp-label">Archivos CM <span style="color:rgba(245,240,225,.35);font-weight:400;text-transform:none;letter-spacing:0">(CSV, selección múltiple)</span></label>
         <input type="file" id="fileCM" accept=".csv" multiple class="imp-file-input">
       </div>
       <button class="imp-btn-gray" onclick="procesarCentroMedico()">Procesar CM ▸</button>
