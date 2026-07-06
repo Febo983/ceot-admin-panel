@@ -549,6 +549,12 @@ body {
 .cl-row.cl-sep-row { border-top: 1px solid #e5e7eb; background: #fafafa; }
 .cl-row.cl-sep-row .cl-lbl  { color: #6b7280; }
 .cl-row.cl-neg .cl-amt { color: #dc2626; }
+/* dark overrides */
+.cl-date { color: rgba(245,240,225,0.35); }
+.cl-lbl  { color: rgba(245,240,225,0.7); }
+.cl-amt  { color: var(--ink); }
+.cl-row.cl-sep-row .cl-lbl { color: rgba(245,240,225,0.5); }
+.cl-row.cl-neg .cl-amt { color: #f87171; }
 
 .mini-disc {
   font-size: 0.68rem; color: #9ca3af;
@@ -999,6 +1005,41 @@ body { background: var(--iv0); color: var(--ink); }
 .period-tab.act-noviembre,.period-tab.act-diciembre,.period-tab.act-historial,
 .period-tab.act-mipanel { color: var(--ink) !important; border-bottom-color: var(--ink) !important; }
 .tab-neto { color: rgba(245,240,225,0.4) !important; }
+
+/* ── PERIOD TOTAL DARK ── */
+.pt-lbl  { color: rgba(245,240,225,0.4) !important; }
+.pt-val  { color: var(--ink) !important; }
+.pt-sub  { color: rgba(245,240,225,0.3) !important; }
+.pt-icon { opacity: .05 !important; }
+
+/* ── SCHIP DARK ── */
+.schip-lbl { color: rgba(245,240,225,0.4) !important; }
+.schip-val,.schip-abril .schip-val,.schip-mayo .schip-val,
+.schip-junio .schip-val,.schip-julio .schip-val { color: var(--ink) !important; }
+.schip-sub  { color: rgba(245,240,225,0.35) !important; }
+
+/* ── MINI DISC ── */
+.mini-disc { color: rgba(245,240,225,0.35) !important; background: rgba(245,240,225,0.04) !important; border-color: var(--iv3) !important; }
+
+/* ── ACCESOS DARK ── */
+.acc-filter-btn { background: rgba(245,240,225,0.05) !important; color: rgba(245,240,225,0.5) !important; border-color: var(--iv3) !important; }
+.acc-filter-btn:hover { border-color: var(--ink) !important; color: var(--ink) !important; }
+.acc-filter-btn.active { background: var(--ink) !important; color: #111 !important; border-color: var(--ink) !important; }
+.acc-card-cat   { color: rgba(245,240,225,0.35) !important; }
+.acc-card-title { color: var(--ink) !important; }
+.acc-card-desc  { color: rgba(245,240,225,0.5) !important; }
+.acc-modal      { background: #1c1c1c !important; }
+.acc-modal h3   { color: var(--ink) !important; }
+.acc-modal label { color: rgba(245,240,225,0.5) !important; }
+.acc-modal input,.acc-modal select { background: rgba(245,240,225,0.06) !important; color: var(--ink) !important; border-color: var(--iv3) !important; }
+.acc-modal-cancel { background: rgba(245,240,225,0.06) !important; color: var(--ink) !important; border-color: var(--iv3) !important; }
+
+/* ── DÉBITOS DARK ── */
+.deb-mes-sel,.deb-btn { background: rgba(245,240,225,0.06) !important; color: rgba(245,240,225,0.65) !important; border-color: var(--iv3) !important; }
+.deb-btn-pri { background: var(--ink) !important; color: #111 !important; border-color: var(--ink) !important; }
+.deb-nota-inp { background: rgba(245,240,225,0.04) !important; color: var(--ink) !important; border-color: var(--iv3) !important; }
+.deb-stat-lbl { color: rgba(245,240,225,0.4) !important; }
+.deb-zero,.deb-empty { color: rgba(245,240,225,0.3) !important; }
 
 /* ── LOGIN ── */
 .login-card {
