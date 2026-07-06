@@ -1285,6 +1285,7 @@ body { background: var(--iv0); color: var(--ink); }
     </div>
     <div style="display:flex;align-items:center;gap:6px">
       <button class="adm-hamburger" onclick="toggleAdmSidenav()" title="Menú">☰</button>
+      <button class="btn-logout" id="admHomeBtn" onclick="renderAdmHome()" style="display:none">← Inicio</button>
       <button class="btn-importar" id="btnImportar" onclick="abrirImportModal()">⬆ Importar</button>
       <button class="btn-refresh" id="adminRefreshBtn" title="Actualizar datos">↻</button>
       <button class="btn-logout" id="adminLogoutBtn">Salir ✕</button>
@@ -2544,6 +2545,8 @@ function mostrarNotificaciones(doctor) {
 
 function renderAdmHome() {
   admDesactivarSidebar();
+  var hb = document.getElementById("admHomeBtn");
+  if (hb) hb.style.display = "none";
   ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
@@ -2957,6 +2960,8 @@ function admDesactivarSidebar() {
     var b = document.getElementById("adm-sidenav-" + k);
     if (b) b.className = "adm-sidenav-btn";
   });
+  var hb = document.getElementById("admHomeBtn");
+  if (hb) hb.style.display = "inline-block";
 }
 
 function cerrarAdmSidenav() {
