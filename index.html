@@ -2505,16 +2505,17 @@ function toggleAdmSidenav() {
 function renderTotalCeot() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
+  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+    var t = document.getElementById("adm-tab-" + p);
+    if (t) t.className = "adm-tab";
+  });
   var btn = document.getElementById("adm-sidenav-totalceot");
   if (btn) btn.className = "adm-sidenav-btn active";
-  document.querySelectorAll(".adm-tab").forEach(function(t){ t.className = "adm-tab"; });
-  var main = document.getElementById("adm-content");
-  if (!main) return;
 
   var tc = liquidacionData.totalCeot;
   if (!tc || Object.keys(tc).length === 0) {
-    main.innerHTML = '<div class="adm-sec-title">Total CEOT</div>'
-      + '<div style="padding:24px;color:#9ca3af;font-size:0.85rem">Sin datos aún. Los datos se cargan desde la sección "TOTAL CEOT" del tab RESUMEN de la planilla.</div>';
+    document.getElementById("adm-content").innerHTML = '<div class="adm-sec-title">Total CEOT</div>'
+      + '<div style="padding:24px;color:#9ca3af;font-size:0.85rem">Sin datos aún.</div>';
     return;
   }
 
@@ -2553,7 +2554,7 @@ function renderTotalCeot() {
   html += '<td style="text-align:right;font-weight:700">' + fmt(grandTotal) + '</td></tr>';
 
   html += '</tbody></table></div>';
-  main.innerHTML = html;
+  document.getElementById("adm-content").innerHTML = html;
 }
 
 function admDesactivarSidebar() {
