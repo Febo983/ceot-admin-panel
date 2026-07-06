@@ -939,16 +939,66 @@ body {
    Swiss Design — typography-first, sharp, clean
    ═══════════════════════════════════════════ */
 :root {
-  --iv0: #F5F1E8;   /* marfil base — body */
-  --iv1: #FDFAF5;   /* marfil claro — tarjetas */
-  --iv2: #EDE9DF;   /* marfil medio — fondos secundarios */
-  --iv3: #D8D3C8;   /* regla / bordes */
-  --ink: #1a1a1a;
-  --ink-lt: #6b7280;
+  --iv0: #111;                      /* fondo oscuro — body */
+  --iv1: #181818;                   /* tarjetas */
+  --iv2: rgba(245,240,225,0.06);    /* fondos secundarios */
+  --iv3: rgba(245,240,225,0.11);    /* bordes / reglas */
+  --ink: #f5f0e1;                   /* texto principal — marfil */
+  --ink-lt: rgba(245,240,225,0.45); /* texto secundario */
 }
 
 /* ── FONDO GENERAL ── */
-body { background: var(--iv0); }
+body { background: var(--iv0); color: var(--ink); }
+
+/* ── LOGIN DARK ── */
+.login-card { background: #1c1c1c !important; border-color: rgba(245,240,225,0.16) !important; }
+.logo-area h2 { color: var(--ink) !important; }
+.logo-area p  { color: rgba(245,240,225,0.4) !important; }
+.field label  { color: rgba(245,240,225,0.55) !important; }
+.field input  { background: rgba(245,240,225,0.06) !important; color: var(--ink) !important; border-color: var(--iv3) !important; }
+.field input::placeholder { color: rgba(245,240,225,0.22) !important; }
+.login-hint   { color: rgba(245,240,225,0.25) !important; }
+
+/* ── COLORES DE TEXTO DARK ── */
+.schip-lbl  { color: rgba(245,240,225,0.4); }
+.schip-val  { color: var(--ink); }
+.schip-sub  { color: rgba(245,240,225,0.35); }
+.schip-icon { opacity: .06; }
+.ch-top     { color: rgba(245,240,225,0.45); }
+.chi-lbl    { color: rgba(245,240,225,0.38); }
+.chi-val    { color: var(--ink); }
+.chi-val.ind-mayo,.chi-val.ind-junio,.chi-val.ind-julio,.chi-val.ind-agosto { color: var(--ink); }
+.chi-val.total-v { color: #4DD9A7; }
+.mp-label   { color: rgba(245,240,225,0.4); }
+.mp-big     { color: var(--ink); }
+.mp-sub     { color: rgba(245,240,225,0.3); }
+.mp-section-label { color: rgba(245,240,225,0.35); }
+.mp-mini-val { color: var(--ink); }
+.mp-mini-lbl { color: rgba(245,240,225,0.35); }
+.mp-bar-fill { background: var(--ink); }
+.mp-bar-row-head { color: rgba(245,240,225,0.55); }
+.mp-link-card-title { color: var(--ink); }
+.mp-link-card-sub   { color: rgba(245,240,225,0.35); }
+.mp-link-more { color: rgba(245,240,225,0.5); border-color: var(--iv3); }
+.mp-mov-row   { color: rgba(245,240,225,0.6); }
+.mp-mov-pos   { color: #4DD9A7; }
+.mp-mov-neg   { color: #f87171; }
+.nota-pill    { color: rgba(245,240,225,0.6); }
+.sin-datos    { color: rgba(245,240,225,0.3); }
+.footer-note  { color: rgba(245,240,225,0.2); }
+.disclaimer   { color: rgba(245,240,225,0.6); border-left-color: var(--ink) !important; }
+.disclaimer strong { color: var(--ink); }
+.hist-period-headline { color: var(--ink); border-color: rgba(245,240,225,0.25); }
+.hist-dline-lbl { color: rgba(245,240,225,0.45); }
+.hist-dline-val { color: var(--ink); }
+.hist-neto-line[style] { background: rgba(245,240,225,0.08) !important; color: var(--ink) !important; }
+.period-tab   { color: rgba(245,240,225,0.35) !important; }
+.period-tab:hover { color: rgba(245,240,225,0.7) !important; }
+.period-tab.act-abril,.period-tab.act-mayo,.period-tab.act-junio,.period-tab.act-julio,
+.period-tab.act-agosto,.period-tab.act-septiembre,.period-tab.act-octubre,
+.period-tab.act-noviembre,.period-tab.act-diciembre,.period-tab.act-historial,
+.period-tab.act-mipanel { color: var(--ink) !important; border-bottom-color: var(--ink) !important; }
+.tab-neto { color: rgba(245,240,225,0.4) !important; }
 
 /* ── LOGIN ── */
 .login-card {
@@ -2490,6 +2540,80 @@ function mostrarNotificaciones(doctor) {
   }
 }
 
+// ══════ ADMIN HOME ═══════════════════════════════════════════════
+
+function renderAdmHome() {
+  admDesactivarSidebar();
+  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+    var t = document.getElementById("adm-tab-" + p);
+    if (t) t.className = "adm-tab";
+  });
+
+  var h = new Date().getHours();
+  var saludo = h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
+  var mesAct = tabMesActual();
+  var MESES_CORTO = {mayo:"May",junio:"Jun",julio:"Jul",agosto:"Ago",septiembre:"Sep",octubre:"Oct",noviembre:"Nov",diciembre:"Dic"};
+
+  var modulos = [
+    { ico:"📊", lbl:"Liquidaciones", cat:"cat-fin", fn:"renderAdminPanel(tabMesActual())" },
+    { ico:"📈", lbl:"Total CEOT",    cat:"cat-fin", fn:"renderTotalCeot()" },
+    { ico:"⚠",  lbl:"Débitos",       cat:"cat-gst", fn:"renderDebitos()" },
+    { ico:"📋", lbl:"Pendientes",    cat:"cat-adm", fn:"renderPendientes()" },
+    { ico:"🧾", lbl:"Facturas",      cat:"cat-adm", fn:"renderFacturas()" },
+    { ico:"💸", lbl:"Transferencias",cat:"cat-adm", fn:"renderTransferencias()" },
+    { ico:"🔗", lbl:"Accesos",       cat:"cat-inf", fn:"renderAccesos(null)" },
+    { ico:"💬", lbl:"Mensajes WA",   cat:"cat-cli", fn:"" },
+  ];
+
+  var mesStrip = ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].map(function(m) {
+    var act = m === mesAct ? " style=\"background:#f5f0e1;color:#111;border-color:#f5f0e1;font-weight:600\"" : "";
+    return '<button onclick="renderAdminPanel(\'' + m + '\')" style="flex-shrink:0;font-size:10px;padding:4px 11px;border-radius:20px;border:0.5px solid rgba(245,240,225,0.15);background:rgba(245,240,225,0.06);color:rgba(245,240,225,0.45);cursor:pointer;font-family:inherit;transition:all .15s"' + act + '>' + MESES_CORTO[m] + '</button>';
+  }).join("");
+
+  var modHtml = modulos.map(function(m) {
+    var catBg = {
+      "cat-fin":"rgba(29,158,117,0.22)","cat-cli":"rgba(55,138,221,0.22)",
+      "cat-adm":"rgba(127,119,221,0.22)","cat-gst":"rgba(216,90,48,0.22)","cat-inf":"rgba(245,240,225,0.1)"
+    }[m.cat] || "rgba(245,240,225,0.1)";
+    var click = m.fn ? 'onclick="' + m.fn + '"' : "";
+    return '<div ' + click + ' style="background:rgba(245,240,225,0.05);border:0.5px solid rgba(245,240,225,0.1);border-radius:10px;padding:14px 6px 11px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:background .13s" onmouseover="this.style.background=\'rgba(245,240,225,0.1)\'" onmouseout="this.style.background=\'rgba(245,240,225,0.05)\'">'
+      + '<div style="width:38px;height:38px;border-radius:9px;background:' + catBg + ';display:flex;align-items:center;justify-content:center;font-size:18px">' + m.ico + '</div>'
+      + '<div style="font-size:9.5px;color:rgba(245,240,225,0.6);text-align:center;font-weight:500;letter-spacing:0.2px;line-height:1.2">' + m.lbl + '</div>'
+      + '</div>';
+  }).join("");
+
+  // Stats de totalCeot para el mes actual
+  var tc = liquidacionData.totalCeot;
+  var totalMes = 0;
+  if (tc && tc[mesAct]) {
+    Object.values(tc[mesAct]).forEach(function(v){ totalMes += (v||0); });
+  }
+  var statNeto = totalMes ? ('<span style="font-size:1.2rem;font-weight:800;color:#f5f0e1">' + fmt(totalMes) + '</span><div style="font-size:9px;color:rgba(29,158,117,0.85);margin-top:2px">total socios · ' + mesAct + '</div>') : '<span style="font-size:1.2rem;color:rgba(245,240,225,0.3)">—</span>';
+
+  var html = '<div style="background:#111;border-radius:0;padding:18px 16px 20px;min-height:200px">'
+    + '<div style="font-size:0.78rem;color:rgba(245,240,225,0.38);margin-bottom:14px;font-weight:500;letter-spacing:.3px">' + saludo + ', Marcelo</div>'
+    + '<div style="display:flex;gap:5px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none">' + mesStrip + '</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">' + modHtml + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">'
+    + '<div style="background:rgba(245,240,225,0.05);border:0.5px solid rgba(245,240,225,0.1);border-radius:10px;padding:11px 12px">'
+    + '<div style="font-size:9px;color:rgba(245,240,225,0.35);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Total CEOT · ' + mesAct + '</div>'
+    + statNeto
+    + '</div>'
+    + '<div onclick="renderPendientes()" style="background:rgba(245,240,225,0.05);border:0.5px solid rgba(245,240,225,0.1);border-radius:10px;padding:11px 12px;cursor:pointer">'
+    + '<div style="font-size:9px;color:rgba(245,240,225,0.35);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Socios activos</div>'
+    + '<span style="font-size:1.2rem;font-weight:800;color:#f5f0e1">10</span>'
+    + '<div style="font-size:9.5px;color:rgba(245,240,225,0.3);margin-top:2px">Garmendia: 1er mes</div>'
+    + '</div>'
+    + '</div>'
+    + '<div style="display:flex;justify-content:space-between;font-size:9.5px;color:rgba(245,240,225,0.2);padding-top:10px;border-top:0.5px solid rgba(245,240,225,0.07)">'
+    + '<span><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:rgba(29,158,117,.8);margin-right:4px;vertical-align:1px"></span>Conectado</span>'
+    + '<span>Admin CEOT · 2026</span>'
+    + '</div>'
+    + '</div>';
+
+  document.getElementById("adm-content").innerHTML = html;
+}
+
 // ══════ PENDIENTES ADMIN ═══════════════════════════════════════
 
 function renderPendientes() {
@@ -3037,7 +3161,7 @@ function handleLogin() {
     document.getElementById("adminView").style.display  = "block";
     accCargarCustom();
     renderSidenavLinks();
-    renderAdminPanel(tabMesActual());
+    renderAdmHome();
     document.getElementById("usernameInput").value = "";
     document.getElementById("passwordInput").value = "";
     return;
