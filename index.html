@@ -2503,12 +2503,13 @@ function toggleAdmSidenav() {
 }
 
 function renderTotalCeot() {
-  var main = document.getElementById("adm-main-content");
-  if (!main) return;
+  cerrarAdmSidenav();
   admDesactivarSidebar();
   var btn = document.getElementById("adm-sidenav-totalceot");
   if (btn) btn.className = "adm-sidenav-btn active";
   document.querySelectorAll(".adm-tab").forEach(function(t){ t.className = "adm-tab"; });
+  var main = document.getElementById("adm-content");
+  if (!main) return;
 
   var tc = liquidacionData.totalCeot;
   if (!tc || Object.keys(tc).length === 0) {
