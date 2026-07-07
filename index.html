@@ -4845,7 +4845,7 @@ async function debCargarXLSX(file) {
     var obs = String(row[15] || '').trim().toUpperCase();
     if (obs.indexOf('DEB') === -1) continue;
     var imp = typeof row[3] === 'number' ? row[3] : (parseFloat(String(row[3]).replace(/\./g,'').replace(',','.')) || 0);
-    if (!imp) continue;
+    if (imp < 50000) continue;
     var nroRaw = String(row[1] || '').trim();
     var parts = nroRaw.split(/\s+/).filter(Boolean);
     var fact = parts.length >= 2
