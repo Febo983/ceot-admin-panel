@@ -3340,14 +3340,34 @@ function sbGenerarRecibos() {
   SB_STATE._periodo = periodo;
 }
 
+function sbAbrirVentanaImpresion(html) {
+  var css = '.sb-recibo{page-break-after:always}.sb-recibo:last-child{page-break-after:avoid}'
+    + '.recibo-wrap{font-family:"Segoe UI",Arial,sans-serif;font-size:11pt;color:#111;padding:1.5cm 2cm;width:21cm;box-sizing:border-box}'
+    + '.recibo-header{text-align:center;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:12px}'
+    + '.recibo-titulo{font-size:13pt;font-weight:700;letter-spacing:.5px}'
+    + '.recibo-sub{font-size:9pt;color:#555;margin-top:2px}'
+    + '.recibo-periodo{font-size:10pt;font-weight:700;margin-top:6px;text-transform:uppercase}'
+    + '.recibo-datos{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:9.5pt}'
+    + '.recibo-datos td{padding:3px 6px;border:1px solid #ccc}'
+    + '.recibo-conceptos{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:9.5pt}'
+    + '.recibo-conceptos th{background:#111;color:#fff;padding:4px 8px;text-align:left;font-size:8.5pt}'
+    + '.recibo-conceptos td{padding:4px 8px;border-bottom:1px solid #ddd}'
+    + '.recibo-total-row td{font-weight:700;border-top:2px solid #111}'
+    + '.center{text-align:center}.right{text-align:right}'
+    + '.recibo-son{font-size:9pt;margin-bottom:6px;padding:4px 0}'
+    + '.recibo-neto{font-size:12pt;font-weight:700;text-align:right;border-top:2px solid #111;padding-top:6px;margin-bottom:20px}'
+    + '.recibo-pie{display:flex;justify-content:space-between;padding-top:30px;font-size:9pt;text-align:center}';
+  var w = window.open('', '_blank', 'width=900,height=700');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recibo Sueldo B</title><style>' + css + '</style></head><body>' + html + '<script>window.onload=function(){window.print();}<\/script></body></html>');
+  w.document.close();
+}
+
 function sbImprimirUno(legajo, horas, usaMens, periodo) {
   var p = SB_PERSONAL.find(function(x){ return x.legajo === legajo; });
   if (!p) return;
   var html = sbReciboHTML(p, horas, usaMens, periodo);
-  var area = document.getElementById("sb-print-area");
-  area.innerHTML = html;
-  window.print();
-  area.innerHTML = "";
+  if (!html) return;
+  sbAbrirVentanaImpresion(html);
 }
 
 function sbImprimirTodos() {
@@ -3358,10 +3378,8 @@ function sbImprimirTodos() {
     if (!st) return;
     html += sbReciboHTML(p, st.horas, st.usaMens, periodo);
   });
-  var area = document.getElementById("sb-print-area");
-  area.innerHTML = html;
-  window.print();
-  area.innerHTML = "";
+  if (!html) return;
+  sbAbrirVentanaImpresion(html);
 }
 
 function admDesactivarSidebar() {
