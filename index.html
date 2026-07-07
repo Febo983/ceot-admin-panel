@@ -4852,13 +4852,17 @@ async function debCargarXLSX(file) {
       ? String(parts[0]).padStart(4,'0') + '-' + String(parts[1]).padStart(8,'0')
       : nroRaw;
     lista.push({
-      fact: fact,
-      periodo: debFmtPeriodo(row[5]),
-      os:   String(row[7]  || '').trim(),
-      prof: String(row[12] || '').trim(),
-      prac: String(row[9]  || '').trim(),
-      imp:  imp,
-      tipo: obs === 'DEB. GASTOS' ? 'GAS' : 'HON'
+      fact:     fact,
+      periodo:  debFmtPeriodo(row[5]),
+      os:       String(row[7]  || '').trim(),
+      prof:     String(row[12] || '').trim(),
+      prac:     String(row[9]  || '').trim(),
+      dni:      String(row[13] || '').trim(),
+      paciente: String(row[14] || '').trim(),
+      rol:      String(row[10] || '').trim(),
+      nprest:   String(row[6]  || '').trim(),
+      imp:      imp,
+      tipo:     obs === 'DEB. GASTOS' ? 'GAS' : 'HON'
     });
   }
   debImportData = lista;
@@ -4908,10 +4912,12 @@ function renderDebitos(mes) {
       + '<div class="deb-stat"><div class="deb-stat-lbl">Total debitado</div><div class="deb-stat-val deb-neg">' + fmtDeb(Math.round(totT)) + '</div></div>'
       + '</div>';
 
-    html += '<div class="deb-table-wrap"><table class="deb-table" style="font-size:0.72rem">'
+    html += '<div class="deb-table-wrap"><table class="deb-table" style="font-size:0.71rem">'
       + '<thead><tr>'
-      + '<th>#</th><th>Factura</th><th>Período</th><th>O.Social</th>'
-      + '<th>Profesional</th><th>Práctica</th>'
+      + '<th>#</th><th>Factura</th><th>Per.</th><th>O.Social</th>'
+      + '<th>Profesional</th><th>ROL</th>'
+      + '<th>DNI</th><th>Paciente</th>'
+      + '<th>Práctica</th>'
       + '<th>Tipo</th><th style="text-align:right">Importe</th>'
       + '</tr></thead><tbody>';
 
@@ -4919,11 +4925,14 @@ function renderDebitos(mes) {
       var tipoStyle = d.tipo === 'GAS' ? 'color:#f0a070' : 'color:#e87';
       html += '<tr>'
         + '<td style="color:rgba(245,240,225,.35);text-align:center">' + (i+1) + '</td>'
-        + '<td style="font-family:monospace;white-space:nowrap">' + d.fact + '</td>'
+        + '<td style="font-family:monospace;white-space:nowrap;font-size:0.67rem">' + d.fact + '</td>'
         + '<td style="white-space:nowrap">' + d.periodo + '</td>'
-        + '<td>' + d.os + '</td>'
-        + '<td>' + d.prof + '</td>'
-        + '<td style="font-size:0.67rem;color:rgba(245,240,225,.55)">' + d.prac + '</td>'
+        + '<td style="white-space:nowrap">' + d.os + '</td>'
+        + '<td style="white-space:nowrap">' + d.prof + '</td>'
+        + '<td style="color:rgba(245,240,225,.5);font-size:0.67rem">' + d.rol + '</td>'
+        + '<td style="font-family:monospace;font-size:0.67rem">' + d.dni + '</td>'
+        + '<td>' + d.paciente + '</td>'
+        + '<td style="font-size:0.65rem;color:rgba(245,240,225,.55)">' + d.prac + '</td>'
         + '<td style="' + tipoStyle + ';font-weight:600;white-space:nowrap">' + d.tipo + '</td>'
         + '<td class="deb-neg" style="text-align:right;white-space:nowrap">' + fmtDeb(Math.round(d.imp)) + '</td>'
         + '</tr>';
