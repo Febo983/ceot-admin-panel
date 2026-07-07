@@ -4865,7 +4865,7 @@ async function debCargarXLSX(file) {
       tipo:     obs === 'DEB. GASTOS' ? 'GAS' : 'HON'
     });
   }
-  debImportData = lista;
+  debImportData = lista.sort(function(a,b){ return b.imp - a.imp; });
   renderDebitos();
 }
 
