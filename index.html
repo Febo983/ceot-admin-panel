@@ -4884,18 +4884,30 @@ function renderDebitos(mes) {
   var modoImport = debImportData !== null;
 
   // toolbar
+  var guardados = debGetGuardados();
+  var opsMesGuard = guardados.length
+    ? '<optgroup label="── Guardados ──">' + guardados.map(function(g){
+        return '<option value="__g__' + g + '"' + (debMesActual==='__g__'+g?' selected':'') + '>' + g + '</option>';
+      }).join('') + '</optgroup>'
+    : '';
   var meses = Object.keys(DEBITOS);
-  var opsMes = meses.map(function(m) {
+  var opsMes = '<optgroup label="── Histórico ──">' + meses.map(function(m) {
     return '<option value="' + m + '"' + (m === debMesActual ? " selected" : "") + ">" + m + "</option>";
-  }).join("");
+  }).join('') + '</optgroup>';
 
-  var html = '<div class="deb-toolbar">'
-    + (!modoImport ? '<select class="deb-mes-sel" id="debMesSel" onchange="renderDebitos(this.value)">' + opsMes + '</select>' : '')
-    + (modoImport ? '<span style="font-size:0.8rem;color:rgba(245,240,225,.6);margin-right:8px">📂 CEOT.xlsx — ' + debImportData.length + ' registros DEB</span>'
-                  + '<button class="deb-btn" style="font-size:0.72rem;padding:4px 10px;margin-right:6px;background:rgba(220,80,60,.18);color:#e87;" onclick="debImportData=null;renderDebitos()">✕ Limpiar</button>'
-                  : '')
+  var html = '<div class="deb-toolbar" style="flex-wrap:wrap;gap:6px">'
+    + '<select class="deb-mes-sel" id="debMesSel" onchange="debSelMes(this.value)">' + opsMesGuard + opsMes + '</select>'
+    + (modoImport && debMesActual.indexOf('__g__') !== 0
+        ? '<input id="debPeriodoKey" type="text" placeholder="ej: julio-2026" value="' + debSugerirPeriodo() + '"'
+          + ' style="font-size:0.76rem;padding:4px 8px;border-radius:6px;border:1px solid #ccc;width:110px">'
+          + '<button class="deb-btn deb-btn-pri" onclick="debGuardarImport()" style="padding:4px 10px">💾 Guardar</button>'
+          + '<button class="deb-btn" style="font-size:0.72rem;padding:4px 8px;background:rgba(220,80,60,.15);color:#c44" onclick="debImportData=null;debMesActual=\'\';renderDebitos()">✕ Descartar</button>'
+        : '')
+    + (modoImport && debMesActual.indexOf('__g__') === 0
+        ? '<button class="deb-btn" style="font-size:0.72rem;padding:4px 8px;background:rgba(220,80,60,.15);color:#c44" onclick="debEliminarGuardado(\'' + debMesActual.replace('__g__','') + '\')">🗑 Eliminar período</button>'
+        : '')
     + '<label class="deb-btn" style="cursor:pointer;position:relative">📂 Importar CEOT.xlsx<input type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer" onchange="debCargarXLSX(this.files[0]);this.value=\'\'"></label>'
-    + '<button class="deb-btn deb-btn-pri" onclick="imprimirDebitos()" style="margin-left:6px">🖨 Imprimir</button>'
+    + '<button class="deb-btn deb-btn-pri" onclick="imprimirDebitos()" style="margin-left:4px">🖨 Imprimir</button>'
     + '<span class="deb-saved-msg" id="debSavedMsg">Guardado ✓</span>'
     + '</div>';
 
@@ -5028,6 +5040,49 @@ function renderDebitos(mes) {
       if (msg) { msg.style.display = "inline"; clearTimeout(msg._t); msg._t = setTimeout(function(){ msg.style.display="none"; }, 1800); }
     });
   });
+}
+
+function debGetGuardados() {
+  try { return JSON.parse(localStorage.getItem('deb_guardados') || '[]'); } catch(e) { return []; }
+}
+
+function debSugerirPeriodo() {
+  var meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var d = new Date();
+  return meses[d.getMonth()] + '-' + d.getFullYear();
+}
+
+function debGuardarImport() {
+  var inp = document.getElementById('debPeriodoKey');
+  var key = inp ? inp.value.trim().toLowerCase().replace(/ /g,'-') : '';
+  if (!key || !debImportData) return;
+  localStorage.setItem('deb_imp_' + key, JSON.stringify(debImportData));
+  var guardados = debGetGuardados();
+  if (guardados.indexOf(key) === -1) { guardados.unshift(key); localStorage.setItem('deb_guardados', JSON.stringify(guardados)); }
+  debImportData = null;
+  debMesActual = '__g__' + key;
+  var msg = document.getElementById('debSavedMsg');
+  if (msg) { msg.style.display='inline'; setTimeout(function(){ msg.style.display='none'; }, 2000); }
+  renderDebitos();
+}
+
+function debSelMes(val) {
+  debImportData = null;
+  debMesActual = val;
+  if (val.indexOf('__g__') === 0) {
+    var key = val.replace('__g__','');
+    try { debImportData = JSON.parse(localStorage.getItem('deb_imp_' + key) || 'null'); } catch(e) {}
+  }
+  renderDebitos();
+}
+
+function debEliminarGuardado(key) {
+  if (!confirm('¿Eliminar ' + key + '?')) return;
+  localStorage.removeItem('deb_imp_' + key);
+  var guardados = debGetGuardados().filter(function(g){ return g !== key; });
+  localStorage.setItem('deb_guardados', JSON.stringify(guardados));
+  debImportData = null; debMesActual = '';
+  renderDebitos();
 }
 
 function debSetEstado(sel) {
