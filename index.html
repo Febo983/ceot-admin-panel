@@ -4828,11 +4828,17 @@ function fmtDeb(n) {
 var debMesActual = "junio-2026";
 var debImportData = null;
 
+function debFmtPeriodo(p) {
+  var s = String(p || '').trim();
+  if (s.length === 6) return s.slice(4,6) + '/' + s.slice(0,4);
+  return s;
+}
+
 async function debCargarXLSX(file) {
   if (!file) return;
   var rows;
   try { rows = await leerXLSX(file); } catch(e) { alert("Error al leer el archivo: " + e.message); return; }
-  var grupos = {}, orden = [];
+  var lista = [];
   for (var r = 1; r < rows.length; r++) {
     var row = rows[r];
     if (!row || row.length < 16) continue;
@@ -4842,18 +4848,20 @@ async function debCargarXLSX(file) {
     if (!imp) continue;
     var nroRaw = String(row[1] || '').trim();
     var parts = nroRaw.split(/\s+/).filter(Boolean);
-    var factKey = parts.length >= 2
+    var fact = parts.length >= 2
       ? String(parts[0]).padStart(4,'0') + '-' + String(parts[1]).padStart(8,'0')
       : nroRaw;
-    var os = String(row[7] || '').trim();
-    if (!grupos[factKey]) { grupos[factKey] = { f: factKey, os: os, dh: 0, dg: 0 }; orden.push(factKey); }
-    if (obs === 'DEB. HONORARIOS') grupos[factKey].dh += imp;
-    if (obs === 'DEB. GASTOS')     grupos[factKey].dg += imp;
+    lista.push({
+      fact: fact,
+      periodo: debFmtPeriodo(row[5]),
+      os:   String(row[7]  || '').trim(),
+      prof: String(row[12] || '').trim(),
+      prac: String(row[9]  || '').trim(),
+      imp:  imp,
+      tipo: obs === 'DEB. GASTOS' ? 'GAS' : 'HON'
+    });
   }
-  debImportData = orden.map(function(k) {
-    var g = grupos[k];
-    return { f: g.f, os: g.os, dh: Math.round(g.dh*100)/100, dg: Math.round(g.dg*100)/100, total: Math.round((g.dh+g.dg)*100)/100 };
-  });
+  debImportData = lista;
   renderDebitos();
 }
 
@@ -4870,21 +4878,16 @@ function renderDebitos(mes) {
   if (sd) sd.className = "adm-sidenav-btn active";
 
   var modoImport = debImportData !== null;
-  var filas = modoImport ? debImportData : (DEBITOS[debMesActual] || []);
 
-  // opciones de mes disponibles
+  // toolbar
   var meses = Object.keys(DEBITOS);
   var opsMes = meses.map(function(m) {
     return '<option value="' + m + '"' + (m === debMesActual ? " selected" : "") + ">" + m + "</option>";
   }).join("");
 
-  // stats
-  var totDH = 0, totDG = 0, totT = 0;
-  filas.forEach(function(d) { totDH += d.dh; totDG += d.dg; totT += d.total; });
-
   var html = '<div class="deb-toolbar">'
     + (!modoImport ? '<select class="deb-mes-sel" id="debMesSel" onchange="renderDebitos(this.value)">' + opsMes + '</select>' : '')
-    + (modoImport ? '<span style="font-size:0.8rem;color:rgba(245,240,225,.6);margin-right:8px">📂 CEOT.xlsx importado — ' + filas.length + ' facturas con DEB &gt; $50.000</span>'
+    + (modoImport ? '<span style="font-size:0.8rem;color:rgba(245,240,225,.6);margin-right:8px">📂 CEOT.xlsx — ' + debImportData.length + ' registros DEB</span>'
                   + '<button class="deb-btn" style="font-size:0.72rem;padding:4px 10px;margin-right:6px;background:rgba(220,80,60,.18);color:#e87;" onclick="debImportData=null;renderDebitos()">✕ Limpiar</button>'
                   : '')
     + '<label class="deb-btn" style="cursor:pointer;position:relative">📂 Importar CEOT.xlsx<input type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer" onchange="debCargarXLSX(this.files[0]);this.value=\'\'"></label>'
@@ -4892,11 +4895,60 @@ function renderDebitos(mes) {
     + '<span class="deb-saved-msg" id="debSavedMsg">Guardado ✓</span>'
     + '</div>';
 
+  // ── MODO IMPORT: tabla detallada por registro ──
+  if (modoImport) {
+    var totH = 0, totG = 0;
+    debImportData.forEach(function(d) { if (d.tipo === 'HON') totH += d.imp; else totG += d.imp; });
+    var totT = totH + totG;
+
+    html += '<div class="deb-stats">'
+      + '<div class="deb-stat"><div class="deb-stat-lbl">Registros</div><div class="deb-stat-val">' + debImportData.length + '</div></div>'
+      + '<div class="deb-stat"><div class="deb-stat-lbl">Déb. Honorarios</div><div class="deb-stat-val deb-neg">' + fmtDeb(Math.round(totH)) + '</div></div>'
+      + '<div class="deb-stat"><div class="deb-stat-lbl">Déb. Gastos</div><div class="deb-stat-val deb-neg">' + fmtDeb(Math.round(totG)) + '</div></div>'
+      + '<div class="deb-stat"><div class="deb-stat-lbl">Total debitado</div><div class="deb-stat-val deb-neg">' + fmtDeb(Math.round(totT)) + '</div></div>'
+      + '</div>';
+
+    html += '<div class="deb-table-wrap"><table class="deb-table" style="font-size:0.72rem">'
+      + '<thead><tr>'
+      + '<th>#</th><th>Factura</th><th>Período</th><th>O.Social</th>'
+      + '<th>Profesional</th><th>Práctica</th>'
+      + '<th>Tipo</th><th style="text-align:right">Importe</th>'
+      + '</tr></thead><tbody>';
+
+    debImportData.forEach(function(d, i) {
+      var tipoStyle = d.tipo === 'GAS' ? 'color:#f0a070' : 'color:#e87';
+      html += '<tr>'
+        + '<td style="color:rgba(245,240,225,.35);text-align:center">' + (i+1) + '</td>'
+        + '<td style="font-family:monospace;white-space:nowrap">' + d.fact + '</td>'
+        + '<td style="white-space:nowrap">' + d.periodo + '</td>'
+        + '<td>' + d.os + '</td>'
+        + '<td>' + d.prof + '</td>'
+        + '<td style="font-size:0.67rem;color:rgba(245,240,225,.55)">' + d.prac + '</td>'
+        + '<td style="' + tipoStyle + ';font-weight:600;white-space:nowrap">' + d.tipo + '</td>'
+        + '<td class="deb-neg" style="text-align:right;white-space:nowrap">' + fmtDeb(Math.round(d.imp)) + '</td>'
+        + '</tr>';
+    });
+
+    html += '<tr class="deb-total-row">'
+      + '<td colspan="7">TOTAL</td>'
+      + '<td class="deb-neg" style="text-align:right">' + fmtDeb(Math.round(totT)) + '</td>'
+      + '</tr>';
+    html += '</tbody></table></div>';
+
+    document.getElementById("adm-content").innerHTML = html;
+    return;
+  }
+
+  // ── MODO NORMAL: tabla por factura ──
+  var filas = DEBITOS[debMesActual] || [];
+  var totDH = 0, totDG = 0, totT2 = 0;
+  filas.forEach(function(d) { totDH += d.dh; totDG += d.dg; totT2 += d.total; });
+
   html += '<div class="deb-stats">'
     + '<div class="deb-stat"><div class="deb-stat-lbl">Facturas</div><div class="deb-stat-val">' + filas.length + '</div></div>'
     + '<div class="deb-stat"><div class="deb-stat-lbl">Déb. Honorarios</div><div class="deb-stat-val deb-neg">' + fmtDeb(totDH) + '</div></div>'
     + '<div class="deb-stat"><div class="deb-stat-lbl">Déb. Gastos</div><div class="deb-stat-val deb-neg">' + fmtDeb(totDG) + '</div></div>'
-    + '<div class="deb-stat"><div class="deb-stat-lbl">Total debitado</div><div class="deb-stat-val deb-neg">' + fmtDeb(totT) + '</div></div>'
+    + '<div class="deb-stat"><div class="deb-stat-lbl">Total debitado</div><div class="deb-stat-val deb-neg">' + fmtDeb(totT2) + '</div></div>'
     + '</div>';
 
   html += '<div class="deb-table-wrap"><table class="deb-table">'
@@ -4935,14 +4987,13 @@ function renderDebitos(mes) {
     + '<td colspan="3">TOTAL</td>'
     + '<td class="deb-neg">' + fmtDeb(totDH) + '</td>'
     + '<td class="deb-neg">' + fmtDeb(totDG) + '</td>'
-    + '<td class="deb-neg">' + fmtDeb(totT) + '</td>'
+    + '<td class="deb-neg">' + fmtDeb(totT2) + '</td>'
     + '<td></td><td></td></tr>';
 
   html += '</tbody></table></div>';
 
   document.getElementById("adm-content").innerHTML = html;
 
-  // guardar automáticamente al escribir
   document.querySelectorAll(".deb-nota-inp").forEach(function(el) {
     el.addEventListener("input", function() {
       debGuardarNota(this.dataset.mes, this.dataset.key, this.value);
