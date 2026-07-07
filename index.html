@@ -4987,7 +4987,7 @@ function cpsmRenderTabla(honorariosData) {
   var filas = CPSM_PROF.map(function(p) {
     var id    = "cpsm-in-" + p.ap.replace(/ /g,"_");
     var resId = "cpsm-res-" + p.ap.replace(/ /g,"_");
-    var valor = honorariosData ? (honorariosData[p.ap] || 0) : 0;
+    var valor = honorariosData ? Math.round(honorariosData[p.ap] || 0) : 0;
     var inputCell = p.exento
       ? '<td><span class="cpsm-exento">exento</span></td>'
       : '<td><input class="cpsm-input" id="' + id + '" type="text" value="' + valor + '" oninput="cpsmActualizarResultados()" onblur="this.value=this.value.trim()"></td>';
