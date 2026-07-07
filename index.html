@@ -4919,11 +4919,23 @@ function renderDebitos(mes) {
       + '<th>DNI</th><th>Paciente</th>'
       + '<th>Práctica</th>'
       + '<th>Tipo</th><th style="text-align:right">Importe</th>'
+      + '<th style="min-width:140px">Estado</th>'
       + '</tr></thead><tbody>';
 
+    var DEB_ESTADOS = {
+      '':    { bg:'',         label:'—' },
+      'P':   { bg:'#fde8e8', label:'🔴 Procedente' },
+      'R':   { bg:'#e6f9ec', label:'🟢 Se refactura' },
+      'A':   { bg:'#fffbe6', label:'🟡 Auditoría médica' }
+    };
+
     debImportData.forEach(function(d, i) {
+      var stKey = 'deb_est_' + d.fact + '_' + d.nprest;
+      var estado = localStorage.getItem(stKey) || '';
+      var bg = DEB_ESTADOS[estado] ? DEB_ESTADOS[estado].bg : '';
       var tipoStyle = d.tipo === 'GAS' ? 'color:#c06000;font-weight:700' : 'color:#b00000;font-weight:700';
-      html += '<tr>'
+      var rowBg = bg ? 'background:' + bg + ';' : '';
+      html += '<tr style="' + rowBg + '">'
         + '<td style="color:#aaa;text-align:center;font-size:0.67rem">' + (i+1) + '</td>'
         + '<td style="font-family:monospace;color:#444;white-space:nowrap;font-size:0.67rem">' + (d.fact||'—') + '</td>'
         + '<td style="color:#444;white-space:nowrap">' + (d.periodo||'—') + '</td>'
@@ -4935,13 +4947,18 @@ function renderDebitos(mes) {
         + '<td style="font-size:0.65rem;color:#666">' + (d.prac||'') + '</td>'
         + '<td style="' + tipoStyle + ';white-space:nowrap">' + d.tipo + '</td>'
         + '<td style="color:#b00000;font-weight:600;text-align:right;white-space:nowrap">' + fmtDeb(Math.round(d.imp)) + '</td>'
+        + '<td><select class="deb-est-sel" data-stkey="' + stKey + '" onchange="debSetEstado(this)" style="font-size:0.72rem;padding:2px 4px;border-radius:5px;border:1px solid #ccc;background:#fff;cursor:pointer;width:100%">'
+        + Object.keys(DEB_ESTADOS).map(function(k){
+            return '<option value="' + k + '"' + (estado===k?' selected':'') + '>' + DEB_ESTADOS[k].label + '</option>';
+          }).join('')
+        + '</select></td>'
         + '</tr>';
     });
 
     html += '<tr class="deb-total-row">'
-      + '<td colspan="7">TOTAL</td>'
-      + '<td class="deb-neg" style="text-align:right">' + fmtDeb(Math.round(totT)) + '</td>'
-      + '</tr>';
+      + '<td colspan="10">TOTAL</td>'
+      + '<td style="text-align:right;color:#b00000;font-weight:700">' + fmtDeb(Math.round(totT)) + '</td>'
+      + '<td></td></tr>';
     html += '</tbody></table></div>';
 
     document.getElementById("adm-content").innerHTML = html;
@@ -5011,6 +5028,15 @@ function renderDebitos(mes) {
       if (msg) { msg.style.display = "inline"; clearTimeout(msg._t); msg._t = setTimeout(function(){ msg.style.display="none"; }, 1800); }
     });
   });
+}
+
+function debSetEstado(sel) {
+  var key = sel.dataset.stkey;
+  var val = sel.value;
+  if (val) localStorage.setItem(key, val); else localStorage.removeItem(key);
+  var bgMap = { 'P':'#fde8e8', 'R':'#e6f9ec', 'A':'#fffbe6', '':'' };
+  var tr = sel.closest('tr');
+  if (tr) tr.style.background = bgMap[val] || '';
 }
 
 function imprimirDebitos() {
