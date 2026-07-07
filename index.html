@@ -4826,6 +4826,36 @@ function fmtDeb(n) {
 }
 
 var debMesActual = "junio-2026";
+var debImportData = null;
+
+async function debCargarXLSX(file) {
+  if (!file) return;
+  var rows;
+  try { rows = await leerXLSX(file); } catch(e) { alert("Error al leer el archivo: " + e.message); return; }
+  var grupos = {}, orden = [];
+  for (var r = 1; r < rows.length; r++) {
+    var row = rows[r];
+    if (!row || row.length < 16) continue;
+    var obs = String(row[15] || '').trim().toUpperCase();
+    if (obs.indexOf('DEB') === -1) continue;
+    var imp = typeof row[3] === 'number' ? row[3] : (parseFloat(String(row[3]).replace(/\./g,'').replace(',','.')) || 0);
+    if (imp <= 50000) continue;
+    var nroRaw = String(row[1] || '').trim();
+    var parts = nroRaw.split(/\s+/).filter(Boolean);
+    var factKey = parts.length >= 2
+      ? String(parts[0]).padStart(4,'0') + '-' + String(parts[1]).padStart(8,'0')
+      : nroRaw;
+    var os = String(row[7] || '').trim();
+    if (!grupos[factKey]) { grupos[factKey] = { f: factKey, os: os, dh: 0, dg: 0 }; orden.push(factKey); }
+    if (obs === 'DEB. HONORARIOS') grupos[factKey].dh += imp;
+    if (obs === 'DEB. GASTOS')     grupos[factKey].dg += imp;
+  }
+  debImportData = orden.map(function(k) {
+    var g = grupos[k];
+    return { f: g.f, os: g.os, dh: Math.round(g.dh*100)/100, dg: Math.round(g.dg*100)/100, total: Math.round((g.dh+g.dg)*100)/100 };
+  });
+  renderDebitos();
+}
 
 function renderDebitos(mes) {
   if (mes) debMesActual = mes;
@@ -4839,7 +4869,8 @@ function renderDebitos(mes) {
   var sd = document.getElementById("adm-sidenav-debitos");
   if (sd) sd.className = "adm-sidenav-btn active";
 
-  var filas = DEBITOS[debMesActual] || [];
+  var modoImport = debImportData !== null;
+  var filas = modoImport ? debImportData : (DEBITOS[debMesActual] || []);
 
   // opciones de mes disponibles
   var meses = Object.keys(DEBITOS);
@@ -4852,8 +4883,12 @@ function renderDebitos(mes) {
   filas.forEach(function(d) { totDH += d.dh; totDG += d.dg; totT += d.total; });
 
   var html = '<div class="deb-toolbar">'
-    + '<select class="deb-mes-sel" id="debMesSel" onchange="renderDebitos(this.value)">' + opsMes + '</select>'
-    + '<button class="deb-btn deb-btn-pri" onclick="imprimirDebitos()">🖨 Imprimir</button>'
+    + (!modoImport ? '<select class="deb-mes-sel" id="debMesSel" onchange="renderDebitos(this.value)">' + opsMes + '</select>' : '')
+    + (modoImport ? '<span style="font-size:0.8rem;color:rgba(245,240,225,.6);margin-right:8px">📂 CEOT.xlsx importado — ' + filas.length + ' facturas con DEB &gt; $50.000</span>'
+                  + '<button class="deb-btn" style="font-size:0.72rem;padding:4px 10px;margin-right:6px;background:rgba(220,80,60,.18);color:#e87;" onclick="debImportData=null;renderDebitos()">✕ Limpiar</button>'
+                  : '')
+    + '<label class="deb-btn" style="cursor:pointer;position:relative">📂 Importar CEOT.xlsx<input type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer" onchange="debCargarXLSX(this.files[0]);this.value=\'\'"></label>'
+    + '<button class="deb-btn deb-btn-pri" onclick="imprimirDebitos()" style="margin-left:6px">🖨 Imprimir</button>'
     + '<span class="deb-saved-msg" id="debSavedMsg">Guardado ✓</span>'
     + '</div>';
 
@@ -4886,7 +4921,7 @@ function renderDebitos(mes) {
       + '<td class="deb-neg">' + (d.dh > 0 ? fmtDeb(d.dh) : '—') + '</td>'
       + '<td class="deb-neg">' + (d.dg > 0 ? fmtDeb(d.dg) : '—') + '</td>'
       + '<td class="' + totalClass + '">' + (d.total > 0 ? fmtDeb(d.total) : '—') + '</td>'
-      + '<td style="text-align:center">' + d.pag + '</td>'
+      + '<td style="text-align:center">' + (d.pag || '—') + '</td>'
       + '<td>'
       + (placeholderBase ? '<div style="font-size:0.65rem;color:rgba(245,240,225,.35);margin-bottom:3px">' + placeholderBase + '</div>' : '')
       + '<textarea class="deb-nota-inp' + (tieneNota ? ' tiene-nota' : '') + '" rows="2"'
