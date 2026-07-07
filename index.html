@@ -1168,6 +1168,30 @@ body { background: var(--iv0); color: var(--ink); }
 .sb-toggle { display:flex; align-items:center; gap:8px; font-size:0.8rem; color:#555; cursor:pointer; }
 .sb-toggle input[type=checkbox] { cursor:pointer; }
 
+/* ── CPSM ── */
+.cpsm-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+.cpsm-title { font-size:1rem; font-weight:800; color:#1a1a1a; }
+.cpsm-subtitle { font-size:0.72rem; color:#777; margin-top:2px; }
+.cpsm-periodo-row { display:flex; gap:10px; margin-bottom:16px; }
+.cpsm-periodo-row .sb-field { flex:1; }
+.cpsm-tabla { width:100%; border-collapse:collapse; margin-bottom:16px; }
+.cpsm-tabla th { background:#1a1a1a; color:#f5f0e1; font-size:0.72rem; padding:7px 8px; text-align:left; }
+.cpsm-tabla th:last-child { text-align:right; }
+.cpsm-tabla td { padding:8px 8px; border-bottom:1px solid #eee; font-size:0.85rem; color:#222; vertical-align:middle; }
+.cpsm-tabla td:last-child { text-align:right; }
+.cpsm-tabla tr:last-child td { border-bottom:none; }
+.cpsm-tabla .cpsm-input { width:100%; border:1px solid #ddd; border-radius:5px; padding:5px 7px; font-size:0.85rem; text-align:right; color:#222; background:#fafafa; }
+.cpsm-tabla .cpsm-input:focus { border-color:#888; outline:none; background:#fff; }
+.cpsm-result { font-weight:700; color:#1a7a52; min-width:70px; display:inline-block; }
+.cpsm-exento { font-size:0.68rem; color:#888; }
+.cpsm-total-row td { font-weight:700; background:#f5f0e1; border-top:2px solid #1a1a1a !important; font-size:0.88rem; }
+.cpsm-btn-row { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+.cpsm-calc-btn { background:#1a1a1a; color:#f5f0e1; border:none; border-radius:7px; padding:9px 20px; font-weight:700; font-size:0.88rem; cursor:pointer; }
+.cpsm-calc-btn:hover { background:#333; }
+.cpsm-dl-btn { background:#1a7a52; color:#fff; border:none; border-radius:7px; padding:9px 20px; font-weight:700; font-size:0.88rem; cursor:pointer; display:none; }
+.cpsm-dl-btn:hover { background:#155f3f; }
+.cpsm-fuente-badge { font-size:0.7rem; background:#e8e3d0; border-radius:4px; padding:3px 8px; color:#555; }
+
 /* ── RECIBO IMPRIMIBLE ── */
 .sb-recibo { display:none; }
 @media print {
@@ -1389,6 +1413,7 @@ body { background: var(--iv0); color: var(--ink); }
       <button class="adm-sidenav-btn" id="adm-sidenav-transferencias" onclick="renderTransferencias()">💸 Transferencias</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-totalceot"      onclick="renderTotalCeot()">📊 Total CEOT</button>
 <button class="adm-sidenav-btn" id="adm-sidenav-sueldob"       onclick="renderSueldoB()">💼 Sueldo B</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-cpsm"         onclick="renderCpsm()">🏦 CPSM</button>
       <div class="adm-sidenav-sep" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
         <span>Accesos</span>
         <button id="btnEditLinks" onclick="toggleEditLinks()" title="Editar links" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:rgba(255,255,255,.35);padding:0 2px">✏</button>
@@ -3340,7 +3365,7 @@ function sbImprimirTodos() {
 }
 
 function admDesactivarSidebar() {
-  ["debitos","accesos","pendientes","facturas","transferencias","totalceot","sueldob"].forEach(function(k) {
+  ["debitos","accesos","pendientes","facturas","transferencias","totalceot","sueldob","cpsm"].forEach(function(k) {
     var b = document.getElementById("adm-sidenav-" + k);
     if (b) b.className = "adm-sidenav-btn";
   });
@@ -4877,6 +4902,198 @@ function renderDebitos(mes) {
 
 function imprimirDebitos() {
   window.print();
+}
+
+/* ── CPSM ── */
+var CPSM_PROF = [
+  { ap:"BRUNI",        nombre:"Maximiliano Ezequiel",  mat:"94435", cuit:"23-27940042-9" },
+  { ap:"CORELICH",     nombre:"Daniel Oscar",           mat:"92859", cuit:"20-18129265-3" },
+  { ap:"DE LA COLINA", nombre:"Juan Pablo",             mat:"95943", cuit:"24-36384171-2" },
+  { ap:"DEGANUTTI",    nombre:"Cristian Gabriel",       mat:"94391", cuit:"20-27466325-2" },
+  { ap:"LABAYEN",      nombre:"Daniel Guillermo",       mat:"18863", cuit:"20-13704461-8", exento:true },
+  { ap:"LEON",         nombre:"Joaquin Eduardo",        mat:"96521", cuit:"20-37405582-9" },
+  { ap:"MAZZOLA",      nombre:"Maximiliano Tomas",      mat:"95178", cuit:"20-29593564-3" },
+  { ap:"PERLASCO",     nombre:"Camilo Nicolas",         mat:"95074", cuit:"20-29593933-9" },
+  { ap:"SOULE",        nombre:"Ivan",                   mat:"96211", cuit:"20-35296127-3" },
+  { ap:"TRIVELLINI",   nombre:"Amilcar",                mat:"93078", cuit:"20-20654988-3" },
+];
+var MESES_CPSM = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+function cpsmMesFuente(mesLiqNum) {
+  var idx = mesLiqNum - 3; // M-2 → idx = mesLiqNum-1 - 2
+  if (idx < 0) idx += 12;
+  return MESES_CPSM[idx];
+}
+
+function cpsmCalc(honor) {
+  return Math.floor(honor * 0.05);
+}
+
+function cpsmFmt(n) {
+  return n.toLocaleString("es-AR", { minimumFractionDigits:0, maximumFractionDigits:0 });
+}
+
+function cpsmLeerInputs() {
+  var vals = {};
+  CPSM_PROF.forEach(function(p) {
+    var el = document.getElementById("cpsm-in-" + p.ap.replace(/ /g,"_"));
+    var raw = el ? el.value.replace(/\./g,"").replace(",",".").trim() : "0";
+    vals[p.ap] = parseFloat(raw) || 0;
+  });
+  return vals;
+}
+
+function cpsmActualizarResultados() {
+  var vals = cpsmLeerInputs();
+  var total = 0;
+  CPSM_PROF.forEach(function(p) {
+    var el = document.getElementById("cpsm-res-" + p.ap.replace(/ /g,"_"));
+    if (!el) return;
+    var cpsm = p.exento ? 10 : cpsmCalc(vals[p.ap]);
+    el.textContent = "$ " + cpsmFmt(cpsm);
+    total += cpsm;
+  });
+  var totEl = document.getElementById("cpsm-total");
+  if (totEl) totEl.textContent = "$ " + cpsmFmt(total);
+  var dlBtn = document.getElementById("cpsm-dl-btn");
+  if (dlBtn) dlBtn.style.display = "inline-block";
+}
+
+function cpsmDescargarExcel() {
+  var mesLiqSel = document.getElementById("cpsm-mes-liq");
+  var anioSel   = document.getElementById("cpsm-anio");
+  if (!mesLiqSel || !anioSel) return;
+  var mesLiqStr = mesLiqSel.value;
+  var anio      = anioSel.value;
+  var vals      = cpsmLeerInputs();
+
+  var rows = [["Apellido","Nombre","Matricula","CUIT","Honorarios"]];
+  var totalHonor = 0;
+  CPSM_PROF.forEach(function(p) {
+    var cpsm = p.exento ? 10 : cpsmCalc(vals[p.ap]);
+    rows.push([p.ap, p.nombre.toUpperCase(), p.mat, p.cuit, cpsm]);
+    totalHonor += cpsm;
+  });
+  rows.push(["","","","TOTAL", totalHonor]);
+
+  var wb = XLSX.utils.book_new();
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"] = [{wch:18},{wch:26},{wch:12},{wch:18},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws, mesLiqStr);
+  XLSX.writeFile(wb, "CPSM_" + mesLiqStr + "_" + anio + ".xlsx");
+}
+
+function cpsmRenderTabla(honorariosData) {
+  var filas = CPSM_PROF.map(function(p) {
+    var id    = "cpsm-in-" + p.ap.replace(/ /g,"_");
+    var resId = "cpsm-res-" + p.ap.replace(/ /g,"_");
+    var valor = honorariosData ? (honorariosData[p.ap] || 0) : 0;
+    var inputCell = p.exento
+      ? '<td><span class="cpsm-exento">exento</span></td>'
+      : '<td><input class="cpsm-input" id="' + id + '" type="text" value="' + valor + '" oninput="cpsmActualizarResultados()" onblur="this.value=this.value.trim()"></td>';
+    return '<tr>'
+      + '<td><strong>' + p.ap + '</strong></td>'
+      + inputCell
+      + '<td><span class="cpsm-result" id="' + resId + '">$ 0</span></td>'
+      + '</tr>';
+  }).join("");
+  var tbody = document.getElementById("cpsm-tbody");
+  if (tbody) tbody.innerHTML = filas;
+
+  var statusEl = document.getElementById("cpsm-fetch-status");
+  if (statusEl) {
+    statusEl.textContent = honorariosData ? "Honorarios cargados desde RESUMEN." : "Sin datos del Sheet — ingresá los importes manualmente.";
+    statusEl.style.color = honorariosData ? "#1a7a52" : "#b45309";
+  }
+  cpsmActualizarResultados();
+}
+
+async function cpsmFetchHonorarios(mesFuente) {
+  var statusEl = document.getElementById("cpsm-fetch-status");
+  if (statusEl) { statusEl.textContent = "Cargando desde RESUMEN..."; statusEl.style.color = "#888"; }
+  try {
+    var url  = LIQUIDACION_ENDPOINT + "?action=honorarios&mes=" + mesFuente;
+    var resp = await fetch(url);
+    var data = await resp.json();
+    if (data.ok && data.data) {
+      cpsmRenderTabla(data.data);
+    } else {
+      cpsmRenderTabla(null);
+    }
+  } catch(e) {
+    cpsmRenderTabla(null);
+  }
+}
+
+function renderCpsm() {
+  cerrarAdmSidenav();
+  admDesactivarSidebar();
+  var btn = document.getElementById("adm-sidenav-cpsm");
+  if (btn) btn.className = "adm-sidenav-btn active";
+
+  var hoy = new Date();
+  var mesActNum = hoy.getMonth() + 1;
+  var anioAct   = hoy.getFullYear();
+  var fuenteStr = cpsmMesFuente(mesActNum);
+
+  var opsMes = MESES_CPSM.map(function(m, i) {
+    var sel = (i+1 === mesActNum) ? " selected" : "";
+    return '<option value="' + m + '"' + sel + '>' + m.charAt(0).toUpperCase() + m.slice(1) + '</option>';
+  }).join("");
+
+  var html = '<div style="padding:16px">'
+    + '<div class="cpsm-header">'
+    +   '<div><div class="cpsm-title">🏦 CPSM Mensual</div>'
+    +   '<div class="cpsm-subtitle">5% de honorarios Colón+OSDE de M-2 · Labayen = $10</div></div>'
+    + '</div>'
+    + '<div class="cpsm-periodo-row">'
+    +   '<div class="sb-field"><label>Mes de liquidación</label>'
+    +     '<select id="cpsm-mes-liq" style="background:#fff;border:1px solid #ccc;border-radius:6px;padding:7px 10px;font-size:0.9rem;width:100%" onchange="cpsmCambiarPeriodo()">' + opsMes + '</select></div>'
+    +   '<div class="sb-field"><label>Año</label>'
+    +     '<input type="number" id="cpsm-anio" value="' + anioAct + '" style="background:#fff;border:1px solid #ccc;border-radius:6px;padding:7px 10px;font-size:0.9rem;width:100%" onchange="cpsmCambiarPeriodo()"></div>'
+    + '</div>'
+    + '<div style="margin-bottom:10px;font-size:0.8rem;color:#555">Honorarios fuente: <span class="cpsm-fuente-badge" id="cpsm-fuente-label">' + fuenteStr.charAt(0).toUpperCase()+fuenteStr.slice(1) + ' ' + anioAct + '</span>'
+    + '  <span id="cpsm-fetch-status" style="margin-left:8px;font-size:0.72rem">Cargando...</span></div>'
+    + '<table class="cpsm-tabla">'
+    +   '<thead><tr><th>Profesional</th><th>Honorarios (M-2)</th><th>CPSM a pagar</th></tr></thead>'
+    +   '<tbody id="cpsm-tbody"></tbody>'
+    +   '<tfoot><tr class="cpsm-total-row"><td colspan="2">TOTAL</td><td><span id="cpsm-total">$ 0</span></td></tr></tfoot>'
+    + '</table>'
+    + '<div class="cpsm-btn-row">'
+    +   '<button class="cpsm-calc-btn" onclick="cpsmActualizarResultados()">Recalcular</button>'
+    +   '<button class="cpsm-dl-btn" id="cpsm-dl-btn" onclick="cpsmDescargarExcel()" style="display:none">⬇ Descargar Excel</button>'
+    + '</div>'
+    + '</div>';
+
+  document.getElementById("adm-content").innerHTML = html;
+  var hb = document.getElementById("admHomeBtn");
+  if (hb) hb.style.display = "none";
+
+  // Render tabla vacía mientras carga
+  cpsmRenderTabla(null);
+  // Fetch automático
+  cpsmFetchHonorarios(fuenteStr);
+}
+
+function cpsmCambiarPeriodo() {
+  cpsmActualizarFuente();
+  var lbl = document.getElementById("cpsm-fuente-label");
+  var fuente = lbl ? lbl.textContent.split(" ")[0].toLowerCase() : "";
+  if (fuente) cpsmFetchHonorarios(fuente);
+}
+
+function cpsmActualizarFuente() {
+  var mesEl  = document.getElementById("cpsm-mes-liq");
+  var anioEl = document.getElementById("cpsm-anio");
+  var lbl    = document.getElementById("cpsm-fuente-label");
+  if (!mesEl || !anioEl || !lbl) return;
+  var mesLiqNum = MESES_CPSM.indexOf(mesEl.value) + 1;
+  var anio      = parseInt(anioEl.value) || new Date().getFullYear();
+  var fuenteIdx = mesLiqNum - 3;
+  var anioFuente = anio;
+  if (fuenteIdx < 0) { fuenteIdx += 12; anioFuente = anio - 1; }
+  var fuente = MESES_CPSM[fuenteIdx];
+  lbl.textContent = fuente.charAt(0).toUpperCase() + fuente.slice(1) + " " + anioFuente;
 }
 </script>
 
