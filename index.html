@@ -4912,7 +4912,7 @@ function renderDebitos(mes) {
       + '<div class="deb-stat"><div class="deb-stat-lbl">Total debitado</div><div class="deb-stat-val deb-neg">' + fmtDeb(Math.round(totT)) + '</div></div>'
       + '</div>';
 
-    html += '<div class="deb-table-wrap"><table class="deb-table" style="font-size:0.71rem">'
+    html += '<div class="deb-table-wrap"><table class="deb-table" style="font-size:0.71rem;color:#222">'
       + '<thead><tr>'
       + '<th>#</th><th>Factura</th><th>Per.</th><th>O.Social</th>'
       + '<th>Profesional</th><th>ROL</th>'
@@ -4922,19 +4922,19 @@ function renderDebitos(mes) {
       + '</tr></thead><tbody>';
 
     debImportData.forEach(function(d, i) {
-      var tipoStyle = d.tipo === 'GAS' ? 'color:#f0a070' : 'color:#e87';
+      var tipoStyle = d.tipo === 'GAS' ? 'color:#c06000;font-weight:700' : 'color:#b00000;font-weight:700';
       html += '<tr>'
-        + '<td style="color:rgba(245,240,225,.35);text-align:center">' + (i+1) + '</td>'
-        + '<td style="font-family:monospace;white-space:nowrap;font-size:0.67rem">' + d.fact + '</td>'
-        + '<td style="white-space:nowrap">' + d.periodo + '</td>'
-        + '<td style="white-space:nowrap">' + d.os + '</td>'
-        + '<td style="white-space:nowrap">' + d.prof + '</td>'
-        + '<td style="color:rgba(245,240,225,.5);font-size:0.67rem">' + d.rol + '</td>'
-        + '<td style="font-family:monospace;font-size:0.67rem">' + d.dni + '</td>'
-        + '<td>' + d.paciente + '</td>'
-        + '<td style="font-size:0.65rem;color:rgba(245,240,225,.55)">' + d.prac + '</td>'
-        + '<td style="' + tipoStyle + ';font-weight:600;white-space:nowrap">' + d.tipo + '</td>'
-        + '<td class="deb-neg" style="text-align:right;white-space:nowrap">' + fmtDeb(Math.round(d.imp)) + '</td>'
+        + '<td style="color:#aaa;text-align:center;font-size:0.67rem">' + (i+1) + '</td>'
+        + '<td style="font-family:monospace;color:#444;white-space:nowrap;font-size:0.67rem">' + (d.fact||'—') + '</td>'
+        + '<td style="color:#444;white-space:nowrap">' + (d.periodo||'—') + '</td>'
+        + '<td style="color:#333;white-space:nowrap;font-weight:600">' + (d.os||'—') + '</td>'
+        + '<td style="color:#222;white-space:nowrap">' + (d.prof||'—') + '</td>'
+        + '<td style="color:#777;font-size:0.67rem">' + (d.rol||'') + '</td>'
+        + '<td style="font-family:monospace;color:#555;font-size:0.67rem">' + (d.dni||'') + '</td>'
+        + '<td style="color:#222">' + (d.paciente||'—') + '</td>'
+        + '<td style="font-size:0.65rem;color:#666">' + (d.prac||'') + '</td>'
+        + '<td style="' + tipoStyle + ';white-space:nowrap">' + d.tipo + '</td>'
+        + '<td style="color:#b00000;font-weight:600;text-align:right;white-space:nowrap">' + fmtDeb(Math.round(d.imp)) + '</td>'
         + '</tr>';
     });
 
