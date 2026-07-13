@@ -2860,11 +2860,11 @@ function admHomeRenderResults() {
         var ico = ACC_ICONS[a.title] || "🔗";
         return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[a.cat] || "rgba(245,240,225,0.1)", { href: a.url, editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")" });
       }));
-      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px;margin-bottom:6px">' + tiles.join("") + '</div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(76px,96px));justify-content:center;gap:8px;margin-bottom:6px">' + tiles.join("") + '</div>';
     }
   } else {
     html += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(245,240,225,.32);margin:0 0 9px">Módulos</div>';
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px;margin-bottom:20px">'
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(76px,96px));justify-content:center;gap:8px;margin-bottom:20px">'
       + ADM_HOME_MODULOS.map(function(m) { return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(245,240,225,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')" }); }).join("")
       + '</div>';
 
@@ -2891,7 +2891,7 @@ function admHomeRenderResults() {
           + '</div>');
       }
       html += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(245,240,225,.32);margin:0 0 9px">' + cat + ' <span style="color:rgba(245,240,225,.18);font-weight:500">· ' + items.length + '</span></div>';
-      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px;margin-bottom:20px">' + tiles.join("") + '</div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(76px,96px));justify-content:center;gap:8px;margin-bottom:20px">' + tiles.join("") + '</div>';
     });
   }
 
@@ -2935,6 +2935,7 @@ function renderAdmHome() {
   var statNeto = totalMes ? ('<span style="font-size:1.2rem;font-weight:800;color:#f5f0e1">' + fmt(totalMes) + '</span><div style="font-size:9px;color:rgba(29,158,117,0.85);margin-top:2px">total socios · ' + mesAct + '</div>') : '<span style="font-size:1.2rem;color:rgba(245,240,225,0.3)">—</span>';
 
   var html = '<div style="background:#111;border-radius:0;padding:18px 16px 20px;min-height:200px">'
+    + '<div style="max-width:1180px;margin:0 auto">'
     + '<div style="font-size:0.78rem;color:rgba(245,240,225,0.38);margin-bottom:14px;font-weight:500;letter-spacing:.3px">' + saludo + ', Marcelo</div>'
     + '<div style="display:flex;gap:5px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none">' + mesStrip + '</div>'
     + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'
@@ -2959,6 +2960,7 @@ function renderAdmHome() {
     + '<div style="display:flex;justify-content:space-between;font-size:9.5px;color:rgba(245,240,225,0.2);padding-top:10px;border-top:0.5px solid rgba(245,240,225,0.07)">'
     + '<span><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:rgba(29,158,117,.8);margin-right:4px;vertical-align:1px"></span>Conectado</span>'
     + '<span>Admin CEOT · 2026</span>'
+    + '</div>'
     + '</div>'
     + '</div>';
 
