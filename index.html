@@ -1487,6 +1487,21 @@ body { background: var(--iv0); color: var(--ink); }
   </div>
 </div>
 
+<div id="modHomeModalBg" class="acc-modal-bg" onclick="if(event.target===this)admHomeCerrarModModal()">
+  <div class="acc-modal">
+    <h3>Renombrar módulo</h3>
+    <label>Nombre</label>
+    <input id="modHomeFormNombre" type="text" placeholder="Nombre del módulo">
+    <div class="acc-modal-btns">
+      <button class="acc-modal-cancel" onclick="admHomeCerrarModModal()">Cancelar</button>
+      <button class="acc-modal-save" onclick="admHomeGuardarModulo()">Guardar</button>
+    </div>
+    <div style="text-align:center;margin-top:12px">
+      <a href="#" onclick="admHomeRestablecerModulo();return false;" style="font-size:0.72rem;color:#9a8c78;text-decoration:underline">Restablecer nombre original</a>
+    </div>
+  </div>
+</div>
+
 <script>
 // ══════ DATOS ════════════════════════════════════════════════
 
@@ -2671,16 +2686,16 @@ var homeSearchQ = "";
 var homeSearchCat = "Todos";
 
 var ADM_HOME_MODULOS = [
-  { ico:"📊", lbl:"Liquidaciones", cat:"cat-fin", fn:"renderAdminPanel(tabMesActual())" },
-  { ico:"📈", lbl:"Total CEOT",    cat:"cat-fin", fn:"renderTotalCeot()" },
-  { ico:"⚠",  lbl:"Débitos",       cat:"cat-gst", fn:"renderDebitos()" },
-  { ico:"📋", lbl:"Pendientes",    cat:"cat-adm", fn:"renderPendientes()" },
-  { ico:"🧾", lbl:"Facturas",      cat:"cat-adm", fn:"renderFacturas()" },
-  { ico:"💸", lbl:"Transferencias",cat:"cat-adm", fn:"renderTransferencias()" },
-  { ico:"💼", lbl:"Sueldo B",      cat:"cat-adm", fn:"renderSueldoB()" },
-  { ico:"🏦", lbl:"CPSM",          cat:"cat-fin", fn:"renderCpsm()" },
-  { ico:"🔗", lbl:"Accesos",       cat:"cat-inf", fn:"renderAccesos(null)" },
-  { ico:"💬", lbl:"Mensajes WA",   cat:"cat-cli", fn:"" },
+  { key:"liquidaciones",    ico:"📊", lbl:"Liquidaciones", cat:"cat-fin", fn:"renderAdminPanel(tabMesActual())" },
+  { key:"totalceot",        ico:"📈", lbl:"Total CEOT",    cat:"cat-fin", fn:"renderTotalCeot()" },
+  { key:"debitos",          ico:"⚠",  lbl:"Débitos",       cat:"cat-gst", fn:"renderDebitos()" },
+  { key:"pendientes",       ico:"📋", lbl:"Pendientes",    cat:"cat-adm", fn:"renderPendientes()" },
+  { key:"facturas",         ico:"🧾", lbl:"Facturas",      cat:"cat-adm", fn:"renderFacturas()" },
+  { key:"transferencias",   ico:"💸", lbl:"Transferencias",cat:"cat-adm", fn:"renderTransferencias()" },
+  { key:"sueldob",          ico:"💼", lbl:"Sueldo B",      cat:"cat-adm", fn:"renderSueldoB()" },
+  { key:"cpsm",             ico:"🏦", lbl:"CPSM",          cat:"cat-fin", fn:"renderCpsm()" },
+  { key:"accesos",          ico:"🔗", lbl:"Accesos",       cat:"cat-inf", fn:"renderAccesos(null)" },
+  { key:"mensajeswa",       ico:"💬", lbl:"Mensajes WA",   cat:"cat-cli", fn:"" },
 ];
 var ADM_HOME_MOD_COLOR = {
   "cat-fin":"rgba(29,158,117,0.22)","cat-cli":"rgba(55,138,221,0.22)",
@@ -2691,15 +2706,107 @@ var ADM_HOME_ACC_COLOR = {
   "Admin":"rgba(127,119,221,0.22)","Otros":"rgba(245,240,225,0.1)"
 };
 
+var homeEditMode = false;
+var modHomeEditingKey = null;
+var MOD_LABELS_CUSTOM = {};
+
+function admHomeCargarModLabels() {
+  try {
+    var raw = localStorage.getItem("ceot_home_mod_labels");
+    MOD_LABELS_CUSTOM = raw ? (JSON.parse(raw) || {}) : {};
+  } catch (e) { MOD_LABELS_CUSTOM = {}; }
+}
+
+function admHomeModLabel(m) {
+  return MOD_LABELS_CUSTOM[m.key] || m.lbl;
+}
+
+function admHomeToggleEdit() {
+  homeEditMode = !homeEditMode;
+  var btn = document.getElementById("admHomeEditBtn");
+  if (btn) {
+    btn.style.background = homeEditMode ? "#dc2626" : "rgba(245,240,225,.06)";
+    btn.style.borderColor = homeEditMode ? "#dc2626" : "rgba(245,240,225,.12)";
+    btn.style.color = homeEditMode ? "#fff" : "rgba(245,240,225,.6)";
+    btn.innerHTML = homeEditMode ? "✕ Listo" : "✏ Editar nombres";
+  }
+  admHomeRenderResults();
+}
+
 function admHomeTile(ico, lbl, colorRgba, opts) {
   opts = opts || {};
-  var tag = opts.href ? "a" : "div";
-  var attrs = opts.href ? (' href="' + opts.href + '" target="_blank"') : (opts.fn ? (' onclick="' + opts.fn + '"') : "");
-  var cursor = (opts.href || opts.fn) ? "pointer" : "default";
-  return "<" + tag + attrs + " style=\"text-decoration:none;background:rgba(245,240,225,0.05);border:0.5px solid rgba(245,240,225,0.1);border-radius:10px;padding:13px 6px 10px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:" + cursor + ";transition:background .13s\" onmouseover=\"this.style.background='rgba(245,240,225,0.1)'\" onmouseout=\"this.style.background='rgba(245,240,225,0.05)'\">"
+  var editing = homeEditMode && opts.editFn;
+  var tag = (opts.href && !editing) ? "a" : "div";
+  var attrs;
+  if (editing) attrs = ' onclick="' + opts.editFn + '"';
+  else if (opts.href) attrs = ' href="' + opts.href + '" target="_blank"';
+  else if (opts.fn) attrs = ' onclick="' + opts.fn + '"';
+  else attrs = "";
+  var cursor = (opts.href || opts.fn || editing) ? "pointer" : "default";
+  var border = editing ? "1px dashed rgba(223,174,99,.55)" : "0.5px solid rgba(245,240,225,0.1)";
+  var del = (editing && opts.delFn)
+    ? '<div onclick="event.stopPropagation();' + opts.delFn + '" title="Eliminar" style="position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:4px;background:rgba(220,38,38,.85);color:#fff;font-size:9px;line-height:16px;text-align:center;cursor:pointer">✕</div>'
+    : "";
+  var pencil = editing ? '<div style="position:absolute;top:3px;left:3px;font-size:9px;opacity:.6">✏</div>' : "";
+  return "<" + tag + attrs + " style=\"position:relative;text-decoration:none;background:rgba(245,240,225,0.05);border:" + border + ";border-radius:10px;padding:13px 6px 10px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:" + cursor + ";transition:background .13s\" onmouseover=\"this.style.background='rgba(245,240,225,0.1)'\" onmouseout=\"this.style.background='rgba(245,240,225,0.05)'\">"
+    + pencil + del
     + '<div style="width:36px;height:36px;border-radius:9px;background:' + colorRgba + ';display:flex;align-items:center;justify-content:center;font-size:16px">' + ico + '</div>'
     + '<div style="font-size:9.5px;color:rgba(245,240,225,0.65);text-align:center;font-weight:500;letter-spacing:0.2px;line-height:1.25">' + lbl + '</div>'
     + "</" + tag + ">";
+}
+
+function admHomeEditarModulo(key) {
+  var m = ADM_HOME_MODULOS.find(function(x){ return x.key === key; });
+  if (!m) return;
+  modHomeEditingKey = key;
+  document.getElementById("modHomeFormNombre").value = admHomeModLabel(m);
+  document.getElementById("modHomeModalBg").classList.add("open");
+}
+
+function admHomeCerrarModModal() {
+  document.getElementById("modHomeModalBg").classList.remove("open");
+  modHomeEditingKey = null;
+}
+
+function admHomeGuardarModulo() {
+  var val = document.getElementById("modHomeFormNombre").value.trim();
+  if (!val) { alert("El nombre no puede estar vacío."); return; }
+  if (modHomeEditingKey) {
+    MOD_LABELS_CUSTOM[modHomeEditingKey] = val;
+    localStorage.setItem("ceot_home_mod_labels", JSON.stringify(MOD_LABELS_CUSTOM));
+  }
+  admHomeCerrarModModal();
+  admHomeRenderResults();
+}
+
+function admHomeRestablecerModulo() {
+  if (modHomeEditingKey) {
+    delete MOD_LABELS_CUSTOM[modHomeEditingKey];
+    localStorage.setItem("ceot_home_mod_labels", JSON.stringify(MOD_LABELS_CUSTOM));
+  }
+  admHomeCerrarModModal();
+  admHomeRenderResults();
+}
+
+function admHomeEditarAcceso(id) {
+  var item = ACCESOS_DATA.find(function(a){ return a.id === id; });
+  if (!item) return;
+  accModalOrigin = "home";
+  accAbrirModal(item);
+}
+
+function admHomeNuevoAcceso(catDefault) {
+  accModalOrigin = "home";
+  accAbrirModal(null);
+  var sel = document.getElementById("accFormCat");
+  if (sel && catDefault) sel.value = catDefault;
+}
+
+function admHomeEliminarAcceso(id) {
+  if (!confirm("¿Eliminar este acceso?")) return;
+  ACCESOS_DATA = ACCESOS_DATA.filter(function(a){ return a.id !== id; });
+  accGuardarTodo();
+  admHomeRenderResults();
 }
 
 function admHomeBuscar(q) {
@@ -2735,6 +2842,10 @@ function admHomeRenderResults() {
   var flatMode = !!q || homeSearchCat !== "Todos";
   var html = '<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:16px;scrollbar-width:none">' + chips + '</div>';
 
+  if (homeEditMode) {
+    html += '<div style="font-size:0.68rem;color:rgba(223,174,99,.85);margin-bottom:12px;padding:8px 10px;background:rgba(223,174,99,.08);border:1px solid rgba(223,174,99,.25);border-radius:8px">✏ Modo edición: tocá cualquier tile para renombrarlo' + (flatMode ? '' : ' o eliminarlo') + '.</div>';
+  }
+
   if (flatMode) {
     var total = modMatch.length + accMatch.length;
     html += '<div style="font-size:0.68rem;color:rgba(223,174,99,.8);margin-bottom:10px">'
@@ -2744,33 +2855,39 @@ function admHomeRenderResults() {
       html += '<div style="padding:26px 10px;text-align:center;color:rgba(245,240,225,.3);font-size:0.8rem">Sin resultados.</div>';
     } else {
       var tiles = modMatch.map(function(m) {
-        return admHomeTile(m.ico, m.lbl, ADM_HOME_MOD_COLOR[m.cat] || "rgba(245,240,225,0.1)", { fn: m.fn });
+        return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(245,240,225,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')" });
       }).concat(accMatch.map(function(a) {
         var ico = ACC_ICONS[a.title] || "🔗";
-        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[a.cat] || "rgba(245,240,225,0.1)", { href: a.url });
+        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[a.cat] || "rgba(245,240,225,0.1)", { href: a.url, editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")" });
       }));
       html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px;margin-bottom:6px">' + tiles.join("") + '</div>';
     }
   } else {
     html += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(245,240,225,.32);margin:0 0 9px">Módulos</div>';
     html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px;margin-bottom:20px">'
-      + ADM_HOME_MODULOS.map(function(m) { return admHomeTile(m.ico, m.lbl, ADM_HOME_MOD_COLOR[m.cat] || "rgba(245,240,225,0.1)", { fn: m.fn }); }).join("")
+      + ADM_HOME_MODULOS.map(function(m) { return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(245,240,225,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')" }); }).join("")
       + '</div>';
 
     ["Finanzas","Clínica","Admin","Otros"].forEach(function(cat) {
       var items = ACCESOS_DATA.filter(function(a) { return a.cat === cat; });
-      if (!items.length) return;
-      var cap = 6;
+      if (!items.length && !homeEditMode) return;
+      var cap = homeEditMode ? items.length : 6;
       var shown = items.slice(0, cap);
       var resto = items.length - shown.length;
       var tiles = shown.map(function(a) {
         var ico = ACC_ICONS[a.title] || "🔗";
-        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[cat], { href: a.url });
+        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[cat], { href: a.url, editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")" });
       });
       if (resto > 0) {
         tiles.push('<div onclick="admHomeSetCat(\'' + cat + '\')" style="cursor:pointer;background:rgba(245,240,225,0.03);border:1px dashed rgba(245,240,225,0.15);border-radius:10px;padding:13px 6px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">'
           + '<div style="font-size:16px;color:rgba(245,240,225,.4)">⋯</div>'
           + '<div style="font-size:9.5px;color:rgba(245,240,225,.4);font-weight:500">+' + resto + ' más</div>'
+          + '</div>');
+      }
+      if (homeEditMode) {
+        tiles.push('<div onclick="admHomeNuevoAcceso(\'' + cat + '\')" style="cursor:pointer;background:rgba(245,240,225,0.03);border:1px dashed rgba(245,240,225,.3);border-radius:10px;padding:13px 6px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">'
+          + '<div style="font-size:16px;color:rgba(223,174,99,.7)">+</div>'
+          + '<div style="font-size:9.5px;color:rgba(223,174,99,.7);font-weight:500">Nuevo</div>'
           + '</div>');
       }
       html += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(245,240,225,.32);margin:0 0 9px">' + cat + ' <span style="color:rgba(245,240,225,.18);font-weight:500">· ' + items.length + '</span></div>';
@@ -2796,6 +2913,8 @@ function renderAdmHome() {
 
   homeSearchQ = "";
   homeSearchCat = "Todos";
+  homeEditMode = false;
+  admHomeCargarModLabels();
 
   var h = new Date().getHours();
   var saludo = h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
@@ -2818,9 +2937,12 @@ function renderAdmHome() {
   var html = '<div style="background:#111;border-radius:0;padding:18px 16px 20px;min-height:200px">'
     + '<div style="font-size:0.78rem;color:rgba(245,240,225,0.38);margin-bottom:14px;font-weight:500;letter-spacing:.3px">' + saludo + ', Marcelo</div>'
     + '<div style="display:flex;gap:5px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none">' + mesStrip + '</div>'
-    + '<div style="display:flex;align-items:center;gap:10px;background:rgba(245,240,225,.05);border:1px solid rgba(245,240,225,.12);border-radius:10px;padding:10px 14px;margin-bottom:16px">'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'
+    + '<div style="flex:1;display:flex;align-items:center;gap:10px;background:rgba(245,240,225,.05);border:1px solid rgba(245,240,225,.12);border-radius:10px;padding:10px 14px">'
     + '<span style="opacity:.4">🔍</span>'
     + '<input id="admHomeSearchInput" oninput="admHomeBuscar(this.value)" placeholder="Buscar módulos, liquidaciones, accesos…" style="background:none;border:none;outline:none;color:#f5f0e1;font-size:0.85rem;font-family:inherit;flex:1">'
+    + '</div>'
+    + '<button id="admHomeEditBtn" onclick="admHomeToggleEdit()" style="flex-shrink:0;background:rgba(245,240,225,.06);border:1px solid rgba(245,240,225,.12);color:rgba(245,240,225,.6);font-size:0.72rem;font-weight:600;padding:0 14px;border-radius:10px;cursor:pointer;font-family:inherit;height:41px">✏ Editar nombres</button>'
     + '</div>'
     + '<div id="admHomeDynamic"></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">'
@@ -4658,6 +4780,7 @@ function accSidenavEliminar(id) {
 function accSidenavEditar(id) {
   var item = ACCESOS_DATA.find(function(a){ return a.id === id; });
   if (!item) return;
+  accModalOrigin = "accesos";
   accAbrirModal(item);
 }
 
@@ -4716,13 +4839,14 @@ function renderAccesos(filtro) {
       + '<div class="acc-card-desc">'+a.desc+'</div>'
       + '<div class="acc-card-actions">'
       + '<a href="'+a.url+'" target="_blank" class="acc-open-btn">↗ Abrir</a>'
+      + '<button class="acc-del-btn" onclick="accModalOrigin=\'accesos\';accAbrirModal(ACCESOS_DATA.find(function(x){return x.id==='+a.id+';}))" title="Editar" style="border-color:#e5e7eb;background:#f9fafb;color:#374151">✏</button>'
       + '<button class="acc-del-btn" onclick="accEliminar('+a.id+')" title="Eliminar">✕</button>'
       + '</div></div>';
   }).join('');
 
   var html = '<div class="acc-toolbar">'
     + filtros
-    + '<button class="acc-add-btn" onclick="accAbrirModal()">+ Agregar</button>'
+    + '<button class="acc-add-btn" onclick="accModalOrigin=\'accesos\';accAbrirModal()">+ Agregar</button>'
     + '</div>'
     + '<div class="acc-grid">' + (cards || '<div style="color:rgba(245,240,225,.35);padding:20px;text-align:center">Sin accesos en esta categoría.</div>') + '</div>';
 
@@ -4737,6 +4861,7 @@ function accEliminar(id) {
 }
 
 var accEditingId = null;
+var accModalOrigin = "accesos";
 
 function accAbrirModal(item) {
   accEditingId = item ? item.id : null;
@@ -4768,7 +4893,8 @@ function accGuardarNuevo() {
   }
   accGuardarTodo();
   accCerrarModal();
-  if (accEditLinkMode) renderSidenavLinks();
+  if (accModalOrigin === "home") { admHomeRenderResults(); accModalOrigin = "accesos"; }
+  else if (accEditLinkMode) renderSidenavLinks();
   else renderAccesos(cat);
 }
 
