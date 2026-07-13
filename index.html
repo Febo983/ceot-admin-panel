@@ -1395,7 +1395,7 @@ body { background: var(--iv0); color: var(--ink); }
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
-      <button class="adm-hamburger" onclick="toggleAdmSidenav()" title="Menú">☰</button>
+      <button class="adm-hamburger" id="admHamburgerBtn" onclick="toggleAdmSidenav()" title="Menú">☰</button>
       <button class="btn-logout" id="admHomeBtn" onclick="renderAdmHome()" style="display:none">← Inicio</button>
       <button class="btn-importar" id="btnImportar" onclick="abrirImportModal()">⬆ Importar</button>
       <button class="btn-refresh" id="adminRefreshBtn" title="Actualizar datos">↻</button>
@@ -2667,46 +2667,144 @@ function mostrarNotificaciones(doctor) {
 
 // ══════ ADMIN HOME ═══════════════════════════════════════════════
 
+var homeSearchQ = "";
+var homeSearchCat = "Todos";
+
+var ADM_HOME_MODULOS = [
+  { ico:"📊", lbl:"Liquidaciones", cat:"cat-fin", fn:"renderAdminPanel(tabMesActual())" },
+  { ico:"📈", lbl:"Total CEOT",    cat:"cat-fin", fn:"renderTotalCeot()" },
+  { ico:"⚠",  lbl:"Débitos",       cat:"cat-gst", fn:"renderDebitos()" },
+  { ico:"📋", lbl:"Pendientes",    cat:"cat-adm", fn:"renderPendientes()" },
+  { ico:"🧾", lbl:"Facturas",      cat:"cat-adm", fn:"renderFacturas()" },
+  { ico:"💸", lbl:"Transferencias",cat:"cat-adm", fn:"renderTransferencias()" },
+  { ico:"💼", lbl:"Sueldo B",      cat:"cat-adm", fn:"renderSueldoB()" },
+  { ico:"🏦", lbl:"CPSM",          cat:"cat-fin", fn:"renderCpsm()" },
+  { ico:"🔗", lbl:"Accesos",       cat:"cat-inf", fn:"renderAccesos(null)" },
+  { ico:"💬", lbl:"Mensajes WA",   cat:"cat-cli", fn:"" },
+];
+var ADM_HOME_MOD_COLOR = {
+  "cat-fin":"rgba(29,158,117,0.22)","cat-cli":"rgba(55,138,221,0.22)",
+  "cat-adm":"rgba(127,119,221,0.22)","cat-gst":"rgba(216,90,48,0.22)","cat-inf":"rgba(245,240,225,0.1)"
+};
+var ADM_HOME_ACC_COLOR = {
+  "Finanzas":"rgba(29,158,117,0.22)","Clínica":"rgba(55,138,221,0.22)",
+  "Admin":"rgba(127,119,221,0.22)","Otros":"rgba(245,240,225,0.1)"
+};
+
+function admHomeTile(ico, lbl, colorRgba, opts) {
+  opts = opts || {};
+  var tag = opts.href ? "a" : "div";
+  var attrs = opts.href ? (' href="' + opts.href + '" target="_blank"') : (opts.fn ? (' onclick="' + opts.fn + '"') : "");
+  var cursor = (opts.href || opts.fn) ? "pointer" : "default";
+  return "<" + tag + attrs + " style=\"text-decoration:none;background:rgba(245,240,225,0.05);border:0.5px solid rgba(245,240,225,0.1);border-radius:10px;padding:13px 6px 10px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:" + cursor + ";transition:background .13s\" onmouseover=\"this.style.background='rgba(245,240,225,0.1)'\" onmouseout=\"this.style.background='rgba(245,240,225,0.05)'\">"
+    + '<div style="width:36px;height:36px;border-radius:9px;background:' + colorRgba + ';display:flex;align-items:center;justify-content:center;font-size:16px">' + ico + '</div>'
+    + '<div style="font-size:9.5px;color:rgba(245,240,225,0.65);text-align:center;font-weight:500;letter-spacing:0.2px;line-height:1.25">' + lbl + '</div>'
+    + "</" + tag + ">";
+}
+
+function admHomeBuscar(q) {
+  homeSearchQ = q || "";
+  admHomeRenderResults();
+}
+
+function admHomeSetCat(cat) {
+  homeSearchCat = cat;
+  admHomeRenderResults();
+  var inp = document.getElementById("admHomeSearchInput");
+  if (inp) inp.focus();
+}
+
+function admHomeRenderResults() {
+  var root = document.getElementById("admHomeDynamic");
+  if (!root) return;
+  var q = homeSearchQ.trim().toLowerCase();
+
+  var cats = ["Todos","Módulos","Finanzas","Clínica","Admin","Otros"];
+  var chips = cats.map(function(c) {
+    var on = homeSearchCat === c;
+    return '<span onclick="admHomeSetCat(\'' + c + '\')" style="flex-shrink:0;cursor:pointer;font-size:0.7rem;padding:5px 12px;border-radius:20px;border:1px solid ' + (on ? '#f5f0e1' : 'rgba(245,240,225,.12)') + ';background:' + (on ? '#f5f0e1' : 'rgba(245,240,225,.04)') + ';color:' + (on ? '#111' : 'rgba(245,240,225,.55)') + ';font-weight:600;white-space:nowrap">' + c + '</span>';
+  }).join("");
+
+  var modMatch = ADM_HOME_MODULOS.filter(function(m) {
+    return (homeSearchCat === "Todos" || homeSearchCat === "Módulos") && (!q || m.lbl.toLowerCase().indexOf(q) !== -1);
+  });
+  var accMatch = ACCESOS_DATA.filter(function(a) {
+    return (homeSearchCat === "Todos" || homeSearchCat === a.cat) && (!q || a.title.toLowerCase().indexOf(q) !== -1 || a.desc.toLowerCase().indexOf(q) !== -1);
+  });
+
+  var flatMode = !!q || homeSearchCat !== "Todos";
+  var html = '<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:16px;scrollbar-width:none">' + chips + '</div>';
+
+  if (flatMode) {
+    var total = modMatch.length + accMatch.length;
+    html += '<div style="font-size:0.68rem;color:rgba(223,174,99,.8);margin-bottom:10px">'
+      + (q ? (total + ' resultado' + (total === 1 ? '' : 's') + ' para "' + homeSearchQ.trim() + '"') : (total + ' resultado' + (total === 1 ? '' : 's')))
+      + '</div>';
+    if (!total) {
+      html += '<div style="padding:26px 10px;text-align:center;color:rgba(245,240,225,.3);font-size:0.8rem">Sin resultados.</div>';
+    } else {
+      var tiles = modMatch.map(function(m) {
+        return admHomeTile(m.ico, m.lbl, ADM_HOME_MOD_COLOR[m.cat] || "rgba(245,240,225,0.1)", { fn: m.fn });
+      }).concat(accMatch.map(function(a) {
+        var ico = ACC_ICONS[a.title] || "🔗";
+        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[a.cat] || "rgba(245,240,225,0.1)", { href: a.url });
+      }));
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px;margin-bottom:6px">' + tiles.join("") + '</div>';
+    }
+  } else {
+    html += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(245,240,225,.32);margin:0 0 9px">Módulos</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px;margin-bottom:20px">'
+      + ADM_HOME_MODULOS.map(function(m) { return admHomeTile(m.ico, m.lbl, ADM_HOME_MOD_COLOR[m.cat] || "rgba(245,240,225,0.1)", { fn: m.fn }); }).join("")
+      + '</div>';
+
+    ["Finanzas","Clínica","Admin","Otros"].forEach(function(cat) {
+      var items = ACCESOS_DATA.filter(function(a) { return a.cat === cat; });
+      if (!items.length) return;
+      var cap = 6;
+      var shown = items.slice(0, cap);
+      var resto = items.length - shown.length;
+      var tiles = shown.map(function(a) {
+        var ico = ACC_ICONS[a.title] || "🔗";
+        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[cat], { href: a.url });
+      });
+      if (resto > 0) {
+        tiles.push('<div onclick="admHomeSetCat(\'' + cat + '\')" style="cursor:pointer;background:rgba(245,240,225,0.03);border:1px dashed rgba(245,240,225,0.15);border-radius:10px;padding:13px 6px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">'
+          + '<div style="font-size:16px;color:rgba(245,240,225,.4)">⋯</div>'
+          + '<div style="font-size:9.5px;color:rgba(245,240,225,.4);font-weight:500">+' + resto + ' más</div>'
+          + '</div>');
+      }
+      html += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(245,240,225,.32);margin:0 0 9px">' + cat + ' <span style="color:rgba(245,240,225,.18);font-weight:500">· ' + items.length + '</span></div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px;margin-bottom:20px">' + tiles.join("") + '</div>';
+    });
+  }
+
+  root.innerHTML = html;
+}
+
 function renderAdmHome() {
   admDesactivarSidebar();
   var hb = document.getElementById("admHomeBtn");
   if (hb) hb.style.display = "none";
+  var sn = document.getElementById("admSidenav");
+  if (sn) sn.style.display = "none";
+  var hbg = document.getElementById("admHamburgerBtn");
+  if (hbg) hbg.style.display = "none";
   ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });
+
+  homeSearchQ = "";
+  homeSearchCat = "Todos";
 
   var h = new Date().getHours();
   var saludo = h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
   var mesAct = tabMesActual();
   var MESES_CORTO = {mayo:"May",junio:"Jun",julio:"Jul",agosto:"Ago",septiembre:"Sep",octubre:"Oct",noviembre:"Nov",diciembre:"Dic"};
 
-  var modulos = [
-    { ico:"📊", lbl:"Liquidaciones", cat:"cat-fin", fn:"renderAdminPanel(tabMesActual())" },
-    { ico:"📈", lbl:"Total CEOT",    cat:"cat-fin", fn:"renderTotalCeot()" },
-    { ico:"⚠",  lbl:"Débitos",       cat:"cat-gst", fn:"renderDebitos()" },
-    { ico:"📋", lbl:"Pendientes",    cat:"cat-adm", fn:"renderPendientes()" },
-    { ico:"🧾", lbl:"Facturas",      cat:"cat-adm", fn:"renderFacturas()" },
-    { ico:"💸", lbl:"Transferencias",cat:"cat-adm", fn:"renderTransferencias()" },
-    { ico:"🔗", lbl:"Accesos",       cat:"cat-inf", fn:"renderAccesos(null)" },
-    { ico:"💬", lbl:"Mensajes WA",   cat:"cat-cli", fn:"" },
-  ];
-
   var mesStrip = ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].map(function(m) {
     var act = m === mesAct ? " style=\"background:#f5f0e1;color:#111;border-color:#f5f0e1;font-weight:600\"" : "";
     return '<button onclick="renderAdminPanel(\'' + m + '\')" style="flex-shrink:0;font-size:10px;padding:4px 11px;border-radius:20px;border:0.5px solid rgba(245,240,225,0.15);background:rgba(245,240,225,0.06);color:rgba(245,240,225,0.45);cursor:pointer;font-family:inherit;transition:all .15s"' + act + '>' + MESES_CORTO[m] + '</button>';
-  }).join("");
-
-  var modHtml = modulos.map(function(m) {
-    var catBg = {
-      "cat-fin":"rgba(29,158,117,0.22)","cat-cli":"rgba(55,138,221,0.22)",
-      "cat-adm":"rgba(127,119,221,0.22)","cat-gst":"rgba(216,90,48,0.22)","cat-inf":"rgba(245,240,225,0.1)"
-    }[m.cat] || "rgba(245,240,225,0.1)";
-    var click = m.fn ? 'onclick="' + m.fn + '"' : "";
-    return '<div ' + click + ' style="background:rgba(245,240,225,0.05);border:0.5px solid rgba(245,240,225,0.1);border-radius:10px;padding:14px 6px 11px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:background .13s" onmouseover="this.style.background=\'rgba(245,240,225,0.1)\'" onmouseout="this.style.background=\'rgba(245,240,225,0.05)\'">'
-      + '<div style="width:38px;height:38px;border-radius:9px;background:' + catBg + ';display:flex;align-items:center;justify-content:center;font-size:18px">' + m.ico + '</div>'
-      + '<div style="font-size:9.5px;color:rgba(245,240,225,0.6);text-align:center;font-weight:500;letter-spacing:0.2px;line-height:1.2">' + m.lbl + '</div>'
-      + '</div>';
   }).join("");
 
   // Stats de totalCeot para el mes actual
@@ -2717,22 +2815,14 @@ function renderAdmHome() {
   }
   var statNeto = totalMes ? ('<span style="font-size:1.2rem;font-weight:800;color:#f5f0e1">' + fmt(totalMes) + '</span><div style="font-size:9px;color:rgba(29,158,117,0.85);margin-top:2px">total socios · ' + mesAct + '</div>') : '<span style="font-size:1.2rem;color:rgba(245,240,225,0.3)">—</span>';
 
-  // Accesos Finanzas
-  var finLinks = ACCESOS_DATA.filter(function(a){ return a.cat === "Finanzas"; });
-  var accHtml = finLinks.map(function(a) {
-    var ico = ACC_ICONS[a.title] || '🔗';
-    return '<a href="' + a.url + '" target="_blank" style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;text-decoration:none;background:rgba(245,240,225,0.04);border:0.5px solid rgba(245,240,225,0.09);transition:background .13s" onmouseover="this.style.background=\'rgba(245,240,225,0.09)\'" onmouseout="this.style.background=\'rgba(245,240,225,0.04)\'">'
-      + '<div style="width:28px;height:28px;border-radius:6px;background:rgba(29,158,117,0.22);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">' + ico + '</div>'
-      + '<div style="overflow:hidden">'
-      + '<div style="font-size:11px;font-weight:600;color:#f5f0e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + a.title + '</div>'
-      + '<div style="font-size:9.5px;color:rgba(245,240,225,0.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + a.desc + '</div>'
-      + '</div></a>';
-  }).join("");
-
   var html = '<div style="background:#111;border-radius:0;padding:18px 16px 20px;min-height:200px">'
     + '<div style="font-size:0.78rem;color:rgba(245,240,225,0.38);margin-bottom:14px;font-weight:500;letter-spacing:.3px">' + saludo + ', Marcelo</div>'
     + '<div style="display:flex;gap:5px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none">' + mesStrip + '</div>'
-    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">' + modHtml + '</div>'
+    + '<div style="display:flex;align-items:center;gap:10px;background:rgba(245,240,225,.05);border:1px solid rgba(245,240,225,.12);border-radius:10px;padding:10px 14px;margin-bottom:16px">'
+    + '<span style="opacity:.4">🔍</span>'
+    + '<input id="admHomeSearchInput" oninput="admHomeBuscar(this.value)" placeholder="Buscar módulos, liquidaciones, accesos…" style="background:none;border:none;outline:none;color:#f5f0e1;font-size:0.85rem;font-family:inherit;flex:1">'
+    + '</div>'
+    + '<div id="admHomeDynamic"></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">'
     + '<div style="background:rgba(245,240,225,0.05);border:0.5px solid rgba(245,240,225,0.1);border-radius:10px;padding:11px 12px">'
     + '<div style="font-size:9px;color:rgba(245,240,225,0.35);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Total CEOT · ' + mesAct + '</div>'
@@ -2748,13 +2838,10 @@ function renderAdmHome() {
     + '<span><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:rgba(29,158,117,.8);margin-right:4px;vertical-align:1px"></span>Conectado</span>'
     + '<span>Admin CEOT · 2026</span>'
     + '</div>'
-    + (accHtml ? '<div style="margin-top:14px;padding-top:12px;border-top:0.5px solid rgba(245,240,225,0.07)">'
-      + '<div style="font-size:9px;color:rgba(245,240,225,0.3);letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px">Finanzas — accesos rápidos</div>'
-      + '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">' + accHtml + '</div>'
-      + '</div>' : '')
     + '</div>';
 
   document.getElementById("adm-content").innerHTML = html;
+  admHomeRenderResults();
 }
 
 // ══════ PENDIENTES ADMIN ═══════════════════════════════════════
@@ -3389,6 +3476,10 @@ function admDesactivarSidebar() {
   });
   var hb = document.getElementById("admHomeBtn");
   if (hb) hb.style.display = "inline-block";
+  var sn = document.getElementById("admSidenav");
+  if (sn) sn.style.display = "";
+  var hbg = document.getElementById("admHamburgerBtn");
+  if (hbg) hbg.style.display = "";
 }
 
 function cerrarAdmSidenav() {
