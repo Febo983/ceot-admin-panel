@@ -4337,6 +4337,11 @@ async function procesarArchivosImport() {
     var osdeBill = {}, difBill = {};
     SOCIOS_IMP.forEach(function(k){ osdeBill[k] = 0; difBill[k] = 0; });
 
+    // GAS.EQUIPO solo corresponde a estos 3 — si el xlsx lo carga a otro profesional,
+    // se acumula aparte y se reparte en partes iguales entre los 3 (ver abajo)
+    var GASEQ_SOCIOS = ['TRIVELLINI', 'CORELICH', 'DEGANUTTI'];
+    var gasEqAjenoOsde = 0, gasEqAjenoDif = 0;
+
     var rows = await leerXLSX(fileCEOT);
     for (var r = 0; r < rows.length; r++) {
       var row = rows[r];
@@ -4349,8 +4354,20 @@ async function procesarArchivosImport() {
       var key  = normDocImp(prof);
       if (!key) continue;
       var sgn  = (obs.indexOf('DEB') !== -1 && obs.indexOf('HONORARIOS') !== -1) ? -1 : 1;
+      var esGasEquipoAjeno = obs.indexOf('GAS.EQUIPO') !== -1 && GASEQ_SOCIOS.indexOf(key) === -1;
+      if (esGasEquipoAjeno) {
+        if (inst === 'OSDE') gasEqAjenoOsde += imp * sgn;
+        else                 gasEqAjenoDif  += imp * sgn;
+        continue;
+      }
       if (inst === 'OSDE') osdeBill[key] += imp * sgn;
       else                 difBill[key]  += imp * sgn;
+    }
+    if (gasEqAjenoOsde || gasEqAjenoDif) {
+      GASEQ_SOCIOS.forEach(function(k) {
+        osdeBill[k] += gasEqAjenoOsde / 3;
+        difBill[k]  += gasEqAjenoDif  / 3;
+      });
     }
 
     // ── ART: usar el total del campo editable (detectado o ingresado manualmente)
@@ -4387,13 +4404,22 @@ async function procesarArchivosImport() {
       tbody.appendChild(tr);
     });
 
-    // ART footnote
+    // ART / GAS.EQUIPO footnotes
     var prevTfoot = document.getElementById('impPreviewTable').querySelector('tfoot');
     if (prevTfoot) prevTfoot.remove();
+    var tfootRows = '';
     if (artTotal > 0) {
-      var tfoot = document.getElementById('impPreviewTable').createTFoot();
-      tfoot.innerHTML = '<tr style="background:#f0fdf4"><td colspan="4" style="padding:6px 10px;font-size:0.7rem;color:#15803d;font-weight:600;">' +
+      tfootRows += '<tr style="background:#f0fdf4"><td colspan="4" style="padding:6px 10px;font-size:0.7rem;color:#15803d;font-weight:600;">' +
         'ART incluida: ' + fmtImp(artTotal) + ' → DEG 35% + TRI 35% + MAZ 30%</td></tr>';
+    }
+    if (gasEqAjenoOsde || gasEqAjenoDif) {
+      tfootRows += '<tr style="background:#fef9c3"><td colspan="4" style="padding:6px 10px;font-size:0.7rem;color:#92610f;font-weight:600;">' +
+        'GAS.EQUIPO redistribuido (cargado a otro profesional en el xlsx): ' + fmtImp(gasEqAjenoOsde + gasEqAjenoDif) +
+        ' → TRI/COR/DEG 33.33% c/u</td></tr>';
+    }
+    if (tfootRows) {
+      var tfoot = document.getElementById('impPreviewTable').createTFoot();
+      tfoot.innerHTML = tfootRows;
     }
 
     // ── Colón cheque rows
