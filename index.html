@@ -98,6 +98,13 @@ body {
   border: 1px solid #e5e7eb; border-top: none;
   overflow: hidden; margin-bottom: 12px;
 }
+.period-tabs-wrap { position: relative; }
+.period-tabs-wrap::after {
+  content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 28px;
+  background: linear-gradient(to right, transparent, var(--co-card, #fbf8f0));
+  pointer-events: none; opacity: 1; transition: opacity .15s;
+}
+.period-tabs-wrap.co-at-end::after { opacity: 0; }
 .period-tabs {
   display: flex; overflow-x: auto;
   border-bottom: 1px solid #e5e7eb;
@@ -229,15 +236,15 @@ body {
   border-radius: 7px; padding: 12px 13px; margin-bottom: 9px;
 }
 .mp-card-dark {
-  background: #1f3a2e; border-radius: 8px;
-  padding: 14px 14px 12px; margin-bottom: 9px; color: white;
+  background: var(--co-card, #fbf8f0); border: 1px solid rgba(32,36,31,.12); border-radius: 8px;
+  padding: 14px 14px 12px; margin-bottom: 9px; color: var(--co-ink, #20241f);
 }
 .mp-label {
   font-size: 0.63rem; font-weight: 700; color: #6b7280;
   text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px;
 }
 .mp-label-dark {
-  font-size: 0.63rem; font-weight: 700; color: rgba(255,255,255,.4);
+  font-size: 0.63rem; font-weight: 700; color: rgba(32,36,31,.45);
   text-transform: uppercase; letter-spacing: .4px; margin-bottom: 10px;
 }
 .mp-big { font-size: 1.3rem; font-weight: 800; }
@@ -265,14 +272,14 @@ body {
   align-items: center; gap: 3px; flex: 1;
 }
 .mp-chart-bar {
-  background: rgba(255,255,255,.22); border-radius: 3px 3px 0 0; width: 100%;
+  background: rgba(32,36,31,.15); border-radius: 3px 3px 0 0; width: 100%;
 }
-.mp-chart-bar.current { background: white; }
-.mp-chart-month { font-size: 0.58rem; color: rgba(255,255,255,.4); }
-.mp-chart-month.current { color: rgba(255,255,255,.7); font-weight: 600; }
+.mp-chart-bar.current { background: #1f3a2e; }
+.mp-chart-month { font-size: 0.58rem; color: rgba(32,36,31,.4); }
+.mp-chart-month.current { color: #1f3a2e; font-weight: 600; }
 .mp-totals {
   display: flex; justify-content: space-between; align-items: baseline;
-  border-top: 1px solid rgba(255,255,255,.1); padding-top: 9px;
+  border-top: 1px solid rgba(32,36,31,.1); padding-top: 9px;
 }
 .mp-mov-row {
   display: flex; justify-content: space-between;
@@ -308,6 +315,12 @@ body {
   transition: opacity .15s;
 }
 .btn-pdf:hover { opacity: .82; }
+.btn-pdf-mini {
+  background: rgba(31,58,46,.08); border: 1px solid rgba(31,58,46,.3); color: #1f3a2e;
+  border-radius: 5px; padding: 2px 7px; font-size: 0.68rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; line-height: 1.5; transition: background .15s;
+}
+.btn-pdf-mini:hover { background: rgba(31,58,46,.16); }
 
 /* ── HOME DASHBOARD ── */
 .home-wrap {
@@ -325,6 +338,13 @@ body {
   margin-bottom: 14px;
   font-weight: 500;
 }
+.home-mes-strip-wrap { position: relative; }
+.home-mes-strip-wrap::after {
+  content: ""; position: absolute; top: 0; right: 0; bottom: 14px; width: 28px;
+  background: linear-gradient(to right, transparent, var(--co-bg, #f2ecda));
+  pointer-events: none; opacity: 1; transition: opacity .15s;
+}
+.home-mes-strip-wrap.co-at-end::after { opacity: 0; }
 .home-mes-strip {
   display: flex;
   gap: 5px;
@@ -354,7 +374,7 @@ body {
 }
 .home-modules-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -455,16 +475,17 @@ body {
 }
 .hist-masthead {
   text-align: center; padding: 14px 10px 10px;
-  background: #1f3a2e;
+  background: var(--co-card, #fbf8f0);
+  border-bottom: 2px solid #1f3a2e;
 }
 .hist-masthead-title {
   font-size: 0.95rem; font-weight: 800;
   letter-spacing: 4px; text-transform: uppercase;
-  color: white; line-height: 1;
+  color: #1f3a2e; line-height: 1;
 }
 .hist-masthead-sub {
   font-size: 0.59rem; letter-spacing: 1px;
-  text-transform: uppercase; color: rgba(255,255,255,.4);
+  text-transform: uppercase; color: rgba(32,36,31,.45);
   margin-top: 5px;
 }
 .hist-period-section {
@@ -1282,7 +1303,9 @@ body { background: var(--iv0); color: var(--ink); }
     <div id="homeView" style="display:none;">
       <div class="home-wrap">
         <div class="home-greeting" id="homeGreeting">Buen día</div>
-        <div class="home-mes-strip" id="homeMesStrip"></div>
+        <div class="home-mes-strip-wrap" id="homeMesStripWrap">
+          <div class="home-mes-strip" id="homeMesStrip"></div>
+        </div>
         <div class="home-modules-grid">
           <div class="home-mod" onclick="irTab(tabMesActual())">
             <div class="home-mod-ico ico-fin">💰</div>
@@ -1295,26 +1318,6 @@ body { background: var(--iv0); color: var(--ink); }
           <div class="home-mod" onclick="irTab('historial')">
             <div class="home-mod-ico ico-cli">📊</div>
             <div class="home-mod-lbl">Historial</div>
-          </div>
-          <div class="home-mod" onclick="irTab('abril')">
-            <div class="home-mod-ico ico-gst">📋</div>
-            <div class="home-mod-lbl">Abr 2026</div>
-          </div>
-          <div class="home-mod" onclick="irTab('mayo')">
-            <div class="home-mod-ico ico-fin">📋</div>
-            <div class="home-mod-lbl">May 2026</div>
-          </div>
-          <div class="home-mod" onclick="irTab('junio')">
-            <div class="home-mod-ico ico-fin">📋</div>
-            <div class="home-mod-lbl">Jun 2026</div>
-          </div>
-          <div class="home-mod" onclick="irTab('julio')">
-            <div class="home-mod-ico ico-fin">📋</div>
-            <div class="home-mod-lbl">Jul 2026</div>
-          </div>
-          <div class="home-mod home-mod-more" onclick="irTab(tabMesActual()); setTimeout(function(){document.querySelector('.period-tabs').scrollLeft=999},50)">
-            <div class="home-mod-ico ico-inf">＋</div>
-            <div class="home-mod-lbl">Ver todo</div>
           </div>
         </div>
         <div class="home-stats-row">
@@ -1338,7 +1341,8 @@ body { background: var(--iv0); color: var(--ink); }
 
     <div class="portal-card" id="portalCard" style="display:none;">
       <!-- TABS -->
-      <div class="period-tabs">
+      <div class="period-tabs-wrap" id="periodTabsWrap">
+      <div class="period-tabs" id="periodTabs">
         <button class="period-tab" id="tab-mipanel" data-tab="mipanel" style="display:none"></button>
         <button class="period-tab" id="tab-historial" data-tab="historial" style="display:none"></button>
         <button class="period-tab" id="tab-abril" data-tab="abril">
@@ -1376,6 +1380,7 @@ body { background: var(--iv0); color: var(--ink); }
           <span class="tab-top">Dic 2026 <span class="tbadge tb-ant" id="badge-diciembre">anterior</span></span>
           <span class="tab-neto" id="tabneto-diciembre"></span>
         </button>
+      </div>
       </div>
 
       <div class="tab-pane" id="pane-abril"></div>
@@ -1965,11 +1970,26 @@ function fmt(n) {
 
 // ══════ TABS ══════════════════════════════════════════════════
 
+function coInitScrollFade(scrollElId, wrapElId) {
+  var el = document.getElementById(scrollElId);
+  var wrap = document.getElementById(wrapElId);
+  if (!el || !wrap || el.dataset.coScrollFadeBound) return;
+  el.dataset.coScrollFadeBound = "1";
+  function upd() {
+    var atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 2;
+    wrap.classList.toggle("co-at-end", atEnd);
+  }
+  el.addEventListener("scroll", upd);
+  window.addEventListener("resize", upd);
+  setTimeout(upd, 0);
+}
+
 function irTab(tab) {
   document.getElementById("homeView").style.display = "none";
   document.getElementById("portalCard").style.display = "block";
   document.getElementById("homeBtn").style.display = "inline-block";
   cambiarTab(tab);
+  coInitScrollFade("periodTabs", "periodTabsWrap");
   var el = document.getElementById("tab-" + tab);
   if (el) el.scrollIntoView({behavior:"smooth", block:"nearest", inline:"center"});
 }
@@ -1978,6 +1998,14 @@ function volverHome() {
   document.getElementById("portalCard").style.display = "none";
   document.getElementById("homeView").style.display = "block";
   document.getElementById("homeBtn").style.display = "none";
+}
+
+function coTitleCase(str) {
+  var MINUSC = { de:1, la:1, del:1, los:1, las:1 };
+  return String(str).toLowerCase().split(" ").map(function(w, i) {
+    if (i > 0 && MINUSC[w.replace(".", "")]) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }).join(" ");
 }
 
 function renderHome(doctor) {
@@ -1990,9 +2018,7 @@ function renderHome(doctor) {
   // Greeting según hora
   var h = new Date().getHours();
   var saludo = h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
-  var partes = doctor.nombre.split(" ").filter(function(p){ return p !== "DR." && p !== "DRA." && p.length > 2; });
-  var primerNombre = partes.length ? partes[0] : doctor.apellido.split(",")[0].trim();
-  document.getElementById("homeGreeting").textContent = saludo + ", " + primerNombre;
+  document.getElementById("homeGreeting").textContent = saludo + ", " + coTitleCase(doctor.nombre);
 
   // Strip de meses
   var strip = document.getElementById("homeMesStrip");
@@ -2004,6 +2030,7 @@ function renderHome(doctor) {
     btn.onclick = function() { irTab(m); };
     strip.appendChild(btn);
   });
+  coInitScrollFade("homeMesStrip", "homeMesStripWrap");
 
   // Highlight módulo del mes actual
   document.querySelectorAll(".home-mod").forEach(function(el) { el.classList.remove("home-mod-highlighted"); });
@@ -2429,14 +2456,18 @@ function renderHistorial(doctor) {
     html += '<div style="display:flex;gap:5px;align-items:flex-end;height:48px">';
     resultados.forEach(function(r) {
       var h = Math.max(4, Math.round(Math.max(0, r.calc.neto) / maxNeto * 44));
-      var color = r.calc.pendiente ? '#d1d5db' : '#1a1a1a';
+      var color = r.calc.pendiente ? 'rgba(32,36,31,.18)' : '#1f3a2e';
       var lbl = r.calc.label.split(' ')[0].substring(0,3).toUpperCase();
       html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end">'
         + '<div style="width:100%;background:'+color+';height:'+h+'px;border-radius:3px 3px 0 0"></div>'
         + '<div style="font-size:0.52rem;color:rgba(32,36,31,.35)">'+lbl+'</div>'
         + '</div>';
     });
-    html += '</div></div>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:12px;margin-top:7px;padding-bottom:3px">'
+      + '<span style="font-size:0.52rem;color:rgba(32,36,31,.4)"><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:#1f3a2e;margin-right:4px;vertical-align:middle"></span>Confirmado</span>'
+      + '<span style="font-size:0.52rem;color:rgba(32,36,31,.4)"><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:rgba(32,36,31,.18);margin-right:4px;vertical-align:middle"></span>Estimado</span>'
+      + '</div></div>';
   }
 
   // ── Períodos ──────────────────────────────────────────────
@@ -2468,8 +2499,11 @@ function renderHistorial(doctor) {
       ? '<div class="hist-dline" style="margin-top:4px;border-top:1px dashed rgba(32,36,31,.15);padding-top:4px"><span class="hist-dline-lbl" style="color:rgba(32,36,31,.45)">Total liquidado CEOT</span><span class="hist-dline-val" style="color:rgba(32,36,31,.45)">' + fmt(totalCeotVal) + '</span></div>'
       : '';
 
+    var pdfBtn = '<button class="btn-pdf-mini" onclick="descargarComprobanteHistorial(\'' + r.pid + '\')" title="Descargar comprobante PDF">📄 PDF</button>';
+
     html += '<div class="hist-period-section">'
-      + '<div class="hist-period-headline"><span>' + c.label.toUpperCase() + '</span>' + pendBadge + '</div>'
+      + '<div class="hist-period-headline"><span>' + c.label.toUpperCase() + '</span>'
+      + '<span style="display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal">' + pendBadge + pdfBtn + '</span></div>'
       + '<div class="hist-dline"><span class="hist-dline-lbl">Bruto</span><span class="hist-dline-val">' + fmt(c.bruto) + '</span></div>'
       + '<div class="hist-dline"><span class="hist-dline-lbl">IIBB (3,5%)</span><span class="hist-dline-val neg">−' + fmt(c.iibb) + '</span></div>'
       + cpsmHtml + gaHtml + aporteHtml + cmHtml
@@ -2559,10 +2593,10 @@ function renderMiPanel(doctor) {
     + '<div class="mp-label-dark">Mis honorarios netos</div>'
     + '<div class="mp-chart-bars" style="position:relative;">' + barsHtml + '</div>'
     + '<div class="mp-totals">'
-    + '<div><div style="font-size:0.6rem;color:rgba(255,255,255,.4);">Este mes</div>'
-    + '<div style="font-size:1.3rem;font-weight:800;">' + (honActual.val ? fmt(honActual.val) : '—') + '</div></div>'
-    + '<div style="text-align:right;"><div style="font-size:0.6rem;color:rgba(255,255,255,.4);">Acumulado 2026</div>'
-    + '<div style="font-size:1.05rem;font-weight:700;color:rgba(255,255,255,.8);">' + (honAcum ? fmt(honAcum) : '—') + '</div></div>'
+    + '<div><div style="font-size:0.6rem;color:rgba(32,36,31,.45);">Este mes</div>'
+    + '<div style="font-size:1.3rem;font-weight:800;">' + (honActual.val ? fmt(honActual.val) : '<span style="font-weight:600;color:rgba(32,36,31,.4)">Sin datos aún</span>') + '</div></div>'
+    + '<div style="text-align:right;"><div style="font-size:0.6rem;color:rgba(32,36,31,.45);">Acumulado 2026</div>'
+    + '<div style="font-size:1.05rem;font-weight:700;color:#1f3a2e;">' + (honAcum ? fmt(honAcum) : '<span style="font-weight:600;color:rgba(32,36,31,.4);font-size:0.7rem">Sin datos aún</span>') + '</div></div>'
     + '</div></div>';
 
 
@@ -3926,6 +3960,101 @@ document.getElementById("passwordInput").addEventListener("keypress", function(e
 function fmtPDF(n) {
   // Formato pesos argentinos: $ 1.234.567
   return "$ " + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+function descargarComprobanteHistorial(pid) {
+  var doctor = doctorActual;
+  if (!doctor) return;
+
+  if (!window.jspdf) {
+    alert("La librería PDF aún se está cargando. Esperá un segundo y volvé a intentar.");
+    return;
+  }
+
+  var c = calcularNetoLocal(pid, doctor);
+  if (!c) { alert("No hay datos para este período todavía."); return; }
+
+  var jsPDF = window.jspdf.jsPDF;
+  var doc   = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  var W = 210, LM = 20, RM = 190, CW = 170;
+  var today = new Date();
+  var todayStr = String(today.getDate()).padStart(2,"0") + "/" +
+                 String(today.getMonth()+1).padStart(2,"0") + "/" +
+                 today.getFullYear();
+
+  doc.setFillColor(31, 58, 46);
+  doc.rect(LM, 15, CW, 26, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+  doc.text("CEOT — CLÍNICA TRAUMATOLÓGICA COLÓN", W/2, 24, { align:"center" });
+  doc.setFontSize(9.5);
+  doc.text("COMPROBANTE DE HONORARIOS", W/2, 31, { align:"center" });
+  doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  doc.text("Período: " + c.label, W/2, 37, { align:"center" });
+
+  var y = 50;
+  doc.setTextColor(0, 0, 0); doc.setFontSize(9);
+  [
+    ["Doctor:",    doctor.nombre],
+    ["Matrícula:", doctor.pass],
+    ["Emitido:",   todayStr],
+  ].forEach(function(pair) {
+    doc.setFont("helvetica", "bold");   doc.text(pair[0], LM, y);
+    doc.setFont("helvetica", "normal"); doc.text(pair[1], LM + 28, y);
+    y += 7;
+  });
+  doc.setDrawColor(180, 180, 180); doc.line(LM, y, RM, y); y += 8;
+
+  function fila(label, val, opts) {
+    opts = opts || {};
+    doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+    doc.setFontSize(opts.size || 9);
+    doc.setTextColor(0, 0, 0);
+    doc.text(label, LM + 5, y);
+    if (opts.color) doc.setTextColor.apply(doc, opts.color);
+    doc.text((opts.prefix || "") + fmtPDF(val), RM, y, { align:"right" });
+    doc.setTextColor(0, 0, 0);
+    y += opts.gap || 7;
+  }
+
+  fila("Bruto", c.bruto, { bold:true });
+  fila("IIBB (3,5%)", c.iibb, { prefix:"- ", color:[180,0,0] });
+  if (c.esLab) {
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    doc.text("CPSM (5%)", LM + 5, y);
+    doc.setTextColor(0, 130, 0); doc.text("EXENTO", RM, y, { align:"right" });
+    doc.setTextColor(0, 0, 0); y += 7;
+  } else {
+    fila("CPSM (5%)", c.cpsm, { prefix:"- ", color:[180,0,0] });
+  }
+  if (c.ga)          fila("Gastos A", c.ga, { prefix:"- ", color:[180,0,0] });
+  if (c.aporteCeot > 0) fila("Aporte CEOT (" + Math.round(c.pctAporte*100) + "%)", c.aporteCeot, { prefix:"- ", color:[180,0,0] });
+  if (c.cm > 0)      fila("Centro Médico", c.cm, { prefix:"+ ", color:[0,120,0] });
+
+  doc.setDrawColor(31, 58, 46); doc.line(LM, y, RM, y); y += 6;
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+  doc.text("NETO", LM + 5, y);
+  doc.setTextColor(31, 58, 46);
+  doc.text(fmtPDF(c.neto), RM, y, { align:"right" });
+  doc.setTextColor(0, 0, 0); y += 10;
+
+  var totalCeotVal = (liquidacionData.totalCeot && liquidacionData.totalCeot[pid] && liquidacionData.totalCeot[pid][doctor.apellido]) || null;
+  if (totalCeotVal) {
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text("Total liquidado CEOT (todos los conceptos): " + fmtPDF(totalCeotVal), LM, y); y += 6;
+    doc.setTextColor(0, 0, 0);
+  }
+
+  if (c.pendiente) {
+    doc.setFont("helvetica", "italic"); doc.setFontSize(7.5);
+    doc.setTextColor(120, 120, 120);
+    doc.text("* Valores estimados — período aún no cerrado definitivamente.", LM, y);
+    doc.setTextColor(0, 0, 0);
+  }
+
+  var fname = "Comprobante_" + doctor.apellido.replace(/[^A-Za-z0-9]/g, "") + "_" + pid + ".pdf";
+  doc.save(fname);
 }
 
 function generarComprobante(periodo) {
