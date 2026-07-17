@@ -1768,6 +1768,13 @@ const APORTE_CEOT_PCT = {
 };
 const APORTE_CEOT_DESDE = ["agosto","septiembre","octubre","noviembre","diciembre"]; // desde Agosto 2026 en adelante
 
+// Préstamo Casa 14 de julio 2067 — cuota 1 de 48, desde Agosto 2026
+// Solo aplica a estos 5 profesionales. Monto por cuota editable acá cada mes.
+const PRESTAMO_CASA_MONTO = 252000;
+const PRESTAMO_CASA_TOTAL_CUOTAS = 48;
+const PRESTAMO_CASA_SOCIOS = ["GARMENDIA", "DE LA COLINA", "SOULE", "LEON", "PERLASCO"];
+const PRESTAMO_CASA_CUOTA = { agosto: 1, septiembre: 2, octubre: 3, noviembre: 4, diciembre: 5 };
+
 // ── URL del Apps Script Web App (pegar después de desplegar) ──────
 // Instrucciones: ceot_gastos_a_script.gs → sección "CÓMO DESPLEGAR"
 const GASTOS_A_ENDPOINT  = "https://script.google.com/macros/s/AKfycbwaMlP7F0oghuVC4ec0MX_pOXqg-l_vToI287NZ71eCiy8Qh-0SSdJzeLg4InAXG-fp/exec";
@@ -2298,6 +2305,17 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   html += '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
   html += '</div>';
 
+  // Préstamo Casa 14 de julio 2067 (solo 5 socios, desde Agosto 2026)
+  var prestamoCuota = PRESTAMO_CASA_CUOTA[periodo] || null;
+  var prestamoInd = (prestamoCuota && PRESTAMO_CASA_SOCIOS.indexOf(doctor.apellido) !== -1) ? PRESTAMO_CASA_MONTO : 0;
+  if (prestamoInd) {
+    html += '<div class="cheque-list"><div class="cl-row cl-sep-row cl-neg">'
+      + '<span class="cl-date">—</span>'
+      + '<span class="cl-lbl">Préstamo Casa <span style="font-size:.68rem;color:rgba(32,36,31,.35);font-weight:400">cuota ' + prestamoCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + '</span></span>'
+      + '<span class="cl-amt">−' + fmt(prestamoInd) + '</span>'
+      + '</div></div>';
+  }
+
   // Aporte CEOT (desde julio en adelante)
   var periodoConAporteInd = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
   if (periodoConAporteInd) {
@@ -2341,7 +2359,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     var pctAp2 = APORTE_CEOT_PCT[doctor.apellido];
     if (pctAp2 > 0) apAmt = Math.round((total + osdeForNet + cmForNet) * pctAp2);
   }
-  var netoFinal = total + osdeForNet + cmForNet - iibbAmt - cpsmAmt - gaAmt - apAmt;
+  var netoFinal = total + osdeForNet + cmForNet - iibbAmt - cpsmAmt - gaAmt - apAmt - prestamoInd;
 
   html += '<div class="cheque-list" style="margin-top:6px">';
   // IIBB
@@ -2428,13 +2446,17 @@ function calcularNetoLocal(pid, doc) {
   var pctAporte  = APORTE_CEOT_PCT[doc.apellido];
   var baseAporte = colonBruto + osdeVal + cmVal;
   var aporteCeot = (periodoConAporte && pctAporte) ? Math.round(baseAporte * pctAporte) : 0;
-  var neto  = bruto - iibb - cpsm - ga - aporteCeot + cmVal;
+  // Préstamo Casa 14 de julio 2067 — solo estos 5 socios, desde Agosto 2026
+  var prestamoCasaCuota = PRESTAMO_CASA_CUOTA[pid] || null;
+  var prestamoCasa = (prestamoCasaCuota && PRESTAMO_CASA_SOCIOS.indexOf(doc.apellido) !== -1) ? PRESTAMO_CASA_MONTO : 0;
+  var neto  = bruto - iibb - cpsm - ga - aporteCeot - prestamoCasa + cmVal;
 
   return {
     label: labelMap[pid] || pid,
     bruto: bruto, colonBruto: colonBruto, osde: osdeVal,
     iibb: iibb, cpsm: cpsm,
     ga: ga, cm: cmVal, aporteCeot: aporteCeot, pctAporte: pctAporte,
+    prestamoCasa: prestamoCasa, prestamoCasaCuota: prestamoCasaCuota,
     neto: neto, pendiente: hayPendiente, osdePendiente: osdeExt.pendiente, esLab: esLab
   };
 }
@@ -2499,6 +2521,10 @@ function renderHistorial(doctor) {
       ? '<div class="hist-dline"><span class="hist-dline-lbl">Gastos A</span><span class="hist-dline-val neg">−' + fmt(c.ga) + '</span></div>'
       : '<div class="hist-dline"><span class="hist-dline-lbl">Gastos A</span><span class="hist-dline-val" style="color:rgba(32,36,31,.35)">pendiente</span></div>';
 
+    var prestamoHtml = c.prestamoCasa > 0
+      ? '<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val neg">−' + fmt(c.prestamoCasa) + '</span></div>'
+      : '';
+
     var aporteHtml = '';
     if (c.aporteCeot > 0) {
       aporteHtml = '<div class="hist-dline"><span class="hist-dline-lbl">Aporte CEOT (' + (c.pctAporte*100) + '%)</span><span class="hist-dline-val neg">−' + fmt(c.aporteCeot) + '</span></div>';
@@ -2522,7 +2548,7 @@ function renderHistorial(doctor) {
       + '<span style="display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal">' + pendBadge + pdfBtn + '</span></div>'
       + '<div class="hist-dline"><span class="hist-dline-lbl">Bruto</span><span class="hist-dline-val">' + fmt(c.bruto) + '</span></div>'
       + '<div class="hist-dline"><span class="hist-dline-lbl">IIBB (3,5%)</span><span class="hist-dline-val neg">−' + fmt(c.iibb) + '</span></div>'
-      + cpsmHtml + gaHtml + aporteHtml + cmHtml
+      + cpsmHtml + gaHtml + prestamoHtml + aporteHtml + cmHtml
       + '<hr class="hist-rule">'
       + '<div class="hist-neto-line"><span>NETO</span><span>' + fmt(c.neto) + '</span></div>'
       + totalCeotHtml
@@ -3822,7 +3848,7 @@ function renderAdminPanel(periodo) {
   // Ordenar por neto desc
   rows.sort(function(a, b) { return b.calc.neto - a.calc.neto; });
 
-  var totBruto=0, totIIBB=0, totCPSM=0, totGA=0, totAporte=0, totCM=0, totNeto=0;
+  var totBruto=0, totIIBB=0, totCPSM=0, totGA=0, totAporte=0, totPrestamo=0, totCM=0, totNeto=0;
   rows.forEach(function(r) {
     var c = r.calc;
     totBruto   += (c.bruto       || 0);
@@ -3830,13 +3856,15 @@ function renderAdminPanel(periodo) {
     totCPSM    += (c.cpsm        || 0);
     totGA      += (c.ga          || 0);
     totAporte  += (c.aporteCeot  || 0);
+    totPrestamo += (c.prestamoCasa || 0);
     totCM      += (c.cm          || 0);
     totNeto    += (c.neto        || 0);
   });
 
-  var tieneAporte  = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
+  var tieneAporte   = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
+  var tienePrestamo = PRESTAMO_CASA_CUOTA[periodo] !== undefined;
   var hayPendientes = rows.some(function(r){ return r.calc.pendiente; });
-  var totDesc = totIIBB + totCPSM + totGA + totAporte;
+  var totDesc = totIIBB + totCPSM + totGA + totAporte + totPrestamo;
   var totBrutoTotal = totBruto + totCM;
 
   var html = "";
@@ -3868,6 +3896,9 @@ function renderAdminPanel(periodo) {
   if (totGA > 0) {
     html += '<div class="adm-br-row" style="background:rgba(202,138,4,.1)"><span class="adm-br-lbl">Gastos A (÷ 13)</span><span class="adm-br-val" style="color:#92610f">− ' + fmt(totGA) + '</span></div>';
   }
+  if (tienePrestamo && totPrestamo > 0) {
+    html += '<div class="adm-br-row" style="background:rgba(177,58,44,.14)"><span class="adm-br-lbl">Préstamo Casa</span><span class="adm-br-val" style="color:#b13a2c">− ' + fmt(totPrestamo) + '</span></div>';
+  }
   if (tieneAporte && totAporte > 0) {
     html += '<div class="adm-br-row" style="background:rgba(124,58,237,.14)"><span class="adm-br-lbl">Aporte CEOT</span><span class="adm-br-val" style="color:#6d28d9">− ' + fmt(totAporte) + '</span></div>';
   }
@@ -3896,6 +3927,7 @@ function renderAdminPanel(periodo) {
   html += '<th>OSDE' + (hayOsdePend ? ' <span class="adm-est-badge">pend</span>' : '') + '</th>';
   if (totCM > 0) html += '<th>CEM</th>';
   html += '<th>IIBB</th><th>CPSM</th><th>Gtos A</th>';
+  if (tienePrestamo) html += '<th>Préstamo Casa</th>';
   if (tieneAporte) html += '<th>Ap. CEOT</th>';
   html += '<th>NETO</th>';
   var prevPeriodoMap = {junio:"mayo",julio:"junio",agosto:"julio",septiembre:"agosto",octubre:"septiembre",noviembre:"octubre",diciembre:"noviembre"};
@@ -3923,6 +3955,13 @@ function renderAdminPanel(periodo) {
     html += '<td class="adm-neg">−' + fmt(c.iibb) + '</td>';
     html += '<td class="adm-neg">' + (c.esLab ? '<span class="adm-exento">EXENTO</span>' : '−' + fmt(c.cpsm)) + '</td>';
     html += '<td class="adm-neg">' + (c.ga ? '−' + fmt(c.ga) : '<span class="adm-pend">—</span>') + '</td>';
+    if (tienePrestamo) {
+      html += '<td class="adm-neg">'
+        + (c.prestamoCasa
+            ? '−' + fmt(c.prestamoCasa) + ' <span style="font-size:.58rem;color:#b13a2c">' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + '</span>'
+            : '<span class="adm-pend">—</span>')
+        + '</td>';
+    }
     if (tieneAporte) {
       html += '<td class="adm-neg">'
         + (c.aporteCeot
@@ -3954,6 +3993,7 @@ function renderAdminPanel(periodo) {
   html += '<td>−' + fmt(totIIBB) + '</td>';
   html += '<td>−' + fmt(totCPSM) + '</td>';
   html += '<td>−' + fmt(totGA) + '</td>';
+  if (tienePrestamo) html += '<td>−' + fmt(totPrestamo) + '</td>';
   if (tieneAporte) html += '<td>−' + fmt(totAporte) + '</td>';
   html += '<td>' + fmt(totNeto) + '</td>';
   if (hayDelta) html += '<td></td>';
@@ -4151,6 +4191,7 @@ function descargarComprobanteHistorial(pid) {
     fila("CPSM (5%)", c.cpsm, { prefix:"- ", color:[180,0,0] });
   }
   if (c.ga)          fila("Gastos A", c.ga, { prefix:"- ", color:[180,0,0] });
+  if (c.prestamoCasa > 0) fila("Préstamo Casa (" + c.prestamoCasaCuota + "/" + PRESTAMO_CASA_TOTAL_CUOTAS + ")", c.prestamoCasa, { prefix:"- ", color:[180,0,0] });
   if (c.aporteCeot > 0) fila("Aporte CEOT (" + Math.round(c.pctAporte*100) + "%)", c.aporteCeot, { prefix:"- ", color:[180,0,0] });
   if (c.cm > 0)      fila("Centro Médico", c.cm, { prefix:"+ ", color:[0,120,0] });
 
