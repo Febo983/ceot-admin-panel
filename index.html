@@ -4571,12 +4571,39 @@ function parsearMontoImp(str) {
   return parseFloat(s) || 0;
 }
 
+// Reporte "Liquidación a Profesionales" de Colón exportado como .txt de ancho fijo.
+// Columnas usadas (offsets estables, verificados contra el reporte real):
+// IMPORTE vía regex (evita depender de columnas GE/A/T que a veces vienen vacías),
+// INST. en [74,83), PROF.Q.REALIZA en [138,185), OBSERVACIONES desde 246.
+function parsearTXTColon(text) {
+  var lineas = text.split(/\r?\n/);
+  var reDato    = /^\s*\d+\s+\d+\s+\d+\s+\d+/;
+  var reImporte = /(-?[\d.]+,\d{2})\s+[A-Z-]\s+[A-Z]\s+(\d{6})\s+(\d{6})/;
+  var rows = [];
+  lineas.forEach(function(linea) {
+    if (!reDato.test(linea)) return;
+    var m = reImporte.exec(linea);
+    if (!m) return;
+    var importe = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+    if (!importe) return;
+    var row = [];
+    row[3]  = importe;
+    row[7]  = linea.slice(74, 83).trim();
+    row[12] = linea.slice(138, 185).trim();
+    row[15] = linea.slice(246).trim();
+    rows.push(row);
+  });
+  return rows;
+}
+
 async function leerXLSX(file) {
   return new Promise(function(resolve, reject) {
     var esCSV = /\.csv$/i.test(file.name);
+    var esTXT = /\.txt$/i.test(file.name);
     var reader = new FileReader();
     reader.onload = function(ev) {
       try {
+        if (esTXT) { resolve(parsearTXTColon(ev.target.result)); return; }
         var wb = esCSV
           ? XLSX.read(ev.target.result, { type: 'string' })
           : XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
@@ -4584,8 +4611,9 @@ async function leerXLSX(file) {
       } catch(e) { reject(e); }
     };
     reader.onerror = function() { reject(new Error('No se pudo leer el archivo')); };
-    if (esCSV) reader.readAsText(file, 'UTF-8');
-    else        reader.readAsArrayBuffer(file);
+    if (esTXT)      reader.readAsText(file, 'ISO-8859-1'); // el export viene en Latin-1
+    else if (esCSV) reader.readAsText(file, 'UTF-8');
+    else            reader.readAsArrayBuffer(file);
   });
 }
 
@@ -4647,7 +4675,7 @@ async function procesarArchivosImport() {
       var key  = normDocImp(prof);
       if (!key) continue;
       var sgn  = (obs.indexOf('DEB') !== -1 && obs.indexOf('HONORARIOS') !== -1) ? -1 : 1;
-      var esGasEquipoAjeno = obs.indexOf('GAS.EQUIPO') !== -1 && GASEQ_SOCIOS.indexOf(key) === -1;
+      var esGasEquipoAjeno = obs.replace(/\s+/g, '').indexOf('GAS.EQUIPO') !== -1 && GASEQ_SOCIOS.indexOf(key) === -1;
       if (esGasEquipoAjeno) {
         if (inst === 'OSDE') gasEqAjenoOsde += imp * sgn;
         else                 gasEqAjenoDif  += imp * sgn;
@@ -5877,8 +5905,8 @@ function cpsmActualizarFuente() {
 
       <!-- Archivos -->
       <div class="imp-field">
-        <label class="imp-label">Archivo CEOT.xlsx</label>
-        <input type="file" id="fileCEOT" accept=".xlsx,.xls" class="imp-file-input">
+        <label class="imp-label">Archivo CEOT (.xlsx o .txt)</label>
+        <input type="file" id="fileCEOT" accept=".xlsx,.xls,.txt" class="imp-file-input">
       </div>
       <div class="imp-field">
         <label class="imp-label">Archivo ART.xlsx <span style="color:rgba(32,36,31,.35);font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
