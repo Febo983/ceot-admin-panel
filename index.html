@@ -4734,9 +4734,16 @@ async function procesarArchivosImport() {
         'ART incluida: ' + fmtImp(artTotal) + ' → DEG 35% + TRI 35% + MAZ 30%</td></tr>';
     }
     if (gasEqAjenoOsde || gasEqAjenoDif) {
+      var gasEqTotal = gasEqAjenoOsde + gasEqAjenoDif;
+      var gasEqShare = gasEqTotal / 3;
+      var gasEqDetalle = GASEQ_SOCIOS.map(function(k) {
+        var totalPropio = (osdeBill[k]||0) + (difBill[k]||0);
+        var pctPropio = totalPropio > 0 ? (gasEqShare / totalPropio * 100) : 0;
+        return k + ' ' + fmtImp(gasEqShare) + ' (' + pctPropio.toFixed(2) + '% de su propio total)';
+      }).join(' · ');
       tfootRows += '<tr style="background:#fef9c3"><td colspan="4" style="padding:6px 10px;font-size:0.7rem;color:#92610f;font-weight:600;">' +
-        'GAS.EQUIPO redistribuido (cargado a otro profesional en el xlsx): ' + fmtImp(gasEqAjenoOsde + gasEqAjenoDif) +
-        ' → TRI/COR/DEG 33.33% c/u</td></tr>';
+        'GAS.EQUIPO redistribuido (cargado a otro profesional en el xlsx): ' + fmtImp(gasEqTotal) +
+        ' → 33.33% c/u a TRI/COR/DEG.<br>' + gasEqDetalle + '</td></tr>';
     }
     if (totDIF > 0) {
       var pctTriCorDeg = ((difBill['TRIVELLINI']||0) + (difBill['CORELICH']||0) + (difBill['DEGANUTTI']||0)) / totDIF * 100;
