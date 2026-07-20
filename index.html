@@ -4745,11 +4745,6 @@ async function procesarArchivosImport() {
         'GAS.EQUIPO redistribuido (cargado a otro profesional en el xlsx): ' + fmtImp(gasEqTotal) +
         ' → 33.33% c/u a TRI/COR/DEG.<br>' + gasEqDetalle + '</td></tr>';
     }
-    if (totDIF > 0) {
-      var pctTriCorDeg = ((difBill['TRIVELLINI']||0) + (difBill['CORELICH']||0) + (difBill['DEGANUTTI']||0)) / totDIF * 100;
-      tfootRows += '<tr style="background:#eef2ff"><td colspan="4" style="padding:6px 10px;font-size:0.7rem;color:#3730a3;font-weight:600;">' +
-        'TRI + COR + DEG sobre el total Diferidos (sin OSDE): ' + pctTriCorDeg.toFixed(2) + '%</td></tr>';
-    }
     if (tfootRows) {
       var tfoot = document.getElementById('impPreviewTable').createTFoot();
       tfoot.innerHTML = tfootRows;
