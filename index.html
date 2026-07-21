@@ -1447,6 +1447,7 @@ body { background: var(--iv0); color: var(--ink); }
       <button class="adm-sidenav-btn" id="adm-sidenav-totalceot"      onclick="renderTotalCeot()">📊 Total CEOT</button>
 <button class="adm-sidenav-btn" id="adm-sidenav-sueldob"       onclick="renderSueldoB()">💼 Sueldo B</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-cpsm"         onclick="renderCpsm()">🏦 CPSM</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-slack"        onclick="slackAbrirModal()">🔔 Slack</button>
       <div class="adm-sidenav-sep" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
         <span>Accesos</span>
         <button id="btnEditLinks" onclick="toggleEditLinks()" title="Editar links" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:rgba(255,255,255,.35);padding:0 2px">✏</button>
@@ -1493,6 +1494,34 @@ body { background: var(--iv0); color: var(--ink); }
     <div style="padding:14px 16px">
       <div style="font-size:0.72rem;color:#5c5040;margin-bottom:10px">Hacé clic en <strong>Enviar</strong> para abrir WhatsApp con el mensaje pre-escrito. Podés editar el texto antes de enviarlo.</div>
       <div id="waListado" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+  </div>
+</div>
+
+<div id="slackModalBg" class="acc-modal-bg" onclick="if(event.target===this)slackCerrarModal()">
+  <div class="acc-modal" style="width:420px">
+    <h3>🔔 Avisos por Slack</h3>
+    <label>Webhook URL</label>
+    <input id="slackFormUrl" type="url" placeholder="https://hooks.slack.com/services/...">
+    <label>Avisar en el canal cuando…</label>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:400;font-size:0.82rem;color:#20241f;margin:0">
+        <input type="checkbox" id="slack-mod-liquidacion" style="width:auto"> Se carga una liquidación (OSDE / Diferidos / Colón / Centro Médico) en la planilla
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:400;font-size:0.82rem;color:#20241f;margin:0">
+        <input type="checkbox" id="slack-mod-cpsm" style="width:auto"> Se genera el CPSM de un período
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:400;font-size:0.82rem;color:#20241f;margin:0">
+        <input type="checkbox" id="slack-mod-gastos_a" style="width:auto"> Se generan los avisos de Gastos A
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:400;font-size:0.82rem;color:#20241f;margin:0">
+        <input type="checkbox" id="slack-mod-sueldo_b" style="width:auto"> Se generan recibos de Sueldo B
+      </label>
+    </div>
+    <div id="slackModalMsg" style="font-size:0.72rem;margin-top:10px;min-height:14px"></div>
+    <div class="acc-modal-btns">
+      <button class="acc-modal-cancel" onclick="slackProbar()">Probar aviso</button>
+      <button class="acc-modal-save" onclick="slackGuardarConfig()">Guardar</button>
     </div>
   </div>
 </div>
@@ -3718,6 +3747,7 @@ function sbGenerarRecibos() {
   var periodo = MESES[mes].toUpperCase() + " " + anio;
 
   var lista = "";
+  var sbTotalGeneral = 0, sbCantGeneral = 0;
   SB_PERSONAL.forEach(function(p) {
     var horasEl = document.getElementById("sb-h-"+p.legajo);
     var mensEl  = document.getElementById("sb-mens-"+p.legajo);
@@ -3725,6 +3755,7 @@ function sbGenerarRecibos() {
     var usaMens  = mensEl ? mensEl.checked : false;
     var c = sbCalcTotal(p, horas, usaMens);
     if (c.total === 0) return;
+    sbTotalGeneral += c.total; sbCantGeneral++;
 
     lista += '<div style="display:flex;justify-content:space-between;align-items:center;'
            + 'background:rgba(32,36,31,.05);border:0.5px solid rgba(32,36,31,.12);'
@@ -3739,6 +3770,9 @@ function sbGenerarRecibos() {
 
   document.getElementById("sb-lista-recibos").innerHTML = lista || '<div style="color:rgba(32,36,31,.35);padding:12px">Sin importes para imprimir.</div>';
   document.getElementById("sb-resultados").style.display = "block";
+  if (sbCantGeneral > 0) {
+    slackNotify('sueldo_b', '💼 Se generaron *' + sbCantGeneral + ' recibos de Sueldo B* para *' + periodo + '* — total $' + sbFmt(sbTotalGeneral) + '.');
+  }
 
   // guardar estado para imprimir todos
   SB_STATE = {};
@@ -4874,6 +4908,8 @@ async function cargarEnSheet(tipo) {
     if (data.ok) {
       msgEl.textContent = '✓ Cargado — ' + (data.escritos||0) + ' celdas escritas';
       msgEl.className   = 'imp-sheet-msg imp-ok';
+      var tipoLabelOk = { diferidos: 'Diferidos', osde: 'OSDE', dist: 'Colón' }[tipo] || tipo;
+      slackNotify('liquidacion', '🧾 Se cargó *' + tipoLabelOk + '* de la liquidación de *' + mes + '* en la planilla — ' + (data.escritos||0) + ' celdas escritas.');
       if (impUndo.tipo) {
         var labels = { diferidos: 'Diferidos', osde: 'OSDE', dist: 'Colón' };
         document.getElementById('impUndoLabel').textContent = labels[tipo] + ' — ' + mes;
@@ -4974,6 +5010,7 @@ async function cargarCMenSheet() {
     if (data.ok) {
       msgEl.textContent = '✓ CM cargado — ' + (data.escritos||0) + ' celdas escritas';
       msgEl.className = 'imp-sheet-msg imp-ok';
+      slackNotify('liquidacion', '🧾 Se cargó *Centro Médico* de *' + mes + '* en la planilla — ' + (data.escritos||0) + ' celdas escritas.');
       if (impCMUndo.tipo) undoArea.style.display = 'block';
     } else {
       msgEl.textContent = '✗ ' + (data.error||'Error');
@@ -4984,6 +5021,7 @@ async function cargarCMenSheet() {
 
 async function deshacerCM() {
   if (!impCMUndo.tipo) return;
+  var mesCMDeshecho = impCMUndo.mes;
   var msgEl = document.getElementById('impCMMsg');
   var undoArea = document.getElementById('impCMUndoArea');
   msgEl.textContent = 'Deshaciendo CM…'; msgEl.className = 'imp-sheet-msg';
@@ -4995,6 +5033,7 @@ async function deshacerCM() {
     if (data.ok) {
       msgEl.textContent = '✓ CM deshecho'; msgEl.className = 'imp-sheet-msg imp-ok';
       impCMUndo = { tipo:null, mes:null, data:null };
+      slackNotify('liquidacion', '↩️ Se deshizo la carga de *Centro Médico* de *' + mesCMDeshecho + '* — valores anteriores restaurados.');
     } else {
       msgEl.textContent = '✗ ' + (data.error||'Error al deshacer');
       msgEl.className = 'imp-sheet-msg imp-err';
@@ -5005,6 +5044,7 @@ async function deshacerCM() {
 
 async function deshacerImport() {
   if (!impUndo.tipo) return;
+  var tipoDeshecho = impUndo.tipo, mesDeshecho = impUndo.mes;
   var msgEl    = document.getElementById('impSheetMsg');
   var undoArea = document.getElementById('impUndoArea');
   msgEl.textContent = 'Deshaciendo…';
@@ -5023,6 +5063,8 @@ async function deshacerImport() {
       msgEl.textContent = '✓ Deshecho — valores anteriores restaurados';
       msgEl.className   = 'imp-sheet-msg imp-ok';
       impUndo = { tipo: null, mes: null, data: null };
+      var tipoLabelDesh = { diferidos: 'Diferidos', osde: 'OSDE', dist: 'Colón' }[tipoDeshecho] || tipoDeshecho;
+      slackNotify('liquidacion', '↩️ Se deshizo la carga de *' + tipoLabelDesh + '* de *' + mesDeshecho + '* — valores anteriores restaurados.');
     } else {
       msgEl.textContent = '✗ Error al deshacer: ' + (data.error || '');
       msgEl.className   = 'imp-sheet-msg imp-err';
@@ -5346,11 +5388,78 @@ function abrirWAGastosA(periodo) {
 
   var bg = document.getElementById("waModalBg");
   if (bg) bg.style.display = "flex";
+
+  slackNotify('gastos_a', '📲 Se generaron los avisos de *Gastos A* para *' + gaLabel + '* — ' + rows.length + ' profesionales, $' + fmt(gaInd) + ' c/u.');
 }
 
 function cerrarWAModal() {
   var bg = document.getElementById("waModalBg");
   if (bg) bg.style.display = "none";
+}
+
+// ══════ AVISOS POR SLACK ══════════════════════════════════════
+var SLACK_MODULOS = ['liquidacion', 'cpsm', 'gastos_a', 'sueldo_b'];
+
+function slackGetConfig() {
+  var mods;
+  try { mods = JSON.parse(localStorage.getItem('ceot_slack_modulos') || 'null'); } catch (e) { mods = null; }
+  if (!mods) mods = SLACK_MODULOS.slice();
+  return { url: localStorage.getItem('ceot_slack_webhook') || '', modulos: mods };
+}
+
+function slackAbrirModal() {
+  var cfg = slackGetConfig();
+  document.getElementById('slackFormUrl').value = cfg.url;
+  SLACK_MODULOS.forEach(function (m) {
+    var el = document.getElementById('slack-mod-' + m);
+    if (el) el.checked = cfg.modulos.indexOf(m) !== -1;
+  });
+  document.getElementById('slackModalMsg').textContent = '';
+  document.getElementById('slackModalBg').classList.add('open');
+}
+
+function slackCerrarModal() {
+  document.getElementById('slackModalBg').classList.remove('open');
+}
+
+function slackGuardarConfig() {
+  var url = document.getElementById('slackFormUrl').value.trim();
+  localStorage.setItem('ceot_slack_webhook', url);
+  var mods = [];
+  SLACK_MODULOS.forEach(function (m) {
+    var el = document.getElementById('slack-mod-' + m);
+    if (el && el.checked) mods.push(m);
+  });
+  localStorage.setItem('ceot_slack_modulos', JSON.stringify(mods));
+  var msgEl = document.getElementById('slackModalMsg');
+  msgEl.textContent = '✓ Guardado en este navegador';
+  msgEl.style.color = '#166534';
+  setTimeout(slackCerrarModal, 800);
+}
+
+// Fire-and-forget: un aviso de Slack nunca debe romper el flujo del panel.
+// mode:'no-cors' evita el preflight y no permite leer la respuesta, así que
+// no hay forma de confirmar la entrega desde acá — por eso existe "Probar aviso".
+function slackNotify(modulo, texto) {
+  try {
+    var cfg = slackGetConfig();
+    if (!cfg.url || cfg.modulos.indexOf(modulo) === -1) return;
+    fetch(cfg.url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ text: texto }) });
+  } catch (e) { /* silencioso a propósito */ }
+}
+
+function slackProbar() {
+  var url = document.getElementById('slackFormUrl').value.trim();
+  var msgEl = document.getElementById('slackModalMsg');
+  if (!url) { msgEl.textContent = 'Pegá la URL del webhook primero.'; msgEl.style.color = '#b13a2c'; return; }
+  try {
+    fetch(url, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ text: '🧪 Prueba desde el Panel CEOT — si ves esto en el canal, quedó bien conectado.' }) });
+    msgEl.textContent = 'Enviado — revisá el canal de Slack.';
+    msgEl.style.color = '#166534';
+  } catch (e) {
+    msgEl.textContent = 'No se pudo enviar: ' + e.message;
+    msgEl.style.color = '#b13a2c';
+  }
 }
 
 // ══════ DÉBITOS ══════════════════════════════════════════════
@@ -5848,6 +5957,7 @@ function cpsmDescargarExcel() {
   ws["!cols"] = [{wch:18},{wch:26},{wch:12},{wch:18},{wch:14}];
   XLSX.utils.book_append_sheet(wb, ws, mesLiqStr);
   XLSX.writeFile(wb, "CPSM_" + mesLiqStr + "_" + anio + ".xlsx");
+  slackNotify('cpsm', '🏦 Se generó el *CPSM* de *' + mesLiqStr + ' ' + anio + '* — total retenido $' + cpsmFmt(totalHonor) + '.');
 }
 
 function cpsmRenderTabla(honorariosData) {
