@@ -5873,12 +5873,14 @@ function cpsmDescargarExcel() {
   var anio      = anioSel.value;
   var vals      = cpsmLeerInputs();
 
+  // El portal de CPSM calcula el 5% él mismo — exportamos los honorarios M-2
+  // crudos, no el "CPSM a pagar" que ya calculamos acá.
   var rows = [["Apellido","Nombre","Matricula","CUIT","Honorarios"]];
   var totalHonor = 0;
   CPSM_PROF.forEach(function(p) {
-    var cpsm = p.exento ? 10 : cpsmCalc(vals[p.ap]);
-    rows.push([p.ap, p.nombre.toUpperCase(), p.mat, p.cuit, cpsm]);
-    totalHonor += cpsm;
+    var honor = p.exento ? 0 : Math.round(vals[p.ap] || 0);
+    rows.push([p.ap, p.nombre.toUpperCase(), p.mat, p.cuit, honor]);
+    totalHonor += honor;
   });
   rows.push(["","","","TOTAL", totalHonor]);
 
