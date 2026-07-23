@@ -4538,6 +4538,23 @@ function abrirImportModal() {
   document.getElementById('fileCM').value   = '';
   document.getElementById('importModal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
+  actualizarMesColonAuto();
+}
+
+// Los cheques Colón se depositan ~2 meses después del mes facturado (CEOT.xlsx).
+// Sugiere automáticamente ese mes en el selector propio de Cheques Colón cada vez
+// que cambia "Mes a importar" — evita escribir con fechas de depósito reales
+// (ej. septiembre) en la pestaña del mes facturado (julio), que no tiene esas
+// columnas y termina escribiendo 0 celdas en silencio.
+const MESES_IMP_ORD = ['enero','febrero','marzo','abril','mayo','junio','julio',
+                        'agosto','septiembre','octubre','noviembre','diciembre'];
+function actualizarMesColonAuto() {
+  var mesSel = document.getElementById('impMes').value;
+  var idx = MESES_IMP_ORD.indexOf(mesSel);
+  if (idx === -1) return;
+  var mesColon = MESES_IMP_ORD[(idx + 2) % 12];
+  var sel = document.getElementById('impMesColon');
+  if (sel && sel.querySelector('option[value="' + mesColon + '"]')) sel.value = mesColon;
 }
 
 function cerrarImportModal() {
@@ -4844,7 +4861,10 @@ function calcularDistribucionFinal() {
 }
 
 async function cargarEnSheet(tipo) {
-  var mes   = document.getElementById('impMes').value;
+  // "dist" (Cheques Colón) usa su propio selector de mes: se deposita ~2 meses
+  // después del mes facturado que usan Diferidos/OSDE/CM.
+  var mes   = tipo === 'dist' ? document.getElementById('impMesColon').value
+                               : document.getElementById('impMes').value;
   var msgEl = document.getElementById('impSheetMsg');
   var undoArea = document.getElementById('impUndoArea');
   msgEl.textContent = 'Guardando backup…';
@@ -4887,14 +4907,17 @@ async function cargarEnSheet(tipo) {
     }
     var resp = await fetch(url);
     var data = await resp.json();
-    if (data.ok) {
-      msgEl.textContent = '✓ Cargado — ' + (data.escritos||0) + ' celdas escritas';
+    if (data.ok && (data.escritos||0) > 0) {
+      msgEl.textContent = '✓ Cargado — ' + data.escritos + ' celdas escritas';
       msgEl.className   = 'imp-sheet-msg imp-ok';
       if (impUndo.tipo) {
         var labels = { diferidos: 'Diferidos', osde: 'OSDE', dist: 'Colón' };
         document.getElementById('impUndoLabel').textContent = labels[tipo] + ' — ' + mes;
         undoArea.style.display = 'block';
       }
+    } else if (data.ok) {
+      msgEl.textContent = '⚠ 0 celdas escritas — revisá que el mes/fecha coincida con las columnas de esa pestaña en el Sheet';
+      msgEl.className   = 'imp-sheet-msg imp-err';
     } else {
       msgEl.textContent = '✗ ' + (data.error || 'Error');
       msgEl.className   = 'imp-sheet-msg imp-err';
@@ -5995,7 +6018,7 @@ function cpsmActualizarFuente() {
       <!-- Mes -->
       <div class="imp-field">
         <label class="imp-label">Mes a importar</label>
-        <select id="impMes" class="imp-select">
+        <select id="impMes" class="imp-select" onchange="actualizarMesColonAuto()">
           <option value="mayo">Mayo 2026</option>
           <option value="junio">Junio 2026</option>
           <option value="julio" selected>Julio 2026</option>
@@ -6050,6 +6073,19 @@ function cpsmActualizarFuente() {
           <input type="text" id="impChqOSDE" class="imp-input" placeholder="Importe bruto $">
         </div>
         <div id="impColonFields"></div>
+        <div class="imp-field">
+          <label class="imp-label">Mes real de depósito (Cheques Colón) <span style="color:rgba(32,36,31,.35);font-weight:400;text-transform:none;letter-spacing:0">(diferido ~2 meses vs. "Mes a importar")</span></label>
+          <select id="impMesColon" class="imp-select">
+            <option value="mayo">Mayo 2026</option>
+            <option value="junio">Junio 2026</option>
+            <option value="julio">Julio 2026</option>
+            <option value="agosto">Agosto 2026</option>
+            <option value="septiembre" selected>Septiembre 2026</option>
+            <option value="octubre">Octubre 2026</option>
+            <option value="noviembre">Noviembre 2026</option>
+            <option value="diciembre">Diciembre 2026</option>
+          </select>
+        </div>
         <button class="imp-btn-gray" onclick="calcularDistribucionFinal()">Calcular distribución ▸</button>
 
         <!-- Resultados -->
