@@ -4654,7 +4654,8 @@ async function procesarArchivosImport() {
   document.getElementById('impError').style.display = 'none';
 
   try {
-    // ── CEOT.xlsx: col D=3 importe, H=7 institución, M=12 profesional, P=15 observación
+    // ── CEOT.xlsx: formato "crudo" ART, columnas detectadas por nombre de header
+    // (mismo patrón que debCargarXLSXCrudo — más robusto si la ART reordena columnas)
     var osdeBill = {}, difBill = {};
     SOCIOS_IMP.forEach(function(k){ osdeBill[k] = 0; difBill[k] = 0; });
 
@@ -4664,14 +4665,29 @@ async function procesarArchivosImport() {
     var gasEqAjenoOsde = 0, gasEqAjenoDif = 0;
 
     var rows = await leerXLSX(fileCEOT);
-    for (var r = 0; r < rows.length; r++) {
+    if (!rows.length) throw new Error('Archivo vacío.');
+
+    var ceotHeaders = rows[0].map(function(h){ return String(h || '').replace(/\s+/g,'').toUpperCase(); });
+    function idxOfCeot(needle) {
+      for (var i = 0; i < ceotHeaders.length; i++) if (ceotHeaders[i].indexOf(needle) !== -1) return i;
+      return -1;
+    }
+    var iImp  = idxOfCeot('IMPORTE');
+    var iInst = idxOfCeot('INST.');
+    var iProf = idxOfCeot('.Q.REALIZA'); // nombre del profesional que realizó (no la col "PROF", que es el código)
+    var iObs  = idxOfCeot('OBSERVACIONES');
+    if (iImp === -1 || iInst === -1 || iProf === -1 || iObs === -1) {
+      throw new Error('No reconozco las columnas de este archivo (falta IMPORTE, INST., PROF/.Q.REALIZA u OBSERVACIONES). ¿Es el formato crudo de la ART?');
+    }
+
+    for (var r = 1; r < rows.length; r++) {
       var row = rows[r];
-      if (!row || row.length < 13) continue;
-      var imp  = typeof row[3] === 'number' ? row[3] : parsearMontoImp(row[3]);
+      if (!row || !row.length) continue;
+      var imp  = typeof row[iImp] === 'number' ? row[iImp] : parsearMontoImp(row[iImp]);
       if (!imp) continue;
-      var inst = String(row[7]  || '').trim().toUpperCase();
-      var prof = String(row[12] || '').trim();
-      var obs  = String(row[15] || '').trim().toUpperCase();
+      var inst = String(row[iInst] || '').trim().toUpperCase();
+      var prof = String(row[iProf] || '').trim();
+      var obs  = String(row[iObs]  || '').trim().toUpperCase();
       var key  = normDocImp(prof);
       if (!key) continue;
       var sgn  = (obs.indexOf('DEB') !== -1 && obs.indexOf('HONORARIOS') !== -1) ? -1 : 1;
