@@ -3952,8 +3952,10 @@ function renderAdminPanel(periodo) {
   html += '<div class="adm-breakdown">';
   html += '<div class="adm-br-row" style="background:rgba(220,38,38,.1)"><span class="adm-br-lbl">IIBB (3,5%)</span><span class="adm-br-val" style="color:#b13a2c">− ' + fmt(totIIBB) + '</span></div>';
   html += '<div class="adm-br-row" style="background:rgba(234,88,12,.1)"><span class="adm-br-lbl">CPSM (5%) · Labayen exento</span><span class="adm-br-val" style="color:#c2410c">− ' + fmt(totCPSM) + '</span></div>';
+  var sigMesNombreAdm = {"mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre"};
+  var gaLabelMesAdm = sigMesNombreAdm[periodo] ? " · cubre " + sigMesNombreAdm[periodo] : "";
   if (totGA > 0) {
-    html += '<div class="adm-br-row" style="background:rgba(202,138,4,.1)"><span class="adm-br-lbl">Gastos A (÷ 13)</span><span class="adm-br-val" style="color:#92610f">− ' + fmt(totGA) + '</span></div>';
+    html += '<div class="adm-br-row" style="background:rgba(202,138,4,.1)"><span class="adm-br-lbl">Gastos A (÷ 13)<span style="font-size:.68rem;color:rgba(32,36,31,.4);font-weight:400">' + gaLabelMesAdm + '</span></span><span class="adm-br-val" style="color:#92610f">− ' + fmt(totGA) + '</span></div>';
   }
   if (tienePrestamo && totPrestamo > 0) {
     html += '<div class="adm-br-row" style="background:rgba(177,58,44,.14)"><span class="adm-br-lbl">Préstamo Casa</span><span class="adm-br-val" style="color:#b13a2c">− ' + fmt(totPrestamo) + '</span></div>';
@@ -3965,6 +3967,10 @@ function renderAdminPanel(periodo) {
     html += '<div class="adm-br-row" style="background:rgba(22,163,74,.12)"><span class="adm-br-lbl">Centro Médico (ingreso)</span><span class="adm-br-val" style="color:#166534">+ ' + fmt(totCM) + '</span></div>';
   }
   html += '</div>';
+  if (totGA > 0) {
+    var periodoCap = periodo.charAt(0).toUpperCase() + periodo.slice(1);
+    html += '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:4px 2px 0 2px">⚑ Los Gastos A de ' + periodoCap + ' se descuentan de este cheque para cubrir ' + (sigMesNombreAdm[periodo] || 'el mes siguiente') + '.</div>';
+  }
 
   // ── Botón WA Gastos A ──
   if (totGA > 0) {
