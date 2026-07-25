@@ -1640,7 +1640,19 @@ const PERIOD_EXTRAS = {
       "SOULE":        1434395,
       "TRIVELLINI":   2842621,
     }},
-    cm: { pendiente: true, fecha: "", m: {} },  // CM de Mayo → se acredita en Junio (ver tab Junio)
+    // CEM de Mayo = liquidación de Abril — acreditado 1ra semana de Mayo
+    cm: { pendiente: false, fecha: "Liquid. Abril", m: {
+      "BRUNI":        2251335.09,
+      "CORELICH":     720266.46,
+      "DE LA COLINA": 1315259.64,
+      "DEGANUTTI":    5112803.76,
+      "LABAYEN":      487172.31,
+      "LEON":         1312975.80,
+      "MAZZOLA":      818701.09,
+      "PERLASCO":     2326092.04,
+      "SOULE":        1326296.57,
+      "TRIVELLINI":   2137674.11,
+    }},
   },
   junio: {
     osde: { pendiente: false, fecha: "Jun 2026", m: {
@@ -1671,18 +1683,7 @@ const PERIOD_EXTRAS = {
   },
   julio: {
     osde: { pendiente: true, fecha: "~3ra sem. de Agosto", m: {} },
-    cm:   { pendiente: false, fecha: "Liquid. Junio", m: {
-      "BRUNI":        3022624,
-      "CORELICH":     2389216,
-      "DE LA COLINA": 3858723,
-      "DEGANUTTI":    5292760,
-      "LABAYEN":      3499147,
-      "LEON":         856368,
-      "MAZZOLA":      2037041,
-      "PERLASCO":     1054791,
-      "SOULE":        1910359,
-      "TRIVELLINI":   1411234,
-    }},
+    cm:   { pendiente: true, fecha: "primeros días de Agosto", m: {} },
   },
   agosto: {
     osde: { pendiente: true, fecha: "~3ra sem. de Sep",    m: {} },
@@ -4597,6 +4598,23 @@ function abrirImportModal() {
   document.getElementById('fileCM').value   = '';
   document.getElementById('importModal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
+  actualizarMesColonAuto();
+}
+
+// Los cheques Colón se depositan ~2 meses después del mes facturado (CEOT.xlsx).
+// Sugiere automáticamente ese mes en el selector propio de Cheques Colón cada vez
+// que cambia "Mes a importar" — evita escribir con fechas de depósito reales
+// (ej. septiembre) en la pestaña del mes facturado (julio), que no tiene esas
+// columnas y termina escribiendo 0 celdas en silencio.
+const MESES_IMP_ORD = ['enero','febrero','marzo','abril','mayo','junio','julio',
+                        'agosto','septiembre','octubre','noviembre','diciembre'];
+function actualizarMesColonAuto() {
+  var mesSel = document.getElementById('impMes').value;
+  var idx = MESES_IMP_ORD.indexOf(mesSel);
+  if (idx === -1) return;
+  var mesColon = MESES_IMP_ORD[(idx + 2) % 12];
+  var sel = document.getElementById('impMesColon');
+  if (sel && sel.querySelector('option[value="' + mesColon + '"]')) sel.value = mesColon;
 }
 
 function cerrarImportModal() {
@@ -4713,7 +4731,8 @@ async function procesarArchivosImport() {
   document.getElementById('impError').style.display = 'none';
 
   try {
-    // ── CEOT.xlsx: col D=3 importe, H=7 institución, M=12 profesional, P=15 observación
+    // ── CEOT.xlsx: formato "crudo" ART, columnas detectadas por nombre de header
+    // (mismo patrón que debCargarXLSXCrudo — más robusto si la ART reordena columnas)
     var osdeBill = {}, difBill = {};
     SOCIOS_IMP.forEach(function(k){ osdeBill[k] = 0; difBill[k] = 0; });
 
@@ -4723,14 +4742,29 @@ async function procesarArchivosImport() {
     var gasEqAjenoOsde = 0, gasEqAjenoDif = 0;
 
     var rows = await leerXLSX(fileCEOT);
-    for (var r = 0; r < rows.length; r++) {
+    if (!rows.length) throw new Error('Archivo vacío.');
+
+    var ceotHeaders = rows[0].map(function(h){ return String(h || '').replace(/\s+/g,'').toUpperCase(); });
+    function idxOfCeot(needle) {
+      for (var i = 0; i < ceotHeaders.length; i++) if (ceotHeaders[i].indexOf(needle) !== -1) return i;
+      return -1;
+    }
+    var iImp  = idxOfCeot('IMPORTE');
+    var iInst = idxOfCeot('INST.');
+    var iProf = idxOfCeot('.Q.REALIZA'); // nombre del profesional que realizó (no la col "PROF", que es el código)
+    var iObs  = idxOfCeot('OBSERVACIONES');
+    if (iImp === -1 || iInst === -1 || iProf === -1 || iObs === -1) {
+      throw new Error('No reconozco las columnas de este archivo (falta IMPORTE, INST., PROF/.Q.REALIZA u OBSERVACIONES). ¿Es el formato crudo de la ART?');
+    }
+
+    for (var r = 1; r < rows.length; r++) {
       var row = rows[r];
-      if (!row || row.length < 13) continue;
-      var imp  = typeof row[3] === 'number' ? row[3] : parsearMontoImp(row[3]);
+      if (!row || !row.length) continue;
+      var imp  = typeof row[iImp] === 'number' ? row[iImp] : parsearMontoImp(row[iImp]);
       if (!imp) continue;
-      var inst = String(row[7]  || '').trim().toUpperCase();
-      var prof = String(row[12] || '').trim();
-      var obs  = String(row[15] || '').trim().toUpperCase();
+      var inst = String(row[iInst] || '').trim().toUpperCase();
+      var prof = String(row[iProf] || '').trim();
+      var obs  = String(row[iObs]  || '').trim().toUpperCase();
       var key  = normDocImp(prof);
       if (!key) continue;
       var sgn  = (obs.indexOf('DEB') !== -1 && obs.indexOf('HONORARIOS') !== -1) ? -1 : 1;
@@ -4887,7 +4921,10 @@ function calcularDistribucionFinal() {
 }
 
 async function cargarEnSheet(tipo) {
-  var mes   = document.getElementById('impMes').value;
+  // "dist" (Cheques Colón) usa su propio selector de mes: se deposita ~2 meses
+  // después del mes facturado que usan Diferidos/OSDE/CM.
+  var mes   = tipo === 'dist' ? document.getElementById('impMesColon').value
+                               : document.getElementById('impMes').value;
   var msgEl = document.getElementById('impSheetMsg');
   var undoArea = document.getElementById('impUndoArea');
   msgEl.textContent = 'Guardando backup…';
@@ -4930,14 +4967,17 @@ async function cargarEnSheet(tipo) {
     }
     var resp = await fetch(url);
     var data = await resp.json();
-    if (data.ok) {
-      msgEl.textContent = '✓ Cargado — ' + (data.escritos||0) + ' celdas escritas';
+    if (data.ok && (data.escritos||0) > 0) {
+      msgEl.textContent = '✓ Cargado — ' + data.escritos + ' celdas escritas';
       msgEl.className   = 'imp-sheet-msg imp-ok';
       if (impUndo.tipo) {
         var labels = { diferidos: 'Diferidos', osde: 'OSDE', dist: 'Colón' };
         document.getElementById('impUndoLabel').textContent = labels[tipo] + ' — ' + mes;
         undoArea.style.display = 'block';
       }
+    } else if (data.ok) {
+      msgEl.textContent = '⚠ 0 celdas escritas — revisá que el mes/fecha coincida con las columnas de esa pestaña en el Sheet';
+      msgEl.className   = 'imp-sheet-msg imp-err';
     } else {
       msgEl.textContent = '✗ ' + (data.error || 'Error');
       msgEl.className   = 'imp-sheet-msg imp-err';
@@ -5507,6 +5547,86 @@ async function debCargarXLSX(file) {
   renderDebitos();
 }
 
+// Importador de débitos en formato "crudo" (tal como llega de la ART, ej. debitos.xlsx),
+// distinto del formato ya preparado "CEOT.xlsx" que usa debCargarXLSX().
+// Encabezados reales vienen partidos raro al exportar (ej. "PRACTI"+"CA" = "PRACTICA",
+// "PROF"+".Q.REALIZA" = "PROFESIONAL QUE REALIZA"), por eso se matchea por nombre de columna
+// en vez de posición fija — más robusto si el orden de columnas cambia.
+async function debCargarXLSXCrudo(file) {
+  if (!file) return;
+  var rows;
+  try { rows = await leerXLSX(file); } catch(e) { alert("Error al leer el archivo: " + e.message); return; }
+  if (!rows.length) { alert("Archivo vacío."); return; }
+
+  var headers = rows[0].map(function(h){ return String(h || '').replace(/\s+/g,'').toUpperCase(); });
+  function idxOf(needle) {
+    for (var i = 0; i < headers.length; i++) if (headers[i].indexOf(needle) !== -1) return i;
+    return -1;
+  }
+
+  var iFact     = idxOf('NROF.MOV');
+  var iImp      = idxOf('IMPORTE');
+  var iPPer     = idxOf('P.PERIO');
+  var iNprest   = idxOf('NPREST');
+  var iInst     = idxOf('INST.');
+  var iPracti   = idxOf('PRACTI');       // la descripción de práctica está en la columna siguiente
+  var iRol      = headers.indexOf('ROL');
+  var iProf     = idxOf('.Q.REALIZA');   // nombre del profesional que realizó la práctica
+  var iPaciente = idxOf('PACIENTE');     // OJO: esta columna trae el DNI, no el nombre
+  var iNombre   = idxOf('NOMBREYAPELLIDO');
+  var iObs      = idxOf('OBSERVACIONES');
+
+  if (iFact === -1 || iImp === -1 || iObs === -1) {
+    alert("No reconozco las columnas de este archivo (falta NRO F.MOV, IMPORTE u OBSERVACIONES). ¿Es el formato crudo de la ART?");
+    return;
+  }
+
+  var lista = [];
+  var incompletos = 0;
+  for (var r = 1; r < rows.length; r++) {
+    var row = rows[r];
+    if (!row || !row.length) continue;
+    var obs = String(row[iObs] || '').trim().toUpperCase();
+    if (obs.indexOf('DEB') === -1) continue;
+
+    var nroRaw = String(row[iFact] || '').trim();
+    var parts = nroRaw.split(/\s+/).filter(Boolean);
+    var fact = parts.length >= 2
+      ? String(parts[0]).padStart(4,'0') + '-' + String(parts[1]).padStart(8,'0')
+      : nroRaw;
+
+    var impRaw = row[iImp];
+    var imp = typeof impRaw === 'number' ? impRaw : (parseFloat(String(impRaw).replace(/\./g,'').replace(',','.')) || 0);
+
+    var item = {
+      fact:     fact,
+      periodo:  debFmtPeriodo(iPPer !== -1 ? row[iPPer] : ''),
+      os:       String(row[iInst] || '').trim(),
+      prof:     String(row[iProf] || '').trim(),
+      prac:     String(row[iPracti + 1] || '').trim(),
+      dni:      String(row[iPaciente] || '').trim(),
+      paciente: String(row[iNombre] || '').trim(),
+      rol:      String(row[iRol] || '').trim(),
+      nprest:   String(row[iNprest] || '').trim(),
+      imp:      imp,
+      tipo:     obs === 'DEB. GASTOS' ? 'GAS' : 'HON'
+    };
+    if (!item.paciente || !item.dni || !imp) incompletos++;
+    lista.push(item);
+  }
+
+  if (!lista.length) {
+    alert("No se encontraron filas con observación \"DEB...\" en este archivo.");
+    return;
+  }
+  if (incompletos) {
+    alert("Se importaron " + lista.length + " registros; " + incompletos + " quedaron con algún dato vacío (importe, paciente o DNI) — revisalos en la tabla antes de guardar.");
+  }
+
+  debImportData = (debImportData || []).concat(lista).sort(function(a,b){ return b.imp - a.imp; });
+  renderDebitos();
+}
+
 function renderDebitos(mes) {
   if (mes) debMesActual = mes;
   cerrarAdmSidenav();
@@ -5545,6 +5665,7 @@ function renderDebitos(mes) {
         ? '<button class="deb-btn" style="font-size:0.72rem;padding:4px 8px;background:rgba(220,80,60,.15);color:#c44" onclick="debEliminarGuardado(\'' + debMesActual.replace('__g__','') + '\')">🗑 Eliminar período</button>'
         : '')
     + '<label class="deb-btn" style="cursor:pointer;position:relative">📂 Importar CEOT.xlsx<input type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer" onchange="debCargarXLSX(this.files[0]);this.value=\'\'"></label>'
+    + '<label class="deb-btn" style="cursor:pointer;position:relative">📂 Importar débitos ART (crudo)<input type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer" onchange="debCargarXLSXCrudo(this.files[0]);this.value=\'\'"></label>'
     + '<button class="deb-btn deb-btn-pri" onclick="imprimirDebitos()" style="margin-left:4px">🖨 Imprimir</button>'
     + '<span class="deb-saved-msg" id="debSavedMsg">Guardado ✓</span>'
     + '</div>';
@@ -5799,12 +5920,14 @@ function cpsmDescargarExcel() {
   var anio      = anioSel.value;
   var vals      = cpsmLeerInputs();
 
+  // El portal de CPSM calcula el 5% él mismo — exportamos los honorarios M-2
+  // crudos, no el "CPSM a pagar" que ya calculamos acá.
   var rows = [["Apellido","Nombre","Matricula","CUIT","Honorarios"]];
   var totalHonor = 0;
   CPSM_PROF.forEach(function(p) {
-    var cpsm = p.exento ? 10 : cpsmCalc(vals[p.ap]);
-    rows.push([p.ap, p.nombre.toUpperCase(), p.mat, p.cuit, cpsm]);
-    totalHonor += cpsm;
+    var honor = p.exento ? 0 : Math.round(vals[p.ap] || 0);
+    rows.push([p.ap, p.nombre.toUpperCase(), p.mat, p.cuit, honor]);
+    totalHonor += honor;
   });
   rows.push(["","","","TOTAL", totalHonor]);
 
@@ -5930,7 +6053,7 @@ function cpsmActualizarFuente() {
 </script>
 
 <!-- MODAL IMPORTAR LIQUIDACIÓN -->
-<div id="importModal" class="imp-overlay" style="display:none" onclick="if(event.target===this)cerrarImportModal()">
+<div id="importModal" class="imp-overlay" style="display:none">
   <div class="imp-box">
     <div class="imp-hdr">
       <div>
@@ -5944,7 +6067,7 @@ function cpsmActualizarFuente() {
       <!-- Mes -->
       <div class="imp-field">
         <label class="imp-label">Mes a importar</label>
-        <select id="impMes" class="imp-select">
+        <select id="impMes" class="imp-select" onchange="actualizarMesColonAuto()">
           <option value="mayo">Mayo 2026</option>
           <option value="junio">Junio 2026</option>
           <option value="julio" selected>Julio 2026</option>
@@ -5999,6 +6122,19 @@ function cpsmActualizarFuente() {
           <input type="text" id="impChqOSDE" class="imp-input" placeholder="Importe bruto $">
         </div>
         <div id="impColonFields"></div>
+        <div class="imp-field">
+          <label class="imp-label">Mes real de depósito (Cheques Colón) <span style="color:rgba(32,36,31,.35);font-weight:400;text-transform:none;letter-spacing:0">(diferido ~2 meses vs. "Mes a importar")</span></label>
+          <select id="impMesColon" class="imp-select">
+            <option value="mayo">Mayo 2026</option>
+            <option value="junio">Junio 2026</option>
+            <option value="julio">Julio 2026</option>
+            <option value="agosto">Agosto 2026</option>
+            <option value="septiembre" selected>Septiembre 2026</option>
+            <option value="octubre">Octubre 2026</option>
+            <option value="noviembre">Noviembre 2026</option>
+            <option value="diciembre">Diciembre 2026</option>
+          </select>
+        </div>
         <button class="imp-btn-gray" onclick="calcularDistribucionFinal()">Calcular distribución ▸</button>
 
         <!-- Resultados -->
