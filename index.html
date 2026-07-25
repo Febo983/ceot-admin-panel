@@ -619,8 +619,26 @@ body {
   --co-line: #d9d0b8; --co-accent: #1f3a2e; --co-accent-soft: #eef2ea;
   --co-neg: #b13a2c; --co-neg-soft: #f7e6e2; --co-warn: #92610f; --co-warn-soft: #f6ecd6;
   --z-dropdown: 200; --z-sidenav: 300; --z-overlay: 999; --z-modal: 3000; --z-modal-top: 4000;
+  --co-gold: #c9933a; --co-margin: #b1483f; --co-ring: #b9ad86; --co-ring-hole: #4b4330;
+  --font-display: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --font-num: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
-#adminView { background: var(--co-bg); color: var(--co-ink); }
+#adminView {
+  background: var(--co-bg); color: var(--co-ink);
+  background-image:
+    repeating-linear-gradient(var(--co-bg) 0px, var(--co-bg) 27px, var(--co-line) 28px),
+    linear-gradient(90deg, transparent 0 40px, rgba(177,72,63,.35) 40px, rgba(177,72,63,.35) 41px, transparent 41px);
+}
+.adm-rings{
+  position:fixed; left:4px; top:90px; bottom:16px; width:16px;
+  display:flex; flex-direction:column; justify-content:space-between;
+  z-index:1; pointer-events:none;
+}
+.adm-rings .ring{
+  width:16px; height:16px; border-radius:50%; background:var(--co-ring);
+  box-shadow: inset 0 0 0 4px var(--co-ring-hole), 1px 1px 2px rgba(0,0,0,.25);
+}
+@media (max-width:600px){ .adm-rings{ display:none; } }
 .adm-header {
   background: var(--co-accent); border-radius: 0;
   padding: 13px 15px; display: flex; align-items: center;
@@ -630,6 +648,14 @@ body {
 .adm-badge {
   background: #c9933a; color: white; font-size: 0.56rem; font-weight: 700;
   padding: 2px 7px; border-radius: 3px; letter-spacing: .5px; text-transform: uppercase;
+}
+.ph-seal {
+  border: 1.5px solid var(--co-gold); background: transparent;
+  font-family: var(--font-display); font-weight: 700; font-size: 0.56rem;
+  letter-spacing: .03em; color: var(--co-gold);
+}
+.adm-masthead-title {
+  font-family: var(--font-display); font-weight: 700; letter-spacing: .01em;
 }
 /* Layout sidebar + contenido */
 .adm-layout {
@@ -724,6 +750,7 @@ body {
   background: var(--co-card); border-radius: 0;
   border: 1px solid var(--co-line); border-top: none;
   overflow: hidden; margin-bottom: 0; color: var(--co-ink); font-family: var(--font-display, Georgia, serif);
+  perspective: 1400px;
 }
 .adm-tabs {
   display: flex; border-bottom: 2px solid var(--co-accent);
@@ -738,7 +765,12 @@ body {
 }
 .adm-tab:hover { color: var(--co-ink); }
 .adm-tab.adm-tab-act { color: var(--co-accent); border-bottom-color: var(--co-accent); background: var(--co-card); }
-.adm-body { padding: 14px 13px 18px; background: var(--co-card); color: var(--co-ink); font-family: -apple-system,'Segoe UI',sans-serif; }
+.adm-body {
+  padding: 14px 13px 18px; background: var(--co-card); color: var(--co-ink); font-family: -apple-system,'Segoe UI',sans-serif;
+  transform-origin: left center;
+  transition: transform .55s cubic-bezier(.4,0,.2,1), opacity .55s cubic-bezier(.4,0,.2,1);
+}
+.adm-body.page-turning { transform: rotateY(-16deg) scale(.98); opacity: .3; }
 /* ── ACCESOS ── */
 .acc-toolbar { display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
 .acc-filter-btn { padding:5px 12px; border:1px solid rgba(32,36,31,.15); border-radius:20px; font-size:0.72rem; font-weight:600; font-family:inherit; background:rgba(32,36,31,.04); color:rgba(32,36,31,.55); cursor:pointer; transition:background-color .15s, color .15s; }
@@ -1420,11 +1452,15 @@ body { background: var(--iv0); color: var(--ink); }
 
 <!-- ADMIN VIEW — fuera del .app para no heredar max-width 480px -->
 <div id="adminView" style="display:none; max-width:none; margin:-12px -10px -28px; padding:0 0 28px; font-family:'Segoe UI',system-ui,sans-serif;">
+  <div class="adm-rings" aria-hidden="true">
+    <div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div>
+    <div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div>
+  </div>
   <div class="adm-header">
     <div class="ph-left">
-      <div class="ph-avatar"><i data-lucide="settings" style="width:15px;height:15px" stroke-width="2"></i></div>
+      <div class="ph-avatar ph-seal">CEOT</div>
       <div class="ph-info">
-        <h3>Panel Admin <span class="adm-badge">CEOT</span></h3>
+        <h3 class="adm-masthead-title">Libro de honorarios <span class="adm-badge">CEOT</span></h3>
         <p>Distribución de honorarios</p>
       </div>
     </div>
@@ -1462,14 +1498,14 @@ body { background: var(--iv0); color: var(--ink); }
     <div class="adm-main">
       <div class="adm-card">
         <div class="adm-tabs">
-          <button class="adm-tab" id="adm-tab-mayo"       onclick="renderAdminPanel('mayo')">May</button>
-          <button class="adm-tab" id="adm-tab-junio"      onclick="renderAdminPanel('junio')">Jun</button>
-          <button class="adm-tab" id="adm-tab-julio"      onclick="renderAdminPanel('julio')">Jul</button>
-          <button class="adm-tab" id="adm-tab-agosto"     onclick="renderAdminPanel('agosto')">Ago</button>
-          <button class="adm-tab" id="adm-tab-septiembre" onclick="renderAdminPanel('septiembre')">Sep</button>
-          <button class="adm-tab" id="adm-tab-octubre"    onclick="renderAdminPanel('octubre')">Oct</button>
-          <button class="adm-tab" id="adm-tab-noviembre"  onclick="renderAdminPanel('noviembre')">Nov</button>
-          <button class="adm-tab" id="adm-tab-diciembre"  onclick="renderAdminPanel('diciembre')">Dic</button>
+          <button class="adm-tab" id="adm-tab-mayo"       onclick="renderAdminPanelPage('mayo')">May</button>
+          <button class="adm-tab" id="adm-tab-junio"      onclick="renderAdminPanelPage('junio')">Jun</button>
+          <button class="adm-tab" id="adm-tab-julio"      onclick="renderAdminPanelPage('julio')">Jul</button>
+          <button class="adm-tab" id="adm-tab-agosto"     onclick="renderAdminPanelPage('agosto')">Ago</button>
+          <button class="adm-tab" id="adm-tab-septiembre" onclick="renderAdminPanelPage('septiembre')">Sep</button>
+          <button class="adm-tab" id="adm-tab-octubre"    onclick="renderAdminPanelPage('octubre')">Oct</button>
+          <button class="adm-tab" id="adm-tab-noviembre"  onclick="renderAdminPanelPage('noviembre')">Nov</button>
+          <button class="adm-tab" id="adm-tab-diciembre"  onclick="renderAdminPanelPage('diciembre')">Dic</button>
         </div>
         <div class="adm-body" id="adm-content">
           <div style="padding:20px;text-align:center;color:#9a8c78">Cargando…</div>
@@ -2775,7 +2811,7 @@ var homeSearchQ = "";
 var homeSearchCat = "Todos";
 
 var ADM_HOME_MODULOS = [
-  { key:"liquidaciones",    ico:"bar-chart-3",     lbl:"Liquidaciones", cat:"cat-fin", fn:"renderAdminPanel(tabMesActual())" },
+  { key:"liquidaciones",    ico:"bar-chart-3",     lbl:"Liquidaciones", cat:"cat-fin", fn:"renderAdminPanelPage(tabMesActual())" },
   { key:"totalceot",        ico:"trending-up",     lbl:"Total CEOT",    cat:"cat-fin", fn:"renderTotalCeot()" },
   { key:"debitos",          ico:"alert-triangle",  lbl:"Débitos",       cat:"cat-gst", fn:"renderDebitos()" },
   { key:"pendientes",       ico:"clipboard-list",  lbl:"Pendientes",    cat:"cat-adm", fn:"renderPendientes()" },
@@ -2861,19 +2897,27 @@ function admHomeTile(ico, lbl, colorRgba, opts) {
   var cursor = (opts.href || opts.fn || editing) ? "pointer" : "default";
   var retro = admHomeTheme === "retro";
 
-  var boxBg      = retro ? "#fffaf1" : "rgba(32,36,31,0.05)";
-  var boxBgHover = retro ? "#ffffff" : "rgba(32,36,31,0.1)";
-  var border      = editing
-    ? (retro ? "2px dashed #b8447a" : "1px dashed rgba(31,58,46,.55)")
-    : (retro ? "2px solid #0f1c28" : "0.5px solid rgba(32,36,31,0.1)");
-  var boxShadow  = retro ? "box-shadow:0 3px 0 #0f1c28;" : "";
-  var boxRadius  = retro ? "16px" : "12px";
-  var icoRadius  = retro ? "12px" : "14px";
-  var icoBorder  = retro ? "border:2px solid #0f1c28;" : "";
-  var icoColor   = retro ? "#1c2b3a" : "#20241f";
-  var labelStyle = retro
-    ? "font-size:10.5px;color:#1c2b3a;text-align:center;font-weight:700;letter-spacing:0.2px;line-height:1.3"
-    : "font-size:12px;color:rgba(32,36,31,0.7);text-align:center;font-weight:500;letter-spacing:0.2px;line-height:1.3";
+  if (!retro) {
+    var del = (editing && opts.delFn)
+      ? '<span onclick="event.stopPropagation();' + opts.delFn + '" title="Eliminar" style="width:20px;height:20px;border-radius:5px;background:rgba(177,72,63,.12);color:var(--co-margin,#b1483f);font-size:11px;line-height:20px;text-align:center;cursor:pointer;flex-shrink:0">✕</span>'
+      : "";
+    var pencil = editing ? '<i data-lucide="pencil" style="width:13px;height:13px;color:var(--co-gold,#c9933a);flex-shrink:0" stroke-width="2"></i>' : "";
+    return "<" + tag + attrs + " style=\"text-decoration:none;display:flex;align-items:center;gap:11px;padding:10px 3px;border-bottom:1px solid var(--co-line,#d9d0b8);cursor:" + cursor + "\">"
+      + '<span style="width:28px;height:28px;border-radius:50%;border:1px solid var(--co-line,#d9d0b8);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--co-gold,#c9933a)"><i data-lucide="' + ico + '" style="width:14px;height:14px" stroke-width="1.75"></i></span>'
+      + '<span style="flex:1;min-width:0;font-size:0.82rem;font-weight:600;color:var(--co-ink,#20241f);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + lbl + '</span>'
+      + pencil + del
+      + "</" + tag + ">";
+  }
+
+  var boxBg      = "#fffaf1";
+  var boxBgHover = "#ffffff";
+  var border      = editing ? "2px dashed #b8447a" : "2px solid #0f1c28";
+  var boxShadow  = "box-shadow:0 3px 0 #0f1c28;";
+  var boxRadius  = "16px";
+  var icoRadius  = "12px";
+  var icoBorder  = "border:2px solid #0f1c28;";
+  var icoColor   = "#1c2b3a";
+  var labelStyle = "font-size:10.5px;color:#1c2b3a;text-align:center;font-weight:700;letter-spacing:0.2px;line-height:1.3";
 
   var del = (editing && opts.delFn)
     ? '<div onclick="event.stopPropagation();' + opts.delFn + '" title="Eliminar" style="position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:4px;background:rgba(220,38,38,.85);color:#fff;font-size:9px;line-height:16px;text-align:center;cursor:pointer">✕</div>'
@@ -2958,6 +3002,9 @@ function admHomeRenderResults() {
   var q = homeSearchQ.trim().toLowerCase();
 
   var retroChips = admHomeTheme === "retro";
+  var tileWrap = retroChips
+    ? "display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px"
+    : "display:flex;flex-direction:column;border-top:1px solid var(--co-line,#d9d0b8)";
   var cats = ["Todos","Módulos","Finanzas","Clínica","Admin","Otros"];
   var chips = cats.map(function(c) {
     var on = homeSearchCat === c;
@@ -2998,11 +3045,11 @@ function admHomeRenderResults() {
         var ico = LUCIDE_ACC_ICON[a.title] || "link";
         return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[a.cat] || "rgba(32,36,31,0.1)", { href: a.url, editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")" });
       }));
-      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:6px">' + tiles.join("") + '</div>';
+      html += '<div style="' + tileWrap + ';margin-bottom:6px">' + tiles.join("") + '</div>';
     }
   } else {
     html += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.32);margin:0 0 9px">Módulos</div>';
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:20px">'
+    html += '<div style="' + tileWrap + ';margin-bottom:20px">'
       + ADM_HOME_MODULOS.map(function(m) { return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(32,36,31,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')" }); }).join("")
       + '</div>';
 
@@ -3020,7 +3067,7 @@ function admHomeRenderResults() {
           + '</div>');
       }
       html += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.32);margin:0 0 9px">' + cat + ' <span style="color:rgba(32,36,31,.18);font-weight:500">· ' + items.length + '</span></div>';
-      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:20px">' + tiles.join("") + '</div>';
+      html += '<div style="' + tileWrap + ';margin-bottom:20px">' + tiles.join("") + '</div>';
     });
   }
 
@@ -3060,7 +3107,7 @@ function renderAdmHome() {
              : "flex-shrink:0;font-size:10px;padding:5px 12px;border-radius:20px;border:2px solid #0f1c28;background:#fffaf1;color:rgba(28,43,58,.55);cursor:pointer;font-family:inherit")
       : (act ? "flex-shrink:0;font-size:10px;padding:4px 11px;border-radius:20px;border:0.5px solid #1f3a2e;background:#1f3a2e;color:#fff;font-weight:600;cursor:pointer;font-family:inherit;transition:background-color .15s, color .15s"
              : "flex-shrink:0;font-size:10px;padding:4px 11px;border-radius:20px;border:0.5px solid rgba(32,36,31,0.15);background:rgba(32,36,31,0.06);color:rgba(32,36,31,0.45);cursor:pointer;font-family:inherit;transition:background-color .15s, color .15s");
-    return '<button onclick="renderAdminPanel(\'' + m + '\')" style="' + style + '">' + MESES_CORTO[m] + '</button>';
+    return '<button onclick="renderAdminPanelPage(\'' + m + '\')" style="' + style + '">' + MESES_CORTO[m] + '</button>';
   }).join("");
 
   // Stats de totalCeot para el mes actual
@@ -3141,11 +3188,11 @@ function renderAdmHome() {
       + '</div>'
       + '<div style="display:flex;gap:5px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none">' + mesStrip + '</div>'
       + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'
-      + '<div style="flex:1;display:flex;align-items:center;gap:10px;background:rgba(32,36,31,.05);border:1px solid rgba(32,36,31,.12);border-radius:10px;padding:10px 14px">'
-      + '<span style="opacity:.4">🔍</span>'
+      + '<div style="flex:1;display:flex;align-items:center;gap:8px;border-bottom:1.5px dashed var(--co-line,#d9d0b8);padding:8px 4px">'
+      + '<i data-lucide="search" style="width:14px;height:14px;color:var(--co-ink-dim,#6b6a5a);flex-shrink:0" stroke-width="2"></i>'
       + '<input id="admHomeSearchInput" oninput="admHomeBuscar(this.value)" placeholder="Buscar módulos, liquidaciones, accesos…" style="background:none;border:none;outline:none;color:#20241f;font-size:0.85rem;font-family:inherit;flex:1">'
       + '</div>'
-      + '<button id="admHomeEditBtn" onclick="admHomeToggleEdit()" style="flex-shrink:0;background:rgba(32,36,31,.06);border:1px solid rgba(32,36,31,.12);color:rgba(32,36,31,.6);font-size:0.72rem;font-weight:600;padding:0 14px;border-radius:10px;cursor:pointer;font-family:inherit;height:41px">✏ Editar nombres</button>'
+      + '<button id="admHomeEditBtn" onclick="admHomeToggleEdit()" style="flex-shrink:0;background:rgba(32,36,31,.06);border:1px solid rgba(32,36,31,.12);color:rgba(32,36,31,.6);font-size:0.72rem;font-weight:600;padding:0 14px;border-radius:10px;cursor:pointer;font-family:inherit;height:41px"><i data-lucide="pencil" style="width:12px;height:12px;vertical-align:-2px;margin-right:3px" stroke-width="2"></i>Editar nombres</button>'
       + '</div>'
       + '<div id="admHomeDynamic"></div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">'
@@ -3814,6 +3861,16 @@ function cerrarAdmSidenav() {
   var ov  = document.getElementById("admOverlay");
   if (nav) nav.classList.remove("open");
   if (ov)  ov.classList.remove("open");
+}
+
+function renderAdminPanelPage(periodo) {
+  var container = document.getElementById("adm-content");
+  if (!container || periodo === adminPeriodoAct) { renderAdminPanel(periodo); return; }
+  container.classList.add("page-turning");
+  setTimeout(function(){
+    renderAdminPanel(periodo);
+    container.classList.remove("page-turning");
+  }, 300);
 }
 
 function renderAdminPanel(periodo) {
