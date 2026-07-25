@@ -5014,7 +5014,8 @@ async function procesarCentroMedico() {
         var profA = MAPE_MAP[mapeA];
         if (profA) {
           var vA = row[16];
-          var valA = typeof vA === 'number' ? vA : parsearMontoImp(vA);
+          // Celda numérica: Excel la trae en centavos (ej. 340347873 = $3.403.478,73)
+          var valA = typeof vA === 'number' ? vA / 100 : parsearMontoImp(vA);
           totales[profA] += valA;
           continue;
         }
@@ -5023,7 +5024,7 @@ async function procesarCentroMedico() {
         var profB = MAPE_MAP[mapeB];
         if (profB) {
           var vB = row[9];
-          var valB = typeof vB === 'number' ? vB : parsearMontoImp(vB);
+          var valB = typeof vB === 'number' ? vB / 100 : parsearMontoImp(vB);
           totales[profB] += valB;
         }
       }
