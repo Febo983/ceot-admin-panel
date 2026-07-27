@@ -1386,6 +1386,7 @@ body { background: var(--iv0); color: var(--ink); }
         <button class="period-tab" id="tab-historial" data-tab="historial" style="display:none"></button>
         <button class="period-tab" id="tab-abril" data-tab="abril">
           <span class="tab-top">Abr 2026 <span class="tbadge tb-ant" id="badge-abril">anterior</span></span>
+          <span class="tab-neto" id="tabneto-abril"></span>
         </button>
         <button class="period-tab" id="tab-mayo" data-tab="mayo">
           <span class="tab-top">May 2026 <span class="tbadge tb-ant" id="badge-mayo">anterior</span></span>
@@ -1484,6 +1485,7 @@ body { background: var(--iv0); color: var(--ink); }
     <div class="adm-main">
       <div class="adm-card">
         <div class="adm-tabs">
+          <button class="adm-tab" id="adm-tab-abril"      onclick="renderAdminPanelPage('abril')">Abr</button>
           <button class="adm-tab" id="adm-tab-mayo"       onclick="renderAdminPanelPage('mayo')">May</button>
           <button class="adm-tab" id="adm-tab-junio"      onclick="renderAdminPanelPage('junio')">Jun</button>
           <button class="adm-tab" id="adm-tab-julio"      onclick="renderAdminPanelPage('julio')">Jul</button>
@@ -1585,8 +1587,11 @@ const MAYO = [
   { fecha:"29/05", items:[["Cheque",522799.06]] },
 ];
 
-var PERIODO_IIBB = { mayo:null, junio:null, julio:null, agosto:null, septiembre:null, octubre:null, noviembre:null, diciembre:null };
-var PERIODO_CPSM = { mayo:null, junio:null, julio:null, agosto:null, septiembre:null, octubre:null, noviembre:null, diciembre:null };
+var PERIODO_IIBB = { abril:{}, mayo:null, junio:null, julio:null, agosto:null, septiembre:null, octubre:null, noviembre:null, diciembre:null };
+var PERIODO_CPSM = { abril:{
+  "BRUNI":578355.32,"CORELICH":166600.58,"DE LA COLINA":724804.25,"DEGANUTTI":1077114.18,
+  "LEON":228514.58,"MAZZOLA":477652.69,"PERLASCO":506303.83,"SOULE":448966.49,"TRIVELLINI":617015.18,
+}, mayo:null, junio:null, julio:null, agosto:null, septiembre:null, octubre:null, noviembre:null, diciembre:null };
 
 function calcularCPSMDesde(rawData, osdeMap) {
   var difMap = {}, totalDif = 0;
@@ -1613,6 +1618,33 @@ function calcularCPSMDesde(rawData, osdeMap) {
 // pendiente:true → mostrar "Pendiente" con nota de timing
 // pendiente:false → m tiene los importes individuales
 const PERIOD_EXTRAS = {
+  abril: {
+    osde: { pendiente: false, fecha: "Abr 2026", m: {
+      "BRUNI":        2959887.21,
+      "CORELICH":     4543844.66,
+      "DE LA COLINA": 3464228.14,
+      "DEGANUTTI":    2223257.27,
+      "LABAYEN":      2289546.71,
+      "LEON":         782358.87,
+      "MAZZOLA":      1051237.80,
+      "PERLASCO":     2843152.46,
+      "SOULE":        1584976.31,
+      "TRIVELLINI":   3767888.21,
+    }},
+    // CEM de Abril = liquidación de Marzo — acreditado 1ra semana de Abril
+    cm: { pendiente: false, fecha: "Liquid. Marzo", m: {
+      "BRUNI":        505254.34,
+      "CORELICH":     452124.37,
+      "DE LA COLINA": 313097.47,
+      "DEGANUTTI":    803002.42,
+      "LABAYEN":      155132.40,
+      "LEON":         362063.79,
+      "MAZZOLA":      762097.96,
+      "PERLASCO":     99134.82,
+      "SOULE":        335574.61,
+      "TRIVELLINI":   360087.16,
+    }},
+  },
   mayo: {
     osde: { pendiente: false, fecha: "~3ra sem. de Junio", m: {
       "BRUNI":        2852488,
@@ -1701,7 +1733,19 @@ function getExtra(periodo, tipo, apellido) {
   return { val: val, pendiente: e.pendiente || val === null, fecha: e.fecha };
 }
 
-const ABRIL = [];
+const ABRIL_RAW = [
+  { k:"BRUNI", f1:2880829.23232516, f2:638145.8013514152, f3:2259184.949847677, f4:2259184.949847677, f5:1340625.273008795 },
+  { k:"CORELICH", f1:829899.6347962342, f2:183834.9047370795, f3:650818.4323381357, f4:650818.4323381357, f5:386202.8377053842 },
+  { k:"DE LA COLINA", f1:3610439.481565487, f2:799765.1406552874, f3:2831355.099970727, f4:2831355.099970727, f5:1680157.352384552 },
+  { k:"DEGANUTTI", f1:5365514.259965064, f2:1188539.86854483, f3:4207708.297420521, f4:4207708.297420521, f5:2496900.523948291 },
+  { k:"LABAYEN", f1:1059389.037357507, f2:234670.1632299687, f3:830787.1019831279, f4:830787.1019831279, f5:492998.2317222019 },
+  { k:"LEON", f1:1137086.223069146, f2:251881.2260317317, f3:891718.2778527847, f4:891718.2778527847, f5:529155.4636878775 },
+  { k:"MAZZOLA", f1:2379379.701876311, f2:527067.3976560679, f3:1865941.497724043, f4:1865941.497724043, f5:1107270.270180136 },
+  { k:"PERLASCO", f1:2522293.177457561, f2:558724.8223223346, f3:1978016.163428192, f4:1978016.163428192, f5:1173776.613238559 },
+  { k:"SOULE", f1:2236466.524517586, f2:495410.0390504514, f3:1753867.06589, f4:1753867.06589, f5:1040764.065902815 },
+  { k:"TRIVELLINI", f1:3073912.083869938, f2:680916.4764208327, f3:2410603.113544789, f4:2410603.113544789, f5:1430478.481821388 },
+];
+const ABRIL_FECHAS = ["06/04","10/04","17/04","24/04","30/04"];
 
 const JUNIO_RAW = [
   { k:"BRUNI, Maximiliano",      f1:4018182, f2:782320,  f3:2770000, f4:2770000, f5:1610000 },
@@ -2058,7 +2102,7 @@ function coTitleCase(str) {
 function renderHome(doctor) {
   var MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
   var MESES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-  var MESES_DISP = ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var MESES_DISP = ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
   var mesAct = tabMesActual();
   var mesIdx = MESES.indexOf(mesAct);
 
@@ -2206,49 +2250,6 @@ function renderMayo(containerId, doctor) {
   container.innerHTML = html;
 }
 
-// ══════ RENDER GENERAL (Abril) ════════════════════════════════
-
-function renderGeneral(data, periodo, containerId) {
-  var mes = periodo === "mayo" ? "Mayo 2026" : "Abril 2026";
-  var count = data.filter(m => m.items.some(i => typeof i[1]==="number")).length;
-
-  var html = '<div class="period-total">'
-    + '<div class="pt-left">'
-    + '<div class="pt-lbl">' + mes + '</div>'
-    + '<div class="pt-val">' + count + ' cheques</div>'
-    + '<div class="pt-sub">Historial de movimientos</div>'
-    + '</div><div class="pt-icon">📋</div></div>';
-
-  html += '<div class="cheque-list">';
-  data.forEach(function(m, idx) {
-    var isOsde = m.items.some(i => i[0]==="OSDE");
-    // Tomar el último item con número como el monto principal
-    var principal = null;
-    m.items.forEach(function(it) { if (typeof it[1]==="number") principal = it; });
-
-    var lbl = isOsde ? "OSDE" : (principal ? principal[0] : "Cheque " + (idx+1));
-    var val = principal ? fmt(principal[1]) : "—";
-
-    var acred = chequeAcreditado(m.fecha);
-    html += '<div class="cl-row' + (acred ? ' cl-acreditado' : ' cl-pendiente') + '">'
-      + '<span class="cl-date">' + m.fecha + '</span>'
-      + '<span class="cl-lbl">' + lbl + (acred ? ' <span class="cl-status-icon">✓</span>' : '') + '</span>'
-      + '<span class="cl-amt">' + val + '</span>'
-      + '</div>';
-
-    if (m.nota) {
-      html += '<div class="cl-row" style="padding-top:2px;padding-bottom:5px;background:rgba(32,36,31,.05)">'
-        + '<span class="cl-date"></span>'
-        + '<span class="cl-lbl" style="font-size:.7rem;color:rgba(32,36,31,.35)">📌 ' + m.nota + '</span>'
-        + '<span class="cl-amt"></span></div>';
-    }
-  });
-  html += '</div>';
-
-  html += '<div class="mini-disc">Datos generales del período · sin desglose individual</div>';
-  document.getElementById(containerId).innerHTML = html;
-}
-
 // ══════ RENDER INDIVIDUAL (Junio / Julio) ════════════════════
 
 var DISCLAIMER = '<div class="disclaimer">'
@@ -2259,7 +2260,7 @@ var DISCLAIMER = '<div class="disclaimer">'
 
 function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var container = document.getElementById(containerId);
-  var mesLabels = { junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026", septiembre:"Septiembre 2026", octubre:"Octubre 2026", noviembre:"Noviembre 2026", diciembre:"Diciembre 2026" };
+  var mesLabels = { abril:"Abril 2026", junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026", septiembre:"Septiembre 2026", octubre:"Octubre 2026", noviembre:"Noviembre 2026", diciembre:"Diciembre 2026" };
   var mes = mesLabels[periodo] || (periodo.charAt(0).toUpperCase() + periodo.slice(1) + " 2026");
   var valCls = "ind-" + periodo;
   var tagClsMap = { junio:"chtag-teal", julio:"chtag-violet", agosto:"chtag-violet" };
@@ -2281,7 +2282,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var vals = [row.f1, row.f2, row.f3, row.f4, row.f5];
   var total = vals.reduce(function(a,b){return a+b;}, 0);
   // Gastos A: se descuentan del cheque actual para cubrir el mes siguiente
-  var _gaSigMes = {mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
+  var _gaSigMes = {abril:"mayo",mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
   var gaTotal = GASTOS_A[_gaSigMes[periodo]] !== undefined ? GASTOS_A[_gaSigMes[periodo]] : null;
   var gaPP    = gaTotal ? Math.round(gaTotal / 13) : null;
   var osdeExt = getExtra(periodo, "osde", doctor.apellido);
@@ -2311,7 +2312,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var cmLabel = "Centro Médico" + (prevMesNombre[periodo] ? " · Liquid. " + prevMesNombre[periodo] : "");
   html += extraRow(cmLabel, cmExt);
   // Gastos A — se descuenta del cheque actual para cubrir gastos del mes siguiente
-  var sigMesNombre = {"mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre"};
+  var sigMesNombre = {"abril":"Mayo","mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre"};
   var gaLabelMes = sigMesNombre[periodo] ? " · " + sigMesNombre[periodo] + " 2026" : "";
   if (gaPP) {
     html += '<div class="cl-row cl-sep-row cl-neg">'
@@ -2423,9 +2424,9 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
 
 // Calcula neto desde datos locales hardcodeados (no depende del API remoto)
 function calcularNetoLocal(pid, doc) {
-  var rawMap   = { mayo:MAYO_RAW, junio:JUNIO_RAW, julio:JULIO_RAW, agosto:AGOSTO_RAW,
+  var rawMap   = { abril:ABRIL_RAW, mayo:MAYO_RAW, junio:JUNIO_RAW, julio:JULIO_RAW, agosto:AGOSTO_RAW,
                    septiembre:SEPTIEMBRE_RAW, octubre:OCTUBRE_RAW, noviembre:NOVIEMBRE_RAW, diciembre:DICIEMBRE_RAW };
-  var labelMap = { mayo:"Mayo 2026", junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026",
+  var labelMap = { abril:"Abril 2026", mayo:"Mayo 2026", junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026",
                    septiembre:"Septiembre 2026", octubre:"Octubre 2026", noviembre:"Noviembre 2026", diciembre:"Diciembre 2026" };
   var raw = rawMap[pid];
   if (!raw) return null;
@@ -2462,7 +2463,7 @@ function calcularNetoLocal(pid, doc) {
                : (cpsmData === null || cpsmData[doc.apellido] == null
                   ? 0
                   : Math.round(cpsmData[doc.apellido] || 0));
-  var _gaSig = {mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
+  var _gaSig = {abril:"mayo",mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
   var gaT   = GASTOS_A[_gaSig[pid]] !== undefined ? GASTOS_A[_gaSig[pid]] : null;
   var ga    = gaT ? Math.round(gaT / 13) : 0;
   // Aporte CEOT — aplica desde Julio 2026; base = Colón + OSDE + CEM
@@ -2490,7 +2491,7 @@ function renderHistorial(doctor) {
   if (!pane) return;
 
   // Períodos con datos locales disponibles
-  var meses = ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var meses = ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
   var resultados = [];
 
   meses.forEach(function(pid) {
@@ -3070,7 +3071,7 @@ function renderAdmHome() {
   if (sn) sn.style.display = "none";
   var hbg = document.getElementById("admHamburgerBtn");
   if (hbg) hbg.style.display = "none";
-  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });
@@ -3085,9 +3086,9 @@ function renderAdmHome() {
   var h = new Date().getHours();
   var saludo = h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
   var mesAct = tabMesActual();
-  var MESES_CORTO = {mayo:"May",junio:"Jun",julio:"Jul",agosto:"Ago",septiembre:"Sep",octubre:"Oct",noviembre:"Nov",diciembre:"Dic"};
+  var MESES_CORTO = {abril:"Abr",mayo:"May",junio:"Jun",julio:"Jul",agosto:"Ago",septiembre:"Sep",octubre:"Oct",noviembre:"Nov",diciembre:"Dic"};
 
-  var mesStrip = ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].map(function(m) {
+  var mesStrip = ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].map(function(m) {
     var act = m === mesAct;
     var style = retro
       ? (act ? "flex-shrink:0;font-size:10px;padding:5px 12px;border-radius:20px;border:2px solid #0f1c28;background:#ef6fa2;color:#1c2b3a;font-weight:800;cursor:pointer;font-family:inherit"
@@ -3210,16 +3211,16 @@ function renderAdmHome() {
 function renderPendientes() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
-  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });
   var sp = document.getElementById("adm-sidenav-pendientes");
   if (sp) sp.className = "adm-sidenav-btn active";
 
-  var periodos = ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-  var labels   = {mayo:"Mayo",junio:"Jun",julio:"Jul",agosto:"Ago",septiembre:"Sep",octubre:"Oct",noviembre:"Nov",diciembre:"Dic"};
-  var rawMap   = {mayo:MAYO_RAW,junio:JUNIO_RAW,julio:JULIO_RAW,agosto:AGOSTO_RAW,
+  var periodos = ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var labels   = {abril:"Abr",mayo:"Mayo",junio:"Jun",julio:"Jul",agosto:"Ago",septiembre:"Sep",octubre:"Oct",noviembre:"Nov",diciembre:"Dic"};
+  var rawMap   = {abril:ABRIL_RAW,mayo:MAYO_RAW,junio:JUNIO_RAW,julio:JULIO_RAW,agosto:AGOSTO_RAW,
                   septiembre:SEPTIEMBRE_RAW,octubre:OCTUBRE_RAW,noviembre:NOVIEMBRE_RAW,diciembre:DICIEMBRE_RAW};
 
   function cel(ok, txt) {
@@ -3256,7 +3257,7 @@ function renderPendientes() {
 function renderFacturas() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
-  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });
@@ -3290,7 +3291,7 @@ function renderFacturas() {
 function renderTransferencias() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
-  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });
@@ -3465,7 +3466,7 @@ function actualizarTabsNeto(doctor) {
     b.className = (t===act) ? "tbadge tb-act" : "tbadge tb-ant";
     b.textContent = (t===act) ? "actual" : "anterior";
   });
-  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(pid) {
+  ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(pid) {
     var el = document.getElementById("tabneto-"+pid);
     if (!el) return;
     var c = calcularNetoLocal(pid, doctor);
@@ -3491,7 +3492,7 @@ function toggleAdmSidenav() {
 function renderTotalCeot() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
-  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });
@@ -3864,13 +3865,13 @@ function renderAdminPanel(periodo) {
   cerrarAdmSidenav();
   adminPeriodoAct = periodo;
   admDesactivarSidebar();
-  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab" + (p === periodo ? " adm-tab-act" : "");
   });
 
   var container = document.getElementById("adm-content");
-  var rawMap = { mayo:MAYO_RAW, junio:JUNIO_RAW, julio:JULIO_RAW, agosto:AGOSTO_RAW,
+  var rawMap = { abril:ABRIL_RAW, mayo:MAYO_RAW, junio:JUNIO_RAW, julio:JULIO_RAW, agosto:AGOSTO_RAW,
                  septiembre:SEPTIEMBRE_RAW, octubre:OCTUBRE_RAW, noviembre:NOVIEMBRE_RAW, diciembre:DICIEMBRE_RAW };
   if (!rawMap[periodo] || rawMap[periodo].length === 0) {
     container.innerHTML = '<div style="padding:20px;text-align:center;color:rgba(32,36,31,.35)">Sin datos individuales para este período.</div>';
@@ -3938,7 +3939,7 @@ function renderAdminPanel(periodo) {
   html += '<div class="adm-breakdown">';
   html += '<div class="adm-br-row" style="background:rgba(220,38,38,.1)"><span class="adm-br-lbl">IIBB (3,5%)</span><span class="adm-br-val" style="color:#b13a2c">− ' + fmt(totIIBB) + '</span></div>';
   html += '<div class="adm-br-row" style="background:rgba(234,88,12,.1)"><span class="adm-br-lbl">CPSM (5%) · Labayen exento</span><span class="adm-br-val" style="color:#c2410c">− ' + fmt(totCPSM) + '</span></div>';
-  var sigMesNombreAdm = {"mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre"};
+  var sigMesNombreAdm = {"abril":"Mayo","mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre"};
   var gaLabelMesAdm = sigMesNombreAdm[periodo] ? " · cubre " + sigMesNombreAdm[periodo] : "";
   if (totGA > 0) {
     html += '<div class="adm-br-row" style="background:rgba(202,138,4,.1)"><span class="adm-br-lbl">Gastos A (÷ 13)<span style="font-size:.68rem;color:rgba(32,36,31,.4);font-weight:400">' + gaLabelMesAdm + '</span></span><span class="adm-br-val" style="color:#92610f">− ' + fmt(totGA) + '</span></div>';
@@ -4096,7 +4097,7 @@ function handleLogin() {
   document.getElementById("phAvatar").textContent  = doctor.ini;
   document.getElementById("phNombre").textContent  = doctor.nombre;
 
-  renderGeneral(ABRIL, "abril", "pane-abril");
+  renderIndividual(ABRIL_RAW, ABRIL_FECHAS, "abril", "pane-abril", doctor);
   renderMayo("pane-mayo", doctor);
   renderIndividual(JUNIO_RAW,       JUNIO_FECHAS,       "junio",       "pane-junio",       doctor);
   renderIndividual(JULIO_RAW,       JULIO_FECHAS,       "julio",       "pane-julio",       doctor);
@@ -4291,7 +4292,7 @@ function generarComprobante(periodo) {
                  String(today.getMonth()+1).padStart(2,"0") + "/" +
                  today.getFullYear();
 
-  var periodoLabel = { mayo:"Mayo 2026", junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026" }[periodo] || periodo;
+  var periodoLabel = { abril:"Abril 2026", mayo:"Mayo 2026", junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026" }[periodo] || periodo;
 
   // ── HEADER ────────────────────────────────────────────────────
   doc.setFillColor(11, 43, 74);
@@ -5359,7 +5360,7 @@ function accGuardarTodo() {
 // ══════ WA GASTOS A ══════════════════════════════════════════
 
 function abrirWAGastosA(periodo) {
-  var _gaSig = {mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
+  var _gaSig = {abril:"mayo",mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
   var gaTotal = GASTOS_A[_gaSig[periodo]] || null;
   if (!gaTotal) { alert("No hay datos de Gastos A para " + periodo + "."); return; }
   var gaInd = Math.round(gaTotal / 13);
@@ -5624,7 +5625,7 @@ function renderDebitos(mes) {
   if (mes) debMesActual = mes;
   cerrarAdmSidenav();
   // desactivar tabs de período y activar sidebar
-  ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });
