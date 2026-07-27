@@ -6026,14 +6026,12 @@ function cpsmDescargarExcel() {
 
   // El portal de CPSM calcula el 5% él mismo — exportamos los honorarios M-2
   // crudos, no el "CPSM a pagar" que ya calculamos acá.
+  // Sin fila de TOTAL y CUIT sin guiones: el portal de carga no toma el archivo si no matchea ese formato exacto.
   var rows = [["Apellido","Nombre","Matricula","CUIT","Honorarios"]];
-  var totalHonor = 0;
   CPSM_PROF.forEach(function(p) {
     var honor = p.exento ? 0 : Math.round(vals[p.ap] || 0);
-    rows.push([p.ap, p.nombre.toUpperCase(), p.mat, p.cuit, honor]);
-    totalHonor += honor;
+    rows.push([p.ap, p.nombre.toUpperCase(), p.mat, p.cuit.replace(/-/g,""), honor]);
   });
-  rows.push(["","","","TOTAL", totalHonor]);
 
   var wb = XLSX.utils.book_new();
   var ws = XLSX.utils.aoa_to_sheet(rows);
