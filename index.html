@@ -619,7 +619,7 @@ body {
   --co-line: #d9d0b8; --co-accent: #1f3a2e; --co-accent-soft: #eef2ea;
   --co-neg: #b13a2c; --co-neg-soft: #f7e6e2; --co-warn: #92610f; --co-warn-soft: #f6ecd6;
   --z-dropdown: 200; --z-sidenav: 300; --z-overlay: 999; --z-modal: 3000; --z-modal-top: 4000;
-  --co-gold: #c9933a; --co-margin: #b1483f; --co-ring: #b9ad86; --co-ring-hole: #4b4330;
+  --co-gold: #c9933a; --co-margin: #b1483f;
   --font-display: Georgia, "Iowan Old Style", "Times New Roman", serif;
   --font-num: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
@@ -629,16 +629,6 @@ body {
     repeating-linear-gradient(var(--co-bg) 0px, var(--co-bg) 27px, var(--co-line) 28px),
     linear-gradient(90deg, transparent 0 40px, rgba(177,72,63,.35) 40px, rgba(177,72,63,.35) 41px, transparent 41px);
 }
-.adm-rings{
-  position:fixed; left:4px; top:90px; bottom:16px; width:16px;
-  display:flex; flex-direction:column; justify-content:space-between;
-  z-index:1; pointer-events:none;
-}
-.adm-rings .ring{
-  width:16px; height:16px; border-radius:50%; background:var(--co-ring);
-  box-shadow: inset 0 0 0 4px var(--co-ring-hole), 1px 1px 2px rgba(0,0,0,.25);
-}
-@media (max-width:600px){ .adm-rings{ display:none; } }
 .adm-header {
   background: var(--co-accent); border-radius: 0;
   padding: 13px 15px; display: flex; align-items: center;
@@ -1452,10 +1442,6 @@ body { background: var(--iv0); color: var(--ink); }
 
 <!-- ADMIN VIEW — fuera del .app para no heredar max-width 480px -->
 <div id="adminView" style="display:none; max-width:none; margin:-12px -10px -28px; padding:0 0 28px; font-family:'Segoe UI',system-ui,sans-serif;">
-  <div class="adm-rings" aria-hidden="true">
-    <div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div>
-    <div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div>
-  </div>
   <div class="adm-header">
     <div class="ph-left">
       <div class="ph-avatar ph-seal">CEOT</div>
