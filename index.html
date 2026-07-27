@@ -6084,6 +6084,7 @@ function cpsmDescargarExcel() {
   var rows = [["Apellido","Nombre","Matricula","CUIT","Honorarios"]];
   CPSM_PROF.forEach(function(p) {
     var honor = p.exento ? 0 : Math.round(vals[p.ap] || 0);
+    if (!honor) honor = 10; // el portal de carga no acepta filas con importe 0
     rows.push([p.ap, p.nombre.toUpperCase(), p.mat, p.cuit.replace(/-/g,""), honor]);
   });
 
