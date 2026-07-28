@@ -284,7 +284,9 @@ body {
 .mp-mov-row {
   display: flex; justify-content: space-between;
   font-size: 0.7rem; padding: 4px 0; border-bottom: 1px solid #f3f4f6;
+  transition: background .15s ease;
 }
+.mp-mov-row:hover { background: rgba(201,147,58,.10); }
 .mp-mov-pos { color: #166534; font-weight: 600; }
 .mp-mov-neg { color: #dc2626; font-weight: 600; }
 .mp-link-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 9px; }
@@ -312,15 +314,18 @@ body {
   background: #1f3a2e; color: white; border: none;
   border-radius: 7px; font-size: 0.88rem; font-weight: 700;
   cursor: pointer; margin-top: 14px; font-family: inherit;
-  transition: opacity .15s;
+  transition: opacity .15s, background .25s ease, transform .2s ease;
 }
 .btn-pdf:hover { opacity: .82; }
+.btn-pdf.action-done { background: #c9933a; opacity: 1; transform: scale(1.015); }
 .btn-pdf-mini {
   background: rgba(31,58,46,.08); border: 1px solid rgba(31,58,46,.3); color: #1f3a2e;
   border-radius: 5px; padding: 2px 7px; font-size: 0.68rem; font-weight: 600;
-  cursor: pointer; font-family: inherit; line-height: 1.5; transition: background .15s;
+  cursor: pointer; font-family: inherit; line-height: 1.5;
+  transition: background .15s, border-color .25s ease, color .25s ease;
 }
 .btn-pdf-mini:hover { background: rgba(31,58,46,.16); }
+.btn-pdf-mini.action-done { background: rgba(201,147,58,.16); border-color: #c9933a; color: #92610f; }
 
 /* ── HOME DASHBOARD ── */
 .home-wrap {
@@ -508,7 +513,9 @@ body {
 .hist-dline {
   display: flex; justify-content: space-between; align-items: baseline;
   font-size: 0.8rem; padding: 3px 0;
+  transition: background .15s ease;
 }
+.hist-dline:hover { background: rgba(201,147,58,.10); }
 .hist-dline-lbl { color: #6b7280; }
 .hist-dline-val { font-weight: 600; color: #1a1a1a; }
 .hist-dline-val.neg    { color: #dc2626; }
@@ -532,7 +539,9 @@ body {
   display: flex; justify-content: space-between;
   font-size: 0.8rem; padding: 2px 0;
   color: rgba(255,255,255,.55);
+  transition: background .15s ease, color .15s ease;
 }
+.hist-total-dline:hover { background: rgba(201,147,58,.18); color: rgba(255,255,255,.85); }
 .hist-total-neto {
   display: flex; justify-content: space-between;
   font-size: 0.95rem; font-weight: 800; color: white;
@@ -798,10 +807,11 @@ body {
 .deb-mes-sel { padding:6px 10px; border:1px solid rgba(32,36,31,.15); border-radius:7px; font-size:0.78rem; font-family:inherit; background:rgba(32,36,31,.05); color:#20241f; cursor:pointer; }
 .deb-mes-sel:focus { border-color:#1f3a2e; outline:none; }
 .deb-mes-sel option, .deb-est-sel option { background:#ffffff; color:#20241f; }
-.deb-btn { padding:6px 12px; border:1px solid rgba(32,36,31,.15); border-radius:7px; font-size:0.76rem; font-weight:600; font-family:inherit; background:rgba(32,36,31,.05); color:rgba(32,36,31,.7); cursor:pointer; white-space:nowrap; }
+.deb-btn { padding:6px 12px; border:1px solid rgba(32,36,31,.15); border-radius:7px; font-size:0.76rem; font-weight:600; font-family:inherit; background:rgba(32,36,31,.05); color:rgba(32,36,31,.7); cursor:pointer; white-space:nowrap; transition:background .25s ease, border-color .25s ease, color .25s ease, transform .2s ease; }
 .deb-btn:hover { background:rgba(32,36,31,.1); }
 .deb-btn-pri { background:#1f3a2e; color:#fff; border-color:#1f3a2e; }
 .deb-btn-pri:hover { opacity:.82; }
+.deb-btn-pri.action-done { background:#c9933a !important; border-color:#c9933a !important; color:#20241f !important; transform:scale(1.015); }
 .deb-saved-msg { font-size:0.72rem; color:#166534; display:none; }
 .deb-table-wrap { overflow-x:auto; }
 .deb-table { width:100%; border-collapse:collapse; font-size:0.74rem; }
@@ -1214,12 +1224,15 @@ body { background: var(--iv0); color: var(--ink); }
 .sb-persona-legajo { font-size:0.72rem; color:rgba(32,36,31,.4); }
 .sb-persona-total { font-weight:700; font-size:0.95rem; color:#166534; }
 .sb-tag { font-size:0.68rem; background:rgba(32,36,31,.1); border-radius:4px; padding:2px 6px; margin-left:6px; color:rgba(32,36,31,.6); }
-.sb-calcular-btn { background:#1f3a2e; color:#fff; border:none; border-radius:8px; padding:10px 24px; font-weight:700; font-size:0.9rem; cursor:pointer; margin-top:4px; }
+.sb-calcular-btn { background:#1f3a2e; color:#fff; border:none; border-radius:8px; padding:10px 24px; font-weight:700; font-size:0.9rem; cursor:pointer; margin-top:4px; transition:background .25s ease, transform .2s ease; }
 .sb-calcular-btn:hover { opacity:.82; }
-.sb-print-btn { background:rgba(32,36,31,.08); color:#20241f; border:1px solid rgba(32,36,31,.15); border-radius:6px; padding:6px 14px; font-size:0.8rem; cursor:pointer; }
+.sb-calcular-btn.action-done { background:#c9933a; opacity:1; transform:scale(1.015); }
+.sb-print-btn { background:rgba(32,36,31,.08); color:#20241f; border:1px solid rgba(32,36,31,.15); border-radius:6px; padding:6px 14px; font-size:0.8rem; cursor:pointer; transition:background .15s, border-color .25s ease, color .25s ease; }
 .sb-print-btn:hover { background:rgba(32,36,31,.15); }
-.sb-print-all-btn { background:#22c55e; color:#fff; border:none; border-radius:6px; padding:8px 18px; font-size:0.85rem; font-weight:700; cursor:pointer; margin-bottom:16px; }
+.sb-print-btn.action-done { background:rgba(201,147,58,.16); border-color:#c9933a; color:#92610f; }
+.sb-print-all-btn { background:#22c55e; color:#fff; border:none; border-radius:6px; padding:8px 18px; font-size:0.85rem; font-weight:700; cursor:pointer; margin-bottom:16px; transition:background .25s ease, transform .2s ease; }
 .sb-print-all-btn:hover { background:#15803d; }
+.sb-print-all-btn.action-done { background:#c9933a; transform:scale(1.015); }
 .sb-toggle { display:flex; align-items:center; gap:8px; font-size:0.8rem; color:rgba(32,36,31,.6); cursor:pointer; }
 .sb-toggle input[type=checkbox] { cursor:pointer; }
 
@@ -1241,10 +1254,12 @@ body { background: var(--iv0); color: var(--ink); }
 .cpsm-exento { font-size:0.68rem; color:rgba(32,36,31,.4); }
 .cpsm-total-row td { font-weight:700; background:rgba(32,36,31,.08); border-top:1px solid rgba(32,36,31,.3) !important; font-size:0.88rem; color:#20241f; }
 .cpsm-btn-row { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
-.cpsm-calc-btn { background:#1f3a2e; color:#fff; border:none; border-radius:7px; padding:9px 20px; font-weight:700; font-size:0.88rem; cursor:pointer; }
+.cpsm-calc-btn { background:#1f3a2e; color:#fff; border:none; border-radius:7px; padding:9px 20px; font-weight:700; font-size:0.88rem; cursor:pointer; transition:background .25s ease, transform .2s ease; }
 .cpsm-calc-btn:hover { opacity:.82; }
-.cpsm-dl-btn { background:#22c55e; color:#fff; border:none; border-radius:7px; padding:9px 20px; font-weight:700; font-size:0.88rem; cursor:pointer; display:none; }
+.cpsm-calc-btn.action-done { background:#c9933a; opacity:1; transform:scale(1.015); }
+.cpsm-dl-btn { background:#22c55e; color:#fff; border:none; border-radius:7px; padding:9px 20px; font-weight:700; font-size:0.88rem; cursor:pointer; display:none; transition:background .25s ease, transform .2s ease; }
 .cpsm-dl-btn:hover { background:#15803d; }
+.cpsm-dl-btn.action-done { background:#c9933a; transform:scale(1.015); }
 .cpsm-fuente-badge { font-size:0.7rem; background:rgba(32,36,31,.1); border-radius:4px; padding:3px 8px; color:rgba(32,36,31,.55); }
 #cpsm-mes-liq option { background:#ffffff; color:#20241f; }
 
@@ -2407,7 +2422,7 @@ function renderMayo(containerId, doctor) {
   }
 
   html += '<div class="mini-disc">⚠ Importes brutos · no incluyen IIBB 3,5% ni CPSM 5%<br>📅 Los cheques se acreditan 48 hs. posteriores a la fecha indicada</div>';
-  html += '<button class="btn-pdf" onclick="generarComprobante(\'mayo\')">📄 Comprobante Mayo</button>';
+  html += '<button class="btn-pdf" onclick="actionFeedback(this); generarComprobante(\'mayo\')">📄 Comprobante Mayo</button>';
   container.innerHTML = html;
 }
 
@@ -2577,7 +2592,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     + '</div>';
 
   html += '<div class="mini-disc">📅 Los cheques se acreditan 48 hs. posteriores a la fecha indicada</div>';
-  html += '<button class="btn-pdf" onclick="generarComprobante(\'' + periodo + '\')">📄 Comprobante ' + mes + '</button>';
+  html += '<button class="btn-pdf" onclick="actionFeedback(this); generarComprobante(\'' + periodo + '\')">📄 Comprobante ' + mes + '</button>';
   container.innerHTML = html;
 }
 
@@ -2727,7 +2742,7 @@ function renderHistorial(doctor) {
       ? '<div class="hist-dline" style="margin-top:4px;border-top:1px dashed rgba(32,36,31,.15);padding-top:4px"><span class="hist-dline-lbl" style="color:rgba(32,36,31,.45)">Total liquidado CEOT</span><span class="hist-dline-val" style="color:rgba(32,36,31,.45)">' + fmt(totalCeotVal) + '</span></div>'
       : '';
 
-    var pdfBtn = '<button class="btn-pdf-mini" onclick="descargarComprobanteHistorial(\'' + r.pid + '\')" title="Descargar comprobante PDF">📄 PDF</button>';
+    var pdfBtn = '<button class="btn-pdf-mini" onclick="actionFeedback(this); descargarComprobanteHistorial(\'' + r.pid + '\')" title="Descargar comprobante PDF">📄 PDF</button>';
 
     html += '<div class="hist-period-section">'
       + '<div class="hist-period-headline"><span>' + c.label.toUpperCase() + '</span>'
@@ -3897,11 +3912,11 @@ function renderSueldoB() {
     + '<div class="sb-field"><label>Ano</label><input type="number" id="sb-anio" value="'+anioActual+'" min="2026"></div>'
     + '</div>'
     + cards
-    + '<button class="sb-calcular-btn" onclick="sbGenerarRecibos()">Generar recibos</button>'
+    + '<button class="sb-calcular-btn" onclick="actionFeedback(this); sbGenerarRecibos()">Generar recibos</button>'
     + '</div>'
     + '<div id="sb-resultados" style="padding:0 2px 24px;display:none">'
     + '<hr style="border-color:rgba(32,36,31,.1);margin-bottom:16px">'
-    + '<button class="sb-print-all-btn" onclick="sbImprimirTodos()">Imprimir todos</button>'
+    + '<button class="sb-print-all-btn" onclick="actionFeedback(this); sbImprimirTodos()">Imprimir todos</button>'
     + '<div id="sb-lista-recibos"></div>'
     + '</div>';
 
@@ -3930,7 +3945,7 @@ function sbGenerarRecibos() {
            + '<span style="font-size:0.78rem;color:rgba(32,36,31,.45);margin-left:8px">Leg.'+p.legajo+'</span></div>'
            + '<div style="display:flex;align-items:center;gap:10px">'
            + '<span style="font-weight:700">'+sbFmt(c.total)+'</span>'
-           + '<button class="sb-print-btn" onclick="sbImprimirUno(\''+p.legajo+'\','+horas+','+usaMens+',\''+periodo+'\')">Imprimir</button>'
+           + '<button class="sb-print-btn" onclick="actionFeedback(this); sbImprimirUno(\''+p.legajo+'\','+horas+','+usaMens+',\''+periodo+'\')">Imprimir</button>'
            + '</div></div>';
   });
 
@@ -4336,6 +4351,19 @@ document.getElementById("usernameInput").addEventListener("keypress", function(e
 document.getElementById("passwordInput").addEventListener("keypress", function(e){ if(e.key==="Enter") handleLogin(); });
 
 // ══════ COMPROBANTES PDF ════════════════════════════════════════
+
+function actionFeedback(btn) {
+  if (!btn || btn.dataset.pdfBusy) return;
+  btn.dataset.pdfBusy = "1";
+  var original = btn.innerHTML;
+  btn.innerHTML = "✅ Listo";
+  btn.classList.add("action-done");
+  setTimeout(function () {
+    btn.innerHTML = original;
+    btn.classList.remove("action-done");
+    delete btn.dataset.pdfBusy;
+  }, 1100);
+}
 
 function fmtPDF(n) {
   // Formato pesos argentinos: $ 1.234.567
@@ -5816,7 +5844,7 @@ function renderDebitos(mes) {
     + (modoImport && debMesActual.indexOf('__g__') !== 0
         ? '<input id="debPeriodoKey" type="text" placeholder="ej: julio-2026" value="' + debSugerirPeriodo() + '"'
           + ' style="font-size:0.76rem;padding:4px 8px;border-radius:6px;border:1px solid rgba(32,36,31,.15);background:rgba(32,36,31,.05);color:#20241f;width:110px">'
-          + '<button class="deb-btn deb-btn-pri" onclick="debGuardarImport()" style="padding:4px 10px">💾 Guardar</button>'
+          + '<button class="deb-btn deb-btn-pri" onclick="actionFeedback(this); debGuardarImport()" style="padding:4px 10px">💾 Guardar</button>'
           + '<button class="deb-btn" style="font-size:0.72rem;padding:4px 8px;background:rgba(220,80,60,.15);color:#c44" onclick="debImportData=null;debMesActual=\'\';renderDebitos()">✕ Descartar</button>'
         : '')
     + (modoImport && debMesActual.indexOf('__g__') === 0
@@ -5824,7 +5852,7 @@ function renderDebitos(mes) {
         : '')
     + '<label class="deb-btn" style="cursor:pointer;position:relative">📂 Importar CEOT.xlsx<input type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer" onchange="debCargarXLSX(this.files[0]);this.value=\'\'"></label>'
     + '<label class="deb-btn" style="cursor:pointer;position:relative">📂 Importar débitos ART (crudo)<input type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer" onchange="debCargarXLSXCrudo(this.files[0]);this.value=\'\'"></label>'
-    + '<button class="deb-btn deb-btn-pri" onclick="imprimirDebitos()" style="margin-left:4px">🖨 Imprimir</button>'
+    + '<button class="deb-btn deb-btn-pri" onclick="actionFeedback(this); imprimirDebitos()" style="margin-left:4px">🖨 Imprimir</button>'
     + '<span class="deb-saved-msg" id="debSavedMsg">Guardado ✓</span>'
     + '</div>';
 
@@ -6172,8 +6200,8 @@ function renderCpsm() {
     +   '<tfoot><tr class="cpsm-total-row"><td colspan="2">TOTAL</td><td><span id="cpsm-total">$ 0</span></td></tr></tfoot>'
     + '</table>'
     + '<div class="cpsm-btn-row">'
-    +   '<button class="cpsm-calc-btn" onclick="cpsmActualizarResultados()">Recalcular</button>'
-    +   '<button class="cpsm-dl-btn" id="cpsm-dl-btn" onclick="cpsmDescargarExcel()" style="display:none">⬇ Descargar Excel</button>'
+    +   '<button class="cpsm-calc-btn" onclick="actionFeedback(this); cpsmActualizarResultados()">Recalcular</button>'
+    +   '<button class="cpsm-dl-btn" id="cpsm-dl-btn" onclick="actionFeedback(this); cpsmDescargarExcel()" style="display:none">⬇ Descargar Excel</button>'
     + '</div>'
     + '</div>';
 
