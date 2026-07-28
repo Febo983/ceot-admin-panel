@@ -1980,10 +1980,14 @@ const APORTE_CEOT_PCT = {
 const APORTE_CEOT_DESDE = ["agosto","septiembre","octubre","noviembre","diciembre"]; // desde Agosto 2026 en adelante
 
 // Préstamo Casa 14 de julio 2067 — cuota 1 de 48, desde Agosto 2026
-// Solo aplica a estos 5 profesionales. Monto por cuota editable acá cada mes.
-const PRESTAMO_CASA_MONTO = 252000;
+// Grupo B (no pagan de bolsillo): se les descuenta la cuota. Grupo A (pagan de
+// bolsillo la cuota total al banco): se les reintegra la diferencia. Recalculado
+// para 11 socios (se sumó Mazzola al grupo B) — montos editables acá cada mes.
+const PRESTAMO_CASA_MONTO = 228181.82;
+const PRESTAMO_CASA_MONTO_CREDITO = 273818.18;
 const PRESTAMO_CASA_TOTAL_CUOTAS = 48;
-const PRESTAMO_CASA_SOCIOS = ["GARMENDIA", "DE LA COLINA", "SOULE", "LEON", "PERLASCO"];
+const PRESTAMO_CASA_SOCIOS = ["GARMENDIA", "DE LA COLINA", "SOULE", "LEON", "PERLASCO", "MAZZOLA"];
+const PRESTAMO_CASA_SOCIOS_A = ["BRUNI", "CORELICH", "DEGANUTTI", "TRIVELLINI", "LABAYEN"];
 const PRESTAMO_CASA_CUOTA = { agosto: 1, septiembre: 2, octubre: 3, noviembre: 4, diciembre: 5 };
 
 // ── URL del Apps Script Web App (pegar después de desplegar) ──────
@@ -2506,14 +2510,18 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   html += '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
   html += '</div>';
 
-  // Préstamo Casa 14 de julio 2067 (solo 5 socios, desde Agosto 2026)
+  // Préstamo Casa 14 de julio 2067 (grupo B: descuento · grupo A: reintegro, desde Agosto 2026)
   var prestamoCuota = PRESTAMO_CASA_CUOTA[periodo] || null;
-  var prestamoInd = (prestamoCuota && PRESTAMO_CASA_SOCIOS.indexOf(doctor.apellido) !== -1) ? PRESTAMO_CASA_MONTO : 0;
+  var prestamoInd = 0;
+  if (prestamoCuota) {
+    if (PRESTAMO_CASA_SOCIOS.indexOf(doctor.apellido) !== -1) prestamoInd = PRESTAMO_CASA_MONTO;
+    else if (PRESTAMO_CASA_SOCIOS_A.indexOf(doctor.apellido) !== -1) prestamoInd = -PRESTAMO_CASA_MONTO_CREDITO;
+  }
   if (prestamoInd) {
-    html += '<div class="cheque-list"><div class="cl-row cl-sep-row cl-neg">'
+    html += '<div class="cheque-list"><div class="cl-row cl-sep-row' + (prestamoInd > 0 ? ' cl-neg' : '') + '">'
       + '<span class="cl-date">—</span>'
-      + '<span class="cl-lbl">Préstamo Casa <span style="font-size:.68rem;color:rgba(32,36,31,.35);font-weight:400">cuota ' + prestamoCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + '</span></span>'
-      + '<span class="cl-amt">−' + fmt(prestamoInd) + '</span>'
+      + '<span class="cl-lbl">Préstamo Casa <span style="font-size:.68rem;color:rgba(32,36,31,.35);font-weight:400">' + (prestamoInd > 0 ? 'cuota' : 'reintegro') + ' ' + prestamoCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + '</span></span>'
+      + '<span class="cl-amt"' + (prestamoInd < 0 ? ' style="color:#166534"' : '') + '>' + (prestamoInd > 0 ? '−' + fmt(prestamoInd) : '+' + fmt(-prestamoInd)) + '</span>'
       + '</div></div>';
   }
 
@@ -2647,9 +2655,13 @@ function calcularNetoLocal(pid, doc) {
   var pctAporte  = APORTE_CEOT_PCT[doc.apellido];
   var baseAporte = colonBruto + osdeVal + cmVal;
   var aporteCeot = (periodoConAporte && pctAporte) ? Math.round(baseAporte * pctAporte) : 0;
-  // Préstamo Casa 14 de julio 2067 — solo estos 5 socios, desde Agosto 2026
+  // Préstamo Casa 14 de julio 2067 — grupo B: descuento (+) · grupo A: reintegro (−), desde Agosto 2026
   var prestamoCasaCuota = PRESTAMO_CASA_CUOTA[pid] || null;
-  var prestamoCasa = (prestamoCasaCuota && PRESTAMO_CASA_SOCIOS.indexOf(doc.apellido) !== -1) ? PRESTAMO_CASA_MONTO : 0;
+  var prestamoCasa = 0;
+  if (prestamoCasaCuota) {
+    if (PRESTAMO_CASA_SOCIOS.indexOf(doc.apellido) !== -1) prestamoCasa = PRESTAMO_CASA_MONTO;
+    else if (PRESTAMO_CASA_SOCIOS_A.indexOf(doc.apellido) !== -1) prestamoCasa = -PRESTAMO_CASA_MONTO_CREDITO;
+  }
   var neto  = bruto - iibb - cpsm - ga - aporteCeot - prestamoCasa + cmVal;
 
   return {
@@ -2724,6 +2736,8 @@ function renderHistorial(doctor) {
 
     var prestamoHtml = c.prestamoCasa > 0
       ? '<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val neg">−' + fmt(c.prestamoCasa) + '</span></div>'
+      : c.prestamoCasa < 0
+      ? '<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val" style="color:#166534">+' + fmt(-c.prestamoCasa) + '</span></div>'
       : '';
 
     var aporteHtml = '';
@@ -4070,7 +4084,7 @@ function renderAdminPanel(periodo) {
   // Ordenar por neto desc
   rows.sort(function(a, b) { return b.calc.neto - a.calc.neto; });
 
-  var totBruto=0, totIIBB=0, totCPSM=0, totGA=0, totAporte=0, totPrestamo=0, totCM=0, totNeto=0;
+  var totBruto=0, totIIBB=0, totCPSM=0, totGA=0, totAporte=0, totPrestamo=0, totPrestamoCredito=0, totCM=0, totNeto=0;
   rows.forEach(function(r) {
     var c = r.calc;
     totBruto   += (c.bruto       || 0);
@@ -4078,7 +4092,8 @@ function renderAdminPanel(periodo) {
     totCPSM    += (c.cpsm        || 0);
     totGA      += (c.ga          || 0);
     totAporte  += (c.aporteCeot  || 0);
-    totPrestamo += (c.prestamoCasa || 0);
+    if (c.prestamoCasa > 0) totPrestamo += c.prestamoCasa;
+    else if (c.prestamoCasa < 0) totPrestamoCredito += -c.prestamoCasa;
     totCM      += (c.cm          || 0);
     totNeto    += (c.neto        || 0);
   });
@@ -4086,7 +4101,12 @@ function renderAdminPanel(periodo) {
   var tieneAporte   = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
   var tienePrestamo = PRESTAMO_CASA_CUOTA[periodo] !== undefined;
   var hayPendientes = rows.some(function(r){ return r.calc.pendiente; });
-  var totDesc = totIIBB + totCPSM + totGA + totAporte + totPrestamo;
+  // totPrestamo = solo descuento (grupo B); totPrestamoCredito = solo reintegro (grupo A).
+  // El préstamo es un traspaso interno (lo que se le descuenta a uno se le reintegra a otro),
+  // así que en el neto de "Descuentos" se muestra netamente (≈0) — no sale ni entra plata extra
+  // de CEOT por esto. El desglose visual sí muestra las dos filas por separado (ver más abajo).
+  var totPrestamoNeto = totPrestamo - totPrestamoCredito;
+  var totDesc = totIIBB + totCPSM + totGA + totAporte + totPrestamoNeto;
   var totBrutoTotal = totBruto + totCM;
 
   var html = "";
@@ -4122,6 +4142,9 @@ function renderAdminPanel(periodo) {
   }
   if (tienePrestamo && totPrestamo > 0) {
     html += '<div class="adm-br-row" style="background:rgba(177,58,44,.14)"><span class="adm-br-lbl">Préstamo Casa</span><span class="adm-br-val" style="color:#b13a2c">− ' + fmt(totPrestamo) + '</span></div>';
+  }
+  if (tienePrestamo && totPrestamoCredito > 0) {
+    html += '<div class="adm-br-row" style="background:rgba(22,163,74,.12)"><span class="adm-br-lbl">Préstamo Casa (reintegro)</span><span class="adm-br-val" style="color:#166534">+ ' + fmt(totPrestamoCredito) + '</span></div>';
   }
   if (tieneAporte && totAporte > 0) {
     html += '<div class="adm-br-row" style="background:rgba(124,58,237,.14)"><span class="adm-br-lbl">Aporte CEOT</span><span class="adm-br-val" style="color:#6d28d9">− ' + fmt(totAporte) + '</span></div>';
@@ -4184,9 +4207,11 @@ function renderAdminPanel(periodo) {
     html += '<td class="adm-neg">' + (c.esLab ? '<span class="adm-exento">EXENTO</span>' : '−' + fmt(c.cpsm)) + '</td>';
     html += '<td class="adm-neg">' + (c.ga ? '−' + fmt(c.ga) : '<span class="adm-pend">—</span>') + '</td>';
     if (tienePrestamo) {
-      html += '<td class="adm-neg">'
-        + (c.prestamoCasa
+      html += '<td class="' + (c.prestamoCasa < 0 ? 'adm-pos' : 'adm-neg') + '">'
+        + (c.prestamoCasa > 0
             ? '−' + fmt(c.prestamoCasa) + ' <span style="font-size:.58rem;color:#b13a2c">' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + '</span>'
+            : c.prestamoCasa < 0
+            ? '+' + fmt(-c.prestamoCasa) + ' <span style="font-size:.58rem;color:#166534">' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + '</span>'
             : '<span class="adm-pend">—</span>')
         + '</td>';
     }
@@ -4221,7 +4246,7 @@ function renderAdminPanel(periodo) {
   html += '<td>−' + fmt(totIIBB) + '</td>';
   html += '<td>−' + fmt(totCPSM) + '</td>';
   html += '<td>−' + fmt(totGA) + '</td>';
-  if (tienePrestamo) html += '<td>−' + fmt(totPrestamo) + '</td>';
+  if (tienePrestamo) html += '<td>' + (totPrestamoNeto >= 0 ? '−' + fmt(totPrestamoNeto) : '+' + fmt(-totPrestamoNeto)) + '</td>';
   if (tieneAporte) html += '<td>−' + fmt(totAporte) + '</td>';
   html += '<td>' + fmt(totNeto) + '</td>';
   if (hayDelta) html += '<td></td>';
@@ -4437,6 +4462,7 @@ function descargarComprobanteHistorial(pid) {
   }
   if (c.ga)          fila("Gastos A", c.ga, { prefix:"- ", color:[180,0,0] });
   if (c.prestamoCasa > 0) fila("Préstamo Casa (" + c.prestamoCasaCuota + "/" + PRESTAMO_CASA_TOTAL_CUOTAS + ")", c.prestamoCasa, { prefix:"- ", color:[180,0,0] });
+  if (c.prestamoCasa < 0) fila("Préstamo Casa · reintegro (" + c.prestamoCasaCuota + "/" + PRESTAMO_CASA_TOTAL_CUOTAS + ")", -c.prestamoCasa, { prefix:"+ ", color:[0,120,0] });
   if (c.aporteCeot > 0) fila("Aporte CEOT (" + Math.round(c.pctAporte*100) + "%)", c.aporteCeot, { prefix:"- ", color:[180,0,0] });
   if (c.cm > 0)      fila("Centro Médico", c.cm, { prefix:"+ ", color:[0,120,0] });
 
