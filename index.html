@@ -2687,7 +2687,7 @@ function calcularNetoLocal(pid, doc) {
     iibb: iibb, cpsm: cpsm,
     ga: ga, cm: cmVal, aporteCeot: aporteCeot, pctAporte: pctAporte,
     prestamoCasa: prestamoCasa, prestamoCasaCuota: prestamoCasaCuota,
-    neto: neto, pendiente: hayPendiente, osdePendiente: osdeExt.pendiente, esLab: esLab
+    neto: neto, pendiente: hayPendiente, osdePendiente: osdeExt.pendiente, cmPendiente: cmExt.pendiente, esLab: esLab
   };
 }
 
@@ -4118,6 +4118,8 @@ function renderAdminPanel(periodo) {
 
   var tieneAporte   = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
   var tienePrestamo = PRESTAMO_CASA_CUOTA[periodo] !== undefined;
+  var tieneCm       = !!(PERIOD_EXTRAS[periodo] && PERIOD_EXTRAS[periodo].cm);
+  var hayCmPend     = rows.some(function(r){ return r.calc.cmPendiente; });
   var hayPendientes = rows.some(function(r){ return r.calc.pendiente; });
   // totPrestamo = solo descuento (grupo B); totPrestamoCredito = solo reintegro (grupo A).
   // El préstamo es un traspaso interno (lo que se le descuenta a uno se le reintegra a otro),
@@ -4194,7 +4196,7 @@ function renderAdminPanel(periodo) {
   html += '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>';
   html += '<th>Profesional</th><th>Col\xF3n</th>';
   html += '<th>OSDE' + (hayOsdePend ? ' <span class="adm-est-badge">pend</span>' : '') + '</th>';
-  if (totCM > 0) html += '<th>CEM</th>';
+  if (tieneCm) html += '<th>CEM' + (hayCmPend ? ' <span class="adm-est-badge">pend</span>' : '') + '</th>';
   html += '<th>IIBB</th><th>CPSM</th><th>Gtos A</th>';
   if (tienePrestamo) html += '<th>Préstamo Casa</th>';
   if (tieneAporte) html += '<th>Ap. CEOT</th>';
@@ -4220,7 +4222,9 @@ function renderAdminPanel(periodo) {
     html += '<td>' + (c.osdePendiente
       ? '<span class="adm-pend" style="font-size:.68rem">pendiente</span>'
       : (c.osde ? fmt(c.osde) : '<span class="adm-pend">—</span>')) + '</td>';
-    if (totCM > 0) html += '<td class="adm-pos">' + (c.cm ? '+' + fmt(c.cm) : '<span class="adm-pend">—</span>') + '</td>';
+    if (tieneCm) html += '<td' + (c.cm ? ' class="adm-pos"' : '') + '>' + (c.cmPendiente
+      ? '<span class="adm-pend" style="font-size:.68rem">pendiente</span>'
+      : (c.cm ? '+' + fmt(c.cm) : '<span class="adm-pend">—</span>')) + '</td>';
     html += '<td class="adm-neg">−' + fmt(c.iibb) + '</td>';
     html += '<td class="adm-neg">' + (c.esLab ? '<span class="adm-exento">EXENTO</span>' : '−' + fmt(c.cpsm)) + '</td>';
     html += '<td class="adm-neg">' + (c.ga ? '−' + fmt(c.ga) : '<span class="adm-pend">—</span>') + '</td>';
@@ -4260,7 +4264,7 @@ function renderAdminPanel(periodo) {
   html += '<td>TOTAL</td>';
   html += '<td>' + fmt(totColon) + '</td>';
   html += '<td>' + (hayOsdePend ? '<span class="adm-pend">pend</span>' : fmt(totOsde)) + '</td>';
-  if (totCM > 0)   html += '<td>+' + fmt(totCM) + '</td>';
+  if (tieneCm) html += '<td>' + (hayCmPend && totCM === 0 ? '<span class="adm-pend">pend</span>' : '+' + fmt(totCM)) + '</td>';
   html += '<td>−' + fmt(totIIBB) + '</td>';
   html += '<td>−' + fmt(totCPSM) + '</td>';
   html += '<td>−' + fmt(totGA) + '</td>';
