@@ -6340,12 +6340,15 @@ function renderAporteCeot() {
   var rows = socios.map(function(d) {
     var pct = getAporteCeotPct(d.apellido);
     var pctInput = (pct === null || pct === undefined) ? "" : Math.round(pct * 1000) / 10;
-    return '<tr>'
-      + '<td>' + d.nombre + '</td>'
-      + '<td><input type="number" step="0.1" min="0" max="100" data-apellido="' + d.apellido + '" '
-      +   'class="aporte-pct-input" value="' + pctInput + '" '
-      +   'style="width:80px;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-size:0.9rem;font-family:inherit;text-align:right"> %</td>'
-      + '</tr>';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:rgba(32,36,31,.04);border:1px solid rgba(32,36,31,.12);border-radius:8px">'
+      + '<span style="font-size:0.78rem;font-weight:600;color:#20241f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + d.nombre + '</span>'
+      + '<span style="display:flex;align-items:center;gap:3px;flex-shrink:0">'
+      +   '<input type="number" step="0.1" min="0" max="100" data-apellido="' + d.apellido + '" '
+      +     'class="aporte-pct-input" value="' + pctInput + '" '
+      +     'style="width:52px;padding:4px 6px;border:1px solid rgba(32,36,31,.2);border-radius:5px;font-size:0.85rem;font-family:inherit;text-align:right">'
+      +   '<span style="font-size:0.78rem;color:rgba(32,36,31,.5)">%</span>'
+      + '</span>'
+      + '</div>';
   }).join("");
 
   // ── Registro mensual: monto de aporte por profesional y total, mes a mes ──
@@ -6421,10 +6424,7 @@ function renderAporteCeot() {
     +   '<div><div class="cpsm-title">📐 Aporte CEOT — porcentajes</div>'
     +   '<div class="cpsm-subtitle">Default 15% parejo desde Agosto 2026 · editable por profesional</div></div>'
     + '</div>'
-    + '<table class="cpsm-tabla">'
-    +   '<thead><tr><th>Profesional</th><th>% Aporte</th></tr></thead>'
-    +   '<tbody>' + rows + '</tbody>'
-    + '</table>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-bottom:14px">' + rows + '</div>'
     + '<div class="cpsm-btn-row">'
     +   '<button class="cpsm-calc-btn" onclick="actionFeedback(this); guardarAporteCeotPct()">Guardar</button>'
     +   '<button class="cpsm-dl-btn" style="display:inline-block" onclick="actionFeedback(this); restaurarAporteCeotPct()">Restaurar 15% default</button>'
