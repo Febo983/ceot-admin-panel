@@ -6345,6 +6345,43 @@ function renderAporteCeot() {
       + '</tr>';
   }).join("");
 
+  // ── Registro mensual: monto de aporte por profesional y total, mes a mes ──
+  var periodosConDatos = APORTE_CEOT_DESDE.filter(function(p) {
+    return socios.some(function(d) { var c = calcularNetoLocal(p, d); return c && c.aporteCeot > 0; });
+  });
+
+  var regHtml;
+  if (periodosConDatos.length > 0) {
+    var acumulado = {};
+    socios.forEach(function(d) { acumulado[d.apellido] = 0; });
+    var totalGeneral = 0;
+
+    var theadCols = socios.map(function(d) { return '<th>' + d.apellido + '</th>'; }).join("");
+    var tbodyRows = periodosConDatos.map(function(p) {
+      var totPeriodo = 0;
+      var cells = socios.map(function(d) {
+        var c = calcularNetoLocal(p, d);
+        var monto = (c && c.aporteCeot) || 0;
+        totPeriodo += monto;
+        acumulado[d.apellido] += monto;
+        return '<td>' + (monto ? fmt(monto) : '<span class="adm-pend">—</span>') + '</td>';
+      }).join("");
+      totalGeneral += totPeriodo;
+      return '<tr><td>' + p.charAt(0).toUpperCase() + p.slice(1) + '</td>' + cells + '<td style="font-weight:700">' + fmt(totPeriodo) + '</td></tr>';
+    }).join("");
+
+    var acumCells = socios.map(function(d) { return '<td>' + fmt(acumulado[d.apellido]) + '</td>'; }).join("");
+    var acumRow = '<tr class="adm-totals"><td>ACUMULADO</td>' + acumCells + '<td>' + fmt(totalGeneral) + '</td></tr>';
+
+    regHtml = '<div class="adm-sec-title" style="margin-top:20px">Registro mensual — montos de Aporte CEOT</div>'
+      + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Período</th>' + theadCols + '<th>Total CEOT</th></tr></thead>'
+      + '<tbody>' + tbodyRows + acumRow + '</tbody></table></div>'
+      + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:6px 2px 0 2px">⚑ Calculado con el % vigente actualmente para cada profesional — si cambiás un porcentaje y guardás, los montos históricos de este registro se recalculan con el nuevo valor (no queda guardado qué % regía cada mes).</div>';
+  } else {
+    regHtml = '<div class="adm-sec-title" style="margin-top:20px">Registro mensual — montos de Aporte CEOT</div>'
+      + '<div style="padding:12px 2px;color:rgba(32,36,31,.4);font-size:0.85rem">Todavía no hay datos cargados de ningún período con Aporte CEOT.</div>';
+  }
+
   var html = '<div style="padding:16px">'
     + '<div class="cpsm-header">'
     +   '<div><div class="cpsm-title">📐 Aporte CEOT — porcentajes</div>'
@@ -6359,6 +6396,7 @@ function renderAporteCeot() {
     +   '<button class="cpsm-dl-btn" style="display:inline-block" onclick="actionFeedback(this); restaurarAporteCeotPct()">Restaurar 15% default</button>'
     + '</div>'
     + '<div id="aporte-ceot-status" style="margin-top:10px;font-size:0.8rem;color:rgba(32,36,31,.55)"></div>'
+    + regHtml
     + '</div>';
 
   document.getElementById("adm-content").innerHTML = html;
@@ -6373,11 +6411,10 @@ function guardarAporteCeotPct() {
     var v = parseFloat(inp.value);
     if (!isNaN(v) && v >= 0) override[inp.dataset.apellido] = v / 100;
   });
-  try {
-    localStorage.setItem("ceot_aporte_pct_override", JSON.stringify(override));
-    var st = document.getElementById("aporte-ceot-status");
-    if (st) st.textContent = "✓ Porcentajes guardados. Se aplican desde Agosto 2026 en adelante.";
-  } catch (e) {}
+  try { localStorage.setItem("ceot_aporte_pct_override", JSON.stringify(override)); } catch (e) {}
+  renderAporteCeot();
+  var st = document.getElementById("aporte-ceot-status");
+  if (st) st.textContent = "✓ Porcentajes guardados. Se aplican desde Agosto 2026 en adelante.";
 }
 
 function restaurarAporteCeotPct() {
