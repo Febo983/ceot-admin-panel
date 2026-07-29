@@ -4279,12 +4279,53 @@ function renderAdminPanel(periodo) {
   // ── Botón PDF ──
   var periodoLabel = periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' 2026';
   html += '<div style="text-align:right;margin-top:14px" class="no-print">'
-    + '<button onclick="window.print()" style="background:#1f3a2e;color:#fff;border:none;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit">⬇ Descargar PDF</button>'
+    + '<button onclick="admDescargarPDF(\'' + periodo + '\')" style="background:#1f3a2e;color:#fff;border:none;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit">⬇ Descargar PDF</button>'
     + '</div>';
 
   container.innerHTML = html;
   // Título para impresión
   document.title = 'CEOT · Distribución ' + periodoLabel;
+}
+
+// Imprime/descarga PDF en una ventana aparte con estilos propios — el
+// window.print() directo sobre la página principal sale en blanco por el
+// perspective/3D del page-turn y los contenedores sticky (mismo bug que
+// ya se había arreglado en Sueldo B, ver sbAbrirVentanaImpresion).
+function admAbrirVentanaImpresion(titulo, innerHtml) {
+  var css = 'body{font-family:-apple-system,"Segoe UI",Arial,sans-serif;color:#20241f;padding:20px;background:#fff;max-width:900px;margin:0 auto}'
+    + '.adm-kpis{display:flex;gap:8px;margin-bottom:14px}'
+    + '.adm-kpi{flex:1;background:#f4f2ec;border:1px solid #ddd;border-radius:8px;padding:10px 11px;border-left:4px solid #1f3a2e}'
+    + '.adm-kpi-lbl{font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}'
+    + '.adm-kpi-val{font-size:15px;font-weight:800}'
+    + '.adm-kpi-sub{font-size:9px;color:#666;margin-top:3px}'
+    + '.adm-sec-title{font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.6px;margin:14px 0 7px;border-bottom:1px solid #ddd;padding-bottom:4px}'
+    + '.adm-breakdown{display:flex;flex-direction:column;gap:5px}'
+    + '.adm-br-row{display:flex;align-items:center;justify-content:space-between;padding:7px 11px;border-radius:6px}'
+    + '.adm-br-lbl{font-size:12px;color:#444}'
+    + '.adm-br-val{font-size:13px;font-weight:700}'
+    + '.adm-table-wrap{overflow-x:auto}'
+    + '.adm-table{width:100%;border-collapse:collapse;font-size:11px}'
+    + '.adm-table th{padding:8px 9px;text-align:right;font-weight:700;text-transform:uppercase;font-size:9px;border-bottom:1px solid #ccc;background:#f0efe9}'
+    + '.adm-table th:first-child,.adm-table td:first-child{text-align:left}'
+    + '.adm-table td{padding:6px 9px;text-align:right;border-bottom:1px solid #eee}'
+    + '.adm-neg{color:#b13a2c}.adm-pos{color:#166534}.adm-exento{color:#16a34a;font-weight:700}'
+    + '.adm-pend{color:#999;font-size:10px}.adm-est-badge{background:#fde68a;color:#78350f;font-size:8px;padding:1px 5px;border-radius:4px;margin-left:4px}'
+    + '.adm-totals td{font-weight:800;border-top:2px solid #111}'
+    + '.no-print{display:none!important}';
+  var w = window.open('', '_blank', 'width=1000,height=750');
+  if (!w) { alert('El navegador bloqueó la ventana de impresión — habilitá pop-ups para este sitio.'); return; }
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + titulo + '</title><style>' + css + '</style></head><body>' + innerHtml + '<script>window.onload=function(){window.print();}<\/script></body></html>');
+  w.document.close();
+}
+
+function admDescargarPDF(periodo) {
+  var container = document.getElementById('adm-content');
+  if (!container) return;
+  var clone = container.cloneNode(true);
+  var noPrint = clone.querySelectorAll('.no-print');
+  noPrint.forEach(function(el){ el.remove(); });
+  var periodoLabel = periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' 2026';
+  admAbrirVentanaImpresion('CEOT · Distribución ' + periodoLabel, clone.innerHTML);
 }
 
 function handleLogin() {
