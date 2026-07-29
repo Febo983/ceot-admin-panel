@@ -6346,29 +6346,41 @@ function renderAporteCeot() {
   }).join("");
 
   // ── Registro mensual: monto de aporte por profesional y total, mes a mes ──
-  var periodosConDatos = APORTE_CEOT_DESDE.filter(function(p) {
-    return socios.some(function(d) { var c = calcularNetoLocal(p, d); return c && c.aporteCeot > 0; });
-  });
-
+  // Muestra siempre los 5 meses de APORTE_CEOT_DESDE (agosto→diciembre); cada
+  // celda se autoactualiza sola a medida que cargan los importes acreditados
+  // (Colón/OSDE/CEM) de ese período — calcularNetoLocal devuelve null cuando
+  // todavía no hay ningún importe cargado para ese profesional/período.
   var regHtml;
-  if (periodosConDatos.length > 0) {
+  {
     var acumulado = {};
     socios.forEach(function(d) { acumulado[d.apellido] = 0; });
     var totalGeneral = 0;
 
     var theadCols = socios.map(function(d) { return '<th>' + d.apellido + '</th>'; }).join("");
-    var tbodyRows = periodosConDatos.map(function(p) {
+    var tbodyRows = APORTE_CEOT_DESDE.map(function(p) {
       var totPeriodo = 0;
+      var hayDatoPeriodo = false;
       var cells = socios.map(function(d) {
         var c = calcularNetoLocal(p, d);
-        var monto = (c && c.aporteCeot) || 0;
+        if (!c) return '<td><span class="adm-pend" style="font-size:.68rem">pendiente</span></td>';
+        hayDatoPeriodo = true;
+        var monto = c.aporteCeot || 0;
         totPeriodo += monto;
         acumulado[d.apellido] += monto;
-        return '<td>' + (monto ? fmt(monto) : '<span class="adm-pend">—</span>') + '</td>';
+        return '<td>' + fmt(monto) + '</td>';
       }).join("");
-      totalGeneral += totPeriodo;
-      return '<tr><td>' + p.charAt(0).toUpperCase() + p.slice(1) + '</td>' + cells + '<td style="font-weight:700">' + fmt(totPeriodo) + '</td></tr>';
+      var totCell = hayDatoPeriodo
+        ? '<td style="font-weight:700">' + fmt(totPeriodo) + '</td>'
+        : '<td><span class="adm-pend" style="font-size:.68rem">pendiente</span></td>';
+      return '<tr><td>' + p.charAt(0).toUpperCase() + p.slice(1) + '</td>' + cells + totCell + '</tr>';
     }).join("");
+    // ACUMULADO acá suma solo lo ya cargado en cada período (nunca cuenta los "pendiente" como $0 definitivo).
+    APORTE_CEOT_DESDE.forEach(function(p) {
+      socios.forEach(function(d) {
+        var c = calcularNetoLocal(p, d);
+        if (c) totalGeneral += (c.aporteCeot || 0);
+      });
+    });
 
     var acumCells = socios.map(function(d) { return '<td>' + fmt(acumulado[d.apellido]) + '</td>'; }).join("");
     var acumRow = '<tr class="adm-totals"><td>ACUMULADO</td>' + acumCells + '<td>' + fmt(totalGeneral) + '</td></tr>';
@@ -6376,11 +6388,30 @@ function renderAporteCeot() {
     regHtml = '<div class="adm-sec-title" style="margin-top:20px">Registro mensual — montos de Aporte CEOT</div>'
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Período</th>' + theadCols + '<th>Total CEOT</th></tr></thead>'
       + '<tbody>' + tbodyRows + acumRow + '</tbody></table></div>'
-      + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:6px 2px 0 2px">⚑ Calculado con el % vigente actualmente para cada profesional — si cambiás un porcentaje y guardás, los montos históricos de este registro se recalculan con el nuevo valor (no queda guardado qué % regía cada mes).</div>';
-  } else {
-    regHtml = '<div class="adm-sec-title" style="margin-top:20px">Registro mensual — montos de Aporte CEOT</div>'
-      + '<div style="padding:12px 2px;color:rgba(32,36,31,.4);font-size:0.85rem">Todavía no hay datos cargados de ningún período con Aporte CEOT.</div>';
+      + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:6px 2px 0 2px">⚑ Cada celda pasa de "pendiente" al monto real solo cuando cargás los importes acreditados (Colón/OSDE/CEM) de ese profesional y período. Calculado con el % vigente actualmente — si cambiás un porcentaje y guardás, los montos ya cargados de este registro se recalculan con el nuevo valor (no queda guardado qué % regía cada mes).</div>';
   }
+
+  // ── Links de inversión: donde se va a invertir el fondo Aporte CEOT ──
+  var linksGuardados = getAporteLinks();
+  var linkFilas = (linksGuardados.length ? linksGuardados : [{nombre:"",url:""}]).map(aporteLinkFilaHtml).join("");
+  var linksVista = linksGuardados.length
+    ? '<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">'
+      + linksGuardados.map(function(l) {
+          return '<a href="' + escAttr(l.url) + '" target="_blank" rel="noopener" style="font-size:0.82rem;color:#1d4ed8;text-decoration:none">🔗 ' + (l.nombre || l.url) + '</a>';
+        }).join("")
+      + '</div>'
+    : '';
+
+  var linksHtml = '<div class="adm-sec-title" style="margin-top:20px">Links de inversión — fondo Aporte CEOT</div>'
+    + '<div id="aporte-links-list">' + linkFilas + '</div>'
+    + '<div style="margin:6px 0 10px">'
+    +   '<button onclick="aporteLinksAgregarFila()" style="background:none;border:1px dashed rgba(32,36,31,.3);color:rgba(32,36,31,.6);padding:6px 12px;border-radius:6px;font-size:0.78rem;cursor:pointer;font-family:inherit">+ Agregar link</button>'
+    + '</div>'
+    + '<div class="cpsm-btn-row">'
+    +   '<button class="cpsm-calc-btn" onclick="actionFeedback(this); guardarAporteLinks()">Guardar links</button>'
+    + '</div>'
+    + '<div id="aporte-links-status" style="margin-top:10px;font-size:0.8rem;color:rgba(32,36,31,.55)"></div>'
+    + linksVista;
 
   var html = '<div style="padding:16px">'
     + '<div class="cpsm-header">'
@@ -6397,11 +6428,50 @@ function renderAporteCeot() {
     + '</div>'
     + '<div id="aporte-ceot-status" style="margin-top:10px;font-size:0.8rem;color:rgba(32,36,31,.55)"></div>'
     + regHtml
+    + linksHtml
     + '</div>';
 
   document.getElementById("adm-content").innerHTML = html;
   var hb = document.getElementById("admHomeBtn");
   if (hb) hb.style.display = "none";
+}
+
+function escAttr(s) {
+  return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+}
+
+function aporteLinkFilaHtml(l) {
+  return '<div class="aporte-link-row" style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'
+    + '<input type="text" class="aporte-link-nombre" placeholder="Nombre (ej. Broker XYZ)" value="' + escAttr(l.nombre) + '" style="flex:1;min-width:0;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-size:0.85rem;font-family:inherit">'
+    + '<input type="url" class="aporte-link-url" placeholder="https://…" value="' + escAttr(l.url) + '" style="flex:2;min-width:0;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-size:0.85rem;font-family:inherit">'
+    + '<button onclick="this.parentElement.remove()" title="Eliminar" style="background:none;border:none;color:rgba(32,36,31,.4);font-size:1rem;cursor:pointer;padding:4px 8px">✕</button>'
+    + '</div>';
+}
+
+function aporteLinksAgregarFila() {
+  var list = document.getElementById("aporte-links-list");
+  if (list) list.insertAdjacentHTML("beforeend", aporteLinkFilaHtml({nombre:"",url:""}));
+}
+
+function getAporteLinks() {
+  try {
+    var raw = localStorage.getItem("ceot_aporte_links");
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+
+function guardarAporteLinks() {
+  var filas = document.querySelectorAll("#aporte-links-list .aporte-link-row");
+  var links = [];
+  filas.forEach(function(fila) {
+    var nombre = fila.querySelector(".aporte-link-nombre").value.trim();
+    var url = fila.querySelector(".aporte-link-url").value.trim();
+    if (url) links.push({ nombre: nombre, url: url });
+  });
+  try { localStorage.setItem("ceot_aporte_links", JSON.stringify(links)); } catch (e) {}
+  renderAporteCeot();
+  var st = document.getElementById("aporte-links-status");
+  if (st) st.textContent = "✓ Links guardados.";
 }
 
 function guardarAporteCeotPct() {
