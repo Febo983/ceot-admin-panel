@@ -1500,6 +1500,7 @@ body { background: var(--iv0); color: var(--ink); }
       <button class="adm-sidenav-btn" id="adm-sidenav-totalceot"      onclick="renderTotalCeot()"><i data-lucide="trending-up" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Total CEOT</button>
 <button class="adm-sidenav-btn" id="adm-sidenav-sueldob"       onclick="renderSueldoB()"><i data-lucide="briefcase" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Sueldo B</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-cpsm"         onclick="renderCpsm()"><i data-lucide="landmark" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>CPSM</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-aporteceot"  onclick="renderAporteCeot()"><i data-lucide="percent" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Aporte CEOT</button>
       <div class="adm-sidenav-sep" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
         <span>Accesos</span>
         <button id="btnEditLinks" onclick="toggleEditLinks()" title="Editar links" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:rgba(255,255,255,.35);padding:0 2px">✏</button>
@@ -1959,25 +1960,41 @@ const GASTOS_A = {
 
 // Aporte CEOT — aplica desde Agosto 2026 en adelante
 // Base de cálculo: bruto total (cheques Colón + OSDE + CEM)
-// Socios A (5%): Bruni, Corelich, Deganutti, Labayen, Trivellini
-// Resto socios (20%): De la Colina, Leon, Mazzola, Perlasco, Soule
-// null = porcentaje pendiente de definir
+// Default parejo 15% para todos los socios — editable por profesional desde
+// el panel admin ("Aporte CEOT" en el menú lateral). El override editado se
+// guarda en localStorage (ceot_aporte_pct_override) y pisa este default.
+// FISSER/GUILERA = null (externos, no participan de ningún cheque).
 const APORTE_CEOT_PCT = {
-  "BRUNI":        0.05,
-  "CORELICH":     0.05,
-  "DEGANUTTI":    0.05,
-  "LABAYEN":      0.05,
-  "TRIVELLINI":   0.05,
-  "DE LA COLINA": 0.20,
-  "LEON":         0.20,
-  "MAZZOLA":      0.20,
-  "PERLASCO":     0.20,
-  "SOULE":        0.20,
+  "BRUNI":        0.15,
+  "CORELICH":     0.15,
+  "DEGANUTTI":    0.15,
+  "LABAYEN":      0.15,
+  "TRIVELLINI":   0.15,
+  "DE LA COLINA": 0.15,
+  "LEON":         0.15,
+  "MAZZOLA":      0.15,
+  "PERLASCO":     0.15,
+  "SOULE":        0.15,
   "FISSER":       null,
   "GUILERA":      null,
-  "GARMENDIA":    0.20,
+  "GARMENDIA":    0.15,
 };
 const APORTE_CEOT_DESDE = ["agosto","septiembre","octubre","noviembre","diciembre"]; // desde Agosto 2026 en adelante
+
+// Devuelve el % de Aporte CEOT vigente para un apellido: usa el override
+// editado a mano en el panel admin si existe, si no cae al default de arriba.
+function getAporteCeotPct(apellido) {
+  var def = APORTE_CEOT_PCT[apellido];
+  if (def === null || def === undefined) return def;
+  try {
+    var raw = localStorage.getItem("ceot_aporte_pct_override");
+    if (raw) {
+      var over = JSON.parse(raw);
+      if (over && over[apellido] !== undefined && over[apellido] !== null) return over[apellido];
+    }
+  } catch (e) {}
+  return def;
+}
 
 // Préstamo Casa 14 de julio 2067 — cuota 1 de 48, desde Agosto 2026
 // Grupo B (no pagan de bolsillo): se les descuenta la cuota. Grupo A (pagan de
@@ -2528,7 +2545,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   // Aporte CEOT (desde julio en adelante)
   var periodoConAporteInd = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
   if (periodoConAporteInd) {
-    var pctAp = APORTE_CEOT_PCT[doctor.apellido];
+    var pctAp = getAporteCeotPct(doctor.apellido);
     var osdeValInd = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
     var cmValInd   = (!cmExt.pendiente   && cmExt.val)   ? cmExt.val   : 0;
     var baseAp     = total + osdeValInd + cmValInd;
@@ -2565,7 +2582,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var gaAmt    = gaPP || 0;
   var apAmt    = 0;
   if (periodoConAporteInd) {
-    var pctAp2 = APORTE_CEOT_PCT[doctor.apellido];
+    var pctAp2 = getAporteCeotPct(doctor.apellido);
     if (pctAp2 > 0) apAmt = Math.round((total + osdeForNet + cmForNet) * pctAp2);
   }
   var netoFinal = total + osdeForNet + cmForNet - iibbAmt - cpsmAmt - gaAmt - apAmt - prestamoInd;
@@ -2652,7 +2669,7 @@ function calcularNetoLocal(pid, doc) {
   var ga    = gaT ? Math.round(gaT / 13) : 0;
   // Aporte CEOT — aplica desde Julio 2026; base = Colón + OSDE + CEM
   var periodoConAporte = APORTE_CEOT_DESDE.indexOf(pid) !== -1;
-  var pctAporte  = APORTE_CEOT_PCT[doc.apellido];
+  var pctAporte  = getAporteCeotPct(doc.apellido);
   var baseAporte = colonBruto + osdeVal + cmVal;
   var aporteCeot = (periodoConAporte && pctAporte) ? Math.round(baseAporte * pctAporte) : 0;
   // Préstamo Casa 14 de julio 2067 — grupo B: descuento (+) · grupo A: reintegro (−), desde Agosto 2026
@@ -2997,6 +3014,7 @@ var ADM_HOME_MODULOS = [
   { key:"transferencias",   ico:"arrow-left-right",lbl:"Transferencias",cat:"cat-adm", fn:"renderTransferencias()" },
   { key:"sueldob",          ico:"briefcase",       lbl:"Sueldo B",      cat:"cat-adm", fn:"renderSueldoB()" },
   { key:"cpsm",             ico:"landmark",        lbl:"CPSM",          cat:"cat-fin", fn:"renderCpsm()" },
+  { key:"aporteceot",       ico:"percent",         lbl:"Aporte CEOT",   cat:"cat-fin", fn:"renderAporteCeot()" },
   { key:"accesos",          ico:"link-2",          lbl:"Accesos",       cat:"cat-inf", fn:"renderAccesos(null)" },
   { key:"mensajeswa",       ico:"message-circle",  lbl:"Mensajes WA",   cat:"cat-cli", fn:"" },
 ];
@@ -4576,7 +4594,7 @@ function generarComprobante(periodo) {
       var cmExtPDF = getExtra(periodo, "cm", doctor.apellido);
       var cmInd    = cmExtPDF.val || 0;
       var periodoConAportePDF = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
-      var pctAportePDF   = APORTE_CEOT_PCT[doctor.apellido];
+      var pctAportePDF   = getAporteCeotPct(doctor.apellido);
       var baseAportePDF  = bruto + cmInd;
       var aporteCeotPDF  = (periodoConAportePDF && pctAportePDF) ? Math.round(baseAportePDF * pctAportePDF) : 0;
       var subtot = bruto - iibb - cpsm - gaInd - aporteCeotPDF + cmInd;
@@ -6260,6 +6278,68 @@ function cpsmActualizarFuente() {
   if (fuenteIdx < 0) { fuenteIdx += 12; anioFuente = anio - 1; }
   var fuente = MESES_CPSM[fuenteIdx];
   lbl.textContent = fuente.charAt(0).toUpperCase() + fuente.slice(1) + " " + anioFuente;
+}
+
+// ══════ APORTE CEOT — edición de porcentajes por profesional ═════
+function renderAporteCeot() {
+  cerrarAdmSidenav();
+  admDesactivarSidebar();
+  var btn = document.getElementById("adm-sidenav-aporteceot");
+  if (btn) btn.className = "adm-sidenav-btn active";
+
+  var socios = DOCTORES.filter(function(d) { return APORTE_CEOT_PCT[d.apellido] !== null; });
+
+  var rows = socios.map(function(d) {
+    var pct = getAporteCeotPct(d.apellido);
+    var pctInput = (pct === null || pct === undefined) ? "" : Math.round(pct * 1000) / 10;
+    return '<tr>'
+      + '<td>' + d.nombre + '</td>'
+      + '<td><input type="number" step="0.1" min="0" max="100" data-apellido="' + d.apellido + '" '
+      +   'class="aporte-pct-input" value="' + pctInput + '" '
+      +   'style="width:80px;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-size:0.9rem;font-family:inherit;text-align:right"> %</td>'
+      + '</tr>';
+  }).join("");
+
+  var html = '<div style="padding:16px">'
+    + '<div class="cpsm-header">'
+    +   '<div><div class="cpsm-title">📐 Aporte CEOT — porcentajes</div>'
+    +   '<div class="cpsm-subtitle">Default 15% parejo desde Agosto 2026 · editable por profesional</div></div>'
+    + '</div>'
+    + '<table class="cpsm-tabla">'
+    +   '<thead><tr><th>Profesional</th><th>% Aporte</th></tr></thead>'
+    +   '<tbody>' + rows + '</tbody>'
+    + '</table>'
+    + '<div class="cpsm-btn-row">'
+    +   '<button class="cpsm-calc-btn" onclick="actionFeedback(this); guardarAporteCeotPct()">Guardar</button>'
+    +   '<button class="cpsm-dl-btn" style="display:inline-block" onclick="actionFeedback(this); restaurarAporteCeotPct()">Restaurar 15% default</button>'
+    + '</div>'
+    + '<div id="aporte-ceot-status" style="margin-top:10px;font-size:0.8rem;color:rgba(32,36,31,.55)"></div>'
+    + '</div>';
+
+  document.getElementById("adm-content").innerHTML = html;
+  var hb = document.getElementById("admHomeBtn");
+  if (hb) hb.style.display = "none";
+}
+
+function guardarAporteCeotPct() {
+  var inputs = document.querySelectorAll(".aporte-pct-input");
+  var override = {};
+  inputs.forEach(function(inp) {
+    var v = parseFloat(inp.value);
+    if (!isNaN(v) && v >= 0) override[inp.dataset.apellido] = v / 100;
+  });
+  try {
+    localStorage.setItem("ceot_aporte_pct_override", JSON.stringify(override));
+    var st = document.getElementById("aporte-ceot-status");
+    if (st) st.textContent = "✓ Porcentajes guardados. Se aplican desde Agosto 2026 en adelante.";
+  } catch (e) {}
+}
+
+function restaurarAporteCeotPct() {
+  try { localStorage.removeItem("ceot_aporte_pct_override"); } catch (e) {}
+  renderAporteCeot();
+  var st = document.getElementById("aporte-ceot-status");
+  if (st) st.textContent = "✓ Restaurado al default parejo de 15%.";
 }
 </script>
 
