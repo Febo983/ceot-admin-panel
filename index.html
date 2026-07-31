@@ -2536,6 +2536,17 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var osdeExt = getExtra(periodo, "osde", doctor.apellido);
   var cmExt   = getExtra(periodo, "cm",   doctor.apellido);
 
+  // Retención Ganancias y Préstamo Casa — calculados temprano para poder anotarlos
+  // en cada cheque individual (ver forEach de abajo), además de las líneas resumen
+  // que ya se arman más abajo en esta misma función.
+  var pctApCheq = APORTE_CEOT_DESDE.indexOf(periodo) !== -1 ? getAporteCeotPctPeriodo(periodo, doctor.apellido) : null;
+  var prestamoCuotaCheq = PRESTAMO_CASA_CUOTA[periodo] || null;
+  var prestamoIndCheq = 0;
+  if (prestamoCuotaCheq) {
+    if (PRESTAMO_CASA_SOCIOS.indexOf(doctor.apellido) !== -1) prestamoIndCheq = PRESTAMO_CASA_MONTO;
+    else if (PRESTAMO_CASA_SOCIOS_A.indexOf(doctor.apellido) !== -1) prestamoIndCheq = -PRESTAMO_CASA_MONTO_CREDITO;
+  }
+
   var html = '<div class="period-total">'
     + '<div class="pt-left">'
     + '<div class="pt-lbl">' + mes + '</div>'
@@ -2547,10 +2558,19 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   vals.forEach(function(monto, idx) {
     var fecha = fechas[idx];
     var acred = chequeAcreditado(fecha);
+    var anot = '';
+    if (idx === 0 && prestamoIndCheq) {
+      anot += prestamoIndCheq > 0
+        ? '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(prestamoIndCheq) + ' préstamo</div>'
+        : '<div style="font-size:.62rem;font-weight:600;color:#166534">+' + fmt(-prestamoIndCheq) + ' reintegro</div>';
+    }
+    if (pctApCheq) {
+      anot += '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(Math.round(monto * pctApCheq)) + ' ret. (' + (pctApCheq*100) + '%)</div>';
+    }
     html += '<div class="cl-row' + (acred ? ' cl-acreditado' : ' cl-pendiente') + '">'
       + '<span class="cl-date">' + fecha + '</span>'
       + '<span class="cl-lbl">Cheque ' + (idx+1) + (acred ? ' <span class="cl-status-icon">✓</span>' : '') + '</span>'
-      + '<span class="cl-amt">' + fmt(monto) + '</span>'
+      + '<span class="cl-amt">' + fmt(monto) + anot + '</span>'
       + '</div>';
   });
   // OSDE — siempre presente
@@ -7010,9 +7030,15 @@ function renderAporteDetalle(mes) {
     var items = retencionPorAcreditacion(c);
     for (var i = 1; i <= 5; i++) {
       var it = items.filter(function(x) { return x.label.indexOf("Cheque " + i) === 0; })[0];
+      var prestamoAnotCheq = '';
+      if (i === 1 && c.prestamoCasa) {
+        prestamoAnotCheq = c.prestamoCasa > 0
+          ? '<div style="font-size:.58rem;color:#b13a2c">(-' + fmt(c.prestamoCasa) + ' préstamo ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</div>'
+          : '<div style="font-size:.58rem;color:#166534">(+' + fmt(-c.prestamoCasa) + ' reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</div>';
+      }
       html += '<td>' + (it
-        ? '−' + fmt(it.retencion) + ' <span style="font-size:.58rem;color:rgba(32,36,31,.4)">de ' + fmt(it.bruto) + '</span>'
-        : '<span class="adm-pend">—</span>') + '</td>';
+        ? '−' + fmt(it.retencion) + ' <span style="font-size:.58rem;color:rgba(32,36,31,.4)">de ' + fmt(it.bruto) + '</span>' + prestamoAnotCheq
+        : ('<span class="adm-pend">—</span>' + prestamoAnotCheq)) + '</td>';
     }
     var osdeIt = items.filter(function(x) { return x.label === "OSDE"; })[0];
     var cmIt   = items.filter(function(x) { return x.label === "CEM"; })[0];
