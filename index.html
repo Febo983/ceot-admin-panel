@@ -1486,6 +1486,10 @@ body { background: var(--iv0); color: var(--ink); }
       <button class="adm-hamburger" id="admHamburgerBtn" onclick="toggleAdmSidenav()" title="Menú">☰</button>
       <button class="btn-logout" id="admHomeBtn" onclick="renderAdmHome()" style="display:none">← Inicio</button>
       <button class="btn-importar" id="btnImportar" onclick="abrirImportModal()"><i data-lucide="upload" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px" stroke-width="2"></i>Importar</button>
+      <button class="btn-importar" id="btnChecklist" onclick="renderChecklist()" style="position:relative">
+        <i data-lucide="list-checks" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px" stroke-width="2"></i>Checklist
+        <span id="checklistBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#b13a2c;color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:999px;align-items:center;justify-content:center;padding:0 3px;line-height:1"></span>
+      </button>
       <button class="btn-refresh" id="adminRefreshBtn" title="Actualizar datos">↻</button>
       <button class="btn-logout" id="adminLogoutBtn">Salir ✕</button>
     </div>
@@ -3462,6 +3466,114 @@ function renderAdmHome() {
   admHomeRenderResults();
 }
 
+// ══════ CHECKLIST MENSUAL ═══════════════════════════════════════
+// Rutina administrativa fija (01-10 / 10-20 / 20-30 de cada mes). El estado de
+// tildado se guarda en localStorage por año-mes, así se reinicia solo cada mes.
+
+var CHECKLIST_RANGOS = {
+  r1: { label: "Del 01 al 10", diaHasta: 10 },
+  r2: { label: "Del 10 al 20", diaHasta: 20 },
+  r3: { label: "Del 20 al 30", diaHasta: 31 }
+};
+
+var CHECKLIST_ITEMS = [
+  { id:"r1-1", rango:"r1", texto:"Retiro efectivo del banco (alquiler, Sueldos B, caja chica y servicios) desde la CC 094-351474/7" },
+  { id:"r1-2", rango:"r1", texto:"Cargo las horas extras en el panel admin (según Sheet), emito los recibos de Sueldos B" },
+  { id:"r1-3", rango:"r1", texto:"Pago Sueldos, cargas y sindicatos (el estudio me envía todo — Lorena)" },
+  { id:"r1-4", rango:"r1", texto:"Cargo en el panel los archivos CSV que descargo de la página de CEM, transfiero lo que corresponda a los profesionales" },
+  { id:"r1-5", rango:"r1", texto:"Descargo servicios para pagar en efectivo / Pago Fácil" },
+  { id:"r1-6", rango:"r1", texto:"Transfiero según facturas recibidas los importes a los distintos proveedores" },
+  { id:"r1-7", rango:"r1", texto:"Los miércoles reviso Débitos en la oficina de Convenios/Facturación" },
+  { id:"r1-8", rango:"r1", texto:"Transfiero en concepto de dividendos y sueldos honorarios médicos" },
+  { id:"r1-9", rango:"r1", texto:"Depósito de cheque semanal" },
+  { id:"r1-10", rango:"r1", texto:"Tareas asignadas por profesionales" },
+
+  { id:"r2-1", rango:"r2", texto:"Valores convenio (actualizaciones)" },
+  { id:"r2-2", rango:"r2", texto:"Transfiero en concepto de dividendos honorarios médicos — en el 4to cheque descuento IIBB (si correspondiese)" },
+  { id:"r2-3", rango:"r2", texto:"Depósito de cheque semanal" },
+  { id:"r2-4", rango:"r2", texto:"Tareas asignadas por profesionales" },
+  { id:"r2-5", rango:"r2", texto:"Actualizo listado de débitos" },
+  { id:"r2-6", rango:"r2", texto:"CC Colón (factura a la Clínica) de CEOT y de Garmendia / Fisser y Guilera (Elizabeth)" },
+  { id:"r2-7", rango:"r2", texto:"Desde el Panel Admin, subo archivos CEOT + ART + DLA y proceso para obtener los importes a distribuir en el cheque de OSDE y en los diferidos" },
+
+  { id:"r3-1", rango:"r3", texto:"Envío información de horarios e inasistencias al estudio" },
+  { id:"r3-2", rango:"r3", texto:"Desde el panel descargo lo que corresponde pagar de CPSM y lo subo al portal de ellos" },
+  { id:"r3-3", rango:"r3", texto:"Transfiero en concepto de dividendos honorarios médicos — en el 5to cheque descuento CPSM" },
+  { id:"r3-4", rango:"r3", texto:"CC CEM y emito la factura correspondiente" },
+  { id:"r3-5", rango:"r3", texto:"Una vez cargadas todas las acreditaciones y calculado el % que guardamos para retenciones (después de la acreditación del cheque de OSDE)" }
+];
+
+function checklistMesKey(d) {
+  d = d || new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+function checklistCargarEstado() {
+  try { return JSON.parse(localStorage.getItem("ceot_checklist_done") || "{}"); }
+  catch (e) { return {}; }
+}
+function checklistItemDone(itemId) {
+  var estado = checklistCargarEstado();
+  var mk = checklistMesKey();
+  return !!(estado[mk] && estado[mk][itemId]);
+}
+function toggleChecklistItem(itemId) {
+  var estado = checklistCargarEstado();
+  var mk = checklistMesKey();
+  if (!estado[mk]) estado[mk] = {};
+  estado[mk][itemId] = !estado[mk][itemId];
+  try { localStorage.setItem("ceot_checklist_done", JSON.stringify(estado)); } catch (e) {}
+  renderChecklist();
+  checklistActualizarBadge();
+}
+function checklistVencidos() {
+  var dia = new Date().getDate();
+  return CHECKLIST_ITEMS.filter(function(it) {
+    return dia > CHECKLIST_RANGOS[it.rango].diaHasta && !checklistItemDone(it.id);
+  });
+}
+function checklistActualizarBadge() {
+  var badge = document.getElementById("checklistBadge");
+  if (!badge) return;
+  var n = checklistVencidos().length;
+  badge.style.display = n > 0 ? "flex" : "none";
+  badge.textContent = n;
+}
+
+function renderChecklist() {
+  cerrarAdmSidenav();
+  admDesactivarSidebar();
+  ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+    var t = document.getElementById("adm-tab-" + p);
+    if (t) t.className = "adm-tab";
+  });
+
+  var dia = new Date().getDate();
+  var html = '<div class="adm-sec-title">Checklist mensual</div>'
+    + '<div style="font-size:.72rem;color:rgba(32,36,31,.45);margin:-6px 0 14px">Se reinicia solo cada mes — lo tildado acá no afecta lo tildado el mes pasado.</div>';
+
+  Object.keys(CHECKLIST_RANGOS).forEach(function(rk) {
+    var r = CHECKLIST_RANGOS[rk];
+    var vencidoRango = dia > r.diaHasta;
+    var items = CHECKLIST_ITEMS.filter(function(it) { return it.rango === rk; });
+    html += '<div style="margin-bottom:18px">'
+      + '<div style="background:#1f3a2e;color:#fff;font-weight:700;font-size:.85rem;padding:8px 12px;border-radius:8px 8px 0 0">' + r.label + ' de cada mes</div>'
+      + '<div style="border:1px solid rgba(32,36,31,.12);border-top:none;border-radius:0 0 8px 8px;overflow:hidden">';
+    items.forEach(function(it) {
+      var done = checklistItemDone(it.id);
+      var atrasada = vencidoRango && !done;
+      html += '<label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(32,36,31,.08);cursor:pointer;'
+        + (atrasada ? 'background:#fef2f2' : '') + '">'
+        + '<input type="checkbox" ' + (done ? 'checked' : '') + ' onchange="toggleChecklistItem(\'' + it.id + '\')" style="margin-top:3px;flex-shrink:0">'
+        + '<span style="flex:1;font-size:.85rem;' + (done ? 'text-decoration:line-through;color:rgba(32,36,31,.4)' : 'color:#20241f') + '">' + it.texto + '</span>'
+        + (atrasada ? '<span style="font-size:.65rem;color:#b13a2c;font-weight:700;white-space:nowrap;flex-shrink:0">⚠ atrasada</span>' : '')
+        + '</label>';
+    });
+    html += '</div></div>';
+  });
+
+  document.getElementById("adm-content").innerHTML = html;
+}
+
 // ══════ PENDIENTES ADMIN ═══════════════════════════════════════
 
 function renderPendientes() {
@@ -4390,6 +4502,7 @@ function handleLogin() {
     accCargarCustom();
     renderSidenavLinks();
     renderAdmHome();
+    checklistActualizarBadge();
     document.getElementById("usernameInput").value = "";
     document.getElementById("passwordInput").value = "";
     return;
