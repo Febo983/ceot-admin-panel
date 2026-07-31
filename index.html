@@ -1486,9 +1486,8 @@ body { background: var(--iv0); color: var(--ink); }
       <button class="adm-hamburger" id="admHamburgerBtn" onclick="toggleAdmSidenav()" title="Menú">☰</button>
       <button class="btn-logout" id="admHomeBtn" onclick="renderAdmHome()" style="display:none">← Inicio</button>
       <button class="btn-importar" id="btnImportar" onclick="abrirImportModal()"><i data-lucide="upload" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px" stroke-width="2"></i>Importar</button>
-      <button class="btn-importar" id="btnChecklist" onclick="renderChecklist()" style="position:relative">
-        <i data-lucide="list-checks" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px" stroke-width="2"></i>Checklist
-        <span id="checklistBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#b13a2c;color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:999px;align-items:center;justify-content:center;padding:0 3px;line-height:1"></span>
+      <button id="btnChecklist" onclick="renderChecklist()" style="border:none;background:none;padding:0;font-family:inherit;cursor:pointer">
+        <span id="checklistBtnInner" style="display:flex;align-items:center;gap:7px"></span>
       </button>
       <button class="btn-refresh" id="adminRefreshBtn" title="Actualizar datos">↻</button>
       <button class="btn-logout" id="adminLogoutBtn">Salir ✕</button>
@@ -3341,6 +3340,7 @@ function renderAdmHome() {
   homeEditMode = false;
   admHomeCargarModLabels();
   admHomeCargarTema();
+  checklistActualizarBadge();
   var retro = admHomeTheme === "retro";
 
   var h = new Date().getHours();
@@ -3531,12 +3531,38 @@ function checklistVencidos() {
     return dia > CHECKLIST_RANGOS[it.rango].diaHasta && !checklistItemDone(it.id);
   });
 }
+// Botón "Checklist" del header — aro de progreso (hechas/total del mes), con el
+// mismo lenguaje visual del tema Home activo (papel/verde vs. pixel/retro). El
+// aro se pone rojo si hay tareas atrasadas — es el "aviso" pedido.
 function checklistActualizarBadge() {
-  var badge = document.getElementById("checklistBadge");
-  if (!badge) return;
-  var n = checklistVencidos().length;
-  badge.style.display = n > 0 ? "flex" : "none";
-  badge.textContent = n;
+  var btn = document.getElementById("btnChecklist");
+  var inner = document.getElementById("checklistBtnInner");
+  if (!btn || !inner) return;
+
+  var total = CHECKLIST_ITEMS.length;
+  var done = CHECKLIST_ITEMS.filter(function(it) { return checklistItemDone(it.id); }).length;
+  var vencidos = checklistVencidos().length;
+  var pct = total ? done / total : 0;
+  var r = 7, circ = 2 * Math.PI * r;
+  var offset = circ * (1 - pct);
+
+  var retro = (typeof admHomeTheme !== "undefined") && admHomeTheme === "retro";
+  var ringColor  = vencidos > 0 ? (retro ? "#e05252" : "#b13a2c") : (retro ? "#2f7de0" : "#1f3a2e");
+  var trackColor = retro ? "rgba(15,28,40,.18)" : "rgba(31,58,46,.18)";
+  var textColor  = retro ? "#1c2b3a" : "#1f3a2e";
+
+  if (retro) {
+    btn.style.cssText = "background:#fffaf1;color:" + textColor + ";border:2px solid #0f1c28;border-radius:8px;padding:5px 11px;font-weight:700;box-shadow:0 2px 0 #0f1c28;font-family:inherit;cursor:pointer";
+  } else {
+    btn.style.cssText = "background:#fbf8f0;color:" + textColor + ";border:none;border-radius:8px;padding:6px 12px;font-weight:500;font-family:inherit;cursor:pointer";
+  }
+
+  inner.innerHTML =
+    '<svg width="18" height="18" viewBox="0 0 18 18">' +
+      '<circle cx="9" cy="9" r="' + r + '" fill="none" stroke="' + trackColor + '" stroke-width="3"></circle>' +
+      '<circle cx="9" cy="9" r="' + r + '" fill="none" stroke="' + ringColor + '" stroke-width="3" stroke-dasharray="' + circ.toFixed(2) + '" stroke-dashoffset="' + offset.toFixed(2) + '" stroke-linecap="round" transform="rotate(-90 9 9)"></circle>' +
+    '</svg>' +
+    '<span style="font-size:12px">Checklist · ' + done + '/' + total + '</span>';
 }
 
 function renderChecklist() {
