@@ -2567,6 +2567,10 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     if (pctApCheq) {
       anot += '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(Math.round(monto * pctApCheq)) + ' ret. (' + (pctApCheq*100) + '%)</div>';
     }
+    if ((idx === 0 && prestamoIndCheq) || pctApCheq) {
+      var netoCheque = monto - (idx === 0 ? prestamoIndCheq : 0) - (pctApCheq ? Math.round(monto * pctApCheq) : 0);
+      anot += '<div style="font-size:.68rem;font-weight:700;color:#1f3a2e;border-top:1px dashed rgba(32,36,31,.2);margin-top:2px;padding-top:2px">= ' + fmt(netoCheque) + '</div>';
+    }
     html += '<div class="cl-row' + (acred ? ' cl-acreditado' : ' cl-pendiente') + '">'
       + '<span class="cl-date">' + fecha + '</span>'
       + '<span class="cl-lbl">Cheque ' + (idx+1) + (acred ? ' <span class="cl-status-icon">✓</span>' : '') + '</span>'
@@ -7031,13 +7035,19 @@ function renderAporteDetalle(mes) {
     for (var i = 1; i <= 5; i++) {
       var it = items.filter(function(x) { return x.label.indexOf("Cheque " + i) === 0; })[0];
       var prestamoAnotCheq = '';
+      var prestamoCheque1 = (i === 1) ? (c.prestamoCasa || 0) : 0;
       if (i === 1 && c.prestamoCasa) {
         prestamoAnotCheq = c.prestamoCasa > 0
           ? '<div style="font-size:.58rem;color:#b13a2c">(-' + fmt(c.prestamoCasa) + ' préstamo ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</div>'
           : '<div style="font-size:.58rem;color:#166534">(+' + fmt(-c.prestamoCasa) + ' reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</div>';
       }
+      var netoAnotCheq = '';
+      if (it || prestamoCheque1) {
+        var netoCheq = (it ? it.bruto : 0) - (it ? it.retencion : 0) - prestamoCheque1;
+        netoAnotCheq = '<div style="font-size:.62rem;font-weight:700;color:#1f3a2e;border-top:1px dashed rgba(32,36,31,.2);margin-top:2px;padding-top:2px">= ' + fmt(netoCheq) + '</div>';
+      }
       html += '<td>' + (it
-        ? '−' + fmt(it.retencion) + ' <span style="font-size:.58rem;color:rgba(32,36,31,.4)">de ' + fmt(it.bruto) + '</span>' + prestamoAnotCheq
+        ? '−' + fmt(it.retencion) + ' <span style="font-size:.58rem;color:rgba(32,36,31,.4)">de ' + fmt(it.bruto) + '</span>' + prestamoAnotCheq + netoAnotCheq
         : ('<span class="adm-pend">—</span>' + prestamoAnotCheq)) + '</td>';
     }
     var osdeIt = items.filter(function(x) { return x.label === "OSDE"; })[0];
