@@ -2678,6 +2678,8 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
 function calcularNetoLocal(pid, doc) {
   var rawMap   = { febrero:FEBRERO_RAW, marzo:MARZO_RAW, abril:ABRIL_RAW, mayo:MAYO_RAW, junio:JUNIO_RAW, julio:JULIO_RAW, agosto:AGOSTO_RAW,
                    septiembre:SEPTIEMBRE_RAW, octubre:OCTUBRE_RAW, noviembre:NOVIEMBRE_RAW, diciembre:DICIEMBRE_RAW };
+  var fechasMap = { febrero:FEBRERO_FECHAS, marzo:MARZO_FECHAS, abril:ABRIL_FECHAS, mayo:MAYO_FECHAS, junio:JUNIO_FECHAS, julio:JULIO_FECHAS, agosto:AGOSTO_FECHAS,
+                    septiembre:SEPTIEMBRE_FECHAS, octubre:OCTUBRE_FECHAS, noviembre:NOVIEMBRE_FECHAS, diciembre:DICIEMBRE_FECHAS };
   var labelMap = { febrero:"Febrero 2026", marzo:"Marzo 2026", abril:"Abril 2026", mayo:"Mayo 2026", junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026",
                    septiembre:"Septiembre 2026", octubre:"Octubre 2026", noviembre:"Noviembre 2026", diciembre:"Diciembre 2026" };
   var raw = rawMap[pid];
@@ -2694,6 +2696,10 @@ function calcularNetoLocal(pid, doc) {
   if (!row) return null;
 
   var colonBruto = (row.f1||0)+(row.f2||0)+(row.f3||0)+(row.f4||0)+(row.f5||0);
+  var fechas = fechasMap[pid] || [];
+  var colonCheques = [row.f1||0, row.f2||0, row.f3||0, row.f4||0, row.f5||0].map(function(monto, i) {
+    return { fecha: fechas[i] || null, monto: monto };
+  });
 
   var osdeExt = getExtra(pid, "osde", doc.apellido);
   var cmExt   = getExtra(pid, "cm",   doc.apellido);
@@ -2734,12 +2740,31 @@ function calcularNetoLocal(pid, doc) {
 
   return {
     label: labelMap[pid] || pid,
-    bruto: bruto, colonBruto: colonBruto, osde: osdeVal,
+    bruto: bruto, colonBruto: colonBruto, colonCheques: colonCheques, osde: osdeVal,
     iibb: iibb, cpsm: cpsm,
     ga: ga, cm: cmVal, aporteCeot: aporteCeot, pctAporte: pctAporte,
     prestamoCasa: prestamoCasa, prestamoCasaCuota: prestamoCasaCuota,
     neto: neto, pendiente: hayPendiente, osdePendiente: osdeExt.pendiente, cmPendiente: cmExt.pendiente, esLab: esLab
   };
+}
+
+// Desglosa la Retención Ganancias por cada acreditación individual (los cheques
+// Colón con fecha + OSDE + CEM) en vez de un monto único — mismo % aplicado a
+// cada uno; la suma de "retencion" da exactamente c.aporteCeot.
+function retencionPorAcreditacion(c) {
+  if (!c || !c.pctAporte) return [];
+  var items = [];
+  (c.colonCheques || []).forEach(function(chq, i) {
+    if (chq.monto > 0) {
+      items.push({
+        label: "Cheque " + (i + 1) + (chq.fecha ? " (" + chq.fecha + ")" : ""),
+        bruto: chq.monto, retencion: Math.round(chq.monto * c.pctAporte)
+      });
+    }
+  });
+  if (c.osde > 0) items.push({ label: "OSDE", bruto: c.osde, retencion: Math.round(c.osde * c.pctAporte) });
+  if (c.cm > 0)   items.push({ label: "CEM",  bruto: c.cm,   retencion: Math.round(c.cm * c.pctAporte) });
+  return items;
 }
 
 function renderHistorial(doctor) {
@@ -2811,6 +2836,12 @@ function renderHistorial(doctor) {
     var aporteHtml = '';
     if (c.aporteCeot > 0) {
       aporteHtml = '<div class="hist-dline"><span class="hist-dline-lbl">Retención Ganancias (' + (c.pctAporte*100) + '%)</span><span class="hist-dline-val neg">−' + fmt(c.aporteCeot) + '</span></div>';
+      var retItems = retencionPorAcreditacion(c);
+      if (retItems.length > 1) {
+        aporteHtml += retItems.map(function(it) {
+          return '<div class="hist-dline" style="padding-left:14px;font-size:.72rem;opacity:.7"><span class="hist-dline-lbl">· ' + it.label + '</span><span class="hist-dline-val neg">−' + fmt(it.retencion) + '</span></div>';
+        }).join('');
+      }
     } else if (APORTE_CEOT_DESDE.indexOf(r.pid) !== -1 && c.pctAporte === null) {
       aporteHtml = '<div class="hist-dline"><span class="hist-dline-lbl">Retención Ganancias</span><span class="hist-dline-val" style="color:rgba(32,36,31,.35)">pendiente</span></div>';
     }
@@ -4390,7 +4421,6 @@ function renderAdminPanel(periodo) {
   html += '<th>OSDE' + (hayOsdePend ? ' <span class="adm-est-badge">pend</span>' : '') + '</th>';
   if (tieneCm) html += '<th>CEM' + (hayCmPend ? ' <span class="adm-est-badge">pend</span>' : '') + '</th>';
   html += '<th>IIBB</th><th>CPSM</th><th>Gtos A</th>';
-  if (tienePrestamo) html += '<th>Préstamo Casa</th>';
   if (tieneAporte) html += '<th>Ret. Gan.</th>';
   html += '<th>NETO</th>';
   var prevPeriodoMap = {junio:"mayo",julio:"junio",agosto:"julio",septiembre:"agosto",octubre:"septiembre",noviembre:"octubre",diciembre:"noviembre"};
@@ -4410,7 +4440,13 @@ function renderAdminPanel(periodo) {
     var c = r.calc;
     html += '<tr>';
     html += '<td>' + r.doc.apellido + (c.pendiente ? ' <span class="adm-est-badge">est</span>' : '') + '</td>';
-    html += '<td>' + fmt(c.colonBruto) + '</td>';
+    var prestamoAnot = '';
+    if (tienePrestamo && c.prestamoCasa > 0) {
+      prestamoAnot = ' <span style="font-size:.58rem;color:#b13a2c">(-' + fmt(c.prestamoCasa) + ' · cuota ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span>';
+    } else if (tienePrestamo && c.prestamoCasa < 0) {
+      prestamoAnot = ' <span style="font-size:.58rem;color:#166534">(+' + fmt(-c.prestamoCasa) + ' · reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span>';
+    }
+    html += '<td>' + fmt(c.colonBruto) + prestamoAnot + '</td>';
     html += '<td>' + (c.osdePendiente
       ? '<span class="adm-pend" style="font-size:.68rem">pendiente</span>'
       : (c.osde ? fmt(c.osde) : '<span class="adm-pend">—</span>')) + '</td>';
@@ -4420,15 +4456,6 @@ function renderAdminPanel(periodo) {
     html += '<td class="adm-neg">−' + fmt(c.iibb) + '</td>';
     html += '<td class="adm-neg">' + (c.esLab ? '<span class="adm-exento">EXENTO</span>' : '−' + fmt(c.cpsm)) + '</td>';
     html += '<td class="adm-neg">' + (c.ga ? '−' + fmt(c.ga) : '<span class="adm-pend">—</span>') + '</td>';
-    if (tienePrestamo) {
-      html += '<td class="' + (c.prestamoCasa < 0 ? 'adm-pos' : 'adm-neg') + '">'
-        + (c.prestamoCasa > 0
-            ? '−' + fmt(c.prestamoCasa) + ' <span style="font-size:.58rem;color:#b13a2c">' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + '</span>'
-            : c.prestamoCasa < 0
-            ? '+' + fmt(-c.prestamoCasa) + ' <span style="font-size:.58rem;color:#166534">' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + '</span>'
-            : '<span class="adm-pend">—</span>')
-        + '</td>';
-    }
     if (tieneAporte) {
       html += '<td class="adm-neg">'
         + (c.aporteCeot
@@ -4454,13 +4481,18 @@ function renderAdminPanel(periodo) {
   // Fila totales
   html += '<tr class="adm-totals">';
   html += '<td>TOTAL</td>';
-  html += '<td>' + fmt(totColon) + '</td>';
+  var totPrestamoAnot = '';
+  if (tienePrestamo && totPrestamoNeto !== 0) {
+    totPrestamoAnot = totPrestamoNeto > 0
+      ? ' <span style="font-size:.58rem;color:#b13a2c">(-' + fmt(totPrestamoNeto) + ' préstamo neto)</span>'
+      : ' <span style="font-size:.58rem;color:#166534">(+' + fmt(-totPrestamoNeto) + ' préstamo neto)</span>';
+  }
+  html += '<td>' + fmt(totColon) + totPrestamoAnot + '</td>';
   html += '<td>' + (hayOsdePend ? '<span class="adm-pend">pend</span>' : fmt(totOsde)) + '</td>';
   if (tieneCm) html += '<td>' + (hayCmPend && totCM === 0 ? '<span class="adm-pend">pend</span>' : '+' + fmt(totCM)) + '</td>';
   html += '<td>−' + fmt(totIIBB) + '</td>';
   html += '<td>−' + fmt(totCPSM) + '</td>';
   html += '<td>−' + fmt(totGA) + '</td>';
-  if (tienePrestamo) html += '<td>' + (totPrestamoNeto >= 0 ? '−' + fmt(totPrestamoNeto) : '+' + fmt(-totPrestamoNeto)) + '</td>';
   if (tieneAporte) html += '<td>−' + fmt(totAporte) + '</td>';
   html += '<td>' + fmt(totNeto) + '</td>';
   if (hayDelta) html += '<td></td>';
@@ -6928,6 +6960,14 @@ function renderAporteCeot() {
     + '<div id="aporte-links-status" style="margin-top:10px;font-size:0.8rem;color:rgba(32,36,31,.55)"></div>'
     + linksVista;
 
+  // ── Detalle por acreditación: cuánto retener de cada cheque puntual ──
+  var detalleHtml = '<div class="adm-sec-title" style="margin-top:20px">Detalle por acreditación — cuánto retener de cada cheque</div>'
+    + '<div style="margin-bottom:8px"><select id="aporte-mes-sel" class="imp-select" style="width:auto" onchange="renderAporteDetalle(this.value)">'
+    + APORTE_CEOT_DESDE.map(function(p) { return '<option value="' + p + '">' + p.charAt(0).toUpperCase() + p.slice(1) + '</option>'; }).join('')
+    + '</select></div>'
+    + '<div id="aporte-detalle-tbl"></div>'
+    + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:6px 2px 0 2px">⚑ Mismo % aplicado a cada cheque individual (Colón 1-5, OSDE, CEM) — la suma coincide con el total retenido del profesional para ese mes.</div>';
+
   var html = '<div style="padding:16px">'
     + '<div class="cpsm-header">'
     +   '<div><div class="cpsm-title">📐 Retención Ganancias — porcentajes</div>'
@@ -6940,10 +6980,49 @@ function renderAporteCeot() {
     + '</div>'
     + '<div id="aporte-ceot-status" style="margin-top:10px;font-size:0.8rem;color:rgba(32,36,31,.55)"></div>'
     + regHtml
+    + detalleHtml
     + linksHtml
     + '</div>';
 
   document.getElementById("adm-content").innerHTML = html;
+  renderAporteDetalle(APORTE_CEOT_DESDE[0]);
+}
+
+function renderAporteDetalle(mes) {
+  var tbl = document.getElementById("aporte-detalle-tbl");
+  if (!tbl) return;
+  var sel = document.getElementById("aporte-mes-sel");
+  if (sel && mes) sel.value = mes;
+  mes = mes || (sel ? sel.value : APORTE_CEOT_DESDE[0]);
+
+  var socios = DOCTORES.filter(function(d) { return APORTE_CEOT_PCT[d.apellido] !== null; });
+  var html = '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Profesional</th>'
+    + '<th>Cheque 1</th><th>Cheque 2</th><th>Cheque 3</th><th>Cheque 4</th><th>Cheque 5</th>'
+    + '<th>OSDE</th><th>CEM</th><th>Total retenido</th></tr></thead><tbody>';
+
+  socios.forEach(function(d) {
+    var c = calcularNetoLocal(mes, d);
+    html += '<tr><td>' + d.apellido + '</td>';
+    if (!c || !c.pctAporte) {
+      html += '<td colspan="7"><span class="adm-pend" style="font-size:.68rem">' + (c ? 'sin % asignado' : 'sin datos cargados') + '</span></td></tr>';
+      return;
+    }
+    var items = retencionPorAcreditacion(c);
+    for (var i = 1; i <= 5; i++) {
+      var it = items.filter(function(x) { return x.label.indexOf("Cheque " + i) === 0; })[0];
+      html += '<td>' + (it
+        ? '−' + fmt(it.retencion) + ' <span style="font-size:.58rem;color:rgba(32,36,31,.4)">de ' + fmt(it.bruto) + '</span>'
+        : '<span class="adm-pend">—</span>') + '</td>';
+    }
+    var osdeIt = items.filter(function(x) { return x.label === "OSDE"; })[0];
+    var cmIt   = items.filter(function(x) { return x.label === "CEM"; })[0];
+    html += '<td>' + (osdeIt ? '−' + fmt(osdeIt.retencion) : '<span class="adm-pend">—</span>') + '</td>';
+    html += '<td>' + (cmIt   ? '−' + fmt(cmIt.retencion)   : '<span class="adm-pend">—</span>') + '</td>';
+    html += '<td style="font-weight:700">' + (c.aporteCeot ? '−' + fmt(c.aporteCeot) : '<span class="adm-pend">—</span>') + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  tbl.innerHTML = html;
 }
 
 function escAttr(s) {
