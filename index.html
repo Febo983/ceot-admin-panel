@@ -5597,6 +5597,17 @@ async function cargarEnSheet(tipo) {
   }
 }
 
+// Formato B (CSV de CEM) trae el importe ya escalado con "." como separador decimal
+// (ej. "83241.00", "397156.14") — NO en centavos como el Formato A. Si SheetJS lo lee
+// como number, se usa tal cual; si llega como string, se parsea como decimal con punto
+// (no con la convención argentina de parsearMontoImp, que asumiría "." como miles).
+function parsearImporteCM(v) {
+  if (typeof v === 'number') return v;
+  if (!v) return 0;
+  var s = String(v).trim().replace(/[^0-9.\-]/g, '');
+  return parseFloat(s) || 0;
+}
+
 async function procesarCentroMedico() {
   var files = document.getElementById('fileCM').files;
   var errEl = document.getElementById('impCMError');
@@ -5627,19 +5638,31 @@ async function procesarCentroMedico() {
         var profB = MAPE_MAP[mapeB];
         if (profB) {
           var vB = row[9];
-          var valB = typeof vB === 'number' ? vB / 100 : parsearMontoImp(vB);
+          var valB = parsearImporteCM(vB);
           totales[profB] += valB;
         }
       }
     }
 
-    impCMTotales = totales;
-    var total = SOCIOS_IMP.reduce(function(s,k){ return s+(totales[k]||0); }, 0);
+    // Total real depositado (opcional): si se carga, se usa como el "cheque" real y se
+    // prorratea entre los profesionales según el % que cada uno sacó de los CSV — mismo
+    // criterio que ya se usa para el cheque OSDE/Colón (el archivo da el %, el depósito
+    // real da el monto a repartir).
+    var totalCSV = SOCIOS_IMP.reduce(function(s,k){ return s+(totales[k]||0); }, 0);
+    var totalReal = parsearMontoImp(document.getElementById('impCMTotalReal').value);
+    var usarTotalReal = totalReal > 0 && totalCSV > 0;
+
+    var montos = {};
+    SOCIOS_IMP.forEach(function(k) {
+      montos[k] = usarTotalReal ? totalReal * (totales[k]||0) / totalCSV : (totales[k]||0);
+    });
+    impCMTotales = montos;
+    var total = SOCIOS_IMP.reduce(function(s,k){ return s+(montos[k]||0); }, 0);
 
     var tbody = document.getElementById('impCMBody');
     tbody.innerHTML = '';
     SOCIOS_IMP.forEach(function(k) {
-      var imp = totales[k]||0;
+      var imp = montos[k]||0;
       var pct = total > 0 ? (imp/total*100) : 0;
       var tr = document.createElement('tr');
       tr.innerHTML = '<td class="ipt-name">' + k + '</td>' +
@@ -5653,6 +5676,11 @@ async function procesarCentroMedico() {
       '<td class="ipt-num" style="font-weight:700">' + fmtImp(total) + '</td>' +
       '<td class="ipt-num" style="font-weight:700">100%</td>';
     tbody.appendChild(tf);
+
+    var notaTotal = document.getElementById('impCMNotaTotal');
+    notaTotal.innerHTML = usarTotalReal
+      ? '💰 Usando total real depositado: ' + fmtImp(totalReal) + ' (los CSV sumaban ' + fmtImp(totalCSV) + ', prorrateado por %).'
+      : '';
 
     document.getElementById('impCMResultados').style.display = 'block';
     document.getElementById('impCMMsg').textContent = '';
@@ -6976,10 +7004,15 @@ function restaurarAporteCeotPct() {
         <label class="imp-label">Archivos CM <span style="color:rgba(32,36,31,.35);font-weight:400;text-transform:none;letter-spacing:0">(CSV, selección múltiple)</span></label>
         <input type="file" id="fileCM" accept=".csv" multiple class="imp-file-input">
       </div>
+      <div class="imp-field">
+        <label class="imp-label">Total depositado (CEM) <span style="color:rgba(32,36,31,.35);font-weight:400;text-transform:none;letter-spacing:0">(opcional — como el cheque OSDE: si lo cargás, se reparte este monto real por el % de cada uno según los CSV)</span></label>
+        <input type="text" id="impCMTotalReal" class="imp-input" placeholder="Importe $ del depósito real">
+      </div>
       <button class="imp-btn-gray" onclick="procesarCentroMedico()">Procesar CM ▸</button>
       <div id="impCMError" class="imp-error"></div>
 
       <div id="impCMResultados" style="display:none">
+        <div id="impCMNotaTotal" style="font-size:.68rem;color:#1f3a2e;margin-bottom:6px"></div>
         <div class="imp-table-wrap" style="margin-top:10px">
           <table class="imp-table">
             <thead>
