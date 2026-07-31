@@ -3522,7 +3522,7 @@ function toggleChecklistItem(itemId) {
   if (!estado[mk]) estado[mk] = {};
   estado[mk][itemId] = !estado[mk][itemId];
   try { localStorage.setItem("ceot_checklist_done", JSON.stringify(estado)); } catch (e) {}
-  renderChecklist();
+  renderChecklistBody();
   checklistActualizarBadge();
 }
 function checklistVencidos() {
@@ -3546,7 +3546,12 @@ function renderChecklist() {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });
+  renderChecklistBody();
+}
 
+// Solo redibuja el contenido (sin tocar sidebar/scroll) — la usa toggleChecklistItem()
+// para que tildar un ítem no dispare el scrollTo(0,0) de admDesactivarSidebar().
+function renderChecklistBody() {
   var dia = new Date().getDate();
   var html = '<div class="adm-sec-title">Checklist mensual</div>'
     + '<div style="font-size:.72rem;color:rgba(32,36,31,.45);margin:-6px 0 14px">Se reinicia solo cada mes — lo tildado acá no afecta lo tildado el mes pasado.</div>';
