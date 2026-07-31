@@ -8,6 +8,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/lucide@1.26.0/dist/umd/lucide.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -5186,6 +5188,249 @@ async function procesarArchivosImport() {
   btn.textContent = 'Reprocesar ▸'; btn.disabled = false;
 }
 
+// ── Importador PDF "DLA" (Detalle de Liquidación Clínica Colón) ──────────
+var DLA_SOCIOS_ADSCRIPTOS = ['DE LA COLINA', 'MAZZOLA', 'PERLASCO', 'SOULE', 'LEON'];
+
+// Etiquetas esperadas del PDF (sacadas 1:1 del DLA de junio 2026 ya anotado).
+// "sec" desambigua las etiquetas que se repiten (Acreditaciones Individuales / Débitos OOSS
+// aparecen una vez en "generales" y otra en "osde").
+var DLA_LINEAS = [
+  { blk:'bloque1', sec:'generales', label:'Acreditaciones Individuales', key:'acredIndividuales' },
+  { blk:'bloque1', sec:'generales', label:'Transferencia de Grupo', key:'transferenciaGrupo' },
+  { blk:'bloque1', sec:'generales', label:'Débitos OOSS (Acred Ind)', key:'debitosOOSS' },
+  { blk:'bloque1', sec:'osde', label:'Acreditaciones Individuales', key:'acredIndividuales' },
+  { blk:'bloque1', sec:'osde', label:'Débitos OOSS (Acred Ind)', key:'debitosOOSS' },
+  { blk:'bloque2', sec:'gastosGenerales', label:'Gtos.Adm.', key:'gtosAdm' },
+  { blk:'bloque2', sec:'gastosGenerales', label:'Derechos Adscriptos', key:'derechosAdscriptos' },
+  { blk:'bloque2', sec:'gastosGenerales', label:'Acred por Ret. Centro Médico', key:'acredRetCM' },
+  { blk:'bloque2', sec:'gastosGenerales', label:'Retención Centro Médico', key:'retencionCM' },
+  { blk:'bloque2', sec:'gastosGenerales', label:'Contribuciones p/ Gastos', key:'contribucionesGastos' },
+  { blk:'bloque2', sec:'recuperoGastos', label:'Abono Telefónico', key:'abonoTelefonico' },
+  { blk:'bloque2', sec:'recuperoGastos', label:'Residuos Patológicos', key:'residuosPatologicos' },
+  { blk:'bloque2', sec:'recuperoGastos', label:'Medicamentos y Descartables', key:'medicamentosDescartables' },
+  { blk:'bloque2', sec:'recuperoGastos', label:'Seguro de Mala Praxis SMG', key:'seguroMalaPraxis' },
+  { blk:'bloque2', sec:'impuestos', label:'Retencion IIGG', key:'retencionIIGG' },
+  { blk:'bloque2', sec:'impuestos', label:'Imp.a los Bienes Personales', key:'bienesPersonales' },
+  { blk:'bloque2', sec:'impuestos', label:'Impuesto al Valor Agregado', key:'iva' },
+  { blk:'bloque2', sec:'impuestos', label:'Percepcion de IIBB', key:'percepcionIIBB' }
+];
+var DLA_HEADERS = ['Acreditaciones Brutas (Emitir Factura)', 'Acreditaciones por prestaciones generales',
+  'Acreditaciones por prestaciones OSDE', 'Descuentos', 'Gastos generales',
+  'Recupero de gastos propios del profesional', 'Impuestos', 'Honorarios:', 'Gastos de equipo:',
+  'Total Acreditaciones Brutas:', 'Concepto', 'Composición de Acreditaciones Brutas', 'Cuenta', 'CUIT'];
+
+function dlaExtraerImporte(linea) {
+  var m = linea.match(/(-?\s*\$?\s*-?[\d.]+,\d{2})\s*$/);
+  return m ? parsearMontoImp(m[1]) : null;
+}
+
+async function dlaTextoAPaginas(file) {
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  var lineas = [];
+  for (var p = 1; p <= pdf.numPages; p++) {
+    var page = await pdf.getPage(p);
+    var content = await page.getTextContent();
+    var filas = {};
+    content.items.forEach(function(it) {
+      var y = Math.round(it.transform[5] / 2) * 2; // agrupa items de la misma fila
+      (filas[y] = filas[y] || []).push(it);
+    });
+    Object.keys(filas).map(Number).sort(function(a,b){ return b-a; }).forEach(function(y) {
+      var fila = filas[y].sort(function(a,b){ return a.transform[4]-b.transform[4]; });
+      lineas.push(fila.map(function(it){ return it.str; }).join(' ').replace(/\s+/g,' ').trim());
+    });
+  }
+  return lineas.filter(function(l){ return l; });
+}
+
+function dlaWarnBox(list) {
+  if (!list.length) return '';
+  return '<div style="background:#fef3c7;border:1px solid #92610f;border-radius:7px;padding:8px 10px;' +
+    'margin:6px 0;font-size:.72rem;color:#92610f"><strong>⚠ ' + list.length + ' aviso' +
+    (list.length > 1 ? 's' : '') + ':</strong><ul style="margin:4px 0 0 16px;padding:0">' +
+    list.map(function(w){ return '<li style="margin-bottom:2px">' + w + '</li>'; }).join('') +
+    '</ul></div>';
+}
+
+function dlaRenderResumen(d) {
+  if (d.bloque1.total === null && d.bloque2.total === null) {
+    return '<div style="font-size:.75rem;color:rgba(32,36,31,.5);padding:6px 0">No se pudo extraer ningún dato reconocible de este PDF.</div>';
+  }
+  var g = d.bloque1.generales, o = d.bloque1.osde, gg = d.bloque2.gastosGenerales,
+      rg = d.bloque2.recuperoGastos, im = d.bloque2.impuestos;
+  var rows = [
+    ['Acreditaciones Brutas (total)', d.bloque1.total],
+    ['— Prestaciones generales', g.subtotal],
+    ['—— Acreditaciones Individuales', g.acredIndividuales],
+    ['—— Transferencia de Grupo (ART)', g.transferenciaGrupo],
+    ['—— Débitos OOSS', g.debitosOOSS],
+    ['— Prestaciones OSDE', o.subtotal],
+    ['—— Acreditaciones Individuales', o.acredIndividuales],
+    ['—— Débitos OOSS', o.debitosOOSS],
+    ['Descuentos (total)', d.bloque2.total],
+    ['— Gastos generales', gg.subtotal],
+    ['—— Gtos.Adm.', gg.gtosAdm],
+    ['—— Derechos Adscriptos', gg.derechosAdscriptos],
+    ['—— Acred. por Ret. Centro Médico', gg.acredRetCM],
+    ['—— Retención Centro Médico', gg.retencionCM],
+    ['—— Contribuciones p/Gastos', gg.contribucionesGastos],
+    ['— Recupero gastos propios', rg.subtotal],
+    ['—— Abono Telefónico', rg.abonoTelefonico],
+    ['—— Residuos Patológicos', rg.residuosPatologicos],
+    ['—— Medicamentos y Descartables', rg.medicamentosDescartables],
+    ['—— Seguro Mala Praxis SMG', rg.seguroMalaPraxis],
+    ['— Impuestos', im.subtotal],
+    ['—— Retención IIGG', im.retencionIIGG],
+    ['—— Bienes Personales', im.bienesPersonales],
+    ['—— IVA', im.iva],
+    ['—— Percepción IIBB', im.percepcionIIBB],
+    ['Honorarios (composición)', d.bloque3.honorarios],
+    ['Gastos de equipo (composición)', d.bloque3.gastosEquipo],
+    ['Total Acreditaciones Brutas (composición)', d.bloque3.total]
+  ];
+  var html = '<div style="font-size:.72rem;color:rgba(32,36,31,.5);margin:4px 0 6px">Período: <strong>' +
+    (d.periodo || '¿?') + '</strong></div><div class="imp-table-wrap"><table class="imp-table"><tbody>';
+  rows.forEach(function(r) {
+    if (r[1] === null || r[1] === undefined) return;
+    html += '<tr><td style="text-align:left;padding:4px 8px">' + r[0] + '</td>' +
+      '<td class="ipt-num">' + fmtImp(r[1]) + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+
+  var da = gg.derechosAdscriptos;
+  if (da) {
+    var perSocio = Math.abs(da) / 5;
+    html += '<div style="background:#eef2ea;border:1px solid #1f3a2e;border-radius:7px;padding:8px 10px;' +
+      'margin-top:6px;font-size:.74rem;color:#1f3a2e"><strong>Derechos Adscriptos:</strong> ' +
+      fmtImp(Math.abs(da)) + ' ÷ 5 socios = ' + fmtImp(perSocio) + ' c/u ÷ cheques diferidos — se aplica ' +
+      'automático a ' + DLA_SOCIOS_ADSCRIPTOS.join(' / ') + ' al calcular distribución.</div>';
+  }
+  return html;
+}
+
+async function dlaCargarPDF(file) {
+  var warnEl = document.getElementById('dlaWarnings');
+  var resEl  = document.getElementById('dlaResumen');
+  if (!file) return;
+  if (!window.pdfjsLib) {
+    warnEl.innerHTML = dlaWarnBox(['La librería de lectura de PDF todavía se está cargando — esperá un segundo y volvé a intentar.']);
+    return;
+  }
+  resEl.innerHTML = '<div style="padding:8px 0;color:rgba(32,36,31,.5);font-size:.8rem">Leyendo PDF…</div>';
+  warnEl.innerHTML = '';
+
+  var lineas;
+  try {
+    lineas = await dlaTextoAPaginas(file);
+  } catch (err) {
+    resEl.innerHTML = '';
+    warnEl.innerHTML = dlaWarnBox(['No se pudo leer el PDF: ' + err.message]);
+    return;
+  }
+
+  var d = {
+    periodo: '',
+    bloque1: { total:null, generales:{ subtotal:null, acredIndividuales:null, transferenciaGrupo:null, debitosOOSS:null },
+               osde:{ subtotal:null, acredIndividuales:null, debitosOOSS:null } },
+    bloque2: { total:null,
+               gastosGenerales:{ subtotal:null, gtosAdm:null, derechosAdscriptos:null, acredRetCM:null, retencionCM:null, contribucionesGastos:null },
+               recuperoGastos:{ subtotal:null, abonoTelefonico:null, residuosPatologicos:null, medicamentosDescartables:null, seguroMalaPraxis:null },
+               impuestos:{ subtotal:null, retencionIIGG:null, bienesPersonales:null, iva:null, percepcionIIBB:null } },
+    bloque3: { honorarios:null, gastosEquipo:null, total:null }
+  };
+  var sec = null, extra = [];
+
+  lineas.forEach(function(linea) {
+    var mPeriodo = linea.match(/Per[ií]odo Liquidado:\s*(.+)$/i);
+    if (mPeriodo) { d.periodo = mPeriodo[1].trim(); return; }
+
+    var imp = dlaExtraerImporte(linea);
+
+    if (linea.indexOf('Acreditaciones Brutas (Emitir Factura)') === 0) { d.bloque1.total = imp; return; }
+    if (linea.indexOf('Acreditaciones por prestaciones generales') === 0) { sec = 'generales'; d.bloque1.generales.subtotal = imp; return; }
+    if (linea.indexOf('Acreditaciones por prestaciones OSDE') === 0) { sec = 'osde'; d.bloque1.osde.subtotal = imp; return; }
+    if (linea.indexOf('Descuentos') === 0) { d.bloque2.total = imp; return; }
+    if (linea.indexOf('Gastos generales') === 0) { sec = 'gastosGenerales'; d.bloque2.gastosGenerales.subtotal = imp; return; }
+    if (linea.indexOf('Recupero de gastos propios del profesional') === 0) { sec = 'recuperoGastos'; d.bloque2.recuperoGastos.subtotal = imp; return; }
+    if (linea.indexOf('Impuestos') === 0) { sec = 'impuestos'; d.bloque2.impuestos.subtotal = imp; return; }
+    if (linea.indexOf('Honorarios:') === 0) { d.bloque3.honorarios = imp; return; }
+    if (linea.indexOf('Gastos de equipo:') === 0) { d.bloque3.gastosEquipo = imp; return; }
+    if (linea.indexOf('Total Acreditaciones Brutas:') === 0) { d.bloque3.total = imp; return; }
+
+    var match = null;
+    DLA_LINEAS.forEach(function(x) {
+      if (!match && x.sec === sec && linea.indexOf(x.label) === 0) match = x;
+    });
+    if (match) {
+      d[match.blk][match.sec][match.key] = imp;
+    } else if (imp !== null && DLA_HEADERS.indexOf(linea) === -1) {
+      extra.push(linea);
+    }
+  });
+
+  // ── Anomalías: estructura ──
+  var warnings = [];
+  DLA_LINEAS.forEach(function(x) {
+    if (d[x.blk][x.sec][x.key] === null) warnings.push('No se encontró la línea esperada "' + x.label + '" (sección ' + x.sec + ').');
+  });
+  if (d.bloque1.total === null) warnings.push('No se encontró "Acreditaciones Brutas (Emitir Factura)".');
+  if (d.bloque2.total === null) warnings.push('No se encontró "Descuentos".');
+  if (d.bloque3.honorarios === null || d.bloque3.gastosEquipo === null || d.bloque3.total === null)
+    warnings.push('Falta algo en "Composición de Acreditaciones Brutas".');
+  extra.forEach(function(l) { warnings.push('Línea nueva no reconocida en el PDF (revisar si hay que sumarla a algún cálculo): "' + l + '"'); });
+
+  function cerca(a, b) { return Math.abs((a||0) - (b||0)) < 1; }
+  var g = d.bloque1.generales, o = d.bloque1.osde, gg = d.bloque2.gastosGenerales,
+      rg = d.bloque2.recuperoGastos, im = d.bloque2.impuestos;
+  if (g.subtotal !== null && !cerca(g.subtotal, (g.acredIndividuales||0) + (g.transferenciaGrupo||0) + (g.debitosOOSS||0)))
+    warnings.push('El subtotal de "Acreditaciones por prestaciones generales" no cierra con sus líneas.');
+  if (o.subtotal !== null && !cerca(o.subtotal, (o.acredIndividuales||0) + (o.debitosOOSS||0)))
+    warnings.push('El subtotal de "Acreditaciones por prestaciones OSDE" no cierra con sus líneas.');
+  if (d.bloque1.total !== null && !cerca(d.bloque1.total, (g.subtotal||0) + (o.subtotal||0)))
+    warnings.push('"Acreditaciones Brutas" no coincide con la suma de Generales + OSDE.');
+  if (gg.subtotal !== null && !cerca(gg.subtotal, (gg.gtosAdm||0) + (gg.derechosAdscriptos||0) + (gg.acredRetCM||0) + (gg.retencionCM||0) + (gg.contribucionesGastos||0)))
+    warnings.push('El subtotal de "Gastos generales" no cierra con sus líneas.');
+  if (rg.subtotal !== null && !cerca(rg.subtotal, (rg.abonoTelefonico||0) + (rg.residuosPatologicos||0) + (rg.medicamentosDescartables||0) + (rg.seguroMalaPraxis||0)))
+    warnings.push('El subtotal de "Recupero de gastos propios del profesional" no cierra con sus líneas.');
+  if (im.subtotal !== null && !cerca(im.subtotal, (im.retencionIIGG||0) + (im.bienesPersonales||0) + (im.iva||0) + (im.percepcionIIBB||0)))
+    warnings.push('El subtotal de "Impuestos" no cierra con sus líneas.');
+  if (d.bloque2.total !== null && !cerca(d.bloque2.total, (gg.subtotal||0) + (rg.subtotal||0) + (im.subtotal||0)))
+    warnings.push('"Descuentos" no coincide con la suma de sus 3 secciones.');
+  if (d.bloque3.total !== null && d.bloque1.total !== null && Math.abs(d.bloque3.total - d.bloque1.total) > 5)
+    warnings.push('"Total Acreditaciones Brutas" (Composición) no coincide con "Acreditaciones Brutas" (encabezado).');
+  if (d.bloque3.honorarios !== null && d.bloque3.gastosEquipo !== null && d.bloque3.total !== null &&
+      !cerca(d.bloque3.total, d.bloque3.honorarios + d.bloque3.gastosEquipo))
+    warnings.push('"Total Acreditaciones Brutas" no coincide con Honorarios + Gastos de equipo.');
+
+  // ── Anomalías: variación fuerte vs. el último PDF cargado ──
+  try {
+    var prev = JSON.parse(localStorage.getItem('ceot_dla_last') || 'null');
+    if (prev) {
+      var chk = function(label, curVal, prevVal) {
+        if (curVal == null || prevVal == null || !prevVal) return;
+        var pct = Math.abs(curVal - prevVal) / Math.abs(prevVal) * 100;
+        if (pct > 15) warnings.push(label + ' varió ' + pct.toFixed(0) + '% respecto al último PDF cargado (' +
+          fmtImp(Math.abs(prevVal)) + ' → ' + fmtImp(Math.abs(curVal)) + ', período "' + (prev.periodo||'?') +
+          '" → "' + (d.periodo||'?') + '").');
+      };
+      chk('Derechos Adscriptos', gg.derechosAdscriptos, prev.derechosAdscriptos);
+      chk('Acreditaciones Brutas', d.bloque1.total, prev.totalBruto);
+    }
+  } catch (e) {}
+
+  try {
+    localStorage.setItem('ceot_dla_last', JSON.stringify({
+      periodo: d.periodo, derechosAdscriptos: gg.derechosAdscriptos, totalBruto: d.bloque1.total,
+      honorarios: d.bloque3.honorarios, gastosEquipo: d.bloque3.gastosEquipo, timestamp: Date.now()
+    }));
+  } catch (e) {}
+
+  window.dlaParsed = d;
+  warnEl.innerHTML = dlaWarnBox(warnings);
+  resEl.innerHTML = dlaRenderResumen(d);
+}
+
 function calcularDistribucionFinal() {
   var totOSDE = SOCIOS_IMP.reduce(function(s,k){ return s+(impOsdeBilling[k]||0); }, 0);
   var totDIF  = SOCIOS_IMP.reduce(function(s,k){ return s+(impDifBilling[k]||0);  }, 0);
@@ -5213,6 +5458,49 @@ function calcularDistribucionFinal() {
     }
   }
 
+  // Derechos Adscriptos (PDF DLA importado) — descuento solo a los 5 socios adscriptos,
+  // repartido equitativo entre ellos y luego entre sus cheques Colón del mes.
+  var dlaFootnote = '';
+  if (window.dlaParsed && window.dlaParsed.bloque2.gastosGenerales.derechosAdscriptos && impColonCheques.length > 0) {
+    var daTotal    = Math.abs(window.dlaParsed.bloque2.gastosGenerales.derechosAdscriptos);
+    var daPerSocio = daTotal / 5;
+    var daPerCheque = daPerSocio / impColonCheques.length;
+    impColonCheques.forEach(function(c) {
+      DLA_SOCIOS_ADSCRIPTOS.forEach(function(k) {
+        if (c.d[k] !== undefined) c.d[k] -= daPerCheque;
+      });
+    });
+    dlaFootnote = '<div style="font-size:.65rem;color:#92610f;padding:6px 0 0 8px">⚑ Derechos Adscriptos ' +
+      fmtImp(daTotal) + ' ÷ 5 socios = ' + fmtImp(daPerSocio) + ' c/u, repartido en ' + impColonCheques.length +
+      ' cheque(s) (' + fmtImp(daPerCheque) + ' c/u) — ya descontado de ' + DLA_SOCIOS_ADSCRIPTOS.join('/') + ' arriba.' +
+      (impColonCheques.length !== 5 ? ' <strong>⚠ se calcularon ' + impColonCheques.length + ' cheques, no 5 — revisar.</strong>' : '') +
+      '</div>';
+  }
+
+  // Equipo laparoscopia (carga manual) — descuento solo a Corelich/Trivellini/Deganutti,
+  // repartido equitativo entre ellos y luego entre sus cheques Colón del mes
+  // (mismo criterio que la compra de equipo de artroscopia ya documentada).
+  var EQUIPO_LAP_SOCIOS = ['CORELICH', 'TRIVELLINI', 'DEGANUTTI'];
+  var compraEquipoLap = parsearMontoImp(document.getElementById('impCompraEquipoLap').value);
+  var gastoTorreLap   = parsearMontoImp(document.getElementById('impGastoTorreLap').value);
+  var totalEquipoLap  = Math.abs(compraEquipoLap) + Math.abs(gastoTorreLap);
+  var equipoLapFootnote = '';
+  if (totalEquipoLap > 0 && impColonCheques.length > 0) {
+    var eqPerSocio  = totalEquipoLap / 3;
+    var eqPerCheque = eqPerSocio / impColonCheques.length;
+    impColonCheques.forEach(function(c) {
+      EQUIPO_LAP_SOCIOS.forEach(function(k) {
+        if (c.d[k] !== undefined) c.d[k] -= eqPerCheque;
+      });
+    });
+    equipoLapFootnote = '<div style="font-size:.65rem;color:#92610f;padding:2px 0 6px 8px">⚑ Equipo laparoscopia ' +
+      (compraEquipoLap ? 'Compra ' + fmtImp(Math.abs(compraEquipoLap)) : '') +
+      (compraEquipoLap && gastoTorreLap ? ' + ' : '') +
+      (gastoTorreLap ? 'Torre ' + fmtImp(Math.abs(gastoTorreLap)) : '') +
+      ' = ' + fmtImp(totalEquipoLap) + ' ÷ 3 socios (' + EQUIPO_LAP_SOCIOS.join('/') + ') = ' + fmtImp(eqPerSocio) +
+      ' c/u, repartido en ' + impColonCheques.length + ' cheque(s) (' + fmtImp(eqPerCheque) + ' c/u).</div>';
+  }
+
   // Render resultado
   var totColon = {};
   SOCIOS_IMP.forEach(function(k) {
@@ -5237,7 +5525,7 @@ function calcularDistribucionFinal() {
     '<td class="ipt-num" style="font-weight:700">' + fmtImp(sumDIF) + '</td>' +
     '<td class="ipt-num" style="font-weight:800;color:#20241f">' + fmtImp(sumOSDE+sumDIF) + '</td></tr>';
   html += '</tbody></table></div>';
-  document.getElementById('impResultBody').innerHTML = html;
+  document.getElementById('impResultBody').innerHTML = html + dlaFootnote + equipoLapFootnote;
   document.getElementById('impResultados').style.display = 'block';
 }
 
@@ -6615,6 +6903,27 @@ function restaurarAporteCeotPct() {
           <input type="text" id="impChqOSDE" class="imp-input" placeholder="Importe bruto $">
         </div>
         <div id="impColonFields"></div>
+
+        <hr class="imp-sep">
+        <div class="imp-sec-title">Equipo laparoscopia <span style="color:rgba(32,36,31,.35);font-weight:400;text-transform:none;letter-spacing:0">(carga manual — se reparte entre Corelich/Trivellini/Deganutti)</span></div>
+        <div class="imp-field">
+          <label class="imp-label">Compra equipo de laparoscopia</label>
+          <input type="text" id="impCompraEquipoLap" class="imp-input" placeholder="Importe $">
+        </div>
+        <div class="imp-field">
+          <label class="imp-label">Gasto torre laparoscópica</label>
+          <input type="text" id="impGastoTorreLap" class="imp-input" placeholder="Importe $">
+        </div>
+
+        <hr class="imp-sep">
+        <div class="imp-sec-title">Detalle de Liquidación Clínica (PDF)</div>
+        <div class="imp-field">
+          <label class="imp-label">Archivo DLA (PDF, Clínica Colón) <span style="color:rgba(32,36,31,.35);font-weight:400;text-transform:none;letter-spacing:0">(opcional — aplica Derechos Adscriptos automático)</span></label>
+          <input type="file" id="fileDLA" accept=".pdf" class="imp-file-input" onchange="dlaCargarPDF(this.files[0])">
+        </div>
+        <div id="dlaWarnings"></div>
+        <div id="dlaResumen"></div>
+
         <div class="imp-field">
           <label class="imp-label">Mes real de depósito (Cheques Colón) <span style="color:rgba(32,36,31,.35);font-weight:400;text-transform:none;letter-spacing:0">(diferido ~2 meses vs. "Mes a importar")</span></label>
           <select id="impMesColon" class="imp-select">
