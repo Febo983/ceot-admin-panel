@@ -1966,8 +1966,8 @@ const GASTOS_A = {
 // Retención Ganancias — aplica desde Agosto 2026 en adelante
 // Base de cálculo: bruto total (cheques Colón + OSDE + CEM)
 // Default parejo 15% para todos los socios — editable por profesional desde
-// el panel admin ("Retención Ganancias" en el menú lateral). El override editado se
-// guarda en localStorage (ceot_aporte_pct_override) y pisa este default.
+// el panel admin ("Retención Ganancias" en el menú lateral). El override editado
+// se guarda en el Script (compartido, no por navegador) y pisa este default.
 // FISSER/GUILERA = null (externos, no participan de ningún cheque).
 const APORTE_CEOT_PCT = {
   "BRUNI":        0.15,
@@ -1991,13 +1991,9 @@ const APORTE_CEOT_DESDE = ["agosto","septiembre","octubre","noviembre","diciembr
 function getAporteCeotPct(apellido) {
   var def = APORTE_CEOT_PCT[apellido];
   if (def === null || def === undefined) return def;
-  try {
-    var raw = localStorage.getItem("ceot_aporte_pct_override");
-    if (raw) {
-      var over = JSON.parse(raw);
-      if (over && over[apellido] !== undefined && over[apellido] !== null) return over[apellido];
-    }
-  } catch (e) {}
+  if (APORTE_PCT_REMOTO && APORTE_PCT_REMOTO[apellido] !== undefined && APORTE_PCT_REMOTO[apellido] !== null) {
+    return APORTE_PCT_REMOTO[apellido];
+  }
   return def;
 }
 
@@ -2091,6 +2087,18 @@ const LIQUIDACION_ENDPOINT = "https://script.google.com/macros/s/AKfycbyTQSTf6gQ
 // Datos completos del endpoint — usados para Historial
 var liquidacionData = {};
 var FACTURAS_DATA = { colon: [], cem: [] };
+
+// Override de Retención Ganancias por profesional — compartido en el Script
+// (antes vivía en localStorage y solo le llegaba a quien lo hubiera cargado
+// en su propio navegador; ver getAporteCeotPct más abajo).
+var APORTE_PCT_REMOTO = {};
+async function cargarAportePctRemoto() {
+  try {
+    var resp = await fetch(authURL(LIQUIDACION_ENDPOINT + '?action=leerAportePct'));
+    var data = await resp.json();
+    if (data.ok) APORTE_PCT_REMOTO = data.valores || {};
+  } catch (e) { /* mantiene lo que ya había cargado */ }
+}
 
 async function cargarLiquidacionRemota() {
   if (!LIQUIDACION_ENDPOINT) return;
@@ -2271,6 +2279,7 @@ async function cargarLiquidacionRemota() {
 }
 
 cargarLiquidacionRemota();
+cargarAportePctRemoto();
 
 // ══════ UTILIDADES ════════════════════════════════════════════
 
@@ -4614,7 +4623,7 @@ async function handleLogin() {
   AUTH_ROLE  = resp.role;
 
   // Con el token ya emitido, traer los datos reales antes de renderizar
-  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota()]);
+  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota(), cargarAportePctRemoto()]);
 
   loginBtn.disabled = false;
   loginBtn.textContent = loginBtnTextoOrig;
@@ -4694,7 +4703,7 @@ if (window.lucide) lucide.createIcons();
 document.getElementById("refreshBtn").addEventListener("click", async function() {
   var btn = this;
   btn.disabled = true; btn.textContent = "⏳";
-  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota()]);
+  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota(), cargarAportePctRemoto()]);
   if (doctorActual) {
     renderMayo("pane-mayo", doctorActual);
     renderIndividual(JUNIO_RAW,      JUNIO_FECHAS,      "junio",      "pane-junio",      doctorActual);
@@ -4721,7 +4730,7 @@ document.getElementById("adminLogoutBtn").addEventListener("click", function() {
 document.getElementById("adminRefreshBtn").addEventListener("click", async function() {
   var btn = this;
   btn.disabled = true; btn.textContent = "⏳";
-  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota()]);
+  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota(), cargarAportePctRemoto()]);
   renderAdminPanel(adminPeriodoAct);
   btn.disabled = false; btn.textContent = "↻";
 });
@@ -7140,24 +7149,42 @@ function guardarAporteLinks() {
   if (st) st.textContent = "✓ Links guardados.";
 }
 
-function guardarAporteCeotPct() {
+async function guardarAporteCeotPct() {
   var inputs = document.querySelectorAll(".aporte-pct-input");
   var override = {};
   inputs.forEach(function(inp) {
     var v = parseFloat(inp.value);
     if (!isNaN(v) && v >= 0) override[inp.dataset.apellido] = v / 100;
   });
-  try { localStorage.setItem("ceot_aporte_pct_override", JSON.stringify(override)); } catch (e) {}
-  renderAporteCeot();
-  var st = document.getElementById("aporte-ceot-status");
-  if (st) st.textContent = "✓ Porcentajes guardados. Se aplican desde Agosto 2026 en adelante.";
+  var stPre = document.getElementById("aporte-ceot-status");
+  if (stPre) stPre.textContent = "Guardando…";
+  try {
+    var url = LIQUIDACION_ENDPOINT + '?action=setAportePct&valores=' + encodeURIComponent(JSON.stringify(override));
+    var data = await (await fetch(authURL(url))).json();
+    if (!data.ok) throw new Error(data.error || 'error desconocido');
+    APORTE_PCT_REMOTO = override;
+    renderAporteCeot();
+    var stPost = document.getElementById("aporte-ceot-status");
+    if (stPost) stPost.textContent = "✓ Porcentajes guardados — ya se aplican para todos, en cualquier dispositivo.";
+  } catch (e) {
+    if (stPre) stPre.textContent = "✗ No se pudo guardar: " + e.message;
+  }
 }
 
-function restaurarAporteCeotPct() {
-  try { localStorage.removeItem("ceot_aporte_pct_override"); } catch (e) {}
-  renderAporteCeot();
-  var st = document.getElementById("aporte-ceot-status");
-  if (st) st.textContent = "✓ Restaurado al default parejo de 15%.";
+async function restaurarAporteCeotPct() {
+  var stPre = document.getElementById("aporte-ceot-status");
+  if (stPre) stPre.textContent = "Restaurando…";
+  try {
+    var url = LIQUIDACION_ENDPOINT + '?action=setAportePct&valores=' + encodeURIComponent(JSON.stringify({}));
+    var data = await (await fetch(authURL(url))).json();
+    if (!data.ok) throw new Error(data.error || 'error desconocido');
+    APORTE_PCT_REMOTO = {};
+    renderAporteCeot();
+    var stPost = document.getElementById("aporte-ceot-status");
+    if (stPost) stPost.textContent = "✓ Restaurado al default parejo de 15%.";
+  } catch (e) {
+    if (stPre) stPre.textContent = "✗ No se pudo restaurar: " + e.message;
+  }
 }
 </script>
 
