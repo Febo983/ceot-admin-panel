@@ -7062,6 +7062,37 @@ function renderAporteCeot() {
   renderAporteDetalle(APORTE_CEOT_DESDE[0]);
 }
 
+// Copia texto al portapapeles — usado por los botones 📋 de la tabla de abajo.
+async function copiarTexto(texto, btn) {
+  try {
+    await navigator.clipboard.writeText(texto);
+  } catch (e) {
+    var ta = document.createElement("textarea");
+    ta.value = texto;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch (e2) {}
+    document.body.removeChild(ta);
+  }
+  if (btn) actionFeedback(btn);
+}
+
+// Número listo para pegar en el homebanking: sin $, sin puntos de miles,
+// coma decimal (igual al formato que espera la mayoría de los bancos AR).
+function numParaPegar(n) {
+  n = Math.round((n || 0) * 100) / 100;
+  return n.toFixed(2).replace('.', ',');
+}
+
+function copiarColumnaAporte(col, btn) {
+  var datos = (window._aporteColData || {})[col] || [];
+  if (!datos.length) return;
+  var texto = datos.map(function(r) { return r.apellido + '\t' + numParaPegar(r.monto); }).join('\n');
+  copiarTexto(texto, btn);
+}
+
 function renderAporteDetalle(mes) {
   var tbl = document.getElementById("aporte-detalle-tbl");
   if (!tbl) return;
@@ -7070,15 +7101,14 @@ function renderAporteDetalle(mes) {
   mes = mes || (sel ? sel.value : APORTE_CEOT_DESDE[0]);
 
   var socios = DOCTORES.filter(function(d) { return APORTE_CEOT_PCT[d.apellido] !== null; });
-  var html = '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Profesional</th>'
-    + '<th>Cheque 1</th><th>Cheque 2</th><th>Cheque 3</th><th>Cheque 4</th><th>Cheque 5</th>'
-    + '<th>OSDE</th><th>CEM</th><th>Total retenido</th></tr></thead><tbody>';
+  var colData = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+  var bodyHtml = '';
 
   socios.forEach(function(d) {
     var c = calcularNetoLocal(mes, d);
-    html += '<tr><td>' + d.apellido + '</td>';
+    bodyHtml += '<tr><td>' + d.apellido + '</td>';
     if (!c || !c.pctAporte) {
-      html += '<td colspan="7"><span class="adm-pend" style="font-size:.68rem">' + (c ? 'sin % asignado' : 'sin datos cargados') + '</span></td></tr>';
+      bodyHtml += '<td colspan="7"><span class="adm-pend" style="font-size:.68rem">' + (c ? 'sin % asignado' : 'sin datos cargados') + '</span></td></tr>';
       return;
     }
     var items = retencionPorAcreditacion(c);
@@ -7094,20 +7124,38 @@ function renderAporteDetalle(mes) {
       var netoAnotCheq = '';
       if (it || prestamoCheque1) {
         var netoCheq = (it ? it.bruto : 0) - (it ? it.retencion : 0) - prestamoCheque1;
-        netoAnotCheq = '<div style="font-size:.62rem;font-weight:700;color:#1f3a2e;border-top:1px dashed rgba(32,36,31,.2);margin-top:2px;padding-top:2px">= ' + fmt(netoCheq) + '</div>';
+        colData[i].push({ apellido: d.apellido, monto: netoCheq });
+        netoAnotCheq = '<div style="font-size:.62rem;font-weight:700;color:#1f3a2e;border-top:1px dashed rgba(32,36,31,.2);margin-top:2px;padding-top:2px">'
+          + '= ' + fmt(netoCheq)
+          + ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(netoCheq) + '\', this)" '
+          +   'style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button>'
+          + '</div>';
       }
-      html += '<td>' + (it
+      bodyHtml += '<td>' + (it
         ? '−' + fmt(it.retencion) + ' <span style="font-size:.58rem;color:rgba(32,36,31,.4)">de ' + fmt(it.bruto) + '</span>' + prestamoAnotCheq + netoAnotCheq
         : ('<span class="adm-pend">—</span>' + prestamoAnotCheq)) + '</td>';
     }
     var osdeIt = items.filter(function(x) { return x.label === "OSDE"; })[0];
     var cmIt   = items.filter(function(x) { return x.label === "CEM"; })[0];
-    html += '<td>' + (osdeIt ? '−' + fmt(osdeIt.retencion) : '<span class="adm-pend">—</span>') + '</td>';
-    html += '<td>' + (cmIt   ? '−' + fmt(cmIt.retencion)   : '<span class="adm-pend">—</span>') + '</td>';
-    html += '<td style="font-weight:700">' + (c.aporteCeot ? '−' + fmt(c.aporteCeot) : '<span class="adm-pend">—</span>') + '</td>';
-    html += '</tr>';
+    bodyHtml += '<td>' + (osdeIt ? '−' + fmt(osdeIt.retencion) : '<span class="adm-pend">—</span>') + '</td>';
+    bodyHtml += '<td>' + (cmIt   ? '−' + fmt(cmIt.retencion)   : '<span class="adm-pend">—</span>') + '</td>';
+    bodyHtml += '<td style="font-weight:700">' + (c.aporteCeot ? '−' + fmt(c.aporteCeot) : '<span class="adm-pend">—</span>') + '</td>';
+    bodyHtml += '</tr>';
   });
-  html += '</tbody></table></div>';
+
+  window._aporteColData = colData;
+  var theadCells = [1,2,3,4,5].map(function(i) {
+    return '<th>Cheque ' + i + ' <button type="button" title="Copiar los ' + colData[i].length + ' importes de esta columna" '
+      + 'onclick="copiarColumnaAporte(' + i + ', this)" '
+      + 'style="border:none;background:none;cursor:pointer;font-size:.75rem;padding:0 2px;vertical-align:middle">📋</button></th>';
+  }).join('');
+
+  var html = '<div style="font-size:.65rem;color:rgba(32,36,31,.45);padding:0 2px 6px 2px">📋 al lado de cada importe copia solo ese número · 📋 en el encabezado copia los importes de todo el cheque (apellido + monto, uno por línea) — listo para pegar en el homebanking.</div>'
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Profesional</th>'
+    + theadCells
+    + '<th>OSDE</th><th>CEM</th><th>Total retenido</th></tr></thead><tbody>'
+    + bodyHtml
+    + '</tbody></table></div>';
   tbl.innerHTML = html;
 }
 
