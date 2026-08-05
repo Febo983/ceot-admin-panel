@@ -2805,7 +2805,8 @@ function calcularNetoLocal(pid, doc) {
     iibb: iibb, cpsm: cpsm,
     ga: ga, cm: cmVal, aporteCeot: aporteCeot, pctAporte: pctAporte,
     prestamoCasa: prestamoCasa, prestamoCasaCuota: prestamoCasaCuota,
-    neto: neto, pendiente: hayPendiente, osdePendiente: osdeExt.pendiente, cmPendiente: cmExt.pendiente, esLab: esLab
+    neto: neto, pendiente: hayPendiente, osdePendiente: osdeExt.pendiente, cmPendiente: cmExt.pendiente,
+    osdeFecha: osdeExt.fecha, cmFecha: cmExt.fecha, esLab: esLab
   };
 }
 
@@ -2854,7 +2855,27 @@ function calcularDetalleChequesProfesional(periodo, doc) {
     return { fecha: chq.fecha, bruto: chq.monto, retencion: retencion, prestamo: prestamoAqui, iibb: iibbAqui, cpsm: cpsmAqui, neto: neto, acumulado: cum };
   });
 
-  return { doc: doc, periodo: periodo, detalle: detalle, totalNetoMes: cum, pctAporte: c.pctAporte, ultimaFecha: detalle.length ? detalle[detalle.length - 1].fecha : null };
+  var ultimaFecha = detalle.length ? detalle[detalle.length - 1].fecha : null;
+
+  // OSDE y CEM: acreditaciones aparte de los cheques Colón. Mientras no estén
+  // cargadas en el Sheet se listan como pendientes (sin sumar al acumulado);
+  // apenas dejen de estar pendientes, se suman con la misma Retención Ganancias.
+  [
+    { label: "Cheque OSDE",      pendiente: c.osdePendiente, monto: c.osde, fechaEst: c.osdeFecha },
+    { label: "Acreditación CEM", pendiente: c.cmPendiente,   monto: c.cm,   fechaEst: c.cmFecha }
+  ].forEach(function(x) {
+    if (x.pendiente) {
+      var etiqueta = x.label + (x.fechaEst ? " (" + x.fechaEst + ")" : "");
+      detalle.push({ fecha: etiqueta, bruto: null, retencion: null, prestamo: 0, iibb: 0, cpsm: 0, neto: null, acumulado: cum, pendiente: true });
+    } else if (x.monto > 0) {
+      var retencionX = Math.round(x.monto * (c.pctAporte || 0));
+      var netoX = x.monto - retencionX;
+      cum += netoX;
+      detalle.push({ fecha: x.label, bruto: x.monto, retencion: retencionX, prestamo: 0, iibb: 0, cpsm: 0, neto: netoX, acumulado: cum });
+    }
+  });
+
+  return { doc: doc, periodo: periodo, detalle: detalle, totalNetoMes: cum, pctAporte: c.pctAporte, ultimaFecha: ultimaFecha };
 }
 
 // Sueldo Director: toma el detalle cheque por cheque y encuentra la fecha en
@@ -7205,6 +7226,11 @@ function sueldoDirectorTabHtml(periodo) {
     }[estado];
 
     var detRows = s.detalle.map(function(d) {
+      if (d.pendiente) {
+        return '<tr style="opacity:.65"><td style="font-style:italic">' + d.fecha + '</td>'
+          + '<td colspan="4" style="text-align:center;color:#8a6423;font-size:.68rem">⏳ Pendiente — todavía no cargado en el Sheet</td>'
+          + '<td>' + fmt(d.acumulado) + '</td></tr>';
+      }
       var extra = [];
       if (d.prestamo) extra.push(d.prestamo > 0 ? '−' + fmt(d.prestamo) + ' préstamo' : '+' + fmt(Math.abs(d.prestamo)) + ' préstamo (crédito)');
       if (d.iibb) extra.push('−' + fmt(d.iibb) + ' IIBB');
@@ -7277,6 +7303,11 @@ function restoProfesionalesTabHtml(periodo) {
     var pendTxt = f.pendiente ? ' <span class="adm-pend" style="font-size:.62rem">falta OSDE/CEM</span>' : '';
 
     var detRows = base.detalle.map(function(d) {
+      if (d.pendiente) {
+        return '<tr style="opacity:.65"><td style="font-style:italic">' + d.fecha + '</td>'
+          + '<td colspan="4" style="text-align:center;color:#8a6423;font-size:.68rem">⏳ Pendiente — todavía no cargado en el Sheet</td>'
+          + '<td>' + fmt(d.acumulado) + '</td></tr>';
+      }
       var extra = [];
       if (d.prestamo) extra.push(d.prestamo > 0 ? '−' + fmt(d.prestamo) + ' préstamo' : '+' + fmt(Math.abs(d.prestamo)) + ' préstamo (crédito)');
       if (d.iibb) extra.push('−' + fmt(d.iibb) + ' IIBB');
