@@ -2459,18 +2459,22 @@ function renderMayo(containerId, doctor) {
   }
 
   var osdeExt = getExtra("mayo", "osde", doctor.apellido);
-  var cmExt   = getExtra("mayo", "cm",   doctor.apellido);
+  var cmExt   = getExtra("mayo", "cm",   doctor.apellido); // CEM de Mayo se acredita en Junio, no se suma acá (ver más abajo)
   var html = '';
 
   if (row) {
     var vals = [row.f1, row.f2, row.f3, row.f4, row.f5];
     var colonTotal = vals.reduce(function(a,b){return a+b;}, 0);
+    var osdeValTotal = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
+    var totalBruto = colonTotal + osdeValTotal;
+    var subPartes = ["5 cheques Colón"];
+    if (osdeValTotal) subPartes.push("OSDE");
 
     html += '<div class="period-total">'
       + '<div class="pt-left">'
       + '<div class="pt-lbl">Mayo 2026</div>'
-      + '<div class="pt-val">' + fmt(colonTotal) + '</div>'
-      + '<div class="pt-sub">5 cheques Colón · bruto</div>'
+      + '<div class="pt-val">' + fmt(totalBruto) + '</div>'
+      + '<div class="pt-sub">' + subPartes.join(" + ") + ' · bruto</div>'
       + '</div><div class="pt-icon">💰</div></div>';
 
     html += '<div class="cheque-list">';
@@ -2557,6 +2561,15 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var osdeExt = getExtra(periodo, "osde", doctor.apellido);
   var cmExt   = getExtra(periodo, "cm",   doctor.apellido);
 
+  // Bruto total del período: 5 cheques Colón + OSDE + CEM cuando ya estén
+  // disponibles (mientras estén pendientes no se suman — ver extraRow más abajo).
+  var osdeValTotal = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
+  var cmValTotal   = (!cmExt.pendiente   && cmExt.val)   ? cmExt.val   : 0;
+  var totalBruto = total + osdeValTotal + cmValTotal;
+  var subPartes = ["5 cheques Colón"];
+  if (osdeValTotal) subPartes.push("OSDE");
+  if (cmValTotal)   subPartes.push("CEM");
+
   // Retención Ganancias y Préstamo Casa — calculados temprano para poder anotarlos
   // en cada cheque individual (ver forEach de abajo), además de las líneas resumen
   // que ya se arman más abajo en esta misma función.
@@ -2571,8 +2584,8 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var html = '<div class="period-total">'
     + '<div class="pt-left">'
     + '<div class="pt-lbl">' + mes + '</div>'
-    + '<div class="pt-val">' + fmt(total) + '</div>'
-    + '<div class="pt-sub">5 cheques Colón · bruto</div>'
+    + '<div class="pt-val">' + fmt(totalBruto) + '</div>'
+    + '<div class="pt-sub">' + subPartes.join(" + ") + ' · bruto</div>'
     + '</div><div class="pt-icon">💰</div></div>';
 
   // Sueldo Director — solo para los 5 socios que cobran este concepto; les avisa
