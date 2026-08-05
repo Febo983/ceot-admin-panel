@@ -7149,6 +7149,17 @@ function renderSueldoDirector() {
   document.getElementById("adm-content").innerHTML = html;
 }
 
+// Compara una fecha "DD/MM" del período contra hoy — para marcar en el panel
+// admin si ese sueldo ya está listo para transferir o todavía no llegó la fecha.
+function sueldoDirectorFechaPaso(fechaStr) {
+  if (!fechaStr) return false;
+  var partes = fechaStr.split('/');
+  if (partes.length < 2) return false;
+  var f = new Date(new Date().getFullYear(), parseInt(partes[1], 10) - 1, parseInt(partes[0], 10));
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  return f <= hoy;
+}
+
 function sueldoDirectorTabHtml(periodo) {
   var monto = SUELDO_DIRECTOR_MONTO;
 
@@ -7164,10 +7175,20 @@ function sueldoDirectorTabHtml(periodo) {
     if (!s) {
       return '<div style="padding:8px 0"><b>' + doc.apellido + '</b> — <span class="adm-pend" style="font-size:.68rem">sin datos cargados para ' + periodo + '</span></div>';
     }
+    var listoHoy = s.alcanza && sueldoDirectorFechaPaso(s.fechaCompleta);
     var estadoFecha = s.alcanza
       ? 'Sueldo completo el <b>' + (s.fechaCompleta || '—') + '</b>'
       : '<span style="color:#b13a2c;font-weight:700">no alcanza en todo ' + periodo + ' — faltan ' + fmt(s.faltante) + '</span>';
     var saldoStyle = s.saldoFinal < 0 ? 'color:#b13a2c;font-weight:700' : 'font-weight:700';
+
+    // Color del bloque + del chip de sueldo: verde = ya podés transferir hoy,
+    // ámbar = todavía no llegó la fecha, rojo = no alcanza en todo el mes.
+    var estado = !s.alcanza ? 'no-alcanza' : (listoHoy ? 'listo' : 'espera');
+    var colores = {
+      'listo':      { borde: '#3f6b4a', fondo: 'rgba(63,107,74,.10)',  chipBg: '#3f6b4a', chipFg: '#fff', txt: '✓ Listo para transferir' },
+      'espera':     { borde: '#c9933a', fondo: 'rgba(201,147,58,.08)', chipBg: 'rgba(201,147,58,.18)', chipFg: '#8a6423', txt: 'Disponible el ' + (s.fechaCompleta || '—') },
+      'no-alcanza': { borde: '#b13a2c', fondo: 'rgba(177,58,44,.07)',  chipBg: 'rgba(177,58,44,.15)', chipFg: '#b13a2c', txt: 'No alcanza este mes' }
+    }[estado];
 
     var detRows = s.detalle.map(function(d) {
       var extra = [];
@@ -7185,11 +7206,14 @@ function sueldoDirectorTabHtml(periodo) {
         + '</tr>';
     }).join('');
 
-    return '<div style="margin-bottom:16px;border:1px solid rgba(32,36,31,.12);border-radius:8px;padding:10px 12px">'
+    return '<div style="margin-bottom:16px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:8px;padding:10px 12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
       +   '<div><b>' + doc.apellido + '</b> — ' + estadoFecha + '</div>'
       +   '<div style="display:flex;gap:14px;align-items:center;font-size:.8rem">'
-      +     '<span>Sueldo <b>' + fmt(s.monto) + '</b> <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.monto) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></span>'
+      +     '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + colores.chipFg + ';border-radius:6px;padding:5px 10px;font-weight:700">'
+      +       fmt(s.monto) + ' · ' + colores.txt
+      +       '<button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.monto) + '\', this)" style="border:none;background:rgba(255,255,255,.35);border-radius:4px;cursor:pointer;font-size:.72rem;padding:1px 4px;vertical-align:middle">📋</button>'
+      +     '</span>'
       +     '<span>Total neto mes <b>' + fmt(s.totalNetoMes) + '</b></span>'
       +     '<span>Saldo tras sueldo <b style="' + saldoStyle + '">' + fmt(s.saldoFinal) + '</b> <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.saldoFinal) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></span>'
       +   '</div>'
