@@ -1506,6 +1506,7 @@ body { background: var(--iv0); color: var(--ink); }
 <button class="adm-sidenav-btn" id="adm-sidenav-sueldob"       onclick="renderSueldoB()"><i data-lucide="briefcase" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Sueldo B</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-cpsm"         onclick="renderCpsm()"><i data-lucide="landmark" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>CPSM</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-aporteceot"  onclick="renderAporteCeot()"><i data-lucide="percent" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Retención Ganancias</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-sueldodirector" onclick="renderSueldoDirector()"><i data-lucide="banknote" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Transferencias del Mes</button>
       <div class="adm-sidenav-sep" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
         <span>Accesos</span>
         <button id="btnEditLinks" onclick="toggleEditLinks()" title="Editar links" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:rgba(255,255,255,.35);padding:0 2px">✏</button>
@@ -2049,6 +2050,10 @@ const PRESTAMO_CASA_SOCIOS = ["GARMENDIA", "DE LA COLINA", "SOULE", "LEON", "PER
 const PRESTAMO_CASA_SOCIOS_A = ["BRUNI", "CORELICH", "DEGANUTTI", "TRIVELLINI", "LABAYEN"];
 const PRESTAMO_CASA_CUOTA = { agosto: 1, septiembre: 2, octubre: 3, noviembre: 4, diciembre: 5 };
 
+// ── Sueldo Director — mismos 5 socios que PRESTAMO_CASA_SOCIOS_A, según el contador ──
+const SUELDO_DIRECTOR_LISTA = PRESTAMO_CASA_SOCIOS_A;
+var SUELDO_DIRECTOR_MONTO = 4000000;
+
 // ── URL del Apps Script Web App (pegar después de desplegar) ──────
 // Instrucciones: ceot_gastos_a_script.gs → sección "CÓMO DESPLEGAR"
 const GASTOS_A_ENDPOINT  = "https://script.google.com/macros/s/AKfycbwaMlP7F0oghuVC4ec0MX_pOXqg-l_vToI287NZ71eCiy8Qh-0SSdJzeLg4InAXG-fp/exec";
@@ -2570,6 +2575,22 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     + '<div class="pt-sub">5 cheques Colón · bruto</div>'
     + '</div><div class="pt-icon">💰</div></div>';
 
+  // Sueldo Director — solo para los 5 socios que cobran este concepto; les avisa
+  // cuánto y en qué fecha se les transfiere, sin exponer el resto del cálculo
+  // interno (retención/CPSM/IIBB de los demás cheques ya se ve más abajo igual).
+  if (typeof SUELDO_DIRECTOR_LISTA !== "undefined" && SUELDO_DIRECTOR_LISTA.indexOf(doctor.apellido) !== -1 && typeof calcularSueldoDirector === "function") {
+    var sd = calcularSueldoDirector(periodo, doctor, SUELDO_DIRECTOR_MONTO);
+    if (sd) {
+      var sdTxt = sd.alcanza
+        ? fmt(sd.monto) + ' el ' + (sd.fechaCompleta || '—')
+        : fmt(sd.monto - sd.faltante) + ' disponible hasta ahora (faltan ' + fmt(sd.faltante) + ')';
+      html += '<div style="background:rgba(201,147,58,.12);border:1px solid rgba(201,147,58,.35);border-radius:10px;padding:10px 12px;margin-bottom:10px">'
+        + '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.04em">🏦 Sueldo Director</div>'
+        + '<div style="font-size:.85rem;font-weight:700;color:#20241f;margin-top:2px">' + sdTxt + '</div>'
+        + '</div>';
+    }
+  }
+
   html += '<div class="cheque-list">';
   vals.forEach(function(monto, idx) {
     var fecha = fechas[idx];
@@ -2805,6 +2826,46 @@ function retencionPorAcreditacion(c) {
   if (c.osde > 0) items.push({ label: "OSDE", bruto: c.osde, retencion: Math.round(c.osde * c.pctAporte) });
   if (c.cm > 0)   items.push({ label: "CEM",  bruto: c.cm,   retencion: Math.round(c.cm * c.pctAporte) });
   return items;
+}
+
+// Sueldo Director: la Retención Ganancias sale de CADA cheque Colón a medida que
+// entra (no se puede reservar el bruto de un cheque para el sueldo, ya sale
+// descontado desde ese momento). El Préstamo Casa (crédito o descuento) sale del
+// cheque 1. IIBB se reserva del cheque 4 y CPSM del cheque 5 — así lo maneja el
+// contador en la práctica (son los cheques más caudalosos del mes). Devuelve el
+// neto real cheque por cheque y la fecha en la que el acumulado neto alcanza el
+// monto objetivo (ej. $4.000.000).
+function calcularSueldoDirector(periodo, doc, monto) {
+  var c = calcularNetoLocal(periodo, doc);
+  if (!c) return null;
+  monto = monto || SUELDO_DIRECTOR_MONTO;
+
+  var cheques = (c.colonCheques || []).filter(function(chq) { return chq.monto > 0; });
+  var cum = 0;
+  var fechaCompleta = null;
+  var yaAlcanzo = false;
+  var detalle = cheques.map(function(chq, i) {
+    var retencion = Math.round(chq.monto * (c.pctAporte || 0));
+    var neto = chq.monto - retencion;
+    var prestamoAqui = 0, iibbAqui = 0, cpsmAqui = 0;
+    if (i === 0) { prestamoAqui = -(c.prestamoCasa || 0); neto += prestamoAqui; }
+    if (i === 3) { iibbAqui = c.iibb || 0; neto -= iibbAqui; }
+    if (i === 4) { cpsmAqui = c.cpsm || 0; neto -= cpsmAqui; }
+    cum += neto;
+    if (!yaAlcanzo && cum >= monto) { fechaCompleta = chq.fecha; yaAlcanzo = true; }
+    return { fecha: chq.fecha, bruto: chq.monto, retencion: retencion, prestamo: prestamoAqui, iibb: iibbAqui, cpsm: cpsmAqui, neto: neto, acumulado: cum };
+  });
+
+  var totalNetoMes = cum;
+  var alcanza = yaAlcanzo;
+  var saldoFinal = totalNetoMes - monto;
+
+  return {
+    doc: doc, periodo: periodo, monto: monto,
+    detalle: detalle, fechaCompleta: fechaCompleta, alcanza: alcanza,
+    faltante: alcanza ? 0 : (monto - totalNetoMes),
+    totalNetoMes: totalNetoMes, saldoFinal: saldoFinal, pctAporte: c.pctAporte
+  };
 }
 
 function renderHistorial(doctor) {
@@ -3137,6 +3198,7 @@ var ADM_HOME_MODULOS = [
   { key:"sueldob",          ico:"briefcase",       lbl:"Sueldo B",      cat:"cat-adm", fn:"renderSueldoB()" },
   { key:"cpsm",             ico:"landmark",        lbl:"CPSM",          cat:"cat-fin", fn:"renderCpsm()" },
   { key:"aporteceot",       ico:"percent",         lbl:"Retención Ganancias",   cat:"cat-fin", fn:"renderAporteCeot()" },
+  { key:"sueldodirector",   ico:"banknote",        lbl:"Transferencias del Mes", cat:"cat-fin", fn:"renderSueldoDirector()" },
   { key:"accesos",          ico:"link-2",          lbl:"Accesos",       cat:"cat-inf", fn:"renderAccesos(null)" },
   { key:"mensajeswa",       ico:"message-circle",  lbl:"Mensajes WA",   cat:"cat-cli", fn:"" },
 ];
@@ -7063,6 +7125,139 @@ function renderAporteCeot() {
 
   document.getElementById("adm-content").innerHTML = html;
   renderAporteDetalle(APORTE_CEOT_DESDE[0]);
+}
+
+// ── Sueldo Director ──────────────────────────────────────────────
+// Para los 5 socios de PRESTAMO_CASA_SOCIOS_A: de sus cheques Colón con fecha,
+// arma cuándo se completa el monto de sueldo (cheques más tempranos primero) y
+// qué le queda disponible una vez cubiertos IIBB/CPSM/Gastos A/Retención
+// Ganancias/Préstamo Casa — reusa calcularNetoLocal, no duplica datos.
+function renderSueldoDirector() {
+  cerrarAdmSidenav();
+  admDesactivarSidebar();
+  var btn = document.getElementById("adm-sidenav-sueldodirector");
+  if (btn) btn.className = "adm-sidenav-btn active";
+
+  var periodo = adminPeriodoAct || tabMesActual();
+
+  var html = '<div style="padding:16px">'
+    + sueldoDirectorTabHtml(periodo)
+    + '<div style="height:28px;border-bottom:1px solid rgba(32,36,31,.15);margin-bottom:20px"></div>'
+    + restoProfesionalesTabHtml(periodo)
+    + '</div>';
+
+  document.getElementById("adm-content").innerHTML = html;
+}
+
+function sueldoDirectorTabHtml(periodo) {
+  var monto = SUELDO_DIRECTOR_MONTO;
+
+  var filas = SUELDO_DIRECTOR_LISTA.map(function(apellido) {
+    var doc = DOCTORES.filter(function(d) { return d.apellido === apellido; })[0];
+    if (!doc) return null;
+    var s = calcularSueldoDirector(periodo, doc, monto);
+    return { doc: doc, s: s };
+  }).filter(Boolean);
+
+  var bloques = filas.map(function(f) {
+    var doc = f.doc, s = f.s;
+    if (!s) {
+      return '<div style="padding:8px 0"><b>' + doc.apellido + '</b> — <span class="adm-pend" style="font-size:.68rem">sin datos cargados para ' + periodo + '</span></div>';
+    }
+    var estadoFecha = s.alcanza
+      ? 'Sueldo completo el <b>' + (s.fechaCompleta || '—') + '</b>'
+      : '<span style="color:#b13a2c;font-weight:700">no alcanza en todo ' + periodo + ' — faltan ' + fmt(s.faltante) + '</span>';
+    var saldoStyle = s.saldoFinal < 0 ? 'color:#b13a2c;font-weight:700' : 'font-weight:700';
+
+    var detRows = s.detalle.map(function(d) {
+      var extra = [];
+      if (d.prestamo) extra.push(d.prestamo < 0 ? '+' + fmt(Math.abs(d.prestamo)) + ' préstamo (crédito)' : '−' + fmt(d.prestamo) + ' préstamo');
+      if (d.iibb) extra.push('−' + fmt(d.iibb) + ' IIBB');
+      if (d.cpsm) extra.push('−' + fmt(d.cpsm) + ' CPSM');
+      var esCorte = s.alcanza && d.fecha === s.fechaCompleta;
+      return '<tr' + (esCorte ? ' style="background:rgba(201,147,58,.15)"' : '') + '>'
+        + '<td>' + d.fecha + '</td>'
+        + '<td>' + fmt(d.bruto) + '</td>'
+        + '<td>−' + fmt(d.retencion) + ' <span style="font-size:.6rem;color:rgba(32,36,31,.4)">' + Math.round((s.pctAporte || 0) * 100) + '%</span></td>'
+        + '<td style="font-size:.62rem;color:rgba(32,36,31,.5)">' + (extra.join('<br>') || '—') + '</td>'
+        + '<td style="font-weight:600">' + fmt(d.neto) + '</td>'
+        + '<td style="' + (esCorte ? 'font-weight:700;color:#8a6423' : '') + '">' + fmt(d.acumulado) + (esCorte ? ' ✓ $4M' : '') + '</td>'
+        + '</tr>';
+    }).join('');
+
+    return '<div style="margin-bottom:16px;border:1px solid rgba(32,36,31,.12);border-radius:8px;padding:10px 12px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
+      +   '<div><b>' + doc.apellido + '</b> — ' + estadoFecha + '</div>'
+      +   '<div style="display:flex;gap:14px;align-items:center;font-size:.8rem">'
+      +     '<span>Sueldo <b>' + fmt(s.monto) + '</b> <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.monto) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></span>'
+      +     '<span>Total neto mes <b>' + fmt(s.totalNetoMes) + '</b></span>'
+      +     '<span>Saldo tras sueldo <b style="' + saldoStyle + '">' + fmt(s.saldoFinal) + '</b> <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.saldoFinal) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></span>'
+      +   '</div>'
+      + '</div>'
+      + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+      +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Acumulado</th>'
+      + '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
+      + '</div>';
+  }).join("");
+
+  window._sueldoDirTexto = filas.filter(function(f) { return f.s; }).map(function(f) {
+    return f.doc.apellido + '\t' + numParaPegar(f.s.monto);
+  }).join('\n');
+
+  return '<div class="cpsm-header">'
+    +   '<div><div class="cpsm-title">🏦 Sueldo Director</div>'
+    +   '<div class="cpsm-subtitle">' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' · monto objetivo ' + fmt(monto) + ' · Bruni, Corelich, Deganutti, Labayen y Trivellini</div></div>'
+    + '</div>'
+    + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:0 2px 10px 2px">⚑ La Retención Ganancias sale de cada cheque a medida que entra (no se puede reservar el bruto para el sueldo). El Préstamo Casa sale del cheque 1, IIBB del cheque 4 y CPSM del cheque 5 — igual que lo maneja el contador. La fila resaltada es donde el acumulado neto llega a ' + fmt(monto) + '.</div>'
+    + bloques
+    + '<div class="cpsm-btn-row" style="margin-top:6px">'
+    +   '<button class="cpsm-calc-btn" onclick="copiarTexto(window._sueldoDirTexto || \'\', this)">📋 Copiar los 5 importes (apellido + monto)</button>'
+    + '</div>';
+}
+
+// Resto de profesionales (no-director): su transferencia normal del mes —
+// mismos datos que "Detalles mensuales", acá solo para tener todo junto con
+// Sueldo Director y no tener que saltar de módulo. Reusa calcularNetoLocal().
+function restoProfesionalesTabHtml(periodo) {
+  var filas = PRESTAMO_CASA_SOCIOS.map(function(apellido) {
+    var doc = DOCTORES.filter(function(d) { return d.apellido === apellido; })[0];
+    if (!doc) return null;
+    var c = calcularNetoLocal(periodo, doc);
+    return { doc: doc, c: c };
+  }).filter(Boolean);
+
+  var rows = filas.map(function(f) {
+    var doc = f.doc, c = f.c;
+    if (!c) {
+      return '<tr><td>' + doc.apellido + '</td><td colspan="6"><span class="adm-pend" style="font-size:.68rem">sin datos cargados para ' + periodo + '</span></td></tr>';
+    }
+    var pendTxt = c.pendiente ? ' <span class="adm-pend" style="font-size:.62rem">est.</span>' : '';
+    return '<tr>'
+      + '<td>' + doc.apellido + '</td>'
+      + '<td>' + fmt(c.bruto) + pendTxt + '</td>'
+      + '<td>−' + fmt(c.aporteCeot) + ' <span style="font-size:.62rem;color:rgba(32,36,31,.4)">' + Math.round((c.pctAporte || 0) * 100) + '%</span></td>'
+      + '<td>−' + fmt(c.cpsm) + '</td>'
+      + '<td>−' + fmt(c.iibb) + '</td>'
+      + '<td>−' + fmt(c.prestamoCasa) + '</td>'
+      + '<td style="font-weight:700">' + fmt(c.neto) + ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(c.neto) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></td>'
+      + '</tr>';
+  }).join("");
+
+  window._restoProfTexto = filas.filter(function(f) { return f.c; }).map(function(f) {
+    return f.doc.apellido + '\t' + numParaPegar(f.c.neto);
+  }).join('\n');
+
+  return '<div class="cpsm-header">'
+    +   '<div><div class="cpsm-title">💳 Resto de profesionales</div>'
+    +   '<div class="cpsm-subtitle">' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' · Garmendia, De la Colina, Soulé, León, Perlasco y Mazzola · transferencia normal del mes</div></div>'
+    + '</div>'
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+    +   '<th>Profesional</th><th>Bruto</th><th>Retención</th><th>CPSM</th><th>IIBB</th><th>Préstamo</th><th>Neto a transferir</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:6px 2px 0 2px">⚑ "est." = todavía falta OSDE y/o CEM de este mes; el neto se va a ajustar cuando se carguen. El Préstamo Casa acá es descuento (no crédito) — este grupo no es el de Sueldo Director.</div>'
+    + '<div class="cpsm-btn-row" style="margin-top:10px">'
+    +   '<button class="cpsm-calc-btn" onclick="copiarTexto(window._restoProfTexto || \'\', this)">📋 Copiar los 6 importes (apellido + monto)</button>'
+    + '</div>';
 }
 
 // PDF de Retención Ganancias: detalle por profesional y período + acumulado
