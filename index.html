@@ -3249,7 +3249,6 @@ var ADM_HOME_MODULOS = [
   { key:"liquidaciones",    ico:"bar-chart-3",     lbl:"Liquidaciones", cat:"cat-fin", fn:"renderAdminPanelPage(tabMesActual())" },
   { key:"totalceot",        ico:"trending-up",     lbl:"Total CEOT",    cat:"cat-fin", fn:"renderTotalCeot()" },
   { key:"debitos",          ico:"alert-triangle",  lbl:"Débitos",       cat:"cat-gst", fn:"renderDebitos()" },
-  { key:"pendientes",       ico:"clipboard-list",  lbl:"Pendientes",    cat:"cat-adm", fn:"renderPendientes()" },
   { key:"facturas",         ico:"receipt",         lbl:"Facturas",      cat:"cat-adm", fn:"renderFacturas()" },
   { key:"transferencias",   ico:"arrow-left-right",lbl:"Transferencias",cat:"cat-adm", fn:"renderTransferencias()" },
   { key:"sueldob",          ico:"briefcase",       lbl:"Sueldo B",      cat:"cat-adm", fn:"renderSueldoB()" },
@@ -7146,14 +7145,6 @@ function renderAporteCeot() {
     + '<div id="aporte-links-status" style="margin-top:10px;font-size:0.8rem;color:rgba(32,36,31,.55)"></div>'
     + linksVista;
 
-  // ── Detalle por acreditación: cuánto retener de cada cheque puntual ──
-  var detalleHtml = '<div class="adm-sec-title" style="margin-top:20px">Detalle por acreditación — cuánto retener de cada cheque</div>'
-    + '<div style="margin-bottom:8px"><select id="aporte-mes-sel" class="imp-select" style="width:auto" onchange="renderAporteDetalle(this.value)">'
-    + APORTE_CEOT_DESDE.map(function(p) { return '<option value="' + p + '">' + p.charAt(0).toUpperCase() + p.slice(1) + '</option>'; }).join('')
-    + '</select></div>'
-    + '<div id="aporte-detalle-tbl"></div>'
-    + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:6px 2px 0 2px">⚑ Mismo % aplicado a cada cheque individual (Colón 1-5, OSDE, CEM) — la suma coincide con el total retenido del profesional para ese mes.</div>';
-
   var html = '<div style="padding:16px">'
     + '<div class="cpsm-header">'
     +   '<div><div class="cpsm-title">📐 Retención Ganancias — porcentajes</div>'
@@ -7166,12 +7157,10 @@ function renderAporteCeot() {
     + '</div>'
     + '<div id="aporte-ceot-status" style="margin-top:10px;font-size:0.8rem;color:rgba(32,36,31,.55)"></div>'
     + regHtml
-    + detalleHtml
     + linksHtml
     + '</div>';
 
   document.getElementById("adm-content").innerHTML = html;
-  renderAporteDetalle(APORTE_CEOT_DESDE[0]);
 }
 
 // ── Sueldo Director ──────────────────────────────────────────────
@@ -7496,79 +7485,6 @@ async function copiarTexto(texto, btn) {
 function numParaPegar(n) {
   n = Math.round((n || 0) * 100) / 100;
   return n.toFixed(2).replace('.', ',');
-}
-
-function copiarColumnaAporte(col, btn) {
-  var datos = (window._aporteColData || {})[col] || [];
-  if (!datos.length) return;
-  var texto = datos.map(function(r) { return r.apellido + '\t' + numParaPegar(r.monto); }).join('\n');
-  copiarTexto(texto, btn);
-}
-
-function renderAporteDetalle(mes) {
-  var tbl = document.getElementById("aporte-detalle-tbl");
-  if (!tbl) return;
-  var sel = document.getElementById("aporte-mes-sel");
-  if (sel && mes) sel.value = mes;
-  mes = mes || (sel ? sel.value : APORTE_CEOT_DESDE[0]);
-
-  var socios = DOCTORES.filter(function(d) { return APORTE_CEOT_PCT[d.apellido] !== null; });
-  var colData = { 1: [], 2: [], 3: [], 4: [], 5: [] };
-  var bodyHtml = '';
-
-  socios.forEach(function(d) {
-    var c = calcularNetoLocal(mes, d);
-    bodyHtml += '<tr><td>' + d.apellido + '</td>';
-    if (!c || !c.pctAporte) {
-      bodyHtml += '<td colspan="7"><span class="adm-pend" style="font-size:.68rem">' + (c ? 'sin % asignado' : 'sin datos cargados') + '</span></td></tr>';
-      return;
-    }
-    var items = retencionPorAcreditacion(c);
-    for (var i = 1; i <= 5; i++) {
-      var it = items.filter(function(x) { return x.label.indexOf("Cheque " + i) === 0; })[0];
-      var prestamoAnotCheq = '';
-      var prestamoCheque1 = (i === 1) ? (c.prestamoCasa || 0) : 0;
-      if (i === 1 && c.prestamoCasa) {
-        prestamoAnotCheq = c.prestamoCasa > 0
-          ? '<div style="font-size:.58rem;color:#b13a2c">(-' + fmt(c.prestamoCasa) + ' préstamo ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</div>'
-          : '<div style="font-size:.58rem;color:#166534">(+' + fmt(-c.prestamoCasa) + ' reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</div>';
-      }
-      var netoAnotCheq = '';
-      if (it || prestamoCheque1) {
-        var netoCheq = (it ? it.bruto : 0) - (it ? it.retencion : 0) - prestamoCheque1;
-        colData[i].push({ apellido: d.apellido, monto: netoCheq });
-        netoAnotCheq = '<div style="font-size:.62rem;font-weight:700;color:#1f3a2e;border-top:1px dashed rgba(32,36,31,.2);margin-top:2px;padding-top:2px">'
-          + '= ' + fmt(netoCheq)
-          + ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(netoCheq) + '\', this)" '
-          +   'style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button>'
-          + '</div>';
-      }
-      bodyHtml += '<td>' + (it
-        ? '−' + fmt(it.retencion) + ' <span style="font-size:.58rem;color:rgba(32,36,31,.4)">de ' + fmt(it.bruto) + '</span>' + prestamoAnotCheq + netoAnotCheq
-        : ('<span class="adm-pend">—</span>' + prestamoAnotCheq)) + '</td>';
-    }
-    var osdeIt = items.filter(function(x) { return x.label === "OSDE"; })[0];
-    var cmIt   = items.filter(function(x) { return x.label === "CEM"; })[0];
-    bodyHtml += '<td>' + (osdeIt ? '−' + fmt(osdeIt.retencion) : '<span class="adm-pend">—</span>') + '</td>';
-    bodyHtml += '<td>' + (cmIt   ? '−' + fmt(cmIt.retencion)   : '<span class="adm-pend">—</span>') + '</td>';
-    bodyHtml += '<td style="font-weight:700">' + (c.aporteCeot ? '−' + fmt(c.aporteCeot) : '<span class="adm-pend">—</span>') + '</td>';
-    bodyHtml += '</tr>';
-  });
-
-  window._aporteColData = colData;
-  var theadCells = [1,2,3,4,5].map(function(i) {
-    return '<th>Cheque ' + i + ' <button type="button" title="Copiar los ' + colData[i].length + ' importes de esta columna" '
-      + 'onclick="copiarColumnaAporte(' + i + ', this)" '
-      + 'style="border:none;background:none;cursor:pointer;font-size:.75rem;padding:0 2px;vertical-align:middle">📋</button></th>';
-  }).join('');
-
-  var html = '<div style="font-size:.65rem;color:rgba(32,36,31,.45);padding:0 2px 6px 2px">📋 al lado de cada importe copia solo ese número · 📋 en el encabezado copia los importes de todo el cheque (apellido + monto, uno por línea) — listo para pegar en el homebanking.</div>'
-    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Profesional</th>'
-    + theadCells
-    + '<th>OSDE</th><th>CEM</th><th>Total retenido</th></tr></thead><tbody>'
-    + bodyHtml
-    + '</tbody></table></div>';
-  tbl.innerHTML = html;
 }
 
 function escAttr(s) {
