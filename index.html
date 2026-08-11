@@ -22,12 +22,14 @@ body {
 .app { max-width: 480px; margin: 0 auto; }
 
 /* ── LOGIN ── */
-.login-wrap { padding-top: 28px; }
+.login-wrap { padding-top: 28px; position: relative; }
+#loginBg { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; pointer-events: none; }
 .login-card {
   background: #fdf8f0; border-radius: 12px;
   padding: 28px 22px 22px;
   box-shadow: 0 2px 16px rgba(0,0,0,.10);
   border: 1px solid #e2dbd0;
+  position: relative;
 }
 .logo-area { text-align: center; margin-bottom: 24px; }
 .logo-icon {
@@ -1303,10 +1305,11 @@ body { background: var(--iv0); color: var(--ink); }
   font-display: swap;
 }
 .adm-home-retro { font-family:'PixelDisplay', monospace; }
-.adm-home-retro-wrap { position:relative; margin:-18px -16px 0; padding:18px 16px 20px; min-height:200px;
+.adm-home-retro-wrap { position:relative; margin:-18px -16px 0; padding:18px 16px 20px; min-height:200px; overflow:hidden;
   background: radial-gradient(circle at 15% 8%, rgba(255,255,255,.5) 0, transparent 40%), linear-gradient(180deg, #bfe4fb 0%, #9ed3f2 100%);
 }
-.adm-home-retro-inner { max-width:1600px; margin:0 auto; }
+.adm-home-retro-inner { max-width:1600px; margin:0 auto; position:relative; }
+#admHomeBg { position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; }
 </style>
 </head>
 <body>
@@ -1316,6 +1319,7 @@ body { background: var(--iv0); color: var(--ink); }
   <div id="sb-print-area" style="display:none"></div>
 
   <div id="loginView" class="login-wrap">
+    <canvas id="loginBg" aria-hidden="true"></canvas>
     <div class="login-card">
       <div class="logo-area">
         <div class="logo-icon"><i data-lucide="stethoscope" style="width:24px;height:24px;color:#fff" stroke-width="1.75"></i></div>
@@ -3561,7 +3565,7 @@ function renderAdmHome() {
   var html;
 
   if (retro) {
-    html = '<div class="adm-home-retro adm-home-retro-wrap"><div class="adm-home-retro-inner">'
+    html = '<div class="adm-home-retro adm-home-retro-wrap"><canvas id="admHomeBg" aria-hidden="true"></canvas><div class="adm-home-retro-inner">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fffaf1;border:3px solid #0f1c28;border-radius:18px;padding:12px 18px;box-shadow:0 5px 0 #0f1c28,0 10px 18px rgba(15,28,40,.18);margin-bottom:16px">'
       +   '<div style="display:flex;align-items:center;gap:12px">'
       +     '<div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(160deg,#2f7de0 0%,#1f5cab 100%);border:3px solid #0f1c28;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -4px 0 rgba(0,0,0,.18);flex-shrink:0">'
@@ -3653,6 +3657,95 @@ function renderAdmHome() {
 
   document.getElementById("adm-content").innerHTML = html;
   admHomeRenderResults();
+  if (retro) initAdmHomeBg(); else stopAdmHomeBg();
+}
+
+// ══════ FONDO ANIMADO — VISTA RETRO (nodos flotando en el cielo) ═════
+// El home admin se re-renderiza seguido (cambio de mes, editar nombres,
+// toggle clásico/retro), asi que el canvas se recrea cada vez — hay que
+// cortar el rAF previo antes de arrancar uno nuevo o se acumulan loops.
+var _admHomeBgRaf = null;
+function stopAdmHomeBg() {
+  if (_admHomeBgRaf) { cancelAnimationFrame(_admHomeBgRaf); _admHomeBgRaf = null; }
+}
+function initAdmHomeBg() {
+  stopAdmHomeBg();
+  var canvas = document.getElementById("admHomeBg");
+  if (!canvas) return;
+  var ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  var reduceMotion = !window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
+  var INK = "15,28,40";     // #0f1c28 — borde navy del tema retro
+  var GOLD = "239,111,162"; // #ef6fa2 — acento rosa del avatar retro
+
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var width = 0, height = 0, nodes = [];
+
+  function makeNodes() {
+    var count = Math.max(14, Math.min(45, Math.round((width * height) / 15000)));
+    nodes = [];
+    for (var i = 0; i < count; i++) {
+      nodes.push({
+        x: Math.random() * width, y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.15, vy: (Math.random() - 0.5) * 0.15,
+        r: 1.8 + Math.random() * 2, pink: Math.random() < 0.25
+      });
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    var i, j;
+    for (i = 0; i < nodes.length; i++) {
+      for (j = i + 1; j < nodes.length; j++) {
+        var a = nodes[i], b = nodes[j], dx = a.x - b.x, dy = a.y - b.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 100) {
+          ctx.strokeStyle = "rgba(" + INK + "," + (0.12 * (1 - d / 100)) + ")";
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+      }
+    }
+    for (i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      ctx.fillStyle = "rgba(" + (n.pink ? GOLD : INK) + "," + (n.pink ? 0.55 : 0.25) + ")";
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  function resize(w, h) {
+    if (!(w > 20) || !(h > 20)) return;
+    width = w; height = h;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    makeNodes();
+    draw();
+  }
+
+  var parent = canvas.parentElement;
+  resize(parent.clientWidth, parent.clientHeight);
+  if (window.ResizeObserver) {
+    new ResizeObserver(function (entries) {
+      var box = entries[0].contentRect;
+      resize(box.width, box.height);
+    }).observe(parent);
+  }
+
+  if (reduceMotion) return;
+
+  function tick() {
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      n.x += n.vx; n.y += n.vy;
+      if (n.x < 0 || n.x > width) n.vx *= -1;
+      if (n.y < 0 || n.y > height) n.vy *= -1;
+    }
+    draw();
+    _admHomeBgRaf = requestAnimationFrame(tick);
+  }
+  _admHomeBgRaf = requestAnimationFrame(tick);
 }
 
 // ══════ CHECKLIST MENSUAL ═══════════════════════════════════════
@@ -7738,6 +7831,97 @@ async function restaurarAporteCeotPct() {
     </div>
   </div>
 </div>
+
+<script>
+(function () {
+  var canvas = document.getElementById("loginBg");
+  if (!canvas) return;
+  var ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  var reduceMotion = !window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
+  var GOLD = "201,147,58";   // --co-gold
+  var INK = "31,58,46";      // logo-icon verde oscuro
+
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var width = 0, height = 0;
+  var nodes = [];
+
+  function makeNodes() {
+    var area = width * height;
+    var count = Math.max(16, Math.min(60, Math.round(area / 16000)));
+    nodes = [];
+    for (var i = 0; i < count; i++) {
+      nodes.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.18,
+        vy: (Math.random() - 0.5) * 0.18,
+        r: 1.6 + Math.random() * 1.8,
+        gold: Math.random() < 0.35
+      });
+    }
+  }
+
+  function resize(w, h) {
+    if (!(w > 20) || !(h > 20)) return;
+    width = w; height = h;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    makeNodes();
+    draw();
+  }
+
+  resize(window.innerWidth, window.innerHeight);
+  window.addEventListener("resize", function () {
+    resize(window.innerWidth, window.innerHeight);
+  });
+
+  var maxDist = 90;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    var i, j;
+    for (i = 0; i < nodes.length; i++) {
+      for (j = i + 1; j < nodes.length; j++) {
+        var a = nodes[i], b = nodes[j];
+        var dx = a.x - b.x, dy = a.y - b.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        if (d < maxDist) {
+          ctx.strokeStyle = "rgba(" + INK + "," + (0.1 * (1 - d / maxDist)) + ")";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+    }
+    for (i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      ctx.fillStyle = "rgba(" + (n.gold ? GOLD : INK) + "," + (n.gold ? 0.45 : 0.3) + ")";
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  if (reduceMotion) return;
+
+  function tick() {
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      n.x += n.vx; n.y += n.vy;
+      if (n.x < 0 || n.x > width) n.vx *= -1;
+      if (n.y < 0 || n.y > height) n.vy *= -1;
+    }
+    draw();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
 
 </body>
 </html>
