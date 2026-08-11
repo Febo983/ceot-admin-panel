@@ -7180,6 +7180,7 @@ function renderSueldoDirector() {
   var periodo = adminPeriodoAct || tabMesActual();
 
   var html = '<div style="padding:16px">'
+    + sueldoDirectorPeriodoSelectorHtml(periodo)
     + sueldoDirectorTabHtml(periodo)
     + '<div style="height:28px;border-bottom:1px solid rgba(32,36,31,.15);margin-bottom:20px"></div>'
     + restoProfesionalesTabHtml(periodo)
@@ -7189,6 +7190,33 @@ function renderSueldoDirector() {
 
   document.getElementById("adm-content").innerHTML = html;
   invRecalcularPreview();
+}
+
+// Selector de período propio de esta pantalla — los tabs Ene..Dic de arriba
+// llevan a "vista clásica" (Liquidaciones), así que no sirven para quedarse
+// acá cambiando de mes. Este selector cambia adminPeriodoAct y vuelve a
+// renderizar Sueldo Director + Resto de profesionales + Inversiones para el
+// mes elegido, sin salir de la pantalla — para poder ir y volver entre
+// Agosto/Septiembre/Octubre a medida que se cargan los cheques de cada uno.
+function sueldoDirectorPeriodoSelectorHtml(periodoAct) {
+  var meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var opts = meses.map(function(m) {
+    return '<option value="' + m + '"' + (m === periodoAct ? ' selected' : '') + '>' + m.charAt(0).toUpperCase() + m.slice(1) + '</option>';
+  }).join('');
+  return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
+    + '<label style="font-size:.75rem;color:rgba(32,36,31,.5);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Período</label>'
+    + '<select onchange="sueldoDirectorCambiarPeriodo(this.value)" style="padding:6px 10px;border:1px solid rgba(32,36,31,.25);border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:600;background:var(--co-card,#fbf8f0)">' + opts + '</select>'
+    + '<span style="font-size:.65rem;color:rgba(32,36,31,.4)">cambia Sueldo Director, Resto de profesionales e Inversiones juntos, sin salir de esta pantalla</span>'
+    + '</div>';
+}
+
+function sueldoDirectorCambiarPeriodo(periodo) {
+  adminPeriodoAct = periodo;
+  ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+    var t = document.getElementById("adm-tab-" + p);
+    if (t) t.className = "adm-tab" + (p === periodo ? " adm-tab-act" : "");
+  });
+  renderSueldoDirector();
 }
 
 // Compara una fecha "DD/MM" del período contra hoy — para marcar en el panel
