@@ -817,6 +817,9 @@ body {
 .deb-btn-pri:hover { opacity:.82; }
 .deb-btn-pri.action-done { background:#c9933a !important; border-color:#c9933a !important; color:#20241f !important; transform:scale(1.015); }
 .deb-saved-msg { font-size:0.72rem; color:#166534; display:none; }
+/* Marcado persistente (📋 copiar / guardar / descargar) — queda en verde hasta que se vuelve a clickear */
+.action-marked { background:#166534 !important; border-color:#166534 !important; color:#fff !important; }
+.action-marked::after { content:" ✓"; }
 .deb-table-wrap { overflow-x:auto; }
 .deb-table { width:100%; border-collapse:collapse; font-size:0.74rem; }
 .deb-table th { background:rgba(32,36,31,.08); color:#20241f; padding:7px 8px; text-align:right; font-weight:600; white-space:nowrap; }
@@ -4970,10 +4973,69 @@ document.getElementById("adminRefreshBtn").addEventListener("click", async funct
 document.getElementById("usernameInput").addEventListener("keypress", function(e){ if(e.key==="Enter") handleLogin(); });
 document.getElementById("passwordInput").addEventListener("keypress", function(e){ if(e.key==="Enter") handleLogin(); });
 
+// Botones marcados en verde (ver actionFeedback más abajo): cargar lo guardado
+// y repintar cada vez que cualquier pantalla del panel reconstruye su HTML.
+actionDoneCargar();
+actionDoneRepintarTodo();
+new MutationObserver(function(muts) {
+  muts.forEach(function(m) {
+    m.addedNodes.forEach(function(n) {
+      if (n.nodeType !== 1) return;
+      if (n.matches && (n.matches('[onclick*="actionFeedback(this)"]') || n.matches('[onclick*="copiarTexto("]'))) actionDoneAplicar(n);
+      if (n.querySelectorAll) actionDoneRepintarTodo(n);
+    });
+  });
+}).observe(document.body, { childList: true, subtree: true });
+
 // ══════ COMPROBANTES PDF ════════════════════════════════════════
 
+// Marcado persistente en botones de acción (copiar/guardar/descargar/imprimir):
+// además del flash "✅ Listo" de siempre, el botón queda en verde permanente
+// (localStorage, sobrevive a recargas) hasta que se lo vuelve a clickear —
+// sirve para llevar control visual de qué ya se hizo. La clave se arma con el
+// onclick literal del botón (ya trae los datos que lo hacen único por fila:
+// fecha, apellido, importe, id...) + su título/texto.
+var ACTION_DONE_KEYS = {};
+
+function actionDoneCargar() {
+  try {
+    var raw = localStorage.getItem("ceot_action_done");
+    if (raw) ACTION_DONE_KEYS = JSON.parse(raw) || {};
+  } catch (e) { ACTION_DONE_KEYS = {}; }
+}
+
+function actionDoneGuardar() {
+  localStorage.setItem("ceot_action_done", JSON.stringify(ACTION_DONE_KEYS));
+}
+
+function actionDoneKey(btn) {
+  return (btn.getAttribute("onclick") || "") + "|" + (btn.title || btn.textContent || "");
+}
+
+function actionDoneAplicar(btn) {
+  if (ACTION_DONE_KEYS[actionDoneKey(btn)]) btn.classList.add("action-marked");
+  else btn.classList.remove("action-marked");
+}
+
+// Repinta (o vuelve a evaluar) el estado marcado de todos los botones dentro
+// de root — se llama al cargar y cada vez que el observer detecta HTML nuevo
+// insertado por cualquiera de los render*() del panel (todos reconstruyen su
+// contenedor con innerHTML, así que el estado hay que reaplicarlo cada vez).
+function actionDoneRepintarTodo(root) {
+  (root || document).querySelectorAll('[onclick*="actionFeedback(this)"],[onclick*="copiarTexto("]').forEach(actionDoneAplicar);
+}
+
 function actionFeedback(btn) {
-  if (!btn || btn.dataset.pdfBusy) return;
+  if (!btn) return;
+  var key = actionDoneKey(btn);
+  if (ACTION_DONE_KEYS[key]) {
+    // ya estaba marcado: este clic lo destilda, sin flash de "Listo"
+    delete ACTION_DONE_KEYS[key];
+    actionDoneGuardar();
+    actionDoneAplicar(btn);
+    return;
+  }
+  if (btn.dataset.pdfBusy) return;
   btn.dataset.pdfBusy = "1";
   var original = btn.innerHTML;
   btn.innerHTML = "✅ Listo";
@@ -4982,6 +5044,9 @@ function actionFeedback(btn) {
     btn.innerHTML = original;
     btn.classList.remove("action-done");
     delete btn.dataset.pdfBusy;
+    ACTION_DONE_KEYS[key] = true;
+    actionDoneGuardar();
+    actionDoneAplicar(btn);
   }, 1100);
 }
 
