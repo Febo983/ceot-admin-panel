@@ -7389,23 +7389,35 @@ function invTiposGuardar(arr) {
   try { localStorage.setItem(INV_TIPOS_KEY, JSON.stringify(arr)); } catch (e) {}
 }
 
-// Retención Ganancias por fecha de cheque real (excluye OSDE/CEM, que no
-// tienen fecha fija de cheque), para TODOS los socios (Director + Resto).
+// Retención Ganancias agrupada por "clave" — fecha de cheque real (03/08, 07/08…)
+// o etiqueta institucional (Cheque OSDE, Acreditación CEM), para TODOS los
+// socios (Director + Resto). OSDE/CEM se agrupan por el nombre fijo aunque el
+// contador venga con fecha estimada distinta ("~3ra sem. de Sep") o cambie por
+// profesional según a quién ya se le cargó — así el chip queda estable. Si
+// para una clave todavía nadie tiene importe cargado, igual aparece (pendientes),
+// para que Marcelo la vea en la lista aunque no se pueda usar todavía.
 function invRetencionesPorFecha(periodo) {
-  var porFecha = {};
+  var porClave = {};
   TODOS_SOCIOS_INVERSION.forEach(function(apellido) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === apellido; })[0];
     if (!doc) return;
     var base = calcularDetalleChequesProfesional(periodo, doc);
     if (!base) return;
     base.detalle.forEach(function(d) {
-      if (d.pendiente || !d.retencion) return;
-      if (!/^\d{2}\/\d{2}$/.test(d.fecha)) return;
-      if (!porFecha[d.fecha]) porFecha[d.fecha] = [];
-      porFecha[d.fecha].push({ apellido: apellido, retencion: d.retencion });
+      var esFecha = /^\d{2}\/\d{2}$/.test(d.fecha);
+      var clave = esFecha ? d.fecha
+        : (d.fecha.indexOf("Cheque OSDE") === 0 ? "Cheque OSDE"
+          : (d.fecha.indexOf("Acreditación CEM") === 0 ? "Acreditación CEM" : null));
+      if (!clave) return;
+      if (!porClave[clave]) porClave[clave] = { esFecha: esFecha, entradas: [], pendientes: [] };
+      if (d.pendiente || !d.retencion) {
+        porClave[clave].pendientes.push(apellido);
+      } else {
+        porClave[clave].entradas.push({ apellido: apellido, retencion: d.retencion });
+      }
     });
   });
-  return porFecha;
+  return porClave;
 }
 
 function invFechaVencimiento(plazoDias) {
@@ -7418,13 +7430,15 @@ function invFechaVencimiento(plazoDias) {
 // Recalcula en vivo el desglose por profesional + el interés, a medida que
 // se tildan cheques o se edita plazo/TNA/monto — sin volver a pegarle al Sheet.
 function invRecalcularPreview() {
-  var porFecha = window._invPorFecha || {};
+  var porClave = window._invPorFecha || {};
   var chks = document.querySelectorAll(".inv-fecha-chk:checked");
   var fechasSel = Array.prototype.map.call(chks, function(c) { return c.value; });
 
   var porProf = {};
-  fechasSel.forEach(function(f) {
-    (porFecha[f] || []).forEach(function(x) {
+  fechasSel.forEach(function(clave) {
+    var info = porClave[clave];
+    if (!info) return;
+    info.entradas.forEach(function(x) {
       porProf[x.apellido] = (porProf[x.apellido] || 0) + x.retencion;
     });
   });
@@ -7593,18 +7607,29 @@ function invListaHtml() {
 }
 
 function inversionesSectionHtml(periodo) {
-  var porFecha = invRetencionesPorFecha(periodo);
-  window._invPorFecha = porFecha;
-  var fechas = Object.keys(porFecha).sort(function(a, b) {
+  var porClave = invRetencionesPorFecha(periodo);
+  window._invPorFecha = porClave;
+
+  var claveFechas = Object.keys(porClave).filter(function(c) { return porClave[c].esFecha; }).sort(function(a, b) {
     var pa = a.split("/"), pb = b.split("/");
     return (pa[1] + pa[0]) - (pb[1] + pb[0]);
   });
+  var claveOtras = Object.keys(porClave).filter(function(c) { return !porClave[c].esFecha; }).sort();
+  var claves = claveFechas.concat(claveOtras);
 
-  var chipsFechas = fechas.map(function(f) {
-    var total = porFecha[f].reduce(function(s, x) { return s + x.retencion; }, 0);
+  var chipsFechas = claves.map(function(c) {
+    var info = porClave[c];
+    var total = info.entradas.reduce(function(s, x) { return s + x.retencion; }, 0);
+    if (!info.entradas.length) {
+      return '<label style="display:inline-flex;align-items:center;gap:5px;background:rgba(32,36,31,.03);border:1px dashed rgba(32,36,31,.25);border-radius:6px;padding:5px 10px;font-size:.78rem;color:rgba(32,36,31,.4)" title="Todavía nadie tiene retención cargada para ' + escAttr(c) + '">'
+        + '<input type="checkbox" disabled>'
+        + c + ' <span>⏳ pendiente</span>'
+        + '</label>';
+    }
+    var etiquetaExtra = info.pendientes.length ? ' <span style="color:#8a6423">(' + info.entradas.length + '/' + (info.entradas.length + info.pendientes.length) + ' cargados)</span>' : '';
     return '<label style="display:inline-flex;align-items:center;gap:5px;background:rgba(32,36,31,.05);border:1px solid rgba(32,36,31,.15);border-radius:6px;padding:5px 10px;font-size:.78rem;cursor:pointer">'
-      + '<input type="checkbox" class="inv-fecha-chk" value="' + f + '" onchange="invRecalcularPreview()">'
-      + f + ' <span style="color:rgba(32,36,31,.45)">(' + fmt(total) + ')</span>'
+      + '<input type="checkbox" class="inv-fecha-chk" value="' + escAttr(c) + '" onchange="invRecalcularPreview()">'
+      + c + ' <span style="color:rgba(32,36,31,.45)">(' + fmt(total) + ')</span>' + etiquetaExtra
       + '</label>';
   }).join(' ');
 
