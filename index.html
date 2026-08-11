@@ -7463,9 +7463,10 @@ function invRecalcularPreview() {
         var interesInd = interesTotal * prop;
         return '<tr><td>' + ap + '</td><td>' + fmt(porProf[ap]) + '</td><td>' + (prop * 100).toFixed(1) + '%</td><td style="font-weight:600">' + fmt(interesInd) + '</td></tr>';
       }).join('');
+      var filaTotalPrev = '<tr class="adm-totals"><td>TOTAL</td><td>' + fmt(autoTotal) + '</td><td>100.0%</td><td>' + fmt(interesTotal) + '</td></tr>';
       aportantesWrap.innerHTML = '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
         + '<th>Profesional</th><th>Retención aportada</th><th>% del fondo</th><th>Interés que le corresponde</th>'
-        + '</tr></thead><tbody>' + filas + '</tbody></table></div>';
+        + '</tr></thead><tbody>' + filas + filaTotalPrev + '</tbody></table></div>';
     }
   }
 
