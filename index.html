@@ -2054,6 +2054,9 @@ const PRESTAMO_CASA_CUOTA = { agosto: 1, septiembre: 2, octubre: 3, noviembre: 4
 const SUELDO_DIRECTOR_LISTA = PRESTAMO_CASA_SOCIOS_A;
 var SUELDO_DIRECTOR_MONTO = 4000000;
 
+// ── Todos los socios con cheques (Director + Resto) — usado por Inversiones ──
+const TODOS_SOCIOS_INVERSION = PRESTAMO_CASA_SOCIOS_A.concat(PRESTAMO_CASA_SOCIOS);
+
 // ── URL del Apps Script Web App (pegar después de desplegar) ──────
 // Instrucciones: ceot_gastos_a_script.gs → sección "CÓMO DESPLEGAR"
 const GASTOS_A_ENDPOINT  = "https://script.google.com/macros/s/AKfycbwaMlP7F0oghuVC4ec0MX_pOXqg-l_vToI287NZ71eCiy8Qh-0SSdJzeLg4InAXG-fp/exec";
@@ -7180,9 +7183,12 @@ function renderSueldoDirector() {
     + sueldoDirectorTabHtml(periodo)
     + '<div style="height:28px;border-bottom:1px solid rgba(32,36,31,.15);margin-bottom:20px"></div>'
     + restoProfesionalesTabHtml(periodo)
+    + '<div style="height:28px;border-bottom:1px solid rgba(32,36,31,.15);margin-bottom:20px"></div>'
+    + inversionesSectionHtml(periodo)
     + '</div>';
 
   document.getElementById("adm-content").innerHTML = html;
+  invRecalcularPreview();
 }
 
 // Compara una fecha "DD/MM" del período contra hoy — para marcar en el panel
@@ -7354,6 +7360,297 @@ function restoProfesionalesTabHtml(periodo) {
     + '<div class="cpsm-btn-row" style="margin-top:6px">'
     +   '<button class="cpsm-calc-btn" onclick="copiarTexto(window._restoProfTexto || \'\', this)">📋 Copiar los 6 importes (apellido + monto)</button>'
     + '</div>';
+}
+
+// ── Inversiones del fondo Retención Ganancias ───────────────────────
+// Registra plazos fijos (u otro tipo de colocación) armados con la Retención
+// Ganancias que va saliendo cheque a cheque. El usuario elige qué cheques del
+// período entran en la tanda, la app suma la retención de esos cheques por
+// profesional (misma fuente que las tablas de arriba, calcularDetalleChequesProfesional),
+// y reparte el interés proporcional a lo que aportó cada uno. Se guarda en
+// localStorage (ceot_inversiones) — mismo patrón que ceot_aporte_links, no
+// depende del backend de liquidaciones.
+var INV_STORAGE_KEY = "ceot_inversiones";
+var INV_TIPOS_KEY = "ceot_inversion_tipos";
+
+function invCargar() {
+  try { return JSON.parse(localStorage.getItem(INV_STORAGE_KEY) || "[]"); } catch (e) { return []; }
+}
+function invGuardarTodas(arr) {
+  try { localStorage.setItem(INV_STORAGE_KEY, JSON.stringify(arr)); } catch (e) {}
+}
+function invTiposCargar() {
+  try {
+    var raw = JSON.parse(localStorage.getItem(INV_TIPOS_KEY) || "null");
+    return (raw && raw.length) ? raw : ["Plazo Fijo"];
+  } catch (e) { return ["Plazo Fijo"]; }
+}
+function invTiposGuardar(arr) {
+  try { localStorage.setItem(INV_TIPOS_KEY, JSON.stringify(arr)); } catch (e) {}
+}
+
+// Retención Ganancias por fecha de cheque real (excluye OSDE/CEM, que no
+// tienen fecha fija de cheque), para TODOS los socios (Director + Resto).
+function invRetencionesPorFecha(periodo) {
+  var porFecha = {};
+  TODOS_SOCIOS_INVERSION.forEach(function(apellido) {
+    var doc = DOCTORES.filter(function(d) { return d.apellido === apellido; })[0];
+    if (!doc) return;
+    var base = calcularDetalleChequesProfesional(periodo, doc);
+    if (!base) return;
+    base.detalle.forEach(function(d) {
+      if (d.pendiente || !d.retencion) return;
+      if (!/^\d{2}\/\d{2}$/.test(d.fecha)) return;
+      if (!porFecha[d.fecha]) porFecha[d.fecha] = [];
+      porFecha[d.fecha].push({ apellido: apellido, retencion: d.retencion });
+    });
+  });
+  return porFecha;
+}
+
+function invFechaVencimiento(plazoDias) {
+  var ini = document.getElementById("inv-fecha-inicio");
+  var base = (ini && ini.value) ? new Date(ini.value + "T00:00:00") : new Date();
+  base.setDate(base.getDate() + (plazoDias || 0));
+  return base.toLocaleDateString("es-AR");
+}
+
+// Recalcula en vivo el desglose por profesional + el interés, a medida que
+// se tildan cheques o se edita plazo/TNA/monto — sin volver a pegarle al Sheet.
+function invRecalcularPreview() {
+  var porFecha = window._invPorFecha || {};
+  var chks = document.querySelectorAll(".inv-fecha-chk:checked");
+  var fechasSel = Array.prototype.map.call(chks, function(c) { return c.value; });
+
+  var porProf = {};
+  fechasSel.forEach(function(f) {
+    (porFecha[f] || []).forEach(function(x) {
+      porProf[x.apellido] = (porProf[x.apellido] || 0) + x.retencion;
+    });
+  });
+  var autoTotal = Object.keys(porProf).reduce(function(s, k) { return s + porProf[k]; }, 0);
+
+  var montoManualEl = document.getElementById("inv-monto-manual");
+  var montoManualRaw = montoManualEl ? montoManualEl.value.trim() : "";
+  var montoManual = montoManualRaw ? parseFloat(montoManualRaw.replace(/\./g, "").replace(",", ".")) : null;
+  var montoUsado = (montoManual && montoManual > 0) ? montoManual : autoTotal;
+
+  var plazo = parseFloat((document.getElementById("inv-plazo") || {}).value) || 0;
+  var tna = parseFloat((document.getElementById("inv-tna") || {}).value) || 0;
+  var interesTotal = montoUsado * (tna / 100) * (plazo / 365);
+
+  var aportantesWrap = document.getElementById("inv-aportantes-wrap");
+  if (aportantesWrap) {
+    if (!fechasSel.length) {
+      aportantesWrap.innerHTML = '<span style="font-size:.75rem;color:rgba(32,36,31,.4)">Elegí arriba los cheques que entran en esta inversión.</span>';
+    } else {
+      var filas = Object.keys(porProf).sort().map(function(ap) {
+        var prop = autoTotal > 0 ? porProf[ap] / autoTotal : 0;
+        var interesInd = interesTotal * prop;
+        return '<tr><td>' + ap + '</td><td>' + fmt(porProf[ap]) + '</td><td>' + (prop * 100).toFixed(1) + '%</td><td style="font-weight:600">' + fmt(interesInd) + '</td></tr>';
+      }).join('');
+      aportantesWrap.innerHTML = '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+        + '<th>Profesional</th><th>Retención aportada</th><th>% del fondo</th><th>Interés que le corresponde</th>'
+        + '</tr></thead><tbody>' + filas + '</tbody></table></div>';
+    }
+  }
+
+  var preview = document.getElementById("inv-preview");
+  if (preview) {
+    preview.innerHTML = '<div style="background:rgba(31,58,46,.07);border:1px solid rgba(31,58,46,.2);border-radius:8px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:18px;font-size:.85rem">'
+      + '<div>Capital <b>' + fmt(montoUsado) + '</b></div>'
+      + '<div>Plazo <b>' + plazo + ' días</b></div>'
+      + '<div>TNA <b>' + tna + '%</b></div>'
+      + '<div>Vencimiento <b>' + invFechaVencimiento(plazo) + '</b></div>'
+      + '<div>Interés generado — sociedad <b style="color:#1f3a2e">' + fmt(interesTotal) + '</b></div>'
+      + '<div>Total a cobrar al vencimiento <b>' + fmt(montoUsado + interesTotal) + '</b></div>'
+      + '</div>';
+  }
+
+  window._invPreview = { fechasSel: fechasSel, porProf: porProf, autoTotal: autoTotal, montoUsado: montoUsado, plazo: plazo, tna: tna, interesTotal: interesTotal };
+}
+
+function invAgregarTipo() {
+  var inp = document.getElementById("inv-tipo-nuevo");
+  if (!inp) return;
+  var nombre = inp.value.trim();
+  if (!nombre) return;
+  var tipos = invTiposCargar();
+  if (tipos.indexOf(nombre) === -1) { tipos.push(nombre); invTiposGuardar(tipos); }
+  var sel = document.getElementById("inv-tipo");
+  if (sel) {
+    if (!Array.prototype.some.call(sel.options, function(o) { return o.value === nombre; })) {
+      var opt = document.createElement("option");
+      opt.value = nombre; opt.textContent = nombre;
+      sel.appendChild(opt);
+    }
+    sel.value = nombre;
+  }
+  inp.value = "";
+}
+
+function invRegistrar(periodo) {
+  var p = window._invPreview;
+  var st = document.getElementById("inv-status");
+  if (!p || !p.fechasSel.length) { if (st) st.textContent = "⚠ Elegí al menos un cheque."; return; }
+  if (!p.montoUsado || p.montoUsado <= 0) { if (st) st.textContent = "⚠ El monto tiene que ser mayor a 0."; return; }
+
+  var tipo = (document.getElementById("inv-tipo") || {}).value || "Plazo Fijo";
+  var fechaInicio = (document.getElementById("inv-fecha-inicio") || {}).value || new Date().toISOString().slice(0, 10);
+  var notas = ((document.getElementById("inv-notas") || {}).value || "").trim();
+
+  var aportes = Object.keys(p.porProf).sort().map(function(ap) {
+    var prop = p.autoTotal > 0 ? p.porProf[ap] / p.autoTotal : 0;
+    return { apellido: ap, retencion: p.porProf[ap], proporcion: prop, interes: p.interesTotal * prop };
+  });
+
+  var vto = new Date(fechaInicio + "T00:00:00");
+  vto.setDate(vto.getDate() + p.plazo);
+
+  var registro = {
+    id: "inv_" + Date.now(),
+    tipo: tipo,
+    periodo: periodo,
+    chequesOrigen: p.fechasSel.slice(),
+    fechaInicio: fechaInicio,
+    fechaVencimiento: vto.toISOString().slice(0, 10),
+    plazoDias: p.plazo,
+    tna: p.tna,
+    montoTotal: p.montoUsado,
+    interesTotal: p.interesTotal,
+    aportes: aportes,
+    notas: notas,
+    creado: new Date().toISOString()
+  };
+
+  var todas = invCargar();
+  todas.push(registro);
+  invGuardarTodas(todas);
+
+  renderSueldoDirector();
+  var st2 = document.getElementById("inv-status");
+  if (st2) st2.textContent = "✓ Inversión registrada.";
+}
+
+function invEliminar(id) {
+  if (!confirm("¿Eliminar esta inversión del registro?")) return;
+  var todas = invCargar().filter(function(r) { return r.id !== id; });
+  invGuardarTodas(todas);
+  renderSueldoDirector();
+}
+
+function invListaHtml() {
+  var todas = invCargar().slice().sort(function(a, b) { return new Date(b.fechaInicio) - new Date(a.fechaInicio); });
+  if (!todas.length) {
+    return '<div style="font-size:.8rem;color:rgba(32,36,31,.4);padding:8px 2px">Todavía no hay inversiones registradas.</div>';
+  }
+
+  var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  var totalVigente = 0, interesAcum = 0;
+  todas.forEach(function(r) {
+    var vto = new Date(r.fechaVencimiento + "T00:00:00");
+    if (vto >= hoy) totalVigente += r.montoTotal;
+    interesAcum += r.interesTotal;
+  });
+
+  var resumen = '<div style="display:flex;flex-wrap:wrap;gap:18px;font-size:.85rem;margin-bottom:12px">'
+    + '<div>Capital vigente colocado <b>' + fmt(totalVigente) + '</b></div>'
+    + '<div>Interés total acumulado (histórico) <b style="color:#1f3a2e">' + fmt(interesAcum) + '</b></div>'
+    + '</div>';
+
+  var tarjetas = todas.map(function(r) {
+    var vto = new Date(r.fechaVencimiento + "T00:00:00");
+    var vigente = vto >= hoy;
+    var colorBorde = vigente ? "#c9933a" : "#3f6b4a";
+    var estadoTxt = vigente ? "Vigente · vence " + vto.toLocaleDateString("es-AR") : "Vencido el " + vto.toLocaleDateString("es-AR");
+
+    var filasAportes = r.aportes.map(function(a) {
+      return '<tr><td>' + a.apellido + '</td><td>' + fmt(a.retencion) + '</td><td>' + (a.proporcion * 100).toFixed(1) + '%</td><td style="font-weight:600">' + fmt(a.interes) + '</td></tr>';
+    }).join('');
+
+    return '<div style="margin-bottom:14px;border:1.5px solid ' + colorBorde + ';background:rgba(32,36,31,.03);border-radius:8px;padding:10px 12px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">'
+      +   '<div><b>' + escAttr(r.tipo) + '</b> · ' + escAttr(r.periodo.charAt(0).toUpperCase() + r.periodo.slice(1)) + ' · cheques ' + r.chequesOrigen.join(", ") + (r.notas ? ' · ' + escAttr(r.notas) : '') + '</div>'
+      +   '<div style="display:flex;gap:10px;align-items:center;font-size:.8rem">'
+      +     '<span>' + estadoTxt + '</span>'
+      +     '<button type="button" onclick="invEliminar(\'' + r.id + '\')" style="background:none;border:none;color:#b13a2c;cursor:pointer;font-size:.9rem" title="Eliminar">✕</button>'
+      +   '</div>'
+      + '</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:16px;font-size:.82rem;margin-bottom:8px">'
+      +   '<div>Capital <b>' + fmt(r.montoTotal) + '</b></div>'
+      +   '<div>TNA <b>' + r.tna + '%</b></div>'
+      +   '<div>Plazo <b>' + r.plazoDias + ' días</b></div>'
+      +   '<div>Interés total (sociedad) <b style="color:#1f3a2e">' + fmt(r.interesTotal) + '</b></div>'
+      +   '<div>Total al vencimiento <b>' + fmt(r.montoTotal + r.interesTotal) + '</b></div>'
+      + '</div>'
+      + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+      +   '<th>Profesional</th><th>Retención aportada</th><th>% del fondo</th><th>Interés que le corresponde</th>'
+      + '</tr></thead><tbody>' + filasAportes + '</tbody></table></div>'
+      + '</div>';
+  }).join('');
+
+  return resumen + tarjetas;
+}
+
+function inversionesSectionHtml(periodo) {
+  var porFecha = invRetencionesPorFecha(periodo);
+  window._invPorFecha = porFecha;
+  var fechas = Object.keys(porFecha).sort(function(a, b) {
+    var pa = a.split("/"), pb = b.split("/");
+    return (pa[1] + pa[0]) - (pb[1] + pb[0]);
+  });
+
+  var chipsFechas = fechas.map(function(f) {
+    var total = porFecha[f].reduce(function(s, x) { return s + x.retencion; }, 0);
+    return '<label style="display:inline-flex;align-items:center;gap:5px;background:rgba(32,36,31,.05);border:1px solid rgba(32,36,31,.15);border-radius:6px;padding:5px 10px;font-size:.78rem;cursor:pointer">'
+      + '<input type="checkbox" class="inv-fecha-chk" value="' + f + '" onchange="invRecalcularPreview()">'
+      + f + ' <span style="color:rgba(32,36,31,.45)">(' + fmt(total) + ')</span>'
+      + '</label>';
+  }).join(' ');
+
+  var tiposOpts = invTiposCargar().map(function(t) { return '<option value="' + escAttr(t) + '">' + escAttr(t) + '</option>'; }).join('');
+
+  var formHtml = '<div class="adm-sec-title" style="margin-top:20px">Registrar nueva inversión</div>'
+    + '<div style="font-size:.68rem;color:rgba(32,36,31,.4);padding:0 2px 10px 2px">Elegí los cheques de ' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' que forman esta inversión — suma la Retención Ganancias de esos cheques, por profesional (Director + Resto).</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">' + (chipsFechas || '<span style="font-size:.75rem;color:rgba(32,36,31,.4)">Sin cheques con retención cargados para ' + periodo + '.</span>') + '</div>'
+    + '<div id="inv-aportantes-wrap" style="margin-bottom:12px"></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:6px">'
+    +   '<div><label style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Tipo</label>'
+    +     '<select id="inv-tipo" style="width:100%;padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem">' + tiposOpts + '</select>'
+    +     '<div style="display:flex;gap:4px;margin-top:4px">'
+    +       '<input type="text" id="inv-tipo-nuevo" placeholder="nuevo tipo…" style="flex:1;min-width:0;padding:4px 6px;border:1px solid rgba(32,36,31,.2);border-radius:5px;font-size:.72rem;font-family:inherit">'
+    +       '<button type="button" onclick="invAgregarTipo()" style="background:none;border:1px dashed rgba(32,36,31,.3);color:rgba(32,36,31,.6);padding:3px 8px;border-radius:5px;font-size:.7rem;cursor:pointer;font-family:inherit">+ agregar</button>'
+    +     '</div>'
+    +   '</div>'
+    +   '<div><label style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Fecha de inicio</label>'
+    +     '<input type="date" id="inv-fecha-inicio" value="' + new Date().toISOString().slice(0, 10) + '" onchange="invRecalcularPreview()" style="width:100%;padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem">'
+    +   '</div>'
+    +   '<div><label style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Plazo (días)</label>'
+    +     '<input type="number" id="inv-plazo" value="30" min="1" oninput="invRecalcularPreview()" style="width:100%;padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem">'
+    +   '</div>'
+    +   '<div><label style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Tasa anual — TNA (%)</label>'
+    +     '<input type="number" id="inv-tna" value="19.5" step="0.1" min="0" oninput="invRecalcularPreview()" style="width:100%;padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem">'
+    +   '</div>'
+    +   '<div><label style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Monto total</label>'
+    +     '<input type="text" id="inv-monto-manual" placeholder="auto (según cheques)" oninput="invRecalcularPreview()" style="width:100%;padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem">'
+    +   '</div>'
+    + '</div>'
+    + '<div style="margin-bottom:12px"><label style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Notas (opcional)</label>'
+    +   '<input type="text" id="inv-notas" placeholder="ej. Banco Francés, PF a 30 días" style="width:100%;padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem">'
+    + '</div>'
+    + '<div id="inv-preview" style="margin-top:4px"></div>'
+    + '<div class="cpsm-btn-row" style="margin-top:10px">'
+    +   '<button class="cpsm-calc-btn" onclick="invRegistrar(\'' + periodo + '\')">Registrar inversión</button>'
+    + '</div>'
+    + '<div id="inv-status" style="margin-top:8px;font-size:.8rem;color:rgba(32,36,31,.55)"></div>';
+
+  return '<div class="cpsm-header">'
+    +   '<div><div class="cpsm-title">💰 Inversiones — fondo Retención Ganancias</div>'
+    +   '<div class="cpsm-subtitle">Plazos fijos y otras colocaciones armadas con la Retención Ganancias · TNA editable por inversión (no queda fija) · un registro por tanda de cheques</div></div>'
+    + '</div>'
+    + formHtml
+    + '<div class="adm-sec-title" style="margin-top:24px">Inversiones registradas</div>'
+    + invListaHtml();
 }
 
 // PDF de Retención Ganancias: detalle por profesional y período + acumulado
