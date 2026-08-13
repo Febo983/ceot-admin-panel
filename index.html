@@ -4975,6 +4975,9 @@ document.getElementById("passwordInput").addEventListener("keypress", function(e
 
 // Botones marcados en verde (ver actionFeedback más abajo): cargar lo guardado
 // y repintar cada vez que cualquier pantalla del panel reconstruye su HTML.
+// (ACTION_DONE_KEYS se declara acá, antes de este uso, para que el `var` de
+// más abajo no vuelva a pisarlo con {} después de haber cargado localStorage.)
+var ACTION_DONE_KEYS = {};
 actionDoneCargar();
 actionDoneRepintarTodo();
 new MutationObserver(function(muts) {
@@ -4995,7 +4998,7 @@ new MutationObserver(function(muts) {
 // sirve para llevar control visual de qué ya se hizo. La clave se arma con el
 // onclick literal del botón (ya trae los datos que lo hacen único por fila:
 // fecha, apellido, importe, id...) + su título/texto.
-var ACTION_DONE_KEYS = {};
+// (ACTION_DONE_KEYS está declarada más arriba, junto al primer uso.)
 
 function actionDoneCargar() {
   try {
