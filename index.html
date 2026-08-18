@@ -5030,6 +5030,46 @@ function admDescargarPDF(periodo) {
   admAbrirVentanaImpresion('CEOT · Distribución ' + periodoLabel, clone.innerHTML);
 }
 
+// ── Saludo por voz al ingresar (Portal Profesionales) ──────────────
+// Usa el Web Speech API del navegador (nativo, sin costo, sin archivos de
+// audio que generar/mantener por cada uno de los 13 profesionales). Las
+// voces del sistema tardan en cargar de forma asíncrona la primera vez —
+// por eso se "precalienta" la lista acá arriba, para que ya esté lista
+// cuando el profesional haga login.
+var vocesDisponibles = [];
+function precalentarVocesSaludo() {
+  if (!window.speechSynthesis) return;
+  vocesDisponibles = speechSynthesis.getVoices();
+  speechSynthesis.addEventListener("voiceschanged", function() {
+    vocesDisponibles = speechSynthesis.getVoices();
+  });
+}
+precalentarVocesSaludo();
+
+function saludoVozTexto(doctor) {
+  var h = new Date().getHours();
+  var saludo = h < 12 ? "Buen día" : (h < 20 ? "Buenas tardes" : "Buenas noches");
+  var esDra = /^DRA\.?/i.test(doctor.nombre || "");
+  var titulo = esDra ? "Doctora" : "Doctor";
+  var apellido = (doctor.apellido || "").charAt(0) + (doctor.apellido || "").slice(1).toLowerCase();
+  return saludo + ", " + titulo + " " + apellido;
+}
+
+function saludarConVoz(doctor) {
+  try {
+    if (!window.speechSynthesis) return;
+    var voces = vocesDisponibles.length ? vocesDisponibles : speechSynthesis.getVoices();
+    var voz = voces.find(function(v) { return /^es/i.test(v.lang) && /female|mujer|paulina|mónica|monica|elvira|helena|lucia|lucía|sofia|sofía|isabela/i.test(v.name); })
+      || voces.find(function(v) { return /^es/i.test(v.lang); });
+    var utter = new SpeechSynthesisUtterance(saludoVozTexto(doctor));
+    utter.lang = voz ? voz.lang : "es-AR";
+    if (voz) utter.voice = voz;
+    utter.rate = 1;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utter);
+  } catch (e) { /* si falla la voz no debe romper el login */ }
+}
+
 async function handleLogin() {
   var user = document.getElementById("usernameInput").value.trim().toLowerCase();
   var pass = document.getElementById("passwordInput").value.trim();
@@ -5095,6 +5135,7 @@ async function handleLogin() {
   }
 
   doctorActual = doctor;
+  saludarConVoz(doctor);
   document.getElementById("phAvatar").textContent  = doctor.ini;
   document.getElementById("phNombre").textContent  = doctor.nombre;
 
