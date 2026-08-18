@@ -764,10 +764,39 @@ body {
   flex: 1; padding: 10px 13px; font-size: 0.76rem; font-weight: 600;
   cursor: pointer; border: none; background: none; color: var(--co-ink-dim);
   border-bottom: 3px solid transparent; margin-bottom: -2px;
-  white-space: nowrap; font-family: -apple-system,'Segoe UI',sans-serif; transition: color .15s;
+  white-space: nowrap; font-family: -apple-system,'Segoe UI',sans-serif;
+  transition: color .15s, background-color .2s ease, border-bottom-color .25s ease, transform .1s ease;
 }
-.adm-tab:hover { color: var(--co-ink); }
+.adm-tab:hover { color: var(--co-ink); background: rgba(31,58,46,.06); }
+.adm-tab:active { transform: scale(.92); transition-duration: .05s; }
 .adm-tab.adm-tab-act { color: var(--co-accent); border-bottom-color: var(--co-accent); background: var(--co-card); }
+
+/* Tiles del Home admin (módulos + accesos) — transición más marcada al pasar
+   el mouse o al tocar/presionar, para que se sienta que el tile "responde". */
+.adm-home-tile {
+  transition: transform .18s cubic-bezier(.34,1.4,.64,1), box-shadow .18s ease, border-color .18s ease;
+}
+.adm-home-tile:hover {
+  border-color: var(--co-accent, #1f3a2e) !important;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(31,58,46,.16);
+}
+.adm-home-tile:active {
+  transform: translateY(-1px) scale(.96);
+  transition-duration: .06s;
+  box-shadow: 0 3px 8px rgba(31,58,46,.14);
+}
+.adm-home-tile-retro { transition: transform .1s ease, box-shadow .1s ease; }
+.adm-home-tile-retro:hover { transform: translateY(-2px); box-shadow: 0 5px 0 #0f1c28 !important; }
+.adm-home-tile-retro:active { transform: translateY(3px); box-shadow: 0 0 0 #0f1c28 !important; transition-duration: .04s; }
+
+/* Chips de mes del Home admin (Ene..Dic bajo "Buenos días, Marcelo") — mismo
+   criterio: transición más marcada al pasar el mouse o presionar. */
+.adm-home-mes-chip { transition: background-color .15s, color .15s, transform .12s ease, box-shadow .12s ease; }
+.adm-home-mes-chip:hover { transform: translateY(-2px); box-shadow: 0 3px 8px rgba(31,58,46,.2); }
+.adm-home-mes-chip:active { transform: translateY(0) scale(.9); transition-duration: .05s; box-shadow: none; }
+.adm-home-mes-chip-retro:hover { transform: translateY(-2px); box-shadow: 0 4px 0 #0f1c28; }
+.adm-home-mes-chip-retro:active { transform: translateY(2px) scale(.94); box-shadow: none; transition-duration: .04s; }
 .adm-body {
   padding: 14px 13px 18px; background: var(--co-card); color: var(--co-ink); font-family: -apple-system,'Segoe UI',sans-serif;
   transform-origin: left center;
@@ -3502,7 +3531,7 @@ function admHomeTile(ico, lbl, colorRgba, opts) {
       ? '<span onclick="event.stopPropagation();' + opts.delFn + '" title="Eliminar" style="position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:5px;background:rgba(177,72,63,.12);color:var(--co-margin,#b1483f);font-size:10px;line-height:18px;text-align:center;cursor:pointer;flex-shrink:0">✕</span>'
       : "";
     var pencil = editing ? '<i data-lucide="pencil" style="position:absolute;top:7px;right:' + (opts.delFn ? '28px' : '7px') + ';width:12px;height:12px;color:var(--co-gold,#c9933a);flex-shrink:0" stroke-width="2"></i>' : "";
-    return "<" + tag + attrs + " style=\"position:relative;text-decoration:none;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:11px;min-height:64px;background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;cursor:" + cursor + ";transition:border-color .12s,transform .12s\" onmouseover=\"this.style.borderColor='var(--co-accent,#1f3a2e)';this.style.transform='translateY(-1px)'\" onmouseout=\"this.style.borderColor='var(--co-line,#d9d0b8)';this.style.transform='none'\">"
+    return "<" + tag + attrs + " class=\"adm-home-tile\" style=\"position:relative;text-decoration:none;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:11px;min-height:64px;background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;cursor:" + cursor + "\">"
       + pencil + del
       + '<span style="width:26px;height:26px;border-radius:7px;background:' + colorRgba + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--co-accent,#1f3a2e)"><i data-lucide="' + ico + '" style="width:13px;height:13px" stroke-width="1.75"></i></span>'
       + '<span style="font-size:0.76rem;font-weight:600;color:var(--co-ink,#20241f);line-height:1.25">' + lbl + '</span>'
@@ -3523,7 +3552,7 @@ function admHomeTile(ico, lbl, colorRgba, opts) {
     ? '<div onclick="event.stopPropagation();' + opts.delFn + '" title="Eliminar" style="position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:4px;background:rgba(220,38,38,.85);color:#fff;font-size:9px;line-height:16px;text-align:center;cursor:pointer">✕</div>'
     : "";
   var pencil = editing ? '<div style="position:absolute;top:3px;left:3px;font-size:9px;opacity:.6">✏</div>' : "";
-  return "<" + tag + attrs + " style=\"position:relative;text-decoration:none;background:" + boxBg + ";border:" + border + ";border-radius:" + boxRadius + ";" + boxShadow + "padding:22px 10px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:" + cursor + ";transition:background .13s\" onmouseover=\"this.style.background='" + boxBgHover + "'\" onmouseout=\"this.style.background='" + boxBg + "'\">"
+  return "<" + tag + attrs + " class=\"adm-home-tile-retro\" style=\"position:relative;text-decoration:none;background:" + boxBg + ";border:" + border + ";border-radius:" + boxRadius + ";" + boxShadow + "padding:22px 10px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:" + cursor + "\" onmouseover=\"this.style.background='" + boxBgHover + "'\" onmouseout=\"this.style.background='" + boxBg + "'\">"
     + pencil + del
     + '<div style="width:52px;height:52px;border-radius:' + icoRadius + ';background:' + colorRgba + ';' + icoBorder + 'display:flex;align-items:center;justify-content:center"><i data-lucide="' + ico + '" style="width:24px;height:24px;color:' + icoColor + '" stroke-width="1.75"></i></div>'
     + '<div style="' + labelStyle + '">' + lbl + '</div>'
@@ -3703,12 +3732,13 @@ function renderAdmHome() {
 
   var mesStrip = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].map(function(m) {
     var act = m === mesAct;
+    var chipClass = retro ? "adm-home-mes-chip-retro" : "adm-home-mes-chip";
     var style = retro
       ? (act ? "flex-shrink:0;font-size:10px;padding:5px 12px;border-radius:20px;border:2px solid #0f1c28;background:#ef6fa2;color:#1c2b3a;font-weight:800;cursor:pointer;font-family:inherit"
              : "flex-shrink:0;font-size:10px;padding:5px 12px;border-radius:20px;border:2px solid #0f1c28;background:#fffaf1;color:rgba(28,43,58,.55);cursor:pointer;font-family:inherit")
-      : (act ? "flex-shrink:0;font-size:10px;padding:4px 11px;border-radius:20px;border:0.5px solid #1f3a2e;background:#1f3a2e;color:#fff;font-weight:600;cursor:pointer;font-family:inherit;transition:background-color .15s, color .15s"
-             : "flex-shrink:0;font-size:10px;padding:4px 11px;border-radius:20px;border:0.5px solid rgba(32,36,31,0.15);background:rgba(32,36,31,0.06);color:rgba(32,36,31,0.45);cursor:pointer;font-family:inherit;transition:background-color .15s, color .15s");
-    return '<button onclick="renderAdminPanelPage(\'' + m + '\')" style="' + style + '">' + MESES_CORTO[m] + '</button>';
+      : (act ? "flex-shrink:0;font-size:10px;padding:4px 11px;border-radius:20px;border:0.5px solid #1f3a2e;background:#1f3a2e;color:#fff;font-weight:600;cursor:pointer;font-family:inherit"
+             : "flex-shrink:0;font-size:10px;padding:4px 11px;border-radius:20px;border:0.5px solid rgba(32,36,31,0.15);background:rgba(32,36,31,0.06);color:rgba(32,36,31,0.45);cursor:pointer;font-family:inherit");
+    return '<button class="' + chipClass + '" onclick="renderAdminPanelPage(\'' + m + '\')" style="' + style + '">' + MESES_CORTO[m] + '</button>';
   }).join("");
 
   // Stats de totalCeot para el mes actual
