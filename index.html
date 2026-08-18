@@ -17,19 +17,30 @@ body {
   background: #f5efe4;
   color: #1a1a1a;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 12px 10px 28px;
 }
 .app { max-width: 480px; margin: 0 auto; }
 
 /* ── LOGIN ── */
-.login-wrap { padding-top: 28px; position: relative; }
-#loginBg { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; pointer-events: none; }
+/* dvh (no vh) + centrado por flex: en mobile, vh mide el alto de pantalla
+   completo aunque la barra de direcciones esté tapando parte — al
+   esconderse/aparecer (scroll, teclado) vh cambia y todo lo que dependa de
+   él salta. dvh sigue el alto real visible, sin ese salto. */
+.login-wrap {
+  min-height: 100vh;
+  min-height: calc(100dvh - 40px); /* 40px = padding vertical del body (12+28) */
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+#loginBg { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; display: block; pointer-events: none; }
 .login-card {
   background: #fdf8f0; border-radius: 12px;
   padding: 28px 22px 22px;
   box-shadow: 0 2px 16px rgba(0,0,0,.10);
   border: 1px solid #e2dbd0;
   position: relative;
+  width: 100%;
 }
 .logo-area { text-align: center; margin-bottom: 24px; }
 .logo-icon {
@@ -8706,7 +8717,7 @@ async function guardarNomina() {
   var INK = "31,58,46";      // logo-icon verde oscuro
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
-  var width = 0, height = 0;
+  var width = 0, height = 0, prevWidth = 0;
   var nodes = [];
 
   function makeNodes() {
@@ -8727,17 +8738,31 @@ async function guardarNomina() {
 
   function resize(w, h) {
     if (!(w > 20) || !(h > 20)) return;
+    // En mobile, mostrar/ocultar la barra de direcciones del navegador (al
+    // scrollear o abrir el teclado) dispara "resize" cambiando solo el alto,
+    // no el ancho. Si regenerábamos los nodos en cada uno de esos eventos,
+    // la constelación entera saltaba a posiciones nuevas todo el tiempo.
+    // Ahora solo se regenera si cambió el ancho real (resize de ventana o
+    // rotación de pantalla) o es la primera vez.
+    var widthChanged = Math.round(w) !== Math.round(prevWidth);
     width = w; height = h;
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    makeNodes();
+    if (widthChanged || !nodes.length) makeNodes();
     draw();
+    prevWidth = w;
   }
 
   resize(window.innerWidth, window.innerHeight);
+  var resizeScheduled = false;
   window.addEventListener("resize", function () {
-    resize(window.innerWidth, window.innerHeight);
+    if (resizeScheduled) return;
+    resizeScheduled = true;
+    requestAnimationFrame(function () {
+      resizeScheduled = false;
+      resize(window.innerWidth, window.innerHeight);
+    });
   });
 
   var maxDist = 90;
