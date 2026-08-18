@@ -1638,6 +1638,12 @@ body { background: var(--iv0); color: var(--ink); }
 <div id="transfFamModalBg" class="acc-modal-bg" onclick="if(event.target===this)transfFamCerrarModal()">
   <div class="acc-modal">
     <h3 id="transfFamModalTitulo">Nueva transferencia a familiar</h3>
+    <div id="transfFamSelectDefaultWrap" style="display:none">
+      <label>Elegir predeterminado</label>
+      <select id="transfFamSelectDefault" onchange="transfFamElegirDefault(this)">
+        <option value="">— elegir o cargar manual —</option>
+      </select>
+    </div>
     <label>Nombre(s) del destinatario</label>
     <input id="transfFamFormNombre" type="text" placeholder="Ej: María Bruni">
     <label>Alias o CBU</label>
@@ -1655,8 +1661,10 @@ body { background: var(--iv0); color: var(--ink); }
 
 <div id="transfFamDefModalBg" class="acc-modal-bg" onclick="if(event.target===this)transfFamDefCerrarModal()">
   <div class="acc-modal">
-    <h3>Transferencia predeterminada</h3>
-    <div style="font-size:.68rem;color:rgba(32,36,31,.5);margin:-6px 0 12px 0">Queda anotada para este profesional y precarga estos datos cada vez que agregues una transferencia a familiar suya — el importe fijo que sueles transferirle.</div>
+    <h3>Predeterminados — <span id="transfFamDefApellidoLbl"></span></h3>
+    <div style="font-size:.68rem;color:rgba(32,36,31,.5);margin:-6px 0 12px 0">Los familiares a los que sueles transferirle un cheque de este profesional. Al cargar la transferencia de un cheque puntual vas a poder elegir de esta lista en vez de tipear todo de nuevo — pueden ser más de uno.</div>
+    <div id="transfFamDefListaWrap" style="margin-bottom:14px"></div>
+    <h3 id="transfFamDefFormTitulo" style="font-size:.8rem;margin-bottom:6px">Agregar predeterminado</h3>
     <label>Nombre(s) del destinatario</label>
     <input id="transfFamDefFormNombre" type="text" placeholder="Ej: María Bruni">
     <label>Alias o CBU</label>
@@ -1666,11 +1674,8 @@ body { background: var(--iv0); color: var(--ink); }
     <label>Concepto</label>
     <input id="transfFamDefFormConcepto" type="text" placeholder="Ej: adelanto honorarios">
     <div class="acc-modal-btns">
-      <button class="acc-modal-cancel" onclick="transfFamDefCerrarModal()">Cancelar</button>
+      <button class="acc-modal-cancel" onclick="transfFamDefCerrarModal()">Cerrar</button>
       <button class="acc-modal-save" onclick="transfFamDefGuardar()">Guardar</button>
-    </div>
-    <div style="text-align:center;margin-top:12px">
-      <a href="#" onclick="transfFamDefEliminar();return false;" style="font-size:0.72rem;color:#b13a2c;text-decoration:underline">Quitar predeterminado</a>
     </div>
   </div>
 </div>
@@ -7309,10 +7314,11 @@ function transfFamKey(periodo, apellido, fecha) {
   return periodo + "|" + apellido + "|" + fecha;
 }
 
-// Transferencia predeterminada por profesional (no por cheque/fecha): nombre,
-// alias/CBU, concepto e importe fijo que Marcelo suele transferirle a su
-// familiar. Se usa solo para precargar el modal de "+ transferencia" de cada
-// cheque — no reemplaza esas entradas, que siguen viviendo en TRANSF_FAM.
+// Transferencias predeterminadas por profesional (no por cheque/fecha):
+// puede haber más de un familiar por profesional. Cada una tiene nombre,
+// alias/CBU, concepto e importe fijo. Se usan para elegir de una lista al
+// cargar la transferencia de un cheque puntual — no reemplazan esas
+// entradas, que siguen viviendo en TRANSF_FAM.
 var TRANSF_FAM_DEFAULT = {};
 
 function transfFamDefaultCargar() {
@@ -7326,21 +7332,73 @@ function transfFamDefaultGuardarTodo() {
   localStorage.setItem("ceot_transf_familiares_default", JSON.stringify(TRANSF_FAM_DEFAULT));
 }
 
-var transfFamDefEditApellido = null;
+var transfFamDefEditApellido = null, transfFamDefEditIdx = null;
 
 function transfFamDefAbrirModal(apellido) {
   transfFamDefEditApellido = apellido;
-  var item = TRANSF_FAM_DEFAULT[apellido] || null;
-  document.getElementById("transfFamDefFormNombre").value   = item ? item.nombre   : "";
-  document.getElementById("transfFamDefFormAlias").value    = item ? item.aliasCbu : "";
-  document.getElementById("transfFamDefFormImporte").value  = item ? item.importe  : "";
-  document.getElementById("transfFamDefFormConcepto").value = item ? item.concepto : "";
+  var lbl = document.getElementById("transfFamDefApellidoLbl");
+  if (lbl) lbl.textContent = apellido;
+  transfFamDefLimpiarForm();
+  transfFamDefRenderLista();
   document.getElementById("transfFamDefModalBg").classList.add("open");
+}
+
+function transfFamDefLimpiarForm() {
+  transfFamDefEditIdx = null;
+  document.getElementById("transfFamDefFormNombre").value   = "";
+  document.getElementById("transfFamDefFormAlias").value    = "";
+  document.getElementById("transfFamDefFormImporte").value  = "";
+  document.getElementById("transfFamDefFormConcepto").value = "";
+  var tit = document.getElementById("transfFamDefFormTitulo");
+  if (tit) tit.textContent = "Agregar predeterminado";
+}
+
+function transfFamDefRenderLista() {
+  var wrap = document.getElementById("transfFamDefListaWrap");
+  var entries = TRANSF_FAM_DEFAULT[transfFamDefEditApellido] || [];
+  if (!entries.length) {
+    wrap.innerHTML = '<div style="font-size:.7rem;color:rgba(32,36,31,.45);font-style:italic">Todavía no hay ninguno cargado.</div>';
+    return;
+  }
+  wrap.innerHTML = entries.map(function(e, i) {
+    var linea2 = [e.aliasCbu, e.concepto].filter(Boolean).join(' · ');
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;padding:6px 8px;background:rgba(31,58,46,.07);border-radius:5px">'
+      +   '<div><div style="font-weight:600">' + escAttr(e.nombre) + ' — ' + fmt(e.importe) + '</div>'
+      +   (linea2 ? '<div style="font-size:.62rem;color:rgba(32,36,31,.55)">' + escAttr(linea2) + '</div>' : '') + '</div>'
+      +   '<div style="white-space:nowrap">'
+      +     '<a href="javascript:void(0)" onclick="transfFamDefEditar(' + i + ')" style="font-size:.62rem;color:#1f3a2e;text-decoration:underline;margin-right:8px">editar</a>'
+      +     '<a href="javascript:void(0)" onclick="transfFamDefQuitar(' + i + ')" style="font-size:.62rem;color:#b13a2c;text-decoration:underline">quitar</a>'
+      +   '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function transfFamDefEditar(idx) {
+  var item = (TRANSF_FAM_DEFAULT[transfFamDefEditApellido] || [])[idx];
+  if (!item) return;
+  transfFamDefEditIdx = idx;
+  document.getElementById("transfFamDefFormNombre").value   = item.nombre;
+  document.getElementById("transfFamDefFormAlias").value    = item.aliasCbu;
+  document.getElementById("transfFamDefFormImporte").value  = item.importe;
+  document.getElementById("transfFamDefFormConcepto").value = item.concepto;
+  var tit = document.getElementById("transfFamDefFormTitulo");
+  if (tit) tit.textContent = "Editar predeterminado";
+}
+
+function transfFamDefQuitar(idx) {
+  if (!confirm("¿Quitar esta transferencia predeterminada?")) return;
+  var arr = TRANSF_FAM_DEFAULT[transfFamDefEditApellido] || [];
+  arr.splice(idx, 1);
+  if (!arr.length) delete TRANSF_FAM_DEFAULT[transfFamDefEditApellido];
+  transfFamDefaultGuardarTodo();
+  transfFamDefRenderLista();
+  transfFamDefLimpiarForm();
+  if (typeof renderSueldoDirector === "function") renderSueldoDirector();
 }
 
 function transfFamDefCerrarModal() {
   document.getElementById("transfFamDefModalBg").classList.remove("open");
-  transfFamDefEditApellido = null;
+  transfFamDefEditApellido = null; transfFamDefEditIdx = null;
 }
 
 function transfFamDefGuardar() {
@@ -7349,19 +7407,14 @@ function transfFamDefGuardar() {
   var importe = parseFloat((document.getElementById("transfFamDefFormImporte").value + "").replace(/\./g, "").replace(",", "."));
   var concepto = document.getElementById("transfFamDefFormConcepto").value.trim();
   if (!nombre || !importe) { alert("Nombre e importe son obligatorios."); return; }
-  TRANSF_FAM_DEFAULT[transfFamDefEditApellido] = { nombre: nombre, aliasCbu: alias, importe: importe, concepto: concepto };
+  if (!TRANSF_FAM_DEFAULT[transfFamDefEditApellido]) TRANSF_FAM_DEFAULT[transfFamDefEditApellido] = [];
+  var arr = TRANSF_FAM_DEFAULT[transfFamDefEditApellido];
+  var entry = { nombre: nombre, aliasCbu: alias, importe: importe, concepto: concepto };
+  if (transfFamDefEditIdx !== null) arr[transfFamDefEditIdx] = entry;
+  else arr.push(entry);
   transfFamDefaultGuardarTodo();
-  transfFamDefCerrarModal();
-  if (typeof renderSueldoDirector === "function") renderSueldoDirector();
-}
-
-function transfFamDefEliminar() {
-  var apellido = transfFamDefEditApellido;
-  if (!apellido || !TRANSF_FAM_DEFAULT[apellido]) { transfFamDefCerrarModal(); return; }
-  if (!confirm("¿Quitar la transferencia predeterminada de " + apellido + "?")) return;
-  delete TRANSF_FAM_DEFAULT[apellido];
-  transfFamDefaultGuardarTodo();
-  transfFamDefCerrarModal();
+  transfFamDefLimpiarForm();
+  transfFamDefRenderLista();
   if (typeof renderSueldoDirector === "function") renderSueldoDirector();
 }
 
@@ -7371,15 +7424,39 @@ function transfFamAbrirModal(key, idx) {
   transfFamEditKey = key;
   transfFamEditIdx = (idx === undefined) ? null : idx;
   var item = (transfFamEditIdx !== null) ? (TRANSF_FAM[key] || [])[transfFamEditIdx] : null;
-  var def = (transfFamEditIdx === null) ? (TRANSF_FAM_DEFAULT[(key.split("|")[1] || "")] || null) : null;
-  var pre = item || def;
-  document.getElementById("transfFamFormNombre").value   = pre ? pre.nombre   : "";
-  document.getElementById("transfFamFormAlias").value    = pre ? pre.aliasCbu : "";
-  document.getElementById("transfFamFormImporte").value  = pre ? pre.importe  : "";
-  document.getElementById("transfFamFormConcepto").value = pre ? pre.concepto : "";
+  document.getElementById("transfFamFormNombre").value   = item ? item.nombre   : "";
+  document.getElementById("transfFamFormAlias").value    = item ? item.aliasCbu : "";
+  document.getElementById("transfFamFormImporte").value  = item ? item.importe  : "";
+  document.getElementById("transfFamFormConcepto").value = item ? item.concepto : "";
   var tit = document.getElementById("transfFamModalTitulo");
   if (tit) tit.textContent = item ? "Editar transferencia" : "Nueva transferencia a familiar";
+
+  var apellido = key.split("|")[1] || "";
+  var defs = TRANSF_FAM_DEFAULT[apellido] || [];
+  var selWrap = document.getElementById("transfFamSelectDefaultWrap");
+  var sel = document.getElementById("transfFamSelectDefault");
+  if (defs.length) {
+    sel.innerHTML = '<option value="">— elegir o cargar manual —</option>' + defs.map(function(d, i) {
+      return '<option value="' + i + '">' + escAttr(d.nombre) + ' — ' + fmt(d.importe) + '</option>';
+    }).join('');
+    sel.value = "";
+    selWrap.style.display = "block";
+  } else {
+    selWrap.style.display = "none";
+  }
+
   document.getElementById("transfFamModalBg").classList.add("open");
+}
+
+function transfFamElegirDefault(sel) {
+  var apellido = (transfFamEditKey || "").split("|")[1] || "";
+  if (sel.value === "") return;
+  var d = (TRANSF_FAM_DEFAULT[apellido] || [])[Number(sel.value)];
+  if (!d) return;
+  document.getElementById("transfFamFormNombre").value   = d.nombre;
+  document.getElementById("transfFamFormAlias").value    = d.aliasCbu;
+  document.getElementById("transfFamFormImporte").value  = d.importe;
+  document.getElementById("transfFamFormConcepto").value = d.concepto;
 }
 
 function transfFamCerrarModal() {
@@ -7429,16 +7506,20 @@ function transfFamCeldaHtml(key) {
     + '</td>';
 }
 
-// Badge junto al nombre del profesional con su transferencia predeterminada
-// (si tiene) y link para definirla/editarla — ver TRANSF_FAM_DEFAULT arriba.
+// Badge junto al nombre del profesional con sus transferencias
+// predeterminadas (puede haber más de una) y link para gestionarlas — ver
+// TRANSF_FAM_DEFAULT arriba.
 function transfFamDefBadgeHtml(apellido) {
   var aEsc = apellido.replace(/'/g, "\\'");
-  var d = TRANSF_FAM_DEFAULT[apellido];
-  if (!d) {
+  var arr = TRANSF_FAM_DEFAULT[apellido] || [];
+  if (!arr.length) {
     return ' <a href="javascript:void(0)" onclick="transfFamDefAbrirModal(\'' + aEsc + '\')" style="font-size:.62rem;color:rgba(32,36,31,.45);text-decoration:underline;margin-left:6px">+ predeterminado</a>';
   }
-  var linea2 = [d.aliasCbu, d.concepto].filter(Boolean).join(' · ');
-  return ' <a href="javascript:void(0)" onclick="transfFamDefAbrirModal(\'' + aEsc + '\')" title="' + escAttr(linea2) + '" style="font-size:.62rem;color:#1f3a2e;text-decoration:underline;margin-left:6px">🏠 ' + escAttr(d.nombre) + ' — ' + fmt(d.importe) + '</a>';
+  var resumen = arr.length === 1
+    ? '🏠 ' + escAttr(arr[0].nombre) + ' — ' + fmt(arr[0].importe)
+    : '🏠 ' + arr.length + ' predeterminados';
+  var tooltip = arr.map(function(e) { return e.nombre + ' — ' + fmt(e.importe); }).join(' · ');
+  return ' <a href="javascript:void(0)" onclick="transfFamDefAbrirModal(\'' + aEsc + '\')" title="' + escAttr(tooltip) + '" style="font-size:.62rem;color:#1f3a2e;text-decoration:underline;margin-left:6px">' + resumen + '</a>';
 }
 
 function sueldoDirectorPeriodoSelectorHtml(periodoAct) {
