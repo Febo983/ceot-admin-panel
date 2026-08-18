@@ -2176,7 +2176,15 @@ async function cargarGastosARemoto() {
   try {
     var resp = await fetch(authURL(GASTOS_A_ENDPOINT));
     var data = await resp.json();
-    if (data.error) { console.warn("Gastos A API error:", data.error); marcarEndpointStatus("gastosA", false, data.error); return; }
+    // "unauthorized" sin AUTH_TOKEN es esperado (esta función se lanza sola al
+    // cargar la página, antes de loguearse) — no es una falla real, no avisar.
+    // Se vuelve a llamar ya logueado (ver Promise.all en el login) y ahí sí
+    // cualquier error es real.
+    if (data.error) {
+      console.warn("Gastos A API error:", data.error);
+      if (AUTH_TOKEN) marcarEndpointStatus("gastosA", false, data.error);
+      return;
+    }
     ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre",
      "enero","febrero","marzo","abril"].forEach(function(m) {
       if ((m in data) && data[m] !== null) GASTOS_A[m] = data[m];
@@ -2185,7 +2193,7 @@ async function cargarGastosARemoto() {
     marcarEndpointStatus("gastosA", true);
   } catch(e) {
     console.warn("No se pudo cargar Gastos A remotos — usando valores locales:", e.message);
-    marcarEndpointStatus("gastosA", false, e.message);
+    if (AUTH_TOKEN) marcarEndpointStatus("gastosA", false, e.message);
   }
 }
 
@@ -2216,7 +2224,10 @@ async function cargarLiquidacionRemota() {
   try {
     var resp = await fetch(authURL(LIQUIDACION_ENDPOINT));
     var data = await resp.json();
-    if (data.error) { marcarEndpointStatus("liquidacion", false, data.error); return; }
+    // "unauthorized" sin AUTH_TOKEN es esperado (llamada automática al cargar
+    // la página, antes de loguearse) — no avisar; se vuelve a llamar ya
+    // logueado (Promise.all del login) y ahí cualquier error sí es real.
+    if (data.error) { if (AUTH_TOKEN) marcarEndpointStatus("liquidacion", false, data.error); return; }
 
     // Guardar datos completos para Historial
     liquidacionData = data;
@@ -2387,7 +2398,7 @@ async function cargarLiquidacionRemota() {
     marcarEndpointStatus("liquidacion", true);
   } catch(e) {
     console.warn("No se pudo cargar liquidación remota — usando valores locales:", e.message);
-    marcarEndpointStatus("liquidacion", false, e.message);
+    if (AUTH_TOKEN) marcarEndpointStatus("liquidacion", false, e.message);
   }
 }
 
