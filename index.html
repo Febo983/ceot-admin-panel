@@ -1640,8 +1640,29 @@ const DOCTORES = [
   { user:"leon",       nombre:"DR. LEON",          ini:"L",  apellido:"LEON",         junioKey:"LEON, Joaquin",             wapp:"5492235033679" },
   { user:"perlasco",   nombre:"DR. PERLASCO",      ini:"P",  apellido:"PERLASCO",     junioKey:"PERLASCO, Camilo",          wapp:"5492235399935" },
   { user:"soule",      nombre:"DR. SOULE",         ini:"S",  apellido:"SOULE",        junioKey:"SOULE, Ivan",               wapp:"5492235726565" },
-  { user:"garmendia",  nombre:"DRA. GARMENDIA",    ini:"VG", apellido:"GARMENDIA",    junioKey:"GARMENDIA, Valeria",        wapp:"542268636272" },
+  { user:"garmendia",  nombre:"DRA. GARMENDIA",    ini:"VG", apellido:"GARMENDIA",    junioKey:"GARMENDIA, Valeria",        wapp:"5492268636272" },
 ];
+
+// ── Nómina — override remoto de nombre/WhatsApp (pantalla "Nómina" del Home) ──
+// No cubre altas/bajas ni pertenencia a grupos (Sueldo Director, Préstamo
+// Casa, Retención Ganancias, exención CPSM) — eso sigue en DOCTORES/los
+// arrays de grupos más abajo, a propósito (ver comentario en Code.js).
+var NOMINA_REMOTA = {};
+function aplicarNominaRemota() {
+  DOCTORES.forEach(function(d) {
+    var o = NOMINA_REMOTA[d.user];
+    if (!o) return;
+    if (o.nombre) d.nombre = o.nombre;
+    if (o.wapp !== undefined) d.wapp = o.wapp;
+  });
+}
+async function cargarNominaRemota() {
+  try {
+    var resp = await fetch(authURL(LIQUIDACION_ENDPOINT + '?action=leerNomina'));
+    var data = await resp.json();
+    if (data.ok) { NOMINA_REMOTA = data.valores || {}; aplicarNominaRemota(); }
+  } catch (e) { /* mantiene los valores hardcodeados */ }
+}
 
 const MAYO = [
   { fecha:"04/05", items:[["Cheque", 2353953.18]] },
@@ -2026,11 +2047,20 @@ function getAporteCeotPct(apellido) {
 // Meses "cerrados" con "Cerrar mes" en el panel Retención Ganancias: guardan una foto
 // del % de cada profesional en ese momento. Una vez cerrado, ese mes ya no se
 // mueve aunque después cambies el % vigente — solo lo usan los meses abiertos.
-function getAporteCerrados() {
+// Compartido en el Script (mismo patrón que APORTE_PCT_REMOTO, ver arriba) —
+// antes vivía solo en localStorage: un mes cerrado desde un dispositivo no
+// aparecía cerrado desde otro.
+var APORTE_CERRADOS_REMOTO = {};
+async function cargarAporteCerradosRemoto() {
   try {
-    var raw = localStorage.getItem("ceot_aporte_pct_cerrado");
-    return raw ? JSON.parse(raw) : {};
-  } catch (e) { return {}; }
+    var resp = await fetch(authURL(LIQUIDACION_ENDPOINT + '?action=leerAporteCerrados'));
+    var data = await resp.json();
+    if (data.ok) APORTE_CERRADOS_REMOTO = data.valores || {};
+  } catch (e) { /* mantiene lo que ya había cargado */ }
+}
+
+function getAporteCerrados() {
+  return APORTE_CERRADOS_REMOTO || {};
 }
 
 // Devuelve el % de Retención Ganancias a usar para un período/profesional puntual:
@@ -2043,25 +2073,43 @@ function getAporteCeotPctPeriodo(periodo, apellido) {
   return getAporteCeotPct(apellido);
 }
 
-function cerrarMesAporteCeot(periodo) {
+async function cerrarMesAporteCeot(periodo) {
   var label = periodo.charAt(0).toUpperCase() + periodo.slice(1);
   if (!confirm('¿Cerrar ' + label + '? Se guarda el % actual de cada profesional para este mes — si después cambiás los porcentajes, los montos de ' + label + ' ya no se van a mover.')) return;
+  var stPre = document.getElementById("aporte-ceot-status");
+  if (stPre) stPre.textContent = "Cerrando " + label + "…";
   var socios = DOCTORES.filter(function(d) { return APORTE_CEOT_PCT[d.apellido] !== null; });
-  var cerrados = getAporteCerrados();
+  var cerrados = Object.assign({}, APORTE_CERRADOS_REMOTO);
   var snap = {};
   socios.forEach(function(d) { snap[d.apellido] = getAporteCeotPct(d.apellido); });
   cerrados[periodo] = snap;
-  try { localStorage.setItem("ceot_aporte_pct_cerrado", JSON.stringify(cerrados)); } catch (e) {}
-  renderAporteCeot();
+  try {
+    var url = LIQUIDACION_ENDPOINT + '?action=setAporteCerrados&valores=' + encodeURIComponent(JSON.stringify(cerrados));
+    var data = await (await fetch(authURL(url))).json();
+    if (!data.ok) throw new Error(data.error || 'error desconocido');
+    APORTE_CERRADOS_REMOTO = cerrados;
+    renderAporteCeot();
+  } catch (e) {
+    alert('No se pudo cerrar ' + label + ': ' + e.message);
+    var stErr = document.getElementById("aporte-ceot-status");
+    if (stErr) stErr.textContent = "";
+  }
 }
 
-function reabrirMesAporteCeot(periodo) {
+async function reabrirMesAporteCeot(periodo) {
   var label = periodo.charAt(0).toUpperCase() + periodo.slice(1);
   if (!confirm('¿Reabrir ' + label + '? Vuelve a usar el % vigente actual en vez del que quedó guardado al cerrarlo.')) return;
-  var cerrados = getAporteCerrados();
+  var cerrados = Object.assign({}, APORTE_CERRADOS_REMOTO);
   delete cerrados[periodo];
-  try { localStorage.setItem("ceot_aporte_pct_cerrado", JSON.stringify(cerrados)); } catch (e) {}
-  renderAporteCeot();
+  try {
+    var url = LIQUIDACION_ENDPOINT + '?action=setAporteCerrados&valores=' + encodeURIComponent(JSON.stringify(cerrados));
+    var data = await (await fetch(authURL(url))).json();
+    if (!data.ok) throw new Error(data.error || 'error desconocido');
+    APORTE_CERRADOS_REMOTO = cerrados;
+    renderAporteCeot();
+  } catch (e) {
+    alert('No se pudo reabrir ' + label + ': ' + e.message);
+  }
 }
 
 // Préstamo Casa 14 de julio 2067 — cuota 1 de 48, desde Agosto 2026
@@ -2095,19 +2143,49 @@ function authURL(url) {
   return url + (url.indexOf('?') === -1 ? '?' : '&') + 'token=' + encodeURIComponent(AUTH_TOKEN || '');
 }
 
+// ── Estado de conexión de cada fuente remota ──────────────────────
+// Antes, si fallaba un fetch remoto, la app seguía mostrando los valores
+// locales sin avisar (ni a Marcelo ni al profesional) que estaban desactualizados.
+// Cualquier cargarXRemoto() marca acá si su última consulta funcionó o no —
+// mientras haya al menos una fallada, se ve un aviso fijo abajo de la pantalla.
+var ENDPOINT_STATUS = {};
+var ENDPOINT_LABELS = { gastosA: "Gastos A", liquidacion: "Liquidaciones", cajas: "Cajas" };
+function marcarEndpointStatus(key, ok, errMsg) {
+  ENDPOINT_STATUS[key] = { ok: ok, ts: new Date(), error: errMsg || null };
+  renderEndpointStatusBanner();
+}
+function renderEndpointStatusBanner() {
+  var fallidos = Object.keys(ENDPOINT_STATUS).filter(function(k) { return !ENDPOINT_STATUS[k].ok; });
+  var el = document.getElementById("endpointStatusBanner");
+  if (!fallidos.length) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "endpointStatusBanner";
+    el.style.cssText = "position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#92610f;color:#fff;"
+      + "font-size:.72rem;padding:6px 12px;text-align:center;font-family:inherit;box-shadow:0 -2px 8px rgba(0,0,0,.15)";
+    document.body.appendChild(el);
+  }
+  var nombres = fallidos.map(function(k) { return ENDPOINT_LABELS[k] || k; }).join(", ");
+  var horaMasVieja = fallidos.map(function(k) { return ENDPOINT_STATUS[k].ts; }).sort(function(a,b){return a-b;})[0];
+  var horaTxt = horaMasVieja.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  el.textContent = "⚠ No se pudo actualizar: " + nombres + " — mostrando datos de la última carga (intento fallido " + horaTxt + "hs).";
+}
+
 async function cargarGastosARemoto() {
   if (!GASTOS_A_ENDPOINT) return;
   try {
     var resp = await fetch(authURL(GASTOS_A_ENDPOINT));
     var data = await resp.json();
-    if (data.error) { console.warn("Gastos A API error:", data.error); return; }
+    if (data.error) { console.warn("Gastos A API error:", data.error); marcarEndpointStatus("gastosA", false, data.error); return; }
     ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre",
      "enero","febrero","marzo","abril"].forEach(function(m) {
       if ((m in data) && data[m] !== null) GASTOS_A[m] = data[m];
     });
     console.log("Gastos A actualizados desde el sheet ✓");
+    marcarEndpointStatus("gastosA", true);
   } catch(e) {
     console.warn("No se pudo cargar Gastos A remotos — usando valores locales:", e.message);
+    marcarEndpointStatus("gastosA", false, e.message);
   }
 }
 
@@ -2138,7 +2216,7 @@ async function cargarLiquidacionRemota() {
   try {
     var resp = await fetch(authURL(LIQUIDACION_ENDPOINT));
     var data = await resp.json();
-    if (data.error) { return; }
+    if (data.error) { marcarEndpointStatus("liquidacion", false, data.error); return; }
 
     // Guardar datos completos para Historial
     liquidacionData = data;
@@ -2306,13 +2384,17 @@ async function cargarLiquidacionRemota() {
     if (doctorActual) renderHistorial(doctorActual);
 
     console.log("Liquidación actualizada desde el sheet ✓");
+    marcarEndpointStatus("liquidacion", true);
   } catch(e) {
     console.warn("No se pudo cargar liquidación remota — usando valores locales:", e.message);
+    marcarEndpointStatus("liquidacion", false, e.message);
   }
 }
 
 cargarLiquidacionRemota();
 cargarAportePctRemoto();
+cargarAporteCerradosRemoto();
+cargarNominaRemota();
 
 // ══════ UTILIDADES ════════════════════════════════════════════
 
@@ -2547,7 +2629,7 @@ function renderMayo(containerId, doctor) {
   }
 
   html += '<div class="mini-disc">⚠ Importes brutos · no incluyen IIBB 3,5% ni CPSM 5%<br>📅 Los cheques se acreditan 48 hs. posteriores a la fecha indicada</div>';
-  html += '<button class="btn-pdf" onclick="actionFeedback(this); generarComprobante(\'mayo\')">📄 Comprobante Mayo</button>';
+  html += '<button class="btn-pdf" onclick="actionFeedback(this); descargarComprobanteHistorial(\'mayo\')">📄 Comprobante Mayo</button>';
   container.innerHTML = html;
 }
 
@@ -2770,7 +2852,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     + '</div>';
 
   html += '<div class="mini-disc">📅 Los cheques se acreditan 48 hs. posteriores a la fecha indicada</div>';
-  html += '<button class="btn-pdf" onclick="actionFeedback(this); generarComprobante(\'' + periodo + '\')">📄 Comprobante ' + mes + '</button>';
+  html += '<button class="btn-pdf" onclick="actionFeedback(this); descargarComprobanteHistorial(\'' + periodo + '\')">📄 Comprobante ' + mes + '</button>';
   container.innerHTML = html;
 }
 
@@ -2883,18 +2965,43 @@ function calcularDetalleChequesProfesional(periodo, doc) {
   var c = calcularNetoLocal(periodo, doc);
   if (!c) return null;
 
-  var cheques = (c.colonCheques || []).filter(function(chq) { return chq.monto > 0; });
+  // OJO: IIBB/CPSM van atados al 4to y 5to cheque REALES del mes (así lo maneja
+  // el contador — son los más caudalosos), no al 4to/5to que sobreviva el
+  // filtro de "cheques con monto cargado". Antes se armaba `cheques` con
+  // .filter() y se miraba el índice YA filtrado (i===3/i===4) — si algún
+  // cheque anterior todavía no estaba cargado (0), todo se corría un lugar y
+  // IIBB/CPSM terminaban en el cheque equivocado (o en ninguno, si quedaban
+  // menos de 4-5 cheques cargados — típico de un profesional recién
+  // incorporado a mitad de mes). Se guarda el índice original (0-4, antes del
+  // filtro) para que la asignación sea siempre al cheque 4/5 real.
+  var IDX_IIBB_CHEQUE = 3, IDX_CPSM_CHEQUE = 4;
+  var cheques = (c.colonCheques || [])
+    .map(function(chq, i) { return { fecha: chq.fecha, monto: chq.monto, origIdx: i }; })
+    .filter(function(chq) { return chq.monto > 0; });
   var cum = 0;
+  var iibbAplicado = false, cpsmAplicado = false;
   var detalle = cheques.map(function(chq, i) {
     var retencion = Math.round(chq.monto * (c.pctAporte || 0));
     var neto = chq.monto - retencion;
     var prestamoAqui = 0, iibbAqui = 0, cpsmAqui = 0;
-    if (i === 0) { prestamoAqui = c.prestamoCasa || 0; neto -= prestamoAqui; } // prestamoAqui > 0 = descuento, < 0 = crédito (mismo signo que c.prestamoCasa)
-    if (i === 3) { iibbAqui = c.iibb || 0; neto -= iibbAqui; }
-    if (i === 4) { cpsmAqui = c.cpsm || 0; neto -= cpsmAqui; }
+    if (i === 0) { prestamoAqui = c.prestamoCasa || 0; neto -= prestamoAqui; } // prestamoAqui > 0 = descuento, < 0 = crédito (mismo signo que c.prestamoCasa) — sale del primer cheque que llegue, no ata a un índice real
+    if (chq.origIdx === IDX_IIBB_CHEQUE) { iibbAqui = c.iibb || 0; neto -= iibbAqui; iibbAplicado = true; }
+    if (chq.origIdx === IDX_CPSM_CHEQUE) { cpsmAqui = c.cpsm || 0; neto -= cpsmAqui; cpsmAplicado = true; }
     cum += neto;
     return { fecha: chq.fecha, bruto: chq.monto, retencion: retencion, prestamo: prestamoAqui, iibb: iibbAqui, cpsm: cpsmAqui, neto: neto, acumulado: cum };
   });
+
+  // Si el cheque 4 o 5 real todavía no cargó, IIBB/CPSM quedan sin poder
+  // aplicarse a ningún cheque — antes esto los perdía en silencio (el
+  // "Acumulado" de esta tabla quedaba más alto que el neto real de
+  // calcularNetoLocal). Ahora se deja una fila "pendiente", igual que ya se
+  // hace con OSDE/CEM más abajo.
+  if (!iibbAplicado && c.iibb > 0) {
+    detalle.push({ fecha: "IIBB (pendiente — cheque " + (IDX_IIBB_CHEQUE+1) + " sin cargar)", bruto: null, retencion: null, prestamo: 0, iibb: 0, cpsm: 0, neto: null, acumulado: cum, pendiente: true });
+  }
+  if (!cpsmAplicado && c.cpsm > 0) {
+    detalle.push({ fecha: "CPSM (pendiente — cheque " + (IDX_CPSM_CHEQUE+1) + " sin cargar)", bruto: null, retencion: null, prestamo: 0, iibb: 0, cpsm: 0, neto: null, acumulado: cum, pendiente: true });
+  }
 
   var ultimaFecha = detalle.length ? detalle[detalle.length - 1].fecha : null;
 
@@ -3093,6 +3200,18 @@ function renderMiPanel(doctor) {
   var fmt = function(n) { return '$' + Math.round(n).toLocaleString('es-AR'); };
 
   // ── 1. Honorarios desde datos locales (síncronos) ──────────
+  // Extendido hasta Dic-2026 (13/08/2026, pedido de Marcelo) — Oct/Nov ya
+  // sincronizan solos con el sheet (ver cargarLiquidacionRemota); Dic muestra
+  // "Sin datos" hasta que se resuelva el choque con Dic-2025 (ver nota en
+  // cargarLiquidacionRemota, "diciembre excluido a propósito").
+  // ⚠️ NO se pudo extender hasta Jun-2027 como se pidió originalmente: el
+  // sistema entero identifica los períodos solo por nombre de mes SIN año
+  // (calcularNetoLocal, PERIODO_IIBB, PERIODO_CPSM, GASTOS_A...) — "febrero"
+  // ya está tomado por Febrero-2026 (FEBRERO_RAW, con datos reales cargados).
+  // Reutilizar esas claves para 2027 mostraría honorarios de 2026 con la
+  // etiqueta de 2027. Para llegar a 2027 hace falta agregar claves con año
+  // (ej. "enero2027") en todo el motor de cálculo, no solo acá — pendiente,
+  // se le preguntó a Marcelo cómo prefiere encararlo y no contestó todavía.
   var PERIODOS_HON = [
     { label:'Abr', raw:null,           key:'abril' },
     { label:'May', raw:MAYO_RAW,       key:'mayo' },
@@ -3100,6 +3219,9 @@ function renderMiPanel(doctor) {
     { label:'Jul', raw:JULIO_RAW,      key:'julio' },
     { label:'Ago', raw:AGOSTO_RAW,     key:'agosto' },
     { label:'Sep', raw:SEPTIEMBRE_RAW, key:'septiembre' },
+    { label:'Oct', raw:OCTUBRE_RAW,    key:'octubre' },
+    { label:'Nov', raw:NOVIEMBRE_RAW,  key:'noviembre' },
+    { label:'Dic', raw:DICIEMBRE_RAW,  key:'diciembre' },
   ];
   var honorarios = PERIODOS_HON.map(function(p) {
     var val = 0;
@@ -3195,7 +3317,7 @@ function renderMiPanel(doctor) {
   fetchT(CAJAS_ENDPOINT, 30000)
     .then(function(r){ return r.json(); })
     .then(function(d) {
-      if (d.status !== 'ok') { console.warn('Cajas error:', d); return; }
+      if (d.status !== 'ok') { console.warn('Cajas error:', d); marcarEndpointStatus("cajas", false, "respuesta sin status ok"); return; }
       var el2067    = document.getElementById('mp-saldo-2067');
       var elGerling = document.getElementById('mp-saldo-gerling');
       if (el2067) {
@@ -3207,9 +3329,11 @@ function renderMiPanel(doctor) {
         elGerling.textContent = fmt(d.gerling);
         elGerling.style.color = d.gerling >= 0 ? '#166534' : '#dc2626';
       }
+      marcarEndpointStatus("cajas", true);
     })
     .catch(function(e) {
       console.warn('Cajas fetch error:', e.message);
+      marcarEndpointStatus("cajas", false, e.message);
       var msg = '<span style="font-size:0.72rem;color:rgba(32,36,31,.35);">Sin conexión</span>';
       var el2067 = document.getElementById('mp-saldo-2067');
       var elG    = document.getElementById('mp-saldo-gerling');
@@ -3285,6 +3409,7 @@ var ADM_HOME_MODULOS = [
   { key:"sueldodirector",   ico:"banknote",        lbl:"Transferencias del Mes", cat:"cat-fin", fn:"renderSueldoDirector()" },
   { key:"accesos",          ico:"link-2",          lbl:"Accesos",       cat:"cat-inf", fn:"renderAccesos(null)" },
   { key:"mensajeswa",       ico:"message-circle",  lbl:"Mensajes WA",   cat:"cat-cli", fn:"" },
+  { key:"nomina",           ico:"users",           lbl:"Nómina",        cat:"cat-adm", fn:"renderNomina()" },
 ];
 var ADM_HOME_MOD_COLOR = {
   "cat-fin":"rgba(29,158,117,0.22)","cat-cli":"rgba(55,138,221,0.22)",
@@ -4858,7 +4983,7 @@ async function handleLogin() {
   AUTH_ROLE  = resp.role;
 
   // Con el token ya emitido, traer los datos reales antes de renderizar
-  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota(), cargarAportePctRemoto()]);
+  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota(), cargarAportePctRemoto(), cargarAporteCerradosRemoto(), cargarNominaRemota()]);
 
   loginBtn.disabled = false;
   loginBtn.textContent = loginBtnTextoOrig;
@@ -4939,7 +5064,7 @@ if (window.lucide) lucide.createIcons();
 document.getElementById("refreshBtn").addEventListener("click", async function() {
   var btn = this;
   btn.disabled = true; btn.textContent = "⏳";
-  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota(), cargarAportePctRemoto()]);
+  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota(), cargarAportePctRemoto(), cargarAporteCerradosRemoto(), cargarNominaRemota()]);
   if (doctorActual) {
     renderMayo("pane-mayo", doctorActual);
     renderIndividual(JUNIO_RAW,      JUNIO_FECHAS,      "junio",      "pane-junio",      doctorActual);
@@ -4966,7 +5091,7 @@ document.getElementById("adminLogoutBtn").addEventListener("click", function() {
 document.getElementById("adminRefreshBtn").addEventListener("click", async function() {
   var btn = this;
   btn.disabled = true; btn.textContent = "⏳";
-  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota(), cargarAportePctRemoto()]);
+  await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota(), cargarAportePctRemoto(), cargarAporteCerradosRemoto(), cargarNominaRemota()]);
   renderAdminPanel(adminPeriodoAct);
   btn.disabled = false; btn.textContent = "↻";
 });
@@ -5153,287 +5278,6 @@ function descargarComprobanteHistorial(pid) {
 
   var fname = "Comprobante_" + doctor.apellido.replace(/[^A-Za-z0-9]/g, "") + "_" + pid + ".pdf";
   doc.save(fname);
-}
-
-function generarComprobante(periodo) {
-  var doctor = doctorActual;
-  if (!doctor) return;
-
-  if (!window.jspdf) {
-    alert("La librería PDF aún se está cargando. Esperá un segundo y volvé a intentar.");
-    return;
-  }
-
-  var jsPDF = window.jspdf.jsPDF;
-  var doc   = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-
-  var W = 210, H = 297, LM = 20, RM = 190, CW = 170;
-  var today = new Date();
-  var todayStr = String(today.getDate()).padStart(2,"0") + "/" +
-                 String(today.getMonth()+1).padStart(2,"0") + "/" +
-                 today.getFullYear();
-
-  var periodoLabel = { enero:"Enero 2026", febrero:"Febrero 2026", marzo:"Marzo 2026", abril:"Abril 2026", mayo:"Mayo 2026", junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026" }[periodo] || periodo;
-
-  // ── HEADER ────────────────────────────────────────────────────
-  doc.setFillColor(11, 43, 74);
-  doc.rect(LM, 15, CW, 26, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("CEOT — CLÍNICA TRAUMATOLÓGICA COLÓN", W/2, 24, { align:"center" });
-  doc.setFontSize(9.5);
-  doc.text("COMPROBANTE DE HONORARIOS", W/2, 31, { align:"center" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text("Período: " + periodoLabel, W/2, 37, { align:"center" });
-
-  var y = 50;
-
-  // ── DATOS DEL PROFESIONAL ─────────────────────────────────────
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(9);
-  [
-    ["Doctor:",     doctor.nombre],
-    ["Matrícula:",  doctor.pass],
-    ["Emitido:",    todayStr],
-  ].forEach(function(pair) {
-    doc.setFont("helvetica", "bold");   doc.text(pair[0], LM, y);
-    doc.setFont("helvetica", "normal"); doc.text(pair[1], LM + 28, y);
-    y += 7;
-  });
-
-  doc.setDrawColor(180, 180, 180);
-  doc.line(LM, y, RM, y);
-  y += 8;
-
-  // ── CONTENIDO SEGÚN PERÍODO ───────────────────────────────────
-  if (periodo === "junio" || periodo === "julio") {
-    var rawData = periodo === "junio" ? JUNIO_RAW : JULIO_RAW;
-    var fechas  = periodo === "junio" ? JUNIO_FECHAS : JULIO_FECHAS;
-    var rowKey  = periodo === "junio" ? doctor.junioKey : doctor.apellido;
-
-    var row = null;
-    for (var i = 0; i < rawData.length; i++) {
-      if (rawData[i].k === rowKey) { row = rawData[i]; break; }
-    }
-
-    if (!row) {
-      doc.setFont("helvetica", "italic");
-      doc.text("Sin datos individuales disponibles para este período.", LM, y);
-    } else {
-      var vals  = [row.f1, row.f2, row.f3, row.f4, row.f5];
-      var bruto = vals.reduce(function(a,b){ return a+b; }, 0);
-      var esLab       = (doctor.user === "labayen");
-      var iibbDataPDF = PERIODO_IIBB[periodo];
-      var iibb        = iibbDataPDF === null
-                      ? Math.round(bruto * 0.035)
-                      : Math.round(iibbDataPDF[doctor.apellido] || 0);
-      var cpsmDataPDF = PERIODO_CPSM[periodo];
-      var cpsm  = esLab ? 0
-                : (cpsmDataPDF === null
-                   ? Math.round(bruto * 0.05)
-                   : Math.round(cpsmDataPDF[doctor.apellido] || 0));
-      var gaTotal = GASTOS_A[periodo];
-      var gaInd   = gaTotal ? Math.round(gaTotal / 13) : 0;
-      var cmExtPDF = getExtra(periodo, "cm", doctor.apellido);
-      var cmInd    = cmExtPDF.val || 0;
-      var periodoConAportePDF = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
-      var pctAportePDF   = getAporteCeotPctPeriodo(periodo, doctor.apellido);
-      var baseAportePDF  = bruto + cmInd;
-      var aporteCeotPDF  = (periodoConAportePDF && pctAportePDF) ? Math.round(baseAportePDF * pctAportePDF) : 0;
-      var subtot = bruto - iibb - cpsm - gaInd - aporteCeotPDF + cmInd;
-
-      // Sección cheques
-      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
-      doc.setTextColor(100, 100, 100);
-      doc.text("HONORARIOS COLÓN — CHEQUES DIFERIDOS", LM, y);
-      doc.setTextColor(0,0,0); y += 6;
-
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-      vals.forEach(function(monto, idx) {
-        doc.text("Cheque " + (idx+1) + "   —   " + fechas[idx], LM + 5, y);
-        doc.text(fmtPDF(monto), RM, y, { align:"right" });
-        y += 7;
-      });
-
-      // Total bruto
-      doc.setDrawColor(180,180,180); doc.line(LM, y, RM, y); y += 5;
-      doc.setFont("helvetica", "bold"); doc.setFontSize(9.5);
-      doc.text("TOTAL BRUTO", LM + 5, y);
-      doc.text(fmtPDF(bruto), RM, y, { align:"right" });
-      y += 12;
-
-      // Deducciones
-      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
-      doc.setTextColor(100,100,100);
-      doc.text("DEDUCCIONES", LM, y);
-      doc.setTextColor(0,0,0); y += 6;
-
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-      doc.text("IIBB — Ingresos Brutos (3,5%)", LM + 5, y);
-      doc.setTextColor(180, 0, 0);
-      doc.text("- " + fmtPDF(iibb), RM, y, { align:"right" });
-      doc.setTextColor(0,0,0); y += 7;
-
-      if (esLab) {
-        doc.text("CPSM — Caja Previsión (5,0%)", LM + 5, y);
-        doc.setTextColor(0, 130, 0);
-        doc.text("EXENTO", RM, y, { align:"right" });
-        doc.setTextColor(0,0,0);
-      } else {
-        doc.text("CPSM — Caja Previsión (5,0%)", LM + 5, y);
-        doc.setTextColor(180, 0, 0);
-        doc.text("- " + fmtPDF(cpsm), RM, y, { align:"right" });
-        doc.setTextColor(0,0,0);
-      }
-      y += 7;
-
-      if (gaInd) {
-        doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-        doc.text("Gastos A — Operativos clínica (1/13)", LM + 5, y);
-        doc.setTextColor(180, 0, 0);
-        doc.text("- " + fmtPDF(gaInd), RM, y, { align:"right" });
-        doc.setTextColor(0,0,0); y += 7;
-      }
-
-      if (aporteCeotPDF) {
-        doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-        doc.text("Retención Ganancias (" + Math.round(pctAportePDF*100) + "%)", LM + 5, y);
-        doc.setTextColor(180, 0, 0);
-        doc.text("- " + fmtPDF(aporteCeotPDF), RM, y, { align:"right" });
-        doc.setTextColor(0,0,0); y += 7;
-      }
-
-      // Centro Médico
-      if (cmInd) {
-        doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
-        doc.setTextColor(100,100,100);
-        doc.text("OTROS INGRESOS", LM, y);
-        doc.setTextColor(0,0,0); y += 6;
-        doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-        doc.text("Centro Médico — 1ra semana del mes", LM + 5, y);
-        doc.setTextColor(0, 120, 0);
-        doc.text("+ " + fmtPDF(cmInd), RM, y, { align:"right" });
-        doc.setTextColor(0,0,0); y += 7;
-      }
-
-      // Neto final
-      doc.setDrawColor(11, 43, 74); doc.line(LM, y, RM, y); y += 5;
-      doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-      doc.text("NETO FINAL", LM + 5, y);
-      doc.setTextColor(11, 43, 74);
-      doc.text(fmtPDF(subtot), RM, y, { align:"right" });
-      doc.setTextColor(0,0,0); y += 14;
-
-      doc.setFont("helvetica", "italic"); doc.setFontSize(7.5);
-      doc.setTextColor(120,120,120);
-      doc.text("* Este comprobante cubre los 5 cheques Colón diferidos del período.", LM, y); y += 5;
-      if (!gaInd) {
-        doc.text("* Gastos A pendientes de liquidar; OSDE se informa por separado.", LM, y);
-      } else {
-        doc.text("* OSDE del período se informa por separado.", LM, y);
-      }
-      doc.setTextColor(0,0,0);
-    }
-
-  } else if (periodo === "mayo") {
-    var osdeExtMayo = getExtra("mayo", "osde", doctor.apellido);
-    var osde = osdeExtMayo.val;
-
-    if (osde) {
-      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
-      doc.setTextColor(100,100,100);
-      doc.text("OSDE — IMPORTE INDIVIDUAL MAYO 2026", LM, y);
-      doc.setTextColor(0,0,0); y += 6;
-
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-      doc.text("Cheque OSDE — Mayo 2026", LM + 5, y);
-      doc.text(fmtPDF(osde), RM, y, { align:"right" });
-      y += 7;
-
-      doc.setDrawColor(11, 43, 74); doc.line(LM, y, RM, y); y += 5;
-      doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-      doc.text("TOTAL OSDE", LM + 5, y);
-      doc.setTextColor(11, 43, 74);
-      doc.text(fmtPDF(osde), RM, y, { align:"right" });
-      doc.setTextColor(0,0,0); y += 10;
-
-      var gaTotalMayoPDF = GASTOS_A.mayo;
-      if (gaTotalMayoPDF) {
-        var gaPorPersonaMayoPDF = Math.round(gaTotalMayoPDF / 13);
-        doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
-        doc.setTextColor(100,100,100);
-        doc.text("GASTOS A — DEDUCCIÓN MENSUAL", LM, y);
-        doc.setTextColor(0,0,0); y += 6;
-        doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-        doc.text("Gastos A — 1/13 del total " + fmtPDF(gaTotalMayoPDF), LM + 5, y);
-        doc.setTextColor(180, 0, 0);
-        doc.text("- " + fmtPDF(gaPorPersonaMayoPDF), RM, y, { align:"right" });
-        doc.setTextColor(0,0,0); y += 12;
-      }
-    }
-
-    var cmExtMayoPDF = getExtra("mayo", "cm", doctor.apellido);
-    if (cmExtMayoPDF.val) {
-      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
-      doc.setTextColor(100,100,100);
-      doc.text("CENTRO MÉDICO — IMPORTE INDIVIDUAL MAYO 2026", LM, y);
-      doc.setTextColor(0,0,0); y += 6;
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-      doc.text("Centro Médico — 1ra semana del mes", LM + 5, y);
-      doc.setTextColor(0, 120, 0);
-      doc.text("+ " + fmtPDF(cmExtMayoPDF.val), RM, y, { align:"right" });
-      doc.setTextColor(0,0,0); y += 12;
-    }
-
-    var rowMayoPDF = null;
-    for (var i = 0; i < MAYO_RAW.length; i++) {
-      if (MAYO_RAW[i].k === doctor.apellido) { rowMayoPDF = MAYO_RAW[i]; break; }
-    }
-
-    if (rowMayoPDF) {
-      var valsMayoPDF = [rowMayoPDF.f1, rowMayoPDF.f2, rowMayoPDF.f3, rowMayoPDF.f4, rowMayoPDF.f5];
-      var brutoColonMayoPDF = valsMayoPDF.reduce(function(a,b){ return a+b; }, 0);
-
-      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
-      doc.setTextColor(100,100,100);
-      doc.text("HONORARIOS COLÓN — CHEQUES DIFERIDOS", LM, y);
-      doc.setTextColor(0,0,0); y += 6;
-
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-      valsMayoPDF.forEach(function(monto, idx) {
-        doc.text("Cheque " + (idx+1) + "   —   " + MAYO_FECHAS[idx], LM + 5, y);
-        doc.text(fmtPDF(monto), RM, y, { align:"right" });
-        y += 7;
-      });
-
-      doc.setDrawColor(180,180,180); doc.line(LM, y, RM, y); y += 5;
-      doc.setFont("helvetica", "bold"); doc.setFontSize(9.5);
-      doc.text("TOTAL COLÓN", LM + 5, y);
-      doc.text(fmtPDF(brutoColonMayoPDF), RM, y, { align:"right" });
-      y += 12;
-    }
-
-    y += 2;
-    doc.setFont("helvetica", "italic"); doc.setFontSize(7.5);
-    doc.setTextColor(120,120,120);
-    doc.text("* IIBB y CPSM se calculan sobre el bruto individual de cada profesional.", LM, y); y += 5;
-    doc.text("* OSDE y Colón informados como importes individuales netos.", LM, y);
-    doc.setTextColor(0,0,0);
-  }
-
-  // ── FOOTER ────────────────────────────────────────────────────
-  doc.setDrawColor(11, 43, 74);
-  doc.line(LM, H - 20, RM, H - 20);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(7);
-  doc.setTextColor(90, 90, 90);
-    doc.text("CLINICA COLON P.B. CONSUL 11  —  CEOT 14 DE JULIO 2155  —  TEL: 2236 157452", W/2, H - 14, { align:"center" });
-  doc.text("Informe privado y confidencial · emitido a solicitud del profesional", W/2, H - 9, { align:"center" });
-
-  // ── GUARDAR ─────────────────────────────────────────────
-  var fileName = "Comprobante_" + doctor.apellido + "_" + periodo.toUpperCase() + "_2026.pdf";
-  doc.save(fileName);
 }
 
 // ══════ IMPORTAR LIQUIDACIÓN ════════════════════════════════════
@@ -8301,6 +8145,63 @@ async function restaurarAporteCeotPct() {
     if (stPost) stPost.textContent = "✓ Restaurado al default parejo de 15%.";
   } catch (e) {
     if (stPre) stPre.textContent = "✗ No se pudo restaurar: " + e.message;
+  }
+}
+
+// ── Nómina — pantalla admin para editar nombre/WhatsApp sin tocar código ──
+// (agregada 18/08/2026 — antes cualquier corrección, como un número de
+// WhatsApp mal cargado, requería editar base.html y volver a deployar).
+function renderNomina() {
+  cerrarAdmSidenav();
+  admDesactivarSidebar();
+
+  var rows = DOCTORES.map(function(d) {
+    return '<div style="padding:8px 10px;background:rgba(32,36,31,.04);border:1px solid rgba(32,36,31,.12);border-radius:8px;margin-bottom:6px;display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      + '<div style="grid-column:1/-1;font-size:.7rem;font-weight:700;color:rgba(32,36,31,.5)">' + d.apellido + ' <span style="font-weight:400;color:rgba(32,36,31,.35)">(usuario: ' + d.user + ')</span></div>'
+      + '<label style="font-size:.72rem;color:rgba(32,36,31,.6);display:flex;flex-direction:column;gap:3px">Nombre para mostrar'
+      +   '<input type="text" data-user="' + d.user + '" data-field="nombre" class="nomina-input" value="' + escAttr(d.nombre) + '" style="width:100%;padding:5px 7px;border:1px solid rgba(32,36,31,.2);border-radius:5px;font-size:.82rem;font-family:inherit;box-sizing:border-box"></label>'
+      + '<label style="font-size:.72rem;color:rgba(32,36,31,.6);display:flex;flex-direction:column;gap:3px">WhatsApp (549 + área + número, sin espacios ni guiones)'
+      +   '<input type="text" data-user="' + d.user + '" data-field="wapp" class="nomina-input" value="' + escAttr(d.wapp) + '" style="width:100%;padding:5px 7px;border:1px solid rgba(32,36,31,.2);border-radius:5px;font-size:.82rem;font-family:monospace;box-sizing:border-box"></label>'
+      + '</div>';
+  }).join('');
+
+  var html = '<div style="padding:16px">'
+    + '<div class="cpsm-header">'
+    +   '<div><div class="cpsm-title">🪪 Nómina</div>'
+    +   '<div class="cpsm-subtitle">Nombre y WhatsApp de cada profesional — se guarda para todos, en cualquier dispositivo</div></div>'
+    + '</div>'
+    + '<div style="font-size:.68rem;color:rgba(32,36,31,.4);margin:6px 2px 14px 2px">⚑ No cubre altas/bajas de profesionales ni pertenencia a grupos (Sueldo Director, Préstamo Casa, Retención Ganancias, exención CPSM) — eso tiene impacto financiero directo y sigue editándose en el código a propósito.</div>'
+    + rows
+    + '<div class="cpsm-btn-row" style="margin-top:10px">'
+    +   '<button class="cpsm-calc-btn" onclick="actionFeedback(this); guardarNomina()">Guardar</button>'
+    + '</div>'
+    + '<div id="nomina-status" style="margin-top:10px;font-size:0.8rem;color:rgba(32,36,31,.55)"></div>'
+    + '</div>';
+
+  document.getElementById("adm-content").innerHTML = html;
+}
+
+async function guardarNomina() {
+  var inputs = document.querySelectorAll(".nomina-input");
+  var porUser = {};
+  inputs.forEach(function(inp) {
+    var user = inp.dataset.user, field = inp.dataset.field;
+    if (!porUser[user]) porUser[user] = {};
+    porUser[user][field] = inp.value.trim();
+  });
+  var stPre = document.getElementById("nomina-status");
+  if (stPre) stPre.textContent = "Guardando…";
+  try {
+    var url = LIQUIDACION_ENDPOINT + '?action=setNomina&valores=' + encodeURIComponent(JSON.stringify(porUser));
+    var data = await (await fetch(authURL(url))).json();
+    if (!data.ok) throw new Error(data.error || 'error desconocido');
+    NOMINA_REMOTA = porUser;
+    aplicarNominaRemota();
+    renderNomina();
+    var stPost = document.getElementById("nomina-status");
+    if (stPost) stPost.textContent = "✓ Guardado — ya se aplica para todos, en cualquier dispositivo.";
+  } catch (e) {
+    if (stPre) stPre.textContent = "✗ No se pudo guardar: " + e.message;
   }
 }
 </script>
