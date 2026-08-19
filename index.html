@@ -7709,6 +7709,33 @@ function transfFamEliminar(key, idx) {
   renderSueldoDirector();
 }
 
+// Mover parte del importe de una transferencia a familiar a otra del mismo
+// cheque — para cuando el reparto entre familiares cambia (ej. sacarle
+// $50.000 a una y sumárselos a otra) sin tener que recalcular los dos
+// importes a mano y editarlos uno por uno.
+function transfFamIdSafe(key) {
+  return key.replace(/[^a-zA-Z0-9]/g, "_");
+}
+
+function transfFamMoverImporte(key) {
+  var idS = transfFamIdSafe(key);
+  var entries = TRANSF_FAM[key] || [];
+  var fromIdx = parseInt(document.getElementById("tfMoverDe_" + idS).value, 10);
+  var toIdx   = parseInt(document.getElementById("tfMoverA_" + idS).value, 10);
+  var montoEl = document.getElementById("tfMoverMonto_" + idS);
+  var monto = parseFloat((montoEl.value + "").replace(/\./g, "").replace(",", "."));
+
+  if (isNaN(fromIdx) || isNaN(toIdx) || fromIdx === toIdx) { alert("Elegí dos transferencias distintas."); return; }
+  if (!monto || monto <= 0) { alert("Ingresá un importe mayor a 0."); return; }
+  if (!entries[fromIdx] || !entries[toIdx]) return;
+  if (entries[fromIdx].importe < monto) { alert("La transferencia de origen no tiene ese importe disponible."); return; }
+
+  entries[fromIdx].importe -= monto;
+  entries[toIdx].importe += monto;
+  transfFamGuardarTodo();
+  renderSueldoDirector();
+}
+
 // Resumen consolidado de todas las transferencias a familiares del período
 // (de todos los profesionales juntos), separadas en pendientes/hechas, con
 // un botón para copiar de una sola vez el texto de las que faltan.
@@ -7819,8 +7846,27 @@ function transfFamCeldaHtml(key, netoCheque) {
   var aviso = (netoCheque != null && totalFam > netoCheque + 0.5)
     ? '<div style="font-size:.6rem;color:#b13a2c;font-weight:700;margin-bottom:4px">⚠ ' + fmt(totalFam) + ' supera el neto del cheque (' + fmt(netoCheque) + ')</div>'
     : '';
-  return '<td style="min-width:150px;white-space:normal">' + aviso + filas
-    + '<button type="button" onclick="transfFamAbrirModal(\'' + kEsc + '\')" style="border:1px dashed rgba(32,36,31,.3);background:none;border-radius:5px;cursor:pointer;font-size:.62rem;padding:2px 6px;color:rgba(32,36,31,.55)">+ transferencia</button>'
+
+  var moverHtml = '';
+  if (entries.length >= 2) {
+    var idS = transfFamIdSafe(key);
+    var opts = entries.map(function(e, i) {
+      return '<option value="' + i + '">' + escAttr(e.nombre) + ' (' + fmt(e.importe) + ')</option>';
+    }).join('');
+    moverHtml = '<div style="margin-top:4px;padding:4px 5px;border:1px dashed rgba(32,36,31,.25);border-radius:5px">'
+      +   '<div style="font-size:.58rem;color:rgba(32,36,31,.5);margin-bottom:3px">⇄ mover importe entre transferencias</div>'
+      +   '<div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center">'
+      +     '<select id="tfMoverDe_' + idS + '" style="font-size:.58rem;max-width:110px">' + opts + '</select>'
+      +     '<span style="font-size:.58rem;color:rgba(32,36,31,.5)">→</span>'
+      +     '<select id="tfMoverA_' + idS + '" style="font-size:.58rem;max-width:110px">' + opts + '</select>'
+      +     '<input id="tfMoverMonto_' + idS + '" type="text" inputmode="decimal" placeholder="importe" style="width:64px;font-size:.58rem;padding:1px 3px">'
+      +     '<button type="button" onclick="transfFamMoverImporte(\'' + kEsc + '\')" style="font-size:.58rem;padding:2px 6px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">mover</button>'
+      +   '</div>'
+      + '</div>';
+  }
+
+  return '<td style="min-width:150px;white-space:normal">' + aviso + filas + moverHtml
+    + '<button type="button" onclick="transfFamAbrirModal(\'' + kEsc + '\')" style="border:1px dashed rgba(32,36,31,.3);background:none;border-radius:5px;cursor:pointer;font-size:.62rem;padding:2px 6px;color:rgba(32,36,31,.55);margin-top:4px">+ transferencia</button>'
     + '</td>';
 }
 
