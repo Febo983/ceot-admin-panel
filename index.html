@@ -717,6 +717,11 @@ body {
   .adm-kpis { flex-direction: column; }
   .adm-table-wrap { font-size: 0.65rem; }
   .adm-table th, .adm-table td { padding: 5px 6px; }
+  /* El header (logo+título a la izq., 5 botones a la der.) no entraba en
+     una sola línea en celulares angostos y empujaba toda la página de
+     costado (scroll horizontal). Que baje de línea en vez de desbordar. */
+  .adm-header { flex-wrap: wrap; row-gap: 8px; }
+  .adm-header > div:last-child { flex-wrap: wrap; justify-content: flex-end; }
 }
 .adm-sidenav::-webkit-scrollbar { width: 4px; }
 .adm-sidenav::-webkit-scrollbar-track { background: transparent; }
