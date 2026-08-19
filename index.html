@@ -5,6 +5,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>CEOT — Portal Profesionales</title>
+<script>
+// Modo oscuro automático según horario (20:00–06:59). Se decide acá arriba,
+// antes de que el CSS pinte nada, para que no se vea un flash del tema claro
+// antes de pasar al oscuro.
+(function () {
+  var h = new Date().getHours();
+  var oscuro = h >= 20 || h < 7;
+  document.documentElement.setAttribute("data-theme", oscuro ? "dark" : "light");
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/lucide@1.26.0/dist/umd/lucide.js"></script>
@@ -1353,6 +1363,149 @@ body { background: var(--iv0); color: var(--ink); }
 }
 .adm-home-retro-inner { max-width:1600px; margin:0 auto; position:relative; }
 #admHomeBg { position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; }
+/* ═══════════════════════════════════════════
+   MODO OSCURO — Portal Profesionales
+   Generado a partir de la paleta clara: mismos matices,
+   invertidos. Se activa solo con [data-theme="dark"] en <html>.
+   ═══════════════════════════════════════════ */
+[data-theme="dark"] body { background: #15130f !important ; color: #f1ede2 !important; }
+[data-theme="dark"] .login-card { background: #211d16 !important ; border: 1px solid #3a3226 !important; }
+[data-theme="dark"] .logo-area h2 { color: #f1ede2 !important; }
+[data-theme="dark"] .logo-area p { color: #a39c88 !important; }
+[data-theme="dark"] .field label { color: #c9c3b0 !important; }
+[data-theme="dark"] .field input { border: 1.5px solid #3a362c !important ; background: #26221a !important ; color: #f1ede2 !important; }
+[data-theme="dark"] .field input:focus { border-color: #f1ede2 !important; }
+[data-theme="dark"] .login-error { background: #3a1f1f !important ; color: #f87171 !important ; border: 1px solid #5c2b2b !important; }
+[data-theme="dark"] .login-hint { color: #8f8873 !important; }
+[data-theme="dark"] .portal-card { background: #26221a !important ; border: 1px solid #3a362c !important; }
+[data-theme="dark"] .period-tabs-wrap::after { background: linear-gradient(to right, transparent, var(--co-card, #241f18)) !important; }
+[data-theme="dark"] .period-tabs { border-bottom: 1px solid #3a362c !important ; background: #26221a !important; }
+[data-theme="dark"] .period-tab { color: #8f8873 !important; }
+[data-theme="dark"] .period-tab:hover { color: #c9c3b0 !important; }
+[data-theme="dark"] .period-tab.act-abril, .period-tab.act-mayo, .period-tab.act-junio, .period-tab.act-julio, .period-tab.act-agosto, .period-tab.act-septiembre, .period-tab.act-octubre, .period-tab.act-noviembre, .period-tab.act-diciembre, .period-tab.act-historial { color: #f1ede2 !important ; border-bottom-color: #f1ede2 !important; }
+[data-theme="dark"] .tbadge { border: 1px solid #3a362c !important; }
+[data-theme="dark"] .tb-act { background: #26221a !important ; color: #4ade80 !important ; border-color: #1f6b3d !important; }
+[data-theme="dark"] .tb-ind { background: #26221a !important ; color: #c9c3b0 !important ; border-color: #3a362c !important; }
+[data-theme="dark"] .tb-ant { background: #26221a !important ; color: #8f8873 !important ; border-color: #3a362c !important; }
+[data-theme="dark"] .disclaimer { background: #241f18 !important ; border: 1px solid #3a362c !important ; border-left: 3px solid #f1ede2 !important ; color: #b0a990 !important; }
+[data-theme="dark"] .disclaimer strong { color: #f1ede2 !important; }
+[data-theme="dark"] .schip { background: #26221a !important ; border: 1px solid #3a362c !important; }
+[data-theme="dark"] .schip-abril, .schip-mayo, .schip-junio, .schip-julio, .schip-gastosa, .schip-gastosa-pend { background: #26221a !important; }
+[data-theme="dark"] .schip-lbl { color: #a39c88 !important; }
+[data-theme="dark"] .schip-val { color: #f1ede2 !important; }
+[data-theme="dark"] .schip-abril .schip-val, .schip-mayo .schip-val, .schip-junio .schip-val, .schip-julio .schip-val { color: #f1ede2 !important; }
+[data-theme="dark"] .schip-sub { color: #8f8873 !important; }
+[data-theme="dark"] .ch { background: #26221a !important ; border: 1px solid #3a362c !important ; border-left: 3px solid #3a362c !important; }
+[data-theme="dark"] .ch.abril, .ch.mayo, .ch.junio, .ch.julio { border-left-color: #f1ede2 !important; }
+[data-theme="dark"] .ch.total-row { background: #26221a !important ; border-color: #3a362c !important ; border-left: 3px solid #f1ede2 !important; }
+[data-theme="dark"] .ch-top { color: #a39c88 !important; }
+[data-theme="dark"] .chtag { background: #3a362c !important ; color: #c9c3b0 !important; }
+[data-theme="dark"] .chtag-gray, .chtag-green, .chtag-blue, .chtag-violet, .chtag-teal { background: #3a362c !important ; color: #c9c3b0 !important; }
+[data-theme="dark"] .ch.total-row .chtag { background: #123822 !important ; color: #4ade80 !important; }
+[data-theme="dark"] .chi { background: #26221a !important ; border: 1px solid #3a362c !important; }
+[data-theme="dark"] .chi-lbl { color: #8f8873 !important; }
+[data-theme="dark"] .chi-val { color: #f1ede2 !important; }
+[data-theme="dark"] .chi-val.ind-mayo, .chi-val.ind-junio, .chi-val.ind-julio, .chi-val.ind-agosto { color: #f1ede2 !important; }
+[data-theme="dark"] .chi-val.total-v { color: #4ade80 !important; }
+[data-theme="dark"] .nota-pill { background: #26221a !important ; border: 1px solid #3a362c !important ; color: #c9c3b0 !important; }
+[data-theme="dark"] .sin-datos { color: #8f8873 !important; }
+[data-theme="dark"] .footer-note { color: #8f8873 !important; }
+[data-theme="dark"] .mp-section-label { color: #8f8873 !important; }
+[data-theme="dark"] .mp-section-label::before,.mp-section-label::after { background:#3a362c !important; }
+[data-theme="dark"] .mp-card { background: #26221a !important ; border: 1px solid #3a362c !important; }
+[data-theme="dark"] .mp-card-dark { background: var(--co-card, #241f18) !important ; border: 1px solid rgba(241,237,226,.12) !important ; color: var(--co-ink, #f1ede2) !important; }
+[data-theme="dark"] .mp-label { color: #a39c88 !important; }
+[data-theme="dark"] .mp-label-dark { color: rgba(241,237,226,.45) !important; }
+[data-theme="dark"] .mp-sub { color: #8f8873 !important; }
+[data-theme="dark"] .mp-mini { background: #26221a !important ; border: 1px solid #3a362c !important; }
+[data-theme="dark"] .mp-mini-val { color: #f1ede2 !important; }
+[data-theme="dark"] .mp-mini-lbl { color: #8f8873 !important; }
+[data-theme="dark"] .mp-bar-row-head { color: #c9c3b0 !important; }
+[data-theme="dark"] .mp-bar-track { background: #3a362c !important; }
+[data-theme="dark"] .mp-chart-bar { background: rgba(241,237,226,.15) !important; }
+[data-theme="dark"] .mp-chart-month { color: rgba(241,237,226,.4) !important; }
+[data-theme="dark"] .mp-totals { border-top: 1px solid rgba(241,237,226,.1) !important; }
+[data-theme="dark"] .mp-mov-row { border-bottom: 1px solid #332f24 !important; }
+[data-theme="dark"] .mp-mov-pos { color: #4ade80 !important; }
+[data-theme="dark"] .mp-mov-neg { color: #f87171 !important; }
+[data-theme="dark"] .mp-link-card { background: #26221a !important ; border: 1px solid #3a362c !important; }
+[data-theme="dark"] .mp-link-card-title { color: #f1ede2 !important; }
+[data-theme="dark"] .mp-link-card-sub { color: #8f8873 !important; }
+[data-theme="dark"] .mp-loading { color: #8f8873 !important; }
+[data-theme="dark"] .mp-nun-tag { background: #26221a !important ; border: 1px solid #3a362c !important ; color: #c9c3b0 !important; }
+[data-theme="dark"] .mp-link-more { color: #c9c3b0 !important ; border-top: 1px solid #332f24 !important; }
+[data-theme="dark"] .btn-pdf-mini.action-done { color: #e0a83f !important; }
+[data-theme="dark"] .home-wrap { background: #241f18 !important ; border: 1px solid #3a352a !important; }
+[data-theme="dark"] .home-greeting { color: rgba(241,237,226,0.4) !important; }
+[data-theme="dark"] .home-mes-pill { border: 0.5px solid rgba(241,237,226,0.15) !important ; background: rgba(241,237,226,0.05) !important ; color: rgba(241,237,226,0.4) !important; }
+[data-theme="dark"] .home-mod { background: rgba(241,237,226,0.05) !important ; border: 0.5px solid rgba(241,237,226,0.1) !important; }
+[data-theme="dark"] .home-mod:hover { background: rgba(241,237,226,0.11) !important ; border-color: rgba(241,237,226,0.22) !important; }
+[data-theme="dark"] .home-mod-highlighted { background: rgba(241,237,226,0.12) !important ; border-color: rgba(241,237,226,0.25) !important; }
+[data-theme="dark"] .home-mod-lbl { color: rgba(241,237,226,0.6) !important; }
+[data-theme="dark"] .home-stat-card { background: rgba(241,237,226,0.05) !important ; border: 0.5px solid rgba(241,237,226,0.1) !important; }
+[data-theme="dark"] .home-stat-card:hover { background: rgba(241,237,226,0.09) !important; }
+[data-theme="dark"] .home-stat-lbl { color: rgba(241,237,226,0.35) !important; }
+[data-theme="dark"] .home-stat-val { color: #f1ede2 !important; }
+[data-theme="dark"] .home-footer { color: rgba(241,237,226,0.22) !important ; border-top: 0.5px solid rgba(241,237,226,0.07) !important; }
+[data-theme="dark"] .hist-newspaper { background: #26221a !important ; border: 1px solid #3a362c !important; }
+[data-theme="dark"] .hist-masthead { background: var(--co-card, #241f18) !important; }
+[data-theme="dark"] .hist-masthead-sub { color: rgba(241,237,226,.45) !important; }
+[data-theme="dark"] .hist-period-section { border-bottom: 1px solid #3a362c !important; }
+[data-theme="dark"] .hist-period-headline { color: #f1ede2 !important ; border-bottom: 1px solid #f1ede2 !important; }
+[data-theme="dark"] .hist-period-badge { background: #2c2820 !important ; border: 1px solid #3a362c !important ; color: #8f8873 !important; }
+[data-theme="dark"] .hist-dline-lbl { color: #a39c88 !important; }
+[data-theme="dark"] .hist-dline-val { color: #f1ede2 !important; }
+[data-theme="dark"] .hist-dline-val.neg { color: #f87171 !important; }
+[data-theme="dark"] .hist-dline-val.exento { color: #4ade80 !important; }
+[data-theme="dark"] .hist-dline-val.cm { color: rgba(241,237,226,.55) !important; }
+[data-theme="dark"] .hist-rule { border-top: 1px solid rgba(241,237,226,.15) !important; }
+[data-theme="dark"] .hist-neto-line { color: #f1ede2 !important; }
+[data-theme="dark"] .hist-empty, .hist-loading { color: #8f8873 !important; }
+[data-theme="dark"] .period-total { background: #26221a !important ; border: 1px solid #3a362c !important; }
+[data-theme="dark"] .pt-lbl { color: #a39c88 !important; }
+[data-theme="dark"] .pt-val { color: #f1ede2 !important; }
+[data-theme="dark"] .pt-sub { color: #8f8873 !important; }
+[data-theme="dark"] .cheque-list { background: #26221a !important ; border: 1px solid #3a362c !important; }
+[data-theme="dark"] .cl-row { border-bottom: 1px solid #332f24 !important; }
+[data-theme="dark"] .cl-date { color: #8f8873 !important; }
+[data-theme="dark"] .cl-lbl { color: #c9c3b0 !important; }
+[data-theme="dark"] .cl-amt { color: #f1ede2 !important; }
+[data-theme="dark"] .cl-row.cl-sep-row { border-top: 1px solid #3a362c !important ; background: #241f18 !important; }
+[data-theme="dark"] .cl-row.cl-sep-row .cl-lbl { color: #a39c88 !important; }
+[data-theme="dark"] .cl-row.cl-neg .cl-amt { color: #f87171 !important; }
+[data-theme="dark"] .cl-date { color: rgba(241,237,226,0.35) !important; }
+[data-theme="dark"] .cl-lbl { color: rgba(241,237,226,0.7) !important; }
+[data-theme="dark"] .cl-row.cl-sep-row .cl-lbl { color: rgba(241,237,226,0.5) !important; }
+[data-theme="dark"] .cl-row.cl-neg .cl-amt { color: #e5645a !important; }
+[data-theme="dark"] .mini-disc { color: #8f8873 !important; }
+[data-theme="dark"] .cl-row.cl-acreditado .cl-date { color: #4ade80 !important; }
+[data-theme="dark"] .cl-status-icon { color: #4ade80 !important; }
+[data-theme="dark"] .cl-row.cl-pendiente .cl-date { color: #8f8873 !important; }
+[data-theme="dark"] .tab-neto { color: #a39c88 !important; }
+[data-theme="dark"] .period-tab.act-mayo .tab-neto, .period-tab.act-junio .tab-neto, .period-tab.act-julio .tab-neto, .period-tab.act-agosto .tab-neto, .period-tab.act-septiembre .tab-neto, .period-tab.act-octubre .tab-neto, .period-tab.act-noviembre .tab-neto, .period-tab.act-diciembre .tab-neto { color: #f1ede2 !important; }
+[data-theme="dark"] .field input::placeholder { color: rgba(241,237,226,0.3) !important; }
+[data-theme="dark"] .tab-pane { background: #241f18 !important; }
+[data-theme="dark"] .portal-card { border-color: #2f5744 !important; }
+
+/* Variables globales (--co-*, --iv*, --ink) en modo oscuro: cubre además
+   cualquier lugar que ya usaba var(--co-card)/var(--ink)/etc, tanto acá
+   como en Comprobante Oficial. */
+:root[data-theme="dark"] {
+  --co-bg: #15130f; --co-card: #241f18; --co-ink: #f1ede2; --co-ink-dim: #a39c88;
+  --co-line: #3a362c; --co-accent-soft: rgba(241,237,226,.08);
+  --co-neg-soft: rgba(229,100,90,.15); --co-warn-soft: rgba(224,168,63,.15);
+  --iv0: #15130f; --iv1: #241f18; --iv2: rgba(241,237,226,0.05); --iv3: rgba(241,237,226,0.14);
+  --ink: #f1ede2; --ink-lt: rgba(241,237,226,0.45);
+}
+
+/* ── TRANSICIÓN VISUAL ── */
+@keyframes ceotFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.login-card, #portalView, #adminView { animation: ceotFadeUp .45s ease both; }
+body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
+.field input, .mp-card, .mp-mini, .mp-link-card {
+  transition: background-color .35s ease, border-color .35s ease, color .35s ease;
+}
+
 </style>
 </head>
 <body>
@@ -8759,8 +8912,9 @@ async function guardarNomina() {
   if (!ctx) return;
 
   var reduceMotion = !window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
+  var esOscuro = document.documentElement.getAttribute("data-theme") === "dark";
   var GOLD = "201,147,58";   // --co-gold
-  var INK = "31,58,46";      // logo-icon verde oscuro
+  var INK = esOscuro ? "241,237,226" : "31,58,46"; // ink clara en oscuro, si no verde logo-icon
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var width = 0, height = 0, prevWidth = 0;
