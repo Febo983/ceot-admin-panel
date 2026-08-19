@@ -116,6 +116,32 @@ body {
   cursor: pointer; font-family: inherit; white-space: nowrap;
 }
 
+/* ── VOZ (prototipo) ── */
+.voice-fab {
+  position: fixed; right: 18px; bottom: 18px; z-index: 500;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: #1f3a2e; border: none; color: white;
+  font-size: 1.3rem; cursor: pointer;
+  box-shadow: 0 3px 14px rgba(0,0,0,.25);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .15s, background .15s;
+}
+.voice-fab:hover { transform: scale(1.06); }
+.voice-fab.listening {
+  background: #dc2626;
+  animation: voiceFabPulse 1.1s ease-in-out infinite;
+}
+@keyframes voiceFabPulse {
+  0%, 100% { box-shadow: 0 3px 14px rgba(220,38,38,.35), 0 0 0 0 rgba(220,38,38,.4); }
+  50% { box-shadow: 0 3px 14px rgba(220,38,38,.35), 0 0 0 10px rgba(220,38,38,0); }
+}
+.voice-status {
+  position: fixed; right: 18px; bottom: 78px; z-index: 500;
+  max-width: 240px; background: #20241f; color: white;
+  padding: 8px 12px; border-radius: 8px; font-size: 0.75rem;
+  line-height: 1.4; box-shadow: 0 3px 14px rgba(0,0,0,.25);
+}
+
 /* ── CARD Y TABS ── */
 .portal-card {
   background: white; border-radius: 0 0 10px 10px;
@@ -1679,6 +1705,8 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
 
 <!-- ADMIN VIEW — fuera del .app para no heredar max-width 480px -->
 <div id="adminView" style="display:none; max-width:none; margin:-12px -10px -28px; padding:0 0 28px; font-family:'Segoe UI',system-ui,sans-serif;">
+  <button id="voiceFab" class="voice-fab" title="Comando de voz" onclick="toggleVoiceControl()">🎙️</button>
+  <div id="voiceStatus" class="voice-status" style="display:none;"></div>
   <div class="adm-header">
     <div class="ph-left">
       <div class="ph-avatar ph-seal">CEOT</div>
@@ -2673,6 +2701,122 @@ function volverHome() {
   document.getElementById("homeBtn").style.display = "none";
 }
 
+// ══════ VOZ (prototipo) ═════════════════════════════════════════
+var voiceRecognition = null;
+var voiceListening = false;
+
+function voiceHablar(texto) {
+  try {
+    if (!window.speechSynthesis) return;
+    var u = new SpeechSynthesisUtterance(texto);
+    u.lang = "es-AR";
+    var voces = speechSynthesis.getVoices();
+    var voz = voces.find(function(v){ return v.lang === "es-AR"; }) || voces.find(function(v){ return v.lang.indexOf("es") === 0; });
+    if (voz) u.voice = voz;
+    speechSynthesis.speak(u);
+  } catch(e) { console.warn("voiceHablar:", e); }
+}
+
+function voiceMostrarEstado(texto) {
+  var el = document.getElementById("voiceStatus");
+  if (!el) return;
+  el.textContent = texto;
+  el.style.display = texto ? "block" : "none";
+}
+
+var VOICE_MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+var VOICE_COMANDOS = [
+  // Específicos primero (evitan que los genéricos de abajo los interecepten)
+  { match: /transferencias del mes|sueldo director/, resp: "Abriendo transferencias del mes",
+    accion: function(){ renderSueldoDirector(); } },
+  { match: /retencion ganancias|aporte ceot/,         resp: "Abriendo retención ganancias",
+    accion: function(){ renderAporteCeot(); } },
+  { match: /sueldo b\b/,                              resp: "Abriendo Sueldo B",
+    accion: function(){ renderSueldoB(); } },
+  { match: /total ceot/,                              resp: "Abriendo Total CEOT",
+    accion: function(){ renderTotalCeot(); } },
+  // Módulos genéricos
+  { match: /debito/,             resp: "Abriendo Débitos",
+    accion: function(){ renderDebitos(); } },
+  { match: /pendiente/,          resp: "Abriendo Pendientes",
+    accion: function(){ renderPendientes(); } },
+  { match: /factura/,            resp: "Abriendo Facturas",
+    accion: function(){ renderFacturas(); } },
+  { match: /transferencia/,      resp: "Abriendo Transferencias",
+    accion: function(){ renderTransferencias(); } },
+  { match: /cpsm/,                resp: "Abriendo CPSM",
+    accion: function(){ renderCpsm(); } },
+  { match: /checklist|tareas/,   resp: "Abriendo el checklist",
+    accion: function(){ renderChecklist(); } },
+  { match: /importar/,           resp: "Abriendo importación",
+    accion: function(){ abrirImportModal(); } },
+  { match: /menu/,               resp: null,
+    accion: function(){ toggleAdmSidenav(); } },
+  { match: /inicio|volver|home/, resp: "Volviendo al inicio",
+    accion: function(){ var b = document.getElementById("admHomeBtn"); if (b && b.style.display !== "none") b.click(); else renderAdmHome(); } },
+  { match: /actualiz|refresc/,   resp: "Actualizando",
+    accion: function(){ var b = document.getElementById("adminRefreshBtn"); if (b) b.click(); } },
+  { match: /salir|cerrar sesi/,  resp: "Cerrando sesión",
+    accion: function(){ var b = document.getElementById("adminLogoutBtn"); if (b) b.click(); } },
+];
+
+function voiceEjecutarComando(transcript) {
+  var t = transcript.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+  // Navegación por mes ("llevame a agosto", "mostrame julio")
+  for (var m = 0; m < VOICE_MESES.length; m++) {
+    if (t.indexOf(VOICE_MESES[m]) !== -1) {
+      renderAdminPanelPage(VOICE_MESES[m]);
+      var resp = "Mostrando " + VOICE_MESES[m];
+      voiceHablar(resp);
+      voiceMostrarEstado('🎙️ "' + transcript + '" → ' + resp);
+      return;
+    }
+  }
+
+  for (var i = 0; i < VOICE_COMANDOS.length; i++) {
+    if (VOICE_COMANDOS[i].match.test(t)) {
+      VOICE_COMANDOS[i].accion();
+      if (VOICE_COMANDOS[i].resp) voiceHablar(VOICE_COMANDOS[i].resp);
+      voiceMostrarEstado('🎙️ "' + transcript + '"' + (VOICE_COMANDOS[i].resp ? " → " + VOICE_COMANDOS[i].resp : ""));
+      return;
+    }
+  }
+  voiceHablar("No entendí ese comando");
+  voiceMostrarEstado('🎙️ "' + transcript + '" → no reconocido');
+}
+
+function toggleVoiceControl() {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { alert("Este navegador no soporta reconocimiento de voz. Probá con Chrome de escritorio o Android."); return; }
+  var fab = document.getElementById("voiceFab");
+  if (voiceListening) { voiceRecognition && voiceRecognition.stop(); return; }
+
+  voiceRecognition = new SR();
+  voiceRecognition.lang = "es-AR";
+  voiceRecognition.interimResults = false;
+  voiceRecognition.maxAlternatives = 1;
+
+  voiceRecognition.onstart = function() {
+    voiceListening = true;
+    fab.classList.add("listening");
+    voiceMostrarEstado("🎙️ Escuchando…");
+  };
+  voiceRecognition.onresult = function(e) {
+    voiceEjecutarComando(e.results[0][0].transcript);
+  };
+  voiceRecognition.onerror = function(e) {
+    voiceMostrarEstado("🎙️ Error: " + e.error);
+  };
+  voiceRecognition.onend = function() {
+    voiceListening = false;
+    fab.classList.remove("listening");
+    setTimeout(function(){ voiceMostrarEstado(""); }, 4000);
+  };
+  voiceRecognition.start();
+}
+
 function coTitleCase(str) {
   var MINUSC = { de:1, la:1, del:1, los:1, las:1 };
   return String(str).toLowerCase().split(" ").map(function(w, i) {
@@ -3523,8 +3667,8 @@ function renderMiPanel(doctor) {
     + '<div class="mp-label" style="margin:0;">Gastos del mes</div>'
     + '<div style="font-size:0.63rem;color:rgba(32,36,31,.35);">' + (new Date().toLocaleString('es-AR',{month:'long',year:'numeric'})) + '</div>'
     + '</div>'
-    + '<div style="font-size:1.1rem;font-weight:800;color:#20241f;">' + (gastosTotal ? fmt(gastosTotal) : 'Actualizá para ver') + '</div>'
-    + (gastosTotal ? '<div class="mp-sub">/' + DOCTORES.length + ' = ' + fmt(gastosTotal / DOCTORES.length) + ' por profesional</div>' : '')
+    + '<div id="mp-gastos-total" style="font-size:1.1rem;font-weight:800;color:#20241f;">' + (gastosTotal ? fmt(gastosTotal) : 'Actualizá para ver') + '</div>'
+    + (gastosTotal ? '<div id="mp-gastos-porcabeza" class="mp-sub">/' + DOCTORES.length + ' = ' + fmt(gastosTotal / DOCTORES.length) + ' por profesional</div>' : '')
     + '</div>';
 
   // Cajas con skeleton mientras carga
