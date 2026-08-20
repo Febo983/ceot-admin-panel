@@ -6203,20 +6203,28 @@ async function procesarArchivosImport() {
     var rows = await leerXLSX(fileCEOT);
     if (!rows.length) throw new Error('Archivo vacío.');
 
-    var ceotHeaders = rows[0].map(function(h){ return String(h || '').replace(/\s+/g,'').toUpperCase(); });
-    function idxOfCeot(needle) {
-      for (var i = 0; i < ceotHeaders.length; i++) if (ceotHeaders[i].indexOf(needle) !== -1) return i;
-      return -1;
-    }
-    var iImp  = idxOfCeot('IMPORTE');
-    var iInst = idxOfCeot('INST.');
-    var iProf = idxOfCeot('.Q.REALIZA'); // nombre del profesional que realizó (no la col "PROF", que es el código)
-    var iObs  = idxOfCeot('OBSERVACIONES');
-    if (iImp === -1 || iInst === -1 || iProf === -1 || iObs === -1) {
-      throw new Error('No reconozco las columnas de este archivo (falta IMPORTE, INST., PROF/.Q.REALIZA u OBSERVACIONES). ¿Es el formato crudo de la ART?');
+    // El .txt de Colón (parsearTXTColon) ya devuelve filas en posiciones fijas
+    // y sin fila de encabezado — no corresponde detectar columnas por nombre.
+    var esTXTCeot = /\.txt$/i.test(fileCEOT.name);
+    var iImp, iInst, iProf, iObs;
+    if (esTXTCeot) {
+      iImp = 3; iInst = 7; iProf = 12; iObs = 15;
+    } else {
+      var ceotHeaders = rows[0].map(function(h){ return String(h || '').replace(/\s+/g,'').toUpperCase(); });
+      var idxOfCeot = function(needle) {
+        for (var i = 0; i < ceotHeaders.length; i++) if (ceotHeaders[i] && ceotHeaders[i].indexOf(needle) !== -1) return i;
+        return -1;
+      };
+      iImp  = idxOfCeot('IMPORTE');
+      iInst = idxOfCeot('INST.');
+      iProf = idxOfCeot('.Q.REALIZA'); // nombre del profesional que realizó (no la col "PROF", que es el código)
+      iObs  = idxOfCeot('OBSERVACIONES');
+      if (iImp === -1 || iInst === -1 || iProf === -1 || iObs === -1) {
+        throw new Error('No reconozco las columnas de este archivo (falta IMPORTE, INST., PROF/.Q.REALIZA u OBSERVACIONES). ¿Es el formato crudo de la ART?');
+      }
     }
 
-    for (var r = 1; r < rows.length; r++) {
+    for (var r = esTXTCeot ? 0 : 1; r < rows.length; r++) {
       var row = rows[r];
       if (!row || !row.length) continue;
       var imp  = typeof row[iImp] === 'number' ? row[iImp] : parsearMontoImp(row[iImp]);
