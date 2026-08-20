@@ -3673,8 +3673,8 @@ function calcularDetalleChequesProfesional(periodo, doc) {
   // mes, incluso en el acumulado) — corresponde a la liquidación del mes
   // anterior (desfasaje real de facturación del Centro Médico) y en la
   // práctica se acredita antes que el primer cheque. Pedido explícito de
-  // Marcelo, 20/08/2026 — antes se agregaba al final junto con OSDE, que sí
-  // sigue yendo al final (más abajo) porque no tiene el mismo desfasaje.
+  // Marcelo, 20/08/2026 — antes se agregaba al final junto con OSDE (que
+  // ahora va entre el 4to y 5to cheque, ver más abajo, no al final).
   var _idxMesCem = MESES_CPSM.indexOf(periodo);
   var _mesAnteriorCem = _idxMesCem > 0 ? MESES_CPSM[_idxMesCem - 1] : null;
   var _mesAnteriorCemCap = _mesAnteriorCem ? _mesAnteriorCem.charAt(0).toUpperCase() + _mesAnteriorCem.slice(1) : null;
@@ -3689,6 +3689,23 @@ function calcularDetalleChequesProfesional(periodo, doc) {
     detalle.push({ fecha: "Acreditación CEM" + (cemInfo.length ? " (" + cemInfo.join(" · ") + ")" : ""), bruto: c.cm, retencion: retencionCem, prestamo: 0, iibb: 0, cpsm: 0, neto: netoCem, acumulado: cum });
   }
 
+  // Cheque OSDE va entre el 4to y 5to cheque real (mismo criterio de origIdx
+  // que IIBB/CPSM más abajo, no de posición filtrada) — pedido de Marcelo,
+  // 20/08/2026. Si el 4to real todavía no cargó este mes, se cae al final
+  // como fallback (para no perderlo).
+  function pushOsdeRow() {
+    if (c.osdePendiente) {
+      var infoPendOsde = c.osdeFecha ? [c.osdeFecha] : [];
+      detalle.push({ fecha: "Cheque OSDE" + (infoPendOsde.length ? " (" + infoPendOsde.join(" · ") + ")" : ""), bruto: null, retencion: null, prestamo: 0, iibb: 0, cpsm: 0, neto: null, acumulado: cum, pendiente: true });
+    } else if (c.osde > 0) {
+      var retencionOsde = Math.round(c.osde * (c.pctAporte || 0));
+      var netoOsde = c.osde - retencionOsde;
+      cum += netoOsde;
+      detalle.push({ fecha: "Cheque OSDE", bruto: c.osde, retencion: retencionOsde, prestamo: 0, iibb: 0, cpsm: 0, neto: netoOsde, acumulado: cum });
+    }
+  }
+
+  var osdeInsertado = false;
   var iibbAplicado = false, cpsmAplicado = false;
   cheques.forEach(function(chq, i) {
     var retencion = Math.round(chq.monto * (c.pctAporte || 0));
@@ -3699,13 +3716,14 @@ function calcularDetalleChequesProfesional(periodo, doc) {
     if (chq.origIdx === IDX_CPSM_CHEQUE) { cpsmAqui = c.cpsm || 0; neto -= cpsmAqui; cpsmAplicado = true; }
     cum += neto;
     detalle.push({ fecha: chq.fecha, bruto: chq.monto, retencion: retencion, prestamo: prestamoAqui, iibb: iibbAqui, cpsm: cpsmAqui, neto: neto, acumulado: cum });
+    if (chq.origIdx === IDX_IIBB_CHEQUE) { osdeInsertado = true; pushOsdeRow(); }
   });
+  if (!osdeInsertado) pushOsdeRow();
 
   // Si el cheque 4 o 5 real todavía no cargó, IIBB/CPSM quedan sin poder
   // aplicarse a ningún cheque — antes esto los perdía en silencio (el
   // "Acumulado" de esta tabla quedaba más alto que el neto real de
-  // calcularNetoLocal). Ahora se deja una fila "pendiente", igual que ya se
-  // hace con OSDE más abajo.
+  // calcularNetoLocal). Ahora se deja una fila "pendiente".
   if (!iibbAplicado && c.iibb > 0) {
     detalle.push({ fecha: "IIBB (pendiente — cheque " + (IDX_IIBB_CHEQUE+1) + " sin cargar)", bruto: null, retencion: null, prestamo: 0, iibb: 0, cpsm: 0, neto: null, acumulado: cum, pendiente: true });
   }
@@ -3714,21 +3732,13 @@ function calcularDetalleChequesProfesional(periodo, doc) {
   }
 
   // ultimaFecha (usada para saber si "todavía suma" o ya pasó) mira solo la
-  // cronología real de cheques Colón — no CEM (va primero) ni OSDE (va después).
-  var ultimaFecha = detalle.length ? detalle[detalle.length - 1].fecha : null;
-
-  // OSDE: acreditación aparte de los cheques Colón, sigue yendo al final.
-  // Mientras no esté cargada en el Sheet se lista como pendiente (sin sumar
-  // al acumulado); apenas deje de estar pendiente, se suma con la misma
-  // Retención Ganancias.
-  if (c.osdePendiente) {
-    var infoPendOsde = c.osdeFecha ? [c.osdeFecha] : [];
-    detalle.push({ fecha: "Cheque OSDE" + (infoPendOsde.length ? " (" + infoPendOsde.join(" · ") + ")" : ""), bruto: null, retencion: null, prestamo: 0, iibb: 0, cpsm: 0, neto: null, acumulado: cum, pendiente: true });
-  } else if (c.osde > 0) {
-    var retencionOsde = Math.round(c.osde * (c.pctAporte || 0));
-    var netoOsde = c.osde - retencionOsde;
-    cum += netoOsde;
-    detalle.push({ fecha: "Cheque OSDE", bruto: c.osde, retencion: retencionOsde, prestamo: 0, iibb: 0, cpsm: 0, neto: netoOsde, acumulado: cum });
+  // cronología real de cheques Colón — CEM va primero y OSDE queda intercalado
+  // entre el 4to y 5to, ninguno de los dos es "la última fecha real".
+  var ultimaFecha = null;
+  for (var _u = detalle.length - 1; _u >= 0; _u--) {
+    if (/^\d{2}\/\d{2}$/.test(detalle[_u].fecha) || detalle[_u].fecha.indexOf('IIBB (pendiente') === 0 || detalle[_u].fecha.indexOf('CPSM (pendiente') === 0) {
+      ultimaFecha = detalle[_u].fecha; break;
+    }
   }
 
   return { doc: doc, periodo: periodo, detalle: detalle, totalNetoMes: cum, pctAporte: c.pctAporte, ultimaFecha: ultimaFecha };
@@ -9642,7 +9652,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-20-cemfirst';
+  var CURRENT_BUILD = '2026-08-20-osdeorden';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
