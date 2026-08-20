@@ -4,6 +4,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>CEOT — Portal Profesionales</title>
 <script>
 // Modo oscuro automático según horario (20:00–06:59). Se decide acá arriba,
@@ -9616,6 +9619,46 @@ async function guardarNomina() {
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
+})();
+</script>
+
+<script>
+// ── Auto-chequeo de versión: GitHub Pages cachea la página hasta 10 min en su CDN,
+// y el navegador puede guardarla más tiempo todavía — sin esto, un fix recién
+// deployado puede tardar en llegar aunque el usuario recargue. Se compara
+// CURRENT_BUILD (hardcodeado en este archivo) contra version.txt (archivo aparte,
+// pedido siempre sin caché) — si difieren, hay una versión nueva publicada.
+// IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
+// juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
+(function () {
+  var CURRENT_BUILD = '2026-08-20-fixtxt';
+  function mostrarBannerActualizacion() {
+    if (document.getElementById('updBanner')) return;
+    var b = document.createElement('div');
+    b.id = 'updBanner';
+    b.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:99999;'
+      + 'background:#1f3a2e;color:#fff;padding:12px 16px;display:flex;'
+      + 'align-items:center;justify-content:center;gap:12px;font-size:14px;'
+      + 'box-shadow:0 -2px 10px rgba(0,0,0,.25);font-family:system-ui,sans-serif;';
+    b.innerHTML = '🔄 Hay una versión nueva del panel disponible.'
+      + '<button id="updBtn" style="background:#fff;color:#1f3a2e;border:none;'
+      + 'padding:6px 16px;border-radius:6px;font-weight:600;cursor:pointer;'
+      + 'font-size:14px;">Actualizar ahora</button>';
+    document.body.appendChild(b);
+    document.getElementById('updBtn').onclick = function () {
+      window.location.href = location.pathname + '?v=' + Date.now();
+    };
+  }
+  function chequearVersion() {
+    fetch('version.txt?_=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.text() : null; })
+      .then(function (txt) {
+        if (txt && txt.trim() && txt.trim() !== CURRENT_BUILD) mostrarBannerActualizacion();
+      })
+      .catch(function () {}); // sin conexión o archivo ausente: no molestar
+  }
+  setTimeout(chequearVersion, 2000);
+  setInterval(chequearVersion, 5 * 60 * 1000); // re-chequea cada 5 min por si queda la pestaña abierta
 })();
 </script>
 
