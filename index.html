@@ -135,6 +135,25 @@ body {
   0%, 100% { box-shadow: 0 3px 14px rgba(220,38,38,.35), 0 0 0 0 rgba(220,38,38,.4); }
   50% { box-shadow: 0 3px 14px rgba(220,38,38,.35), 0 0 0 10px rgba(220,38,38,0); }
 }
+.voice-handsfree-btn {
+  position: fixed; right: 80px; bottom: 24px; z-index: 500;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: white; border: 2px solid #1f3a2e; color: #1f3a2e;
+  font-size: 1.05rem; cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,.15);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .15s, background .15s, color .15s;
+}
+.voice-handsfree-btn:hover { transform: scale(1.06); }
+.voice-handsfree-btn.active {
+  background: #0e7490; border-color: #0e7490; color: white;
+  animation: voiceHandsFreePulse 2.2s ease-in-out infinite;
+}
+.voice-handsfree-btn.awake { background: #16a34a; border-color: #16a34a; }
+@keyframes voiceHandsFreePulse {
+  0%, 100% { box-shadow: 0 2px 10px rgba(14,116,144,.3), 0 0 0 0 rgba(14,116,144,.35); }
+  50% { box-shadow: 0 2px 10px rgba(14,116,144,.3), 0 0 0 7px rgba(14,116,144,0); }
+}
 .voice-status {
   position: fixed; right: 18px; bottom: 78px; z-index: 500;
   max-width: 240px; background: #20241f; color: white;
@@ -1706,6 +1725,7 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
 <!-- ADMIN VIEW — fuera del .app para no heredar max-width 480px -->
 <div id="adminView" style="display:none; max-width:none; margin:-12px -10px -28px; padding:0 0 28px; font-family:'Segoe UI',system-ui,sans-serif;">
   <button id="voiceFab" class="voice-fab" title="Comando de voz" onclick="toggleVoiceControl()">🎙️</button>
+  <button id="voiceHandsFreeBtn" class="voice-handsfree-btn" title='Activar modo manos libres — decí "escuchame CEOT"' onclick="toggleModoManosLibres()">🎧</button>
   <div id="voiceStatus" class="voice-status" style="display:none;"></div>
   <div class="adm-header">
     <div class="ph-left">
@@ -2701,20 +2721,24 @@ function volverHome() {
   document.getElementById("homeBtn").style.display = "none";
 }
 
-// ══════ VOZ (prototipo) ═════════════════════════════════════════
+// ══════ VOZ ═══════════════════════════════════════════════════
 var voiceRecognition = null;
 var voiceListening = false;
+var voiceContexto = null;         // { tipo:"neto", doc } — habilita preguntas de seguimiento ("¿y julio?")
+var voiceContextoTimer = null;
+var voiceConfirmPendiente = null; // "logout" mientras espera que digan "confirmar"
 
-function voiceHablar(texto) {
+function voiceHablar(texto, cb) {
   try {
-    if (!window.speechSynthesis) return;
+    if (!window.speechSynthesis) { if (cb) cb(); return; }
     var u = new SpeechSynthesisUtterance(texto);
     u.lang = "es-AR";
     var voces = speechSynthesis.getVoices();
     var voz = voces.find(function(v){ return v.lang === "es-AR"; }) || voces.find(function(v){ return v.lang.indexOf("es") === 0; });
     if (voz) u.voice = voz;
+    if (cb) u.onend = cb;
     speechSynthesis.speak(u);
-  } catch(e) { console.warn("voiceHablar:", e); }
+  } catch(e) { console.warn("voiceHablar:", e); if (cb) cb(); }
 }
 
 function voiceMostrarEstado(texto) {
@@ -2724,7 +2748,113 @@ function voiceMostrarEstado(texto) {
   el.style.display = texto ? "block" : "none";
 }
 
+function voiceNormalizarTexto(s) {
+  return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+// Para hablar montos: sin el símbolo "$" — la síntesis de voz suele leerlo como "dólares"
+// aunque sea ARS. En pantalla seguimos usando fmt() (con $), que ahí no genera confusión.
+function voiceFmtPesos(n) {
+  return new Intl.NumberFormat("es-AR").format(Math.round(n)) + " pesos";
+}
+
+function voiceLimpiarContexto() {
+  voiceContexto = null;
+  if (voiceContextoTimer) { clearTimeout(voiceContextoTimer); voiceContextoTimer = null; }
+}
+function voiceFijarContexto(ctx) {
+  voiceContexto = ctx;
+  if (voiceContextoTimer) clearTimeout(voiceContextoTimer);
+  voiceContextoTimer = setTimeout(voiceLimpiarContexto, 20000);
+}
+
+function voiceLog(transcript) {
+  try {
+    var key = "ceot_voice_unrecognized";
+    var arr = JSON.parse(localStorage.getItem(key) || "[]");
+    arr.push({ t: transcript, f: new Date().toISOString() });
+    if (arr.length > 50) arr = arr.slice(-50);
+    localStorage.setItem(key, JSON.stringify(arr));
+  } catch(e) {}
+}
+
+function voiceBuscarDoctor(t) {
+  for (var i = 0; i < DOCTORES.length; i++) {
+    if (t.indexOf(DOCTORES[i].apellido.toLowerCase()) !== -1) return DOCTORES[i];
+  }
+  return null;
+}
+
 var VOICE_MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+function voiceBuscarMes(t) {
+  for (var m = 0; m < VOICE_MESES.length; m++) {
+    if (t.indexOf(VOICE_MESES[m]) !== -1) return VOICE_MESES[m];
+  }
+  return null;
+}
+
+function voiceResponderNeto(doc, mes) {
+  var c = calcularNetoLocal(mes, doc);
+  var mesLabel = mes.charAt(0).toUpperCase() + mes.slice(1);
+  if (!c) {
+    voiceHablar("No hay datos de " + coTitleCase(doc.apellido) + " en " + mesLabel);
+    voiceMostrarEstado('🎙️ Sin datos de ' + coTitleCase(doc.apellido) + ' en ' + mesLabel);
+    voiceLimpiarContexto();
+    return;
+  }
+  var dicho = coTitleCase(doc.apellido) + " cobra " + voiceFmtPesos(c.neto) + " en " + mesLabel + (c.pendiente ? ", estimado" : "");
+  var resp  = coTitleCase(doc.apellido) + " cobra " + fmt(c.neto) + " en " + mesLabel + (c.pendiente ? ", estimado" : "");
+  voiceHablar(dicho);
+  voiceMostrarEstado('🎙️ ' + resp);
+  voiceFijarContexto({ tipo: "neto", doc: doc });
+}
+
+function voiceResponderChecklist() {
+  var total = CHECKLIST_ITEMS.length;
+  var done = CHECKLIST_ITEMS.filter(function(it){ return checklistItemDone(it.id); }).length;
+  var faltan = total - done;
+  var vencidos = checklistVencidos().length;
+  var resp = faltan === 0
+    ? "El checklist de este mes está completo"
+    : "Faltan " + faltan + " de " + total + " tareas" + (vencidos > 0 ? ", " + vencidos + " atrasadas" : "");
+  voiceHablar(resp);
+  voiceMostrarEstado('🎙️ ' + resp);
+}
+
+function voiceTildarItem(t) {
+  var palabras = t.split(/\s+/).filter(function(w){ return w.length > 3; });
+  if (palabras.length === 0) { voiceHablar("¿Qué tarea querés tildar?"); return; }
+  var mejor = null, mejorScore = 0;
+  CHECKLIST_ITEMS.forEach(function(it) {
+    var texto = voiceNormalizarTexto(it.texto);
+    var score = palabras.filter(function(w){ return texto.indexOf(w) !== -1; }).length;
+    if (score > mejorScore) { mejorScore = score; mejor = it; }
+  });
+  if (!mejor || mejorScore === 0) {
+    voiceHablar("No encontré esa tarea en el checklist");
+    voiceMostrarEstado('🎙️ No encontré esa tarea');
+    return;
+  }
+  var yaHecho = checklistItemDone(mejor.id);
+  toggleChecklistItem(mejor.id);
+  renderChecklist();
+  var resp = (yaHecho ? "Destildé: " : "Tildé: ") + mejor.texto;
+  voiceHablar(resp);
+  voiceMostrarEstado('🎙️ ' + resp);
+}
+
+function voiceResaltarFilaProfesional(apellido) {
+  setTimeout(function() {
+    var row = document.querySelector('tr[data-doc="' + apellido + '"]');
+    if (!row) return;
+    row.scrollIntoView({ behavior: "smooth", block: "center" });
+    row.style.transition = "background .3s";
+    var prev = row.style.background;
+    row.style.background = "#fef3c7";
+    setTimeout(function(){ row.style.background = prev; }, 2000);
+  }, 350);
+}
 
 var VOICE_COMANDOS = [
   // Específicos primero (evitan que los genéricos de abajo los interecepten)
@@ -2757,14 +2887,86 @@ var VOICE_COMANDOS = [
     accion: function(){ var b = document.getElementById("admHomeBtn"); if (b && b.style.display !== "none") b.click(); else renderAdmHome(); } },
   { match: /actualiz|refresc/,   resp: "Actualizando",
     accion: function(){ var b = document.getElementById("adminRefreshBtn"); if (b) b.click(); } },
-  { match: /salir|cerrar sesi/,  resp: "Cerrando sesión",
-    accion: function(){ var b = document.getElementById("adminLogoutBtn"); if (b) b.click(); } },
 ];
 
 function voiceEjecutarComando(transcript) {
-  var t = transcript.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  var t = voiceNormalizarTexto(transcript);
 
-  // Navegación por mes ("llevame a agosto", "mostrame julio")
+  // 0) Confirmación pendiente (ej. cerrar sesión) — tiene prioridad absoluta
+  if (voiceConfirmPendiente) {
+    var pend = voiceConfirmPendiente;
+    voiceConfirmPendiente = null;
+    if (/confirmar/.test(t)) {
+      if (pend === "logout") {
+        voiceHablar("Cerrando sesión");
+        voiceMostrarEstado('🎙️ Sesión cerrada por voz');
+        var bOut = document.getElementById("adminLogoutBtn"); if (bOut) bOut.click();
+      }
+    } else {
+      voiceHablar("Cancelado");
+      voiceMostrarEstado('🎙️ Acción cancelada');
+    }
+    return;
+  }
+
+  // 1) Cerrar sesión — pide confirmación hablada (un falso positivo del reconocimiento no debe desloguear)
+  if (/salir|cerrar sesi/.test(t)) {
+    voiceConfirmPendiente = "logout";
+    voiceMostrarEstado('🎙️ Esperando confirmación…');
+    voiceHablar('¿Confirmás cerrar sesión? Decí "confirmar"', function() { toggleVoiceControl(); });
+    return;
+  }
+
+  // 2) Consulta de honorarios ("cuánto cobra Bruni", "cuánto cobra Bruni en julio")
+  if (/cuanto (cobra|cobro|gana|ganan|le corresponde)/.test(t)) {
+    var doc = voiceBuscarDoctor(t);
+    if (!doc) {
+      voiceHablar("No identifiqué a qué profesional te referís");
+      voiceMostrarEstado('🎙️ "' + transcript + '" → profesional no identificado');
+      return;
+    }
+    var mes = voiceBuscarMes(t) || tabMesActual();
+    voiceResponderNeto(doc, mes);
+    return;
+  }
+
+  // 3) Seguimiento contextual ("¿y julio?" después de preguntar por un profesional)
+  if (voiceContexto && voiceContexto.tipo === "neto") {
+    var mesSeg = voiceBuscarMes(t);
+    if (mesSeg && t.replace(mesSeg, "").trim().split(/\s+/).filter(Boolean).length <= 2) {
+      voiceResponderNeto(voiceContexto.doc, mesSeg);
+      return;
+    }
+  }
+
+  // 4) Checklist — consulta de estado ("cuánto falta del checklist")
+  if (/checklist|tareas/.test(t) && /(falta|quedan?|pendient)/.test(t)) {
+    voiceResponderChecklist();
+    return;
+  }
+
+  // 5) Checklist — tildar por voz ("tildá retiro de efectivo")
+  var tildaMatch = t.match(/\b(?:tilda|tildar|marca|marcar)\b(?: como hech[oa])?\s*(.*)/);
+  if (tildaMatch) {
+    voiceTildarItem(tildaMatch[1].trim());
+    return;
+  }
+
+  // 6) Buscar/abrir a un profesional puntual ("buscá a Bruni", "mostrame a Corelich")
+  if (/\b(busca|buscar|mostrame|mostrar|abri|abrir)\b/.test(t)) {
+    var docB = voiceBuscarDoctor(t);
+    if (docB) {
+      var mesB = voiceBuscarMes(t) || tabMesActual();
+      renderAdminPanelPage(mesB);
+      voiceResaltarFilaProfesional(docB.apellido);
+      var respB = "Mostrando a " + coTitleCase(docB.apellido);
+      voiceHablar(respB);
+      voiceMostrarEstado('🎙️ ' + respB);
+      return;
+    }
+  }
+
+  // 7) Navegación por mes ("llevame a agosto", "mostrame julio")
   for (var m = 0; m < VOICE_MESES.length; m++) {
     if (t.indexOf(VOICE_MESES[m]) !== -1) {
       renderAdminPanelPage(VOICE_MESES[m]);
@@ -2775,6 +2977,7 @@ function voiceEjecutarComando(transcript) {
     }
   }
 
+  // 8) Comandos genéricos de navegación
   for (var i = 0; i < VOICE_COMANDOS.length; i++) {
     if (VOICE_COMANDOS[i].match.test(t)) {
       VOICE_COMANDOS[i].accion();
@@ -2783,13 +2986,115 @@ function voiceEjecutarComando(transcript) {
       return;
     }
   }
+
+  voiceLog(transcript);
   voiceHablar("No entendí ese comando");
   voiceMostrarEstado('🎙️ "' + transcript + '" → no reconocido');
+}
+
+// ══════ VOZ — MODO MANOS LIBRES ═════════════════════════════════
+// Un click activa/desactiva; no se persiste entre recargas (evita que
+// el mic quede escuchando solo sin que el usuario lo haya prendido esta sesión).
+var voiceHandsFree = false;
+var voiceHandsFreeRecognition = null;
+var voiceAwake = false;          // true = ya dijo la frase clave, esperando el comando
+var voiceAwakeTimer = null;
+var WAKE_ESCUCHAME = "escuchame";
+var WAKE_CEOT = /ceot|ceo\b/;
+
+function voiceEsFraseClave(tNorm) {
+  return tNorm.indexOf(WAKE_ESCUCHAME) !== -1 && WAKE_CEOT.test(tNorm);
+}
+
+function voiceActualizarBtnHandsFree() {
+  var btn = document.getElementById("voiceHandsFreeBtn");
+  if (!btn) return;
+  btn.classList.toggle("active", voiceHandsFree);
+  btn.classList.toggle("awake", voiceHandsFree && voiceAwake);
+  btn.title = voiceHandsFree ? 'Manos libres activo — decí "escuchame CEOT"' : 'Activar modo manos libres — decí "escuchame CEOT"';
+}
+
+function voiceArmarVentanaDespierto() {
+  voiceAwake = true;
+  voiceActualizarBtnHandsFree();
+  if (voiceAwakeTimer) clearTimeout(voiceAwakeTimer);
+  voiceAwakeTimer = setTimeout(function() {
+    voiceAwake = false;
+    voiceActualizarBtnHandsFree();
+    if (voiceHandsFree) voiceMostrarEstado('🎧 Manos libres — decí "escuchame CEOT"');
+  }, 7000);
+}
+
+function voiceHandsFreeOnResult(transcript) {
+  var t = voiceNormalizarTexto(transcript);
+
+  if (!voiceAwake) {
+    if (!voiceEsFraseClave(t)) return; // ignora todo lo que no empiece con la frase clave
+    var resto = transcript.replace(/escuchame/i, "").replace(/ce\s?ot|ceo/i, "").trim();
+    if (resto.length > 2) {
+      voiceMostrarEstado('🎧 "escuchame CEOT" → ejecutando…');
+      voiceEjecutarComando(resto);
+    } else {
+      voiceHablar("Decime");
+      voiceMostrarEstado("🎧 Te escucho…");
+      voiceArmarVentanaDespierto();
+    }
+    return;
+  }
+
+  voiceAwake = false;
+  if (voiceAwakeTimer) { clearTimeout(voiceAwakeTimer); voiceAwakeTimer = null; }
+  voiceActualizarBtnHandsFree();
+  voiceEjecutarComando(transcript);
+}
+
+function voiceArrancarRecognitionHandsFree() {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  voiceHandsFreeRecognition = new SR();
+  voiceHandsFreeRecognition.lang = "es-AR";
+  voiceHandsFreeRecognition.continuous = true;
+  voiceHandsFreeRecognition.interimResults = false;
+  voiceHandsFreeRecognition.maxAlternatives = 1;
+  voiceHandsFreeRecognition.onresult = function(e) {
+    var res = e.results[e.results.length - 1];
+    if (!res.isFinal) return;
+    voiceHandsFreeOnResult(res[0].transcript);
+  };
+  voiceHandsFreeRecognition.onerror = function(e) { console.warn("voz manos libres:", e.error); };
+  voiceHandsFreeRecognition.onend = function() {
+    // Chrome corta la sesión sola cada tanto (silencio largo, hiccup de red) — la reenganchamos si el modo sigue activo.
+    if (voiceHandsFree) setTimeout(function(){ if (voiceHandsFree) voiceArrancarRecognitionHandsFree(); }, 300);
+  };
+  try { voiceHandsFreeRecognition.start(); } catch(e) { console.warn("no se pudo arrancar manos libres:", e); }
+}
+
+function iniciarModoManosLibres() {
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { alert("Este navegador no soporta reconocimiento de voz. Probá con Chrome de escritorio o Android."); return; }
+  if (voiceListening && voiceRecognition) voiceRecognition.stop(); // no correr manos-libres y modo click a la vez
+  voiceHandsFree = true;
+  voiceActualizarBtnHandsFree();
+  voiceMostrarEstado('🎧 Manos libres activo — decí "escuchame CEOT"');
+  voiceArrancarRecognitionHandsFree();
+}
+
+function detenerModoManosLibres() {
+  voiceHandsFree = false;
+  voiceAwake = false;
+  if (voiceAwakeTimer) { clearTimeout(voiceAwakeTimer); voiceAwakeTimer = null; }
+  if (voiceHandsFreeRecognition) { try { voiceHandsFreeRecognition.stop(); } catch(e) {} }
+  voiceActualizarBtnHandsFree();
+  voiceMostrarEstado("");
+}
+
+function toggleModoManosLibres() {
+  if (voiceHandsFree) detenerModoManosLibres(); else iniciarModoManosLibres();
 }
 
 function toggleVoiceControl() {
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { alert("Este navegador no soporta reconocimiento de voz. Probá con Chrome de escritorio o Android."); return; }
+  if (voiceHandsFree) { voiceMostrarEstado('🎧 Modo manos libres activo — decí "escuchame CEOT"'); return; }
   var fab = document.getElementById("voiceFab");
   if (voiceListening) { voiceRecognition && voiceRecognition.stop(); return; }
 
@@ -5219,7 +5524,7 @@ function renderAdminPanel(periodo) {
 
   rows.forEach(function(r) {
     var c = r.calc;
-    html += '<tr>';
+    html += '<tr data-doc="' + r.doc.apellido + '">';
     html += '<td>' + r.doc.apellido + (c.pendiente ? ' <span class="adm-est-badge">est</span>' : '') + '</td>';
     var prestamoAnot = '';
     if (tienePrestamo && c.prestamoCasa > 0) {
