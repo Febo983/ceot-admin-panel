@@ -6367,6 +6367,7 @@ async function handleLogin() {
     transfFamHechoCargar();
     netoOverrideCargar();
     sbTarifaCargar();
+    sueldoDirectorHechoCargar();
     renderSidenavLinks();
     renderAdmHome();
     checklistActualizarBadge();
@@ -8620,6 +8621,33 @@ function renderSueldoDirector() {
 // calcular interés. Pedido de Marcelo, 24/08/2026 (después de que se lo
 // calculara a mano para agosto/septiembre — quedó "asentado" en esta
 // pantalla para no tener que repetir el cálculo cada mes).
+// Marca si el sueldo de un director ($4.000.000) ya se transfirió — así la
+// calculadora de Gastos A sabe si tiene que sumarlo ahora (todavía no se
+// mandó) o no (ya está resuelto aparte). Solo aplica a los 5 de
+// SUELDO_DIRECTOR_LISTA, y solo tiene sentido tildarlo una vez que el
+// acumulado ya alcanzó el monto (s.alcanza) — antes no hay nada que marcar.
+var SUELDO_DIRECTOR_HECHO = {};
+function sueldoDirectorHechoCargar() {
+  try {
+    var raw = localStorage.getItem("ceot_sueldo_director_hecho");
+    if (raw) SUELDO_DIRECTOR_HECHO = JSON.parse(raw) || {};
+  } catch (e) { SUELDO_DIRECTOR_HECHO = {}; }
+}
+function sueldoDirectorHechoGuardarTodo() {
+  try { localStorage.setItem("ceot_sueldo_director_hecho", JSON.stringify(SUELDO_DIRECTOR_HECHO)); } catch (e) {}
+}
+function sueldoDirectorHechoKey(periodo, apellido) { return periodo + "|" + apellido; }
+function sueldoDirectorEstaHecho(periodo, apellido) {
+  return !!SUELDO_DIRECTOR_HECHO[sueldoDirectorHechoKey(periodo, apellido)];
+}
+function sueldoDirectorToggleHecho(periodo, apellido) {
+  var k = sueldoDirectorHechoKey(periodo, apellido);
+  if (SUELDO_DIRECTOR_HECHO[k]) delete SUELDO_DIRECTOR_HECHO[k];
+  else SUELDO_DIRECTOR_HECHO[k] = true;
+  sueldoDirectorHechoGuardarTodo();
+  renderSueldoDirector();
+}
+
 var GASTOS_A_CALC_KEY = "ceot_gastos_a_calc";
 
 function gastosACalcCargar(periodo) {
@@ -8661,6 +8689,7 @@ function gastosANetoPorFecha(periodo) {
 }
 
 function gastosARecalcularPreview() {
+  var periodo = window._gastosAPeriodoActual;
   var porClave = window._gastosAPorFecha || {};
   var chks = document.querySelectorAll(".gastosa-fecha-chk:checked");
   var clavesSel = Array.prototype.map.call(chks, function(c) { return c.value; });
@@ -8674,6 +8703,19 @@ function gastosARecalcularPreview() {
     });
   });
 
+  // Sueldo Director pendiente: si ya se alcanzó el monto objetivo este período
+  // y todavía NO se tildó "Sueldo ya transferido", se suma acá — si no, ya
+  // se resolvió aparte y no corresponde sumarlo de nuevo.
+  var sueldoPend = {};
+  SUELDO_DIRECTOR_LISTA.forEach(function(apellido) {
+    var doc = DOCTORES.filter(function(d) { return d.apellido === apellido; })[0];
+    if (!doc) return;
+    var s = calcularSueldoDirector(periodo, doc, SUELDO_DIRECTOR_MONTO);
+    if (s && s.alcanza && !sueldoDirectorEstaHecho(periodo, apellido)) {
+      sueldoPend[apellido] = SUELDO_DIRECTOR_MONTO;
+    }
+  });
+
   var totalEl   = document.getElementById("gastosa-total");
   var divisorEl = document.getElementById("gastosa-divisor");
   var totalRaw  = totalEl ? totalEl.value.trim() : "";
@@ -8684,26 +8726,32 @@ function gastosARecalcularPreview() {
   var wrap = document.getElementById("gastosa-preview-wrap");
   window._gastosATexto = "";
   if (wrap) {
+    // Sueldo Director pendiente solo se suma a filas que YA aparecen por los
+    // cheques tildados (no crea filas nuevas para directores sin ningún
+    // cheque seleccionado — eso se resuelve tildando su propio cheque).
+    var apellidos = Object.keys(porProf).sort();
     if (!clavesSel.length) {
       wrap.innerHTML = '<span style="font-size:.75rem;color:rgba(32,36,31,.4)">Elegí arriba qué cheques sumar.</span>';
     } else {
-      var apellidos = Object.keys(porProf).sort();
       var filas = apellidos.map(function(ap) {
-        var subtotal = porProf[ap];
-        var aTransferir = subtotal - share;
+        var subtotal = porProf[ap] || 0;
+        var sd = sueldoPend[ap] || 0;
+        var aTransferir = subtotal - share + sd;
         var colorNeg = aTransferir < 0 ? 'color:#b13a2c;font-weight:700' : 'font-weight:700';
         return '<tr><td>' + ap + '</td><td>' + fmt(subtotal) + '</td><td>' + fmt(share) + '</td>'
+          + '<td>' + (sd ? fmt(sd) : '—') + '</td>'
           + '<td style="' + colorNeg + '">' + fmt(aTransferir) + (aTransferir < 0 ? ' ⚠' : '') + '</td></tr>';
       }).join('');
-      var totSub = apellidos.reduce(function(s, ap) { return s + porProf[ap]; }, 0);
-      var totAT  = apellidos.reduce(function(s, ap) { return s + (porProf[ap] - share); }, 0);
-      var filaTotal = '<tr class="adm-totals"><td>TOTAL</td><td>' + fmt(totSub) + '</td><td>' + fmt(share * apellidos.length) + '</td><td>' + fmt(totAT) + '</td></tr>';
+      var totSub = apellidos.reduce(function(s, ap) { return s + (porProf[ap] || 0); }, 0);
+      var totSd  = apellidos.reduce(function(s, ap) { return s + (sueldoPend[ap] || 0); }, 0);
+      var totAT  = apellidos.reduce(function(s, ap) { return s + (porProf[ap] || 0) - share + (sueldoPend[ap] || 0); }, 0);
+      var filaTotal = '<tr class="adm-totals"><td>TOTAL</td><td>' + fmt(totSub) + '</td><td>' + fmt(share * apellidos.length) + '</td><td>' + fmt(totSd) + '</td><td>' + fmt(totAT) + '</td></tr>';
       wrap.innerHTML = '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-        + '<th>Profesional</th><th>Subtotal seleccionado</th><th>Gastos A</th><th>A transferir</th>'
+        + '<th>Profesional</th><th>Subtotal seleccionado</th><th>Gastos A</th><th>Sueldo Director</th><th>A transferir</th>'
         + '</tr></thead><tbody>' + filas + filaTotal + '</tbody></table></div>';
 
       window._gastosATexto = apellidos.map(function(ap) {
-        return ap + '\t' + numParaPegar(porProf[ap] - share);
+        return ap + '\t' + numParaPegar((porProf[ap] || 0) - share + (sueldoPend[ap] || 0));
       }).join('\n');
     }
   }
@@ -9328,6 +9376,11 @@ function sueldoDirectorTabHtml(periodo) {
       +       fmt(s.monto) + ' · ' + colores.txt
       +       '<button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.monto) + '\', this)" style="border:none;background:rgba(255,255,255,.35);border-radius:4px;cursor:pointer;font-size:.72rem;padding:1px 4px;vertical-align:middle">📋</button>'
       +     '</span>'
+      +     (s.alcanza
+              ? '<label style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;color:rgba(32,36,31,.6);cursor:pointer;white-space:nowrap">'
+                + '<input type="checkbox"' + (sueldoDirectorEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="sueldoDirectorToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">'
+                + 'Sueldo ya transferido</label>'
+              : '')
       +     '<span>Total neto mes <b>' + fmt(s.totalNetoMes) + '</b></span>'
       +     '<span>Saldo tras sueldo <b style="' + saldoStyle + '">' + fmt(s.saldoFinal) + '</b> <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.saldoFinal) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></span>'
       +   '</div>'
@@ -10423,7 +10476,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-24-gastosacalc';
+  var CURRENT_BUILD = '2026-08-24-sueldodirhecho';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
