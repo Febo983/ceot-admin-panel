@@ -5298,6 +5298,203 @@ function presChartCard(titulo, canvasId) {
     + '</div>';
 }
 
+// ── Cirugías por profesional (fuente: Historial CX, mismo Sheet que historial-cx-ceot.netlify.app) ──
+
+var PRES_MES_NUM = {enero:"01",febrero:"02",marzo:"03",abril:"04",mayo:"05",junio:"06",julio:"07",agosto:"08",septiembre:"09",octubre:"10",noviembre:"11",diciembre:"12"};
+var PRES_CX_SID   = "1F4vkoxgKU9GJP_7lDYoZtXTh6hhbXV6cP53fFs5EWGU";
+var PRES_CX_PROXY = "https://corsproxy.io/?";
+var PRES_CX_DOCS  = ["BRUNI","CORELICH","DEGANUTTI","LABAYEN","TRIVELLINI","GARMENDIA","SOULE","LEON","MAZZOLA","FISSER","GUILERA","DE LA COLINA","PERLASCO"];
+var PRES_CX_MESES = {ENERO:1,FEBRERO:2,MARZO:3,ABRIL:4,MAYO:5,JUNIO:6,JULIO:7,AGOSTO:8,SEPTIEMBRE:9,OCTUBRE:10,NOVIEMBRE:11,DICIEMBRE:12};
+
+var presMesActual = null;
+var presCxRows    = null;
+var presCxLoading = null;
+
+function presCxGet(url) {
+  return fetch(url, {cache:"no-cache"}).then(function(r) {
+    if (r.ok) return r.text();
+    throw new Error("http " + r.status);
+  }).catch(function() {
+    return fetch(PRES_CX_PROXY + encodeURIComponent(url), {cache:"no-cache"}).then(function(r2) {
+      if (!r2.ok) throw new Error("HTTP " + r2.status);
+      return r2.text();
+    });
+  });
+}
+
+function presCxParseLine(l) {
+  var r = [], f = "", q = false;
+  for (var i = 0; i < l.length; i++) {
+    var c = l[i];
+    if (c === '"') { if (q && l[i+1] === '"') { f += '"'; i++; } else q = !q; }
+    else if (c === "," && !q) { r.push(f.trim()); f = ""; }
+    else f += c;
+  }
+  r.push(f.trim());
+  return r;
+}
+
+function presCxParseCSV(txt) {
+  if (txt.charCodeAt(0) === 0xFEFF) txt = txt.slice(1);
+  return txt.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter(function(l) { return l.trim(); }).map(presCxParseLine);
+}
+
+function presCxNrm(s) { return (s || "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim(); }
+
+function presCxParseSectionDate(row) {
+  var text = presCxNrm((row[0] || "") + " " + (row[1] || ""));
+  var m = text.match(/CIRUG[IÍ]?AS?\s+(\d{1,2})\s+DE\s+([A-Z]+)/);
+  if (!m) return null;
+  var mon = PRES_CX_MESES[m[2]];
+  if (!mon) return null;
+  return "2026-" + String(mon).padStart(2, "0") + "-" + String(parseInt(m[1], 10)).padStart(2, "0");
+}
+
+function presCxNormDoc(name) {
+  if (!name) return "Sin asignar";
+  if (name.indexOf("/") !== -1) name = name.split("/")[0].trim();
+  var n = presCxNrm(name);
+  for (var i = 0; i < PRES_CX_DOCS.length; i++) {
+    var d = PRES_CX_DOCS[i];
+    if (n === presCxNrm(d)) return d;
+    if (n.indexOf(presCxNrm(d)) !== -1) return d;
+    var parts = d.split(" ");
+    for (var j = 0; j < parts.length; j++) {
+      var p = parts[j];
+      if (p.length >= 4 && n.indexOf(presCxNrm(p).slice(0, 4)) === 0) return d;
+    }
+  }
+  var AM = {CORE:"CORELICH",CORI:"CORELICH",LABA:"LABAYEN",DEGA:"DEGANUTTI",TRIV:"TRIVELLINI",GARM:"GARMENDIA",PERL:"PERLASCO",PIRL:"PERLASCO",BRUN:"BRUNI",MAZZ:"MAZZOLA",MAZA:"MAZZOLA",GUIL:"GUILERA",COLI:"DE LA COLINA",DELA:"DE LA COLINA","DE L":"DE LA COLINA",DLC:"DE LA COLINA",FISS:"FISSER",SOUL:"SOULE",LEON:"LEON"};
+  for (var k in AM) { if (n.indexOf(k) === 0 || n.indexOf(" " + k) !== -1) return AM[k]; }
+  return "Sin asignar";
+}
+
+function presCxDiscoverGids() {
+  return presCxGet("https://docs.google.com/spreadsheets/d/" + PRES_CX_SID + "/htmlview").then(function(html) {
+    var hits = html.match(/[?&#]gid=(\d+)/g) || [];
+    var gids = [];
+    hits.forEach(function(h) {
+      var g = h.match(/(\d+)/)[1];
+      if (gids.indexOf(g) === -1) gids.push(g);
+    });
+    if (gids.indexOf("") === -1) gids.unshift("");
+    return gids;
+  }).catch(function() { return [""]; });
+}
+
+function presCxParseTab(txt, outArr) {
+  var csvRows = presCxParseCSV(txt);
+  var ci = null, secDate = null, secBuf = [];
+  function flushSection() {
+    if (!secBuf.length || !ci) { secBuf = []; return; }
+    secBuf.forEach(function(r) {
+      var hs = (r[ci.hs] || "").trim();
+      if (!hs) return;
+      var rawMed = (r[ci.med] || "").trim();
+      if (!rawMed || presCxNrm(rawMed) === "MEDICO") return;
+      outArr.push({ med: presCxNormDoc(rawMed), pac: (r[ci.pac] || "").trim(), fecha: secDate });
+    });
+    secBuf = [];
+  }
+  csvRows.forEach(function(row) {
+    if (!row.some(function(c) { return c; })) return;
+    var sd = presCxParseSectionDate(row);
+    if (sd !== null) { flushSection(); secDate = sd; return; }
+    var upper = row.map(function(c) { return (c || "").toUpperCase().trim(); });
+    if (upper.indexOf("HS") !== -1 && upper.indexOf("MEDICO") !== -1) {
+      ci = { hs: upper.indexOf("HS"), med: upper.indexOf("MEDICO"), pac: upper.indexOf("PACIENTE") };
+      return;
+    }
+    if (!ci) return;
+    secBuf.push(row);
+  });
+  flushSection();
+}
+
+function presCxLoadData() {
+  if (presCxRows) return Promise.resolve(presCxRows);
+  if (presCxLoading) return presCxLoading;
+  var allRows = [];
+  presCxLoading = presCxDiscoverGids().then(function(gids) {
+    var BATCH = 6;
+    function fetchBatch(i) {
+      if (i >= gids.length) return Promise.resolve();
+      var slice = gids.slice(i, i + BATCH);
+      var reqs = slice.map(function(gid) {
+        var url = "https://docs.google.com/spreadsheets/d/" + PRES_CX_SID + "/export?format=csv" + (gid ? "&gid=" + gid : "");
+        return presCxGet(url).catch(function() { return null; });
+      });
+      return Promise.all(reqs).then(function(texts) {
+        texts.forEach(function(txt) { if (txt) presCxParseTab(txt, allRows); });
+        return fetchBatch(i + BATCH);
+      });
+    }
+    return fetchBatch(0);
+  }).then(function() {
+    var seen = {}, dedup = [];
+    allRows.forEach(function(r) {
+      var k = r.fecha + "|" + r.med + "|" + (r.pac || "").toUpperCase();
+      if (seen[k]) return;
+      seen[k] = true;
+      dedup.push(r);
+    });
+    presCxRows = dedup;
+    presCxLoading = null;
+    return presCxRows;
+  }).catch(function(err) {
+    console.error("CX load error", err);
+    presCxRows = [];
+    presCxLoading = null;
+    return presCxRows;
+  });
+  return presCxLoading;
+}
+
+function presChartCardCx() {
+  return '<div style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:14px">'
+    + '<div style="font-size:0.72rem;font-weight:700;color:var(--co-ink-dim,#6b6a5a);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Cirugías por profesional (mes)</div>'
+    + '<div style="position:relative;height:230px">'
+    + '<canvas id="presChartCx"></canvas>'
+    + '<div id="presChartCxLoading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 10px;color:rgba(32,36,31,.4);font-size:0.72rem">Cargando cirugías…</div>'
+    + '</div></div>';
+}
+
+function presRenderCxCard(mes) {
+  var canvas = document.getElementById("presChartCx");
+  var loadingEl = document.getElementById("presChartCxLoading");
+  if (!canvas || !presCxRows) return;
+  var ym = "2026-" + PRES_MES_NUM[mes];
+  var counts = {};
+  presCxRows.forEach(function(r) {
+    if (!r.fecha || r.fecha.indexOf(ym) !== 0) return;
+    counts[r.med] = (counts[r.med] || 0) + 1;
+  });
+  var entries = Object.keys(counts).map(function(k) { return [k, counts[k]]; }).sort(function(a, b) { return b[1] - a[1]; });
+
+  if (presChartInstances.presChartCx) { presChartInstances.presChartCx.destroy(); delete presChartInstances.presChartCx; }
+
+  if (!entries.length) {
+    if (loadingEl) { loadingEl.textContent = "Sin cirugías registradas para este mes."; loadingEl.style.display = "flex"; }
+    return;
+  }
+  if (loadingEl) loadingEl.style.display = "none";
+
+  var dark = document.documentElement.getAttribute("data-theme") === "dark";
+  var gridColor = dark ? "rgba(241,237,226,.08)" : "rgba(32,36,31,.08)";
+  presChartInstances.presChartCx = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: entries.map(function(e) { return e[0]; }),
+      datasets: [{ label:"Cirugías", data: entries.map(function(e) { return e[1]; }), backgroundColor:"#1c78b0", borderRadius:4 }]
+    },
+    options: {
+      indexAxis:"y", responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{display:false}, tooltip:{ callbacks:{ label:function(ctx) { return ctx.parsed.x + " cirugías"; } } } },
+      scales: { x:{ grid:{color:gridColor}, ticks:{stepSize:1} }, y:{ grid:{display:false} } }
+    }
+  });
+}
+
 function renderPresentacion(mes) {
   cerrarAdmSidenav();
   admDesactivarSidebar();
@@ -5319,6 +5516,7 @@ function renderPresentacion(mes) {
   var idx = disponibles.findIndex(function(x) { return x.mes === mes; });
   if (idx === -1) idx = disponibles.length - 1;
   mes = disponibles[idx].mes;
+  presMesActual = mes;
   var tt = disponibles[idx].tt;
 
   var rows = DOCTORES.map(function(d) { return { doc:d, calc: calcularNetoLocal(mes, d) }; }).filter(function(r) { return r.calc; });
@@ -5358,13 +5556,14 @@ function renderPresentacion(mes) {
     + presChartCard('Evolución mensual (Bruto vs. Neto)', 'presChartEvolucion')
     + presChartCard('Composición de descuentos', 'presChartComposicion')
     + presChartCard('Gastos A — evolución mensual', 'presChartGastosA')
+    + presChartCardCx()
     + '</div>';
 
   container.innerHTML = html;
-  presInitCharts(rows, tt, disponibles);
+  presInitCharts(mes, rows, tt, disponibles);
 }
 
-function presInitCharts(rows, tt, disponibles) {
+function presInitCharts(mes, rows, tt, disponibles) {
   ['presChartRanking', 'presChartEvolucion', 'presChartComposicion', 'presChartGastosA'].forEach(function(id) {
     if (presChartInstances[id]) { presChartInstances[id].destroy(); delete presChartInstances[id]; }
   });
@@ -5446,6 +5645,16 @@ function presInitCharts(rows, tt, disponibles) {
         scales: { x:{ grid:{display:false} }, y:{ grid:{color:gridColor}, ticks:{ callback:function(v){ return fmt(v); } } } }
       }
     });
+  }
+
+  if (document.getElementById('presChartCx')) {
+    if (presCxRows) {
+      presRenderCxCard(mes);
+    } else {
+      presCxLoadData().then(function() {
+        if (presMesActual === mes) presRenderCxCard(mes);
+      });
+    }
   }
 }
 
