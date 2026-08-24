@@ -9380,7 +9380,7 @@ async function guardarNomina() {
 
       <!-- Mes -->
       <div class="imp-field">
-        <label class="imp-label">Mes a importar</label>
+        <label class="imp-label">Mes a importar <span style="color:rgba(32,36,31,.35);font-weight:400;text-transform:none;letter-spacing:0">(facturación del archivo CEOT — afecta OSDE y Diferidos; los cheques Colón usan otro selector más abajo)</span></label>
         <select id="impMes" class="imp-select" onchange="actualizarMesColonAuto()">
           <option value="mayo">Mayo 2026</option>
           <option value="junio">Junio 2026</option>
@@ -9656,7 +9656,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-24-avisochequeperdido';
+  var CURRENT_BUILD = '2026-08-24-clarificarmesimportar';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
