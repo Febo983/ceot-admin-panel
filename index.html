@@ -5437,6 +5437,23 @@ var SB_PERSONAL = [
 
 var SB_FACTURACION = 130000;
 
+// Valor de la hora editable por persona — SB_PERSONAL queda como el valor de
+// referencia (hardcodeado en el archivo); las ediciones se guardan aparte en
+// localStorage, mismo patrón que NETO_OVERRIDE.
+var SB_TARIFA_OVERRIDE = {};
+function sbTarifaCargar() {
+  try {
+    var raw = localStorage.getItem("ceot_sb_tarifa_override");
+    if (raw) SB_TARIFA_OVERRIDE = JSON.parse(raw) || {};
+  } catch (e) { SB_TARIFA_OVERRIDE = {}; }
+}
+function sbTarifaGuardarTodo() {
+  localStorage.setItem("ceot_sb_tarifa_override", JSON.stringify(SB_TARIFA_OVERRIDE));
+}
+function sbTarifaEfectiva(p) {
+  return SB_TARIFA_OVERRIDE.hasOwnProperty(p.legajo) ? SB_TARIFA_OVERRIDE[p.legajo] : p.tarifa;
+}
+
 var SB_STATE = {}; // { legajo: { horas, usaMensualidad } }
 
 function sbNumLetras(n) {
@@ -5473,10 +5490,11 @@ function sbFmt(n) {
 
 function sbCalcTotal(p, horas, usaMensualidad) {
   var totalHoras = 0, totalFact = 0, totalMens = 0;
+  var tarifa = sbTarifaEfectiva(p);
   if (usaMensualidad && p.mensualidad) {
     totalMens = p.mensualidad;
-  } else if (p.tarifa && horas > 0) {
-    totalHoras = Math.round(horas * p.tarifa);
+  } else if (tarifa && horas > 0) {
+    totalHoras = Math.round(horas * tarifa);
   }
   if (p.facturacion) totalFact = SB_FACTURACION;
   return { totalHoras: totalHoras, totalFact: totalFact, totalMens: totalMens,
@@ -5538,6 +5556,43 @@ function sbActualizarCard(legajo) {
   if (horasEl) horasEl.disabled = usaMens;
 }
 
+function sbTarifaTagHtml(p) {
+  var overridden = SB_TARIFA_OVERRIDE.hasOwnProperty(p.legajo);
+  var val = sbTarifaEfectiva(p);
+  return '<span class="sb-tag" id="sb-tarifa-tag-' + p.legajo + '">' + sbFmt(val) + '/hs'
+    + (overridden ? ' <span title="Valor editado a mano" style="color:#8a6423">✎</span>' : '')
+    + ' <a href="javascript:void(0)" onclick="sbTarifaEditarAbrir(\'' + p.legajo + '\')" style="text-decoration:underline;cursor:pointer;margin-left:4px;font-size:.85em">editar</a>'
+    + (overridden ? ' <a href="javascript:void(0)" onclick="sbTarifaRestablecer(\'' + p.legajo + '\')" style="text-decoration:underline;cursor:pointer;margin-left:4px;font-size:.85em;color:#b13a2c">restablecer</a>' : '')
+    + '</span>';
+}
+
+function sbTarifaEditarAbrir(legajo) {
+  var p = SB_PERSONAL.find(function(x){ return x.legajo === legajo; });
+  if (!p) return;
+  var tagEl = document.getElementById('sb-tarifa-tag-' + legajo);
+  if (!tagEl) return;
+  var actual = sbTarifaEfectiva(p);
+  tagEl.innerHTML = '<input type="text" inputmode="decimal" id="sbTarifaEditInput" value="' + actual + '" style="width:80px;font-size:.8rem;padding:2px 4px">'
+    + ' <button type="button" onclick="sbTarifaEditarGuardar(\'' + legajo + '\')" style="font-size:.7rem;padding:2px 6px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">✓</button>'
+    + ' <button type="button" onclick="renderSueldoB()" style="font-size:.7rem;padding:2px 6px;border:1px solid rgba(32,36,31,.25);border-radius:4px;background:none;cursor:pointer;margin-left:2px">✕</button>';
+  document.getElementById('sbTarifaEditInput').focus();
+}
+
+function sbTarifaEditarGuardar(legajo) {
+  var input = document.getElementById('sbTarifaEditInput');
+  var nuevo = parseFloat((input.value + '').replace(/\./g, '').replace(',', '.'));
+  if (isNaN(nuevo) || nuevo <= 0) { alert('Ingresá un valor de hora válido.'); return; }
+  SB_TARIFA_OVERRIDE[legajo] = nuevo;
+  sbTarifaGuardarTodo();
+  renderSueldoB();
+}
+
+function sbTarifaRestablecer(legajo) {
+  delete SB_TARIFA_OVERRIDE[legajo];
+  sbTarifaGuardarTodo();
+  renderSueldoB();
+}
+
 function renderSueldoB() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
@@ -5562,7 +5617,7 @@ function renderSueldoB() {
   SB_PERSONAL.forEach(function(p) {
     var tags = "";
     if (p.facturacion) tags += '<span class="sb-tag">Facturacion</span>';
-    if (p.tarifa) tags += '<span class="sb-tag">'+sbFmt(p.tarifa)+'/hs</span>';
+    if (p.tarifa) tags += sbTarifaTagHtml(p);
     if (p.mensualidad) tags += '<span class="sb-tag">Mens. disponible</span>';
 
     var inputs = "";
@@ -6073,6 +6128,7 @@ async function handleLogin() {
     transfFamDefaultCargar();
     transfFamHechoCargar();
     netoOverrideCargar();
+    sbTarifaCargar();
     renderSidenavLinks();
     renderAdmHome();
     checklistActualizarBadge();
@@ -9973,7 +10029,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-24-licencias';
+  var CURRENT_BUILD = '2026-08-24-tarifasueldob';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
