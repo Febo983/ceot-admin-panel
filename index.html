@@ -23,6 +23,7 @@
 <script src="https://unpkg.com/lucide@1.26.0/dist/umd/lucide.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -4120,6 +4121,7 @@ var ADM_HOME_MODULOS = [
   { key:"accesos",          ico:"link-2",          lbl:"Accesos",       cat:"cat-inf", fn:"renderAccesos(null)" },
   { key:"mensajeswa",       ico:"message-circle",  lbl:"Mensajes WA",   cat:"cat-cli", fn:"" },
   { key:"nomina",           ico:"users",           lbl:"Nómina",        cat:"cat-adm", fn:"renderNomina()" },
+  { key:"presentacion",     ico:"presentation",    lbl:"Presentación",  cat:"cat-fin", fn:"renderPresentacion()" },
 ];
 var ADM_HOME_MOD_COLOR = {
   "cat-fin":"rgba(29,158,117,0.22)","cat-cli":"rgba(55,138,221,0.22)",
@@ -5101,6 +5103,179 @@ function renderTotalCeot() {
 
   html += '</tbody></table></div>';
   document.getElementById("adm-content").innerHTML = html;
+}
+
+// ══════ PRESENTACIÓN (dashboard mes a mes) ═════════════════════════
+
+var presChartInstances = {};
+
+function presCalcMes(mes) {
+  var rs = DOCTORES.map(function(d) { return calcularNetoLocal(mes, d); }).filter(function(c) { return c; });
+  if (!rs.length) return null;
+  var t = { bruto:0, cm:0, neto:0, iibb:0, cpsm:0, ga:0, aporte:0, prestamo:0, prestamoCredito:0 };
+  rs.forEach(function(c) {
+    t.bruto  += (c.bruto       || 0);
+    t.cm     += (c.cm          || 0);
+    t.neto   += (c.neto        || 0);
+    t.iibb   += (c.iibb        || 0);
+    t.cpsm   += (c.cpsm        || 0);
+    t.ga     += (c.ga          || 0);
+    t.aporte += (c.aporteCeot  || 0);
+    if (c.prestamoCasa > 0) t.prestamo += c.prestamoCasa;
+    else if (c.prestamoCasa < 0) t.prestamoCredito += -c.prestamoCasa;
+  });
+  t.brutoTotal    = t.bruto + t.cm;
+  t.prestamoNeto  = t.prestamo - t.prestamoCredito;
+  t.desc          = t.iibb + t.cpsm + t.ga + t.aporte + t.prestamoNeto;
+  t.n             = rs.length;
+  return t;
+}
+
+function presKpi(lbl, val, sub, color) {
+  return '<div class="adm-kpi" style="border-left-color:' + color + '">'
+    + '<div class="adm-kpi-lbl">' + lbl + '</div>'
+    + '<div class="adm-kpi-val">' + val + '</div>'
+    + (sub ? '<div class="adm-kpi-sub">' + sub + '</div>' : '')
+    + '</div>';
+}
+
+function presChartCard(titulo, canvasId) {
+  return '<div style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:14px">'
+    + '<div style="font-size:0.72rem;font-weight:700;color:var(--co-ink-dim,#6b6a5a);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">' + titulo + '</div>'
+    + '<div style="position:relative;height:230px"><canvas id="' + canvasId + '"></canvas></div>'
+    + '</div>';
+}
+
+function renderPresentacion(mes) {
+  cerrarAdmSidenav();
+  admDesactivarSidebar();
+  var MESES_ORD = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  MESES_ORD.forEach(function(p) {
+    var t = document.getElementById("adm-tab-" + p);
+    if (t) t.className = "adm-tab";
+  });
+
+  var container = document.getElementById("adm-content");
+  var disponibles = MESES_ORD.map(function(m) { return { mes:m, tt: presCalcMes(m) }; }).filter(function(x) { return x.tt; });
+
+  if (!disponibles.length) {
+    container.innerHTML = '<div class="adm-sec-title">Presentación</div>'
+      + '<div style="padding:24px;color:rgba(32,36,31,.35);font-size:0.85rem">Sin datos disponibles todavía.</div>';
+    return;
+  }
+
+  var idx = disponibles.findIndex(function(x) { return x.mes === mes; });
+  if (idx === -1) idx = disponibles.length - 1;
+  mes = disponibles[idx].mes;
+  var tt = disponibles[idx].tt;
+
+  var rows = DOCTORES.map(function(d) { return { doc:d, calc: calcularNetoLocal(mes, d) }; }).filter(function(r) { return r.calc; });
+  rows.sort(function(a, b) { return b.calc.neto - a.calc.neto; });
+
+  var cap = function(s) { return s.charAt(0).toUpperCase() + s.slice(1); };
+  var btnStyle = "padding:6px 12px;border-radius:8px;border:1px solid var(--co-line,#d9d0b8);background:var(--co-card,#fbf8f0);color:var(--co-ink,#20241f);font-size:0.72rem;font-weight:600;cursor:pointer";
+  var prevMes = idx > 0 ? disponibles[idx - 1].mes : null;
+  var nextMes = idx < disponibles.length - 1 ? disponibles[idx + 1].mes : null;
+  var prevBtn = prevMes
+    ? '<button onclick="renderPresentacion(\'' + prevMes + '\')" style="' + btnStyle + '">‹ ' + cap(prevMes) + '</button>'
+    : '<button disabled style="' + btnStyle + ';opacity:.3;cursor:default">‹ Anterior</button>';
+  var nextBtn = nextMes
+    ? '<button onclick="renderPresentacion(\'' + nextMes + '\')" style="' + btnStyle + '">' + cap(nextMes) + ' ›</button>'
+    : '<button disabled style="' + btnStyle + ';opacity:.3;cursor:default">Siguiente ›</button>';
+
+  var html = "";
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
+    + '<div class="adm-sec-title" style="margin:0;border:none;padding:0">📊 Presentación · ' + cap(mes) + ' 2026</div>'
+    + '<div style="display:flex;gap:6px">' + prevBtn + nextBtn + '</div>'
+    + '</div>';
+
+  if (!window.Chart) {
+    html += '<div style="padding:8px 10px;margin-bottom:10px;border-radius:8px;background:rgba(220,38,38,.08);color:#dc2626;font-size:0.72rem">⚠ No se pudo cargar la librería de gráficos (revisá la conexión). Se muestran solo los totales.</div>';
+  }
+
+  html += '<div class="adm-kpis">'
+    + presKpi('Bruto total', fmt(tt.brutoTotal), rows.length + ' profesionales', '#1f3a2e')
+    + presKpi('Descuentos', fmt(tt.desc), (tt.brutoTotal > 0 ? Math.round(tt.desc / tt.brutoTotal * 100) : 0) + '% del bruto', '#dc2626')
+    + presKpi('Neto distribuido', fmt(tt.neto), '', '#16a34a')
+    + presKpi('Promedio por socio', fmt(rows.length ? tt.neto / rows.length : 0), '', '#1c78b0')
+    + '</div>';
+
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:6px">'
+    + presChartCard('Ranking por profesional', 'presChartRanking')
+    + presChartCard('Evolución mensual (Bruto vs. Neto)', 'presChartEvolucion')
+    + presChartCard('Composición de descuentos', 'presChartComposicion')
+    + '</div>';
+
+  container.innerHTML = html;
+  presInitCharts(rows, tt, disponibles);
+}
+
+function presInitCharts(rows, tt, disponibles) {
+  ['presChartRanking', 'presChartEvolucion', 'presChartComposicion'].forEach(function(id) {
+    if (presChartInstances[id]) { presChartInstances[id].destroy(); delete presChartInstances[id]; }
+  });
+  if (!window.Chart) return;
+
+  var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  var inkColor  = dark ? 'rgba(241,237,226,.75)' : '#20241f';
+  var gridColor = dark ? 'rgba(241,237,226,.08)' : 'rgba(32,36,31,.08)';
+  Chart.defaults.color = inkColor;
+  Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+
+  var rkCanvas = document.getElementById('presChartRanking');
+  if (rkCanvas) {
+    presChartInstances.presChartRanking = new Chart(rkCanvas, {
+      type: 'bar',
+      data: {
+        labels: rows.map(function(r) { return r.doc.apellido; }),
+        datasets: [{ label:'Neto', data: rows.map(function(r) { return r.calc.neto; }), backgroundColor:'#1f3a2e', borderRadius:4 }]
+      },
+      options: {
+        indexAxis: 'y', responsive:true, maintainAspectRatio:false,
+        plugins: { legend:{display:false}, tooltip:{ callbacks:{ label:function(ctx){ return fmt(ctx.parsed.x); } } } },
+        scales: { x:{ grid:{color:gridColor}, ticks:{ callback:function(v){ return fmt(v); } } }, y:{ grid:{display:false} } }
+      }
+    });
+  }
+
+  var evCanvas = document.getElementById('presChartEvolucion');
+  if (evCanvas) {
+    var labels = disponibles.map(function(x) { return x.mes.charAt(0).toUpperCase() + x.mes.slice(1,3); });
+    presChartInstances.presChartEvolucion = new Chart(evCanvas, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label:'Bruto', data: disponibles.map(function(x){ return x.tt.brutoTotal; }), borderColor:'#c9933a', backgroundColor:'rgba(201,147,58,.15)', tension:.3, fill:true },
+          { label:'Neto',  data: disponibles.map(function(x){ return x.tt.neto; }),       borderColor:'#1f3a2e', backgroundColor:'rgba(31,58,46,.15)', tension:.3, fill:true }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins: { legend:{ position:'bottom', labels:{ boxWidth:10, font:{size:10} } }, tooltip:{ callbacks:{ label:function(ctx){ return ctx.dataset.label + ': ' + fmt(ctx.parsed.y); } } } },
+        scales: { x:{ grid:{display:false} }, y:{ grid:{color:gridColor}, ticks:{ callback:function(v){ return fmt(v); } } } }
+      }
+    });
+  }
+
+  var coCanvas = document.getElementById('presChartComposicion');
+  if (coCanvas) {
+    var comp = [
+      { l:'IIBB',                 v:tt.iibb,         c:'#c9933a' },
+      { l:'CPSM',                 v:tt.cpsm,         c:'#7f77dd' },
+      { l:'Gastos A',             v:tt.ga,           c:'#b1483f' },
+      { l:'Retención Ganancias',  v:tt.aporte,       c:'#d85a30' },
+      { l:'Préstamo Casa',        v:tt.prestamoNeto, c:'#6b6a5a' }
+    ].filter(function(x) { return x.v > 0; });
+    presChartInstances.presChartComposicion = new Chart(coCanvas, {
+      type: 'doughnut',
+      data: { labels: comp.map(function(x){return x.l;}), datasets:[{ data: comp.map(function(x){return x.v;}), backgroundColor: comp.map(function(x){return x.c;}), borderWidth:0 }] },
+      options: {
+        responsive:true, maintainAspectRatio:false, cutout:'62%',
+        plugins: { legend:{ position:'bottom', labels:{ boxWidth:10, font:{size:9.5} } }, tooltip:{ callbacks:{ label:function(ctx){ return ctx.label + ': ' + fmt(ctx.parsed); } } } }
+      }
+    });
+  }
 }
 
 // ══════ SUELDO B ══════════════════════════════════════════════════
