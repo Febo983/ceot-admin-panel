@@ -1471,6 +1471,9 @@ body { background: var(--iv0); color: var(--ink); }
 [data-theme="dark"] .mp-label { color: #a39c88 !important; }
 [data-theme="dark"] .mp-label-dark { color: rgba(241,237,226,.45) !important; }
 [data-theme="dark"] .mp-sub { color: #8f8873 !important; }
+[data-theme="dark"] .adm-kpi-lbl { color: rgba(241,237,226,.4) !important; }
+[data-theme="dark"] .adm-kpi-val { color: #f1ede2 !important; }
+[data-theme="dark"] .adm-kpi-sub { color: rgba(241,237,226,.4) !important; }
 [data-theme="dark"] .mp-mini { background: #26221a !important ; border: 1px solid #3a362c !important; }
 [data-theme="dark"] .mp-mini-val { color: #f1ede2 !important; }
 [data-theme="dark"] .mp-mini-lbl { color: #8f8873 !important; }
@@ -5251,6 +5254,12 @@ function renderTotalCeot() {
 
 var presChartInstances = {};
 
+var PRES_GA_SIG = {febrero:"marzo",marzo:"abril",abril:"mayo",mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
+function presGastosATotal(mes) {
+  var v = GASTOS_A[PRES_GA_SIG[mes]];
+  return (v === undefined || v === null) ? null : v;
+}
+
 function presCalcMes(mes) {
   var rs = DOCTORES.map(function(d) { return calcularNetoLocal(mes, d); }).filter(function(c) { return c; });
   if (!rs.length) return null;
@@ -5270,6 +5279,7 @@ function presCalcMes(mes) {
   t.prestamoNeto  = t.prestamo - t.prestamoCredito;
   t.desc          = t.iibb + t.cpsm + t.ga + t.aporte + t.prestamoNeto;
   t.n             = rs.length;
+  t.gastosATotal  = presGastosATotal(mes);
   return t;
 }
 
@@ -5335,17 +5345,19 @@ function renderPresentacion(mes) {
     html += '<div style="padding:8px 10px;margin-bottom:10px;border-radius:8px;background:rgba(220,38,38,.08);color:#dc2626;font-size:0.72rem">⚠ No se pudo cargar la librería de gráficos (revisá la conexión). Se muestran solo los totales.</div>';
   }
 
-  html += '<div class="adm-kpis">'
+  html += '<div class="adm-kpis" style="flex-wrap:wrap">'
     + presKpi('Bruto total', fmt(tt.brutoTotal), rows.length + ' profesionales', '#1f3a2e')
     + presKpi('Descuentos', fmt(tt.desc), (tt.brutoTotal > 0 ? Math.round(tt.desc / tt.brutoTotal * 100) : 0) + '% del bruto', '#dc2626')
     + presKpi('Neto distribuido', fmt(tt.neto), '', '#16a34a')
     + presKpi('Promedio por socio', fmt(rows.length ? tt.neto / rows.length : 0), '', '#1c78b0')
+    + presKpi('Gastos A (mes)', tt.gastosATotal != null ? fmt(tt.gastosATotal) : '—', '', '#b1483f')
     + '</div>';
 
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:6px">'
     + presChartCard('Ranking por profesional', 'presChartRanking')
     + presChartCard('Evolución mensual (Bruto vs. Neto)', 'presChartEvolucion')
     + presChartCard('Composición de descuentos', 'presChartComposicion')
+    + presChartCard('Gastos A — evolución mensual', 'presChartGastosA')
     + '</div>';
 
   container.innerHTML = html;
@@ -5353,7 +5365,7 @@ function renderPresentacion(mes) {
 }
 
 function presInitCharts(rows, tt, disponibles) {
-  ['presChartRanking', 'presChartEvolucion', 'presChartComposicion'].forEach(function(id) {
+  ['presChartRanking', 'presChartEvolucion', 'presChartComposicion', 'presChartGastosA'].forEach(function(id) {
     if (presChartInstances[id]) { presChartInstances[id].destroy(); delete presChartInstances[id]; }
   });
   if (!window.Chart) return;
@@ -5415,6 +5427,23 @@ function presInitCharts(rows, tt, disponibles) {
       options: {
         responsive:true, maintainAspectRatio:false, cutout:'62%',
         plugins: { legend:{ position:'bottom', labels:{ boxWidth:10, font:{size:9.5} } }, tooltip:{ callbacks:{ label:function(ctx){ return ctx.label + ': ' + fmt(ctx.parsed); } } } }
+      }
+    });
+  }
+
+  var gaCanvas = document.getElementById('presChartGastosA');
+  if (gaCanvas) {
+    var gaLabels = disponibles.map(function(x) { return x.mes.charAt(0).toUpperCase() + x.mes.slice(1,3); });
+    presChartInstances.presChartGastosA = new Chart(gaCanvas, {
+      type: 'bar',
+      data: {
+        labels: gaLabels,
+        datasets: [{ label:'Gastos A', data: disponibles.map(function(x){ return x.tt.gastosATotal; }), backgroundColor:'#b1483f', borderRadius:4 }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins: { legend:{display:false}, tooltip:{ callbacks:{ label:function(ctx){ return ctx.parsed.y != null ? fmt(ctx.parsed.y) : 'Sin dato'; } } } },
+        scales: { x:{ grid:{display:false} }, y:{ grid:{color:gridColor}, ticks:{ callback:function(v){ return fmt(v); } } } }
       }
     });
   }
