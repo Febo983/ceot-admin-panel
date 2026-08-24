@@ -5291,10 +5291,11 @@ function presKpi(lbl, val, sub, color) {
     + '</div>';
 }
 
-function presChartCard(titulo, canvasId) {
+function presChartCard(titulo, canvasId, heightPx) {
+  heightPx = heightPx || 230;
   return '<div style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:14px">'
     + '<div style="font-size:0.72rem;font-weight:700;color:var(--co-ink-dim,#6b6a5a);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">' + titulo + '</div>'
-    + '<div style="position:relative;height:230px"><canvas id="' + canvasId + '"></canvas></div>'
+    + '<div style="position:relative;height:' + heightPx + 'px"><canvas id="' + canvasId + '"></canvas></div>'
     + '</div>';
 }
 
@@ -5479,6 +5480,9 @@ function presRenderCxCard(mes) {
   }
   if (loadingEl) loadingEl.style.display = "none";
 
+  var wrap = canvas.parentElement;
+  if (wrap) wrap.style.height = Math.max(230, entries.length * 32) + "px";
+
   var dark = document.documentElement.getAttribute("data-theme") === "dark";
   var gridColor = dark ? "rgba(241,237,226,.08)" : "rgba(32,36,31,.08)";
   presChartInstances.presChartCx = new Chart(canvas, {
@@ -5490,7 +5494,7 @@ function presRenderCxCard(mes) {
     options: {
       indexAxis:"y", responsive:true, maintainAspectRatio:false,
       plugins: { legend:{display:false}, tooltip:{ callbacks:{ label:function(ctx) { return ctx.parsed.x + " cirugías"; } } } },
-      scales: { x:{ grid:{color:gridColor}, ticks:{stepSize:1} }, y:{ grid:{display:false} } }
+      scales: { x:{ grid:{color:gridColor}, ticks:{stepSize:1} }, y:{ grid:{display:false}, ticks:{ autoSkip:false } } }
     }
   });
 }
@@ -5507,6 +5511,14 @@ function renderPresentacion(mes) {
   var container = document.getElementById("adm-content");
   var disponibles = MESES_ORD.map(function(m) { return { mes:m, tt: presCalcMes(m) }; }).filter(function(x) { return x.tt; });
 
+  // El mes calendario en curso se agrega igual aunque todavía no haya cheques
+  // Colón importados (datos financieros) — así se puede ver el avance de
+  // cirugías del mes (parcial, día a día) sin esperar al cierre financiero.
+  var mesReal = MESES_ORD[new Date().getMonth()];
+  if (!disponibles.some(function(x) { return x.mes === mesReal; })) {
+    disponibles.push({ mes: mesReal, tt: null });
+  }
+
   if (!disponibles.length) {
     container.innerHTML = '<div class="adm-sec-title">Presentación</div>'
       + '<div style="padding:24px;color:rgba(32,36,31,.35);font-size:0.85rem">Sin datos disponibles todavía.</div>';
@@ -5517,7 +5529,8 @@ function renderPresentacion(mes) {
   if (idx === -1) idx = disponibles.length - 1;
   mes = disponibles[idx].mes;
   presMesActual = mes;
-  var tt = disponibles[idx].tt;
+  var sinFinanciero = !disponibles[idx].tt;
+  var tt = disponibles[idx].tt || { bruto:0, cm:0, neto:0, iibb:0, cpsm:0, ga:0, aporte:0, prestamo:0, prestamoCredito:0, brutoTotal:0, prestamoNeto:0, desc:0, n:0, gastosATotal:null };
 
   var rows = DOCTORES.map(function(d) { return { doc:d, calc: calcularNetoLocal(mes, d) }; }).filter(function(r) { return r.calc; });
   rows.sort(function(a, b) { return b.calc.neto - a.calc.neto; });
@@ -5542,6 +5555,9 @@ function renderPresentacion(mes) {
   if (!window.Chart) {
     html += '<div style="padding:8px 10px;margin-bottom:10px;border-radius:8px;background:rgba(220,38,38,.08);color:#dc2626;font-size:0.72rem">⚠ No se pudo cargar la librería de gráficos (revisá la conexión). Se muestran solo los totales.</div>';
   }
+  if (sinFinanciero) {
+    html += '<div style="padding:8px 10px;margin-bottom:10px;border-radius:8px;background:rgba(28,120,176,.08);color:#1c78b0;font-size:0.72rem">ℹ Mes en curso — todavía no hay cheques Colón importados, así que los totales financieros están vacíos. Las cirugías sí se muestran (parciales, día a día).</div>';
+  }
 
   html += '<div class="adm-kpis" style="flex-wrap:wrap">'
     + presKpi('Bruto total', fmt(tt.brutoTotal), rows.length + ' profesionales', '#1f3a2e')
@@ -5552,7 +5568,7 @@ function renderPresentacion(mes) {
     + '</div>';
 
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:6px">'
-    + presChartCard('Ranking por profesional', 'presChartRanking')
+    + presChartCard('Ranking por profesional', 'presChartRanking', Math.max(230, rows.length * 32))
     + presChartCard('Evolución mensual (Bruto vs. Neto)', 'presChartEvolucion')
     + presChartCard('Composición de descuentos', 'presChartComposicion')
     + presChartCard('Gastos A — evolución mensual', 'presChartGastosA')
@@ -5586,7 +5602,7 @@ function presInitCharts(mes, rows, tt, disponibles) {
       options: {
         indexAxis: 'y', responsive:true, maintainAspectRatio:false,
         plugins: { legend:{display:false}, tooltip:{ callbacks:{ label:function(ctx){ return fmt(ctx.parsed.x); } } } },
-        scales: { x:{ grid:{color:gridColor}, ticks:{ callback:function(v){ return fmt(v); } } }, y:{ grid:{display:false} } }
+        scales: { x:{ grid:{color:gridColor}, ticks:{ callback:function(v){ return fmt(v); } } }, y:{ grid:{display:false}, ticks:{ autoSkip:false } } }
       }
     });
   }
@@ -5599,8 +5615,8 @@ function presInitCharts(mes, rows, tt, disponibles) {
       data: {
         labels: labels,
         datasets: [
-          { label:'Bruto', data: disponibles.map(function(x){ return x.tt.brutoTotal; }), borderColor:'#c9933a', backgroundColor:'rgba(201,147,58,.15)', tension:.3, fill:true },
-          { label:'Neto',  data: disponibles.map(function(x){ return x.tt.neto; }),       borderColor:'#1f3a2e', backgroundColor:'rgba(31,58,46,.15)', tension:.3, fill:true }
+          { label:'Bruto', data: disponibles.map(function(x){ return x.tt ? x.tt.brutoTotal : null; }), borderColor:'#c9933a', backgroundColor:'rgba(201,147,58,.15)', tension:.3, fill:true },
+          { label:'Neto',  data: disponibles.map(function(x){ return x.tt ? x.tt.neto : null; }),       borderColor:'#1f3a2e', backgroundColor:'rgba(31,58,46,.15)', tension:.3, fill:true }
         ]
       },
       options: {
@@ -5637,7 +5653,7 @@ function presInitCharts(mes, rows, tt, disponibles) {
       type: 'bar',
       data: {
         labels: gaLabels,
-        datasets: [{ label:'Gastos A', data: disponibles.map(function(x){ return x.tt.gastosATotal; }), backgroundColor:'#b1483f', borderRadius:4 }]
+        datasets: [{ label:'Gastos A', data: disponibles.map(function(x){ return x.tt ? x.tt.gastosATotal : null; }), backgroundColor:'#b1483f', borderRadius:4 }]
       },
       options: {
         responsive:true, maintainAspectRatio:false,
