@@ -2416,6 +2416,68 @@ const TODOS_SOCIOS_INVERSION = PRESTAMO_CASA_SOCIOS_A.concat(PRESTAMO_CASA_SOCIO
 const GASTOS_A_ENDPOINT  = "https://script.google.com/macros/s/AKfycbwaMlP7F0oghuVC4ec0MX_pOXqg-l_vToI287NZ71eCiy8Qh-0SSdJzeLg4InAXG-fp/exec";
 const CIRUGIAS_ENDPOINT  = "https://script.google.com/macros/s/AKfycbwp5aAdiCzb5m0drkBQ6m_fZ2wK5h6GLoXHzkekJJuuFQljUdvJBLKoK8wobfth8PLy/exec";
 const CAJAS_ENDPOINT     = "https://script.google.com/macros/s/AKfycbw3Zqjjf7rqXcRLKw5Om0WHOGTSJBqh9akdH2jGVrn7OEDThtRLCYG0fogvO5TtJ3E/exec";
+const SYNC_ENDPOINT      = "https://script.google.com/macros/s/AKfycbxSG-1vkb6u2Ir0cYY1A55VTyaw0FLDX2XZOIHPQhahZqRD5VFVsIhXtN-v8gVgdP7EKQ/exec";
+
+// ── Sync de estado entre PCs ──────────────────────────────────────
+// Varias features (nombres de módulos editados, accesos, botones marcados,
+// calculadora de Gastos A, transferencias a familiares, neto cheque override)
+// vivían SOLO en localStorage — cada PC/navegador tenía su propia copia
+// aislada, nunca sincronizada. syncPush espeja lo que se acaba de guardar en
+// localStorage hacia SYNC_ENDPOINT (JSONP, fire-and-forget, no bloquea la UI).
+// syncPull trae lo último guardado desde cualquier PC y, si difiere de lo
+// local, pisa el localStorage + corre onDone (típicamente la misma función
+// "xCargar()" que ya sabe parsear ese localStorage a la variable global).
+// Si el pedido falla (offline, etc.) queda todo como estaba — el panel sigue
+// funcionando 100% desde localStorage, esto es una mejora, no una dependencia.
+var _syncCbSeq = 0;
+function syncPush(clave) {
+  try {
+    var valor = localStorage.getItem(clave);
+    if (valor === null) return;
+    var cbName = '_syncPushCb' + (_syncCbSeq++);
+    // Apps Script a veces responde 500 y de todos modos entrega el script más
+    // tarde (redirect/retry demorado) — dejamos un stub para siempre en vez de
+    // "delete" para que esa llamada tardía no explote con ReferenceError.
+    var limpiar = function() {
+      window[cbName] = function() {};
+      var s = document.getElementById(cbName);
+      if (s) s.remove();
+    };
+    window[cbName] = limpiar;
+    var script = document.createElement('script');
+    script.id = cbName;
+    script.onerror = limpiar;
+    script.src = SYNC_ENDPOINT + '?accion=set&clave=' + encodeURIComponent(clave) +
+      '&valor=' + encodeURIComponent(valor) + '&callback=' + cbName;
+    document.head.appendChild(script);
+  } catch (e) {}
+}
+function syncPull(clave, onDone) {
+  try {
+    var cbName = '_syncPullCb' + (_syncCbSeq++);
+    var limpiar = function() {
+      clearTimeout(timeout);
+      window[cbName] = function() {};
+      var s = document.getElementById(cbName);
+      if (s) s.remove();
+    };
+    var timeout = setTimeout(limpiar, 20000);
+    window[cbName] = function(resp) {
+      limpiar();
+      try {
+        if (resp && resp.valor_json != null && resp.valor_json !== localStorage.getItem(clave)) {
+          localStorage.setItem(clave, resp.valor_json);
+          if (onDone) onDone();
+        }
+      } catch (e) {}
+    };
+    var script = document.createElement('script');
+    script.id = cbName;
+    script.onerror = limpiar;
+    script.src = SYNC_ENDPOINT + '?clave=' + encodeURIComponent(clave) + '&callback=' + cbName;
+    document.head.appendChild(script);
+  } catch (e) {}
+}
 
 // ── Sesión: token emitido por el Script al loguearse, se manda en cada pedido ──
 var AUTH_TOKEN = null;
@@ -4162,6 +4224,10 @@ function admHomeCargarModLabels() {
     var raw = localStorage.getItem("ceot_home_mod_labels");
     MOD_LABELS_CUSTOM = raw ? (JSON.parse(raw) || {}) : {};
   } catch (e) { MOD_LABELS_CUSTOM = {}; }
+  syncPull("ceot_home_mod_labels", function() {
+    admHomeCargarModLabels();
+    admHomeRenderResults();
+  });
 }
 
 function admHomeCargarTema() {
@@ -4255,6 +4321,7 @@ function admHomeGuardarModulo() {
   if (modHomeEditingKey) {
     MOD_LABELS_CUSTOM[modHomeEditingKey] = val;
     localStorage.setItem("ceot_home_mod_labels", JSON.stringify(MOD_LABELS_CUSTOM));
+    syncPush("ceot_home_mod_labels");
   }
   admHomeCerrarModModal();
   admHomeRenderResults();
@@ -4264,6 +4331,7 @@ function admHomeRestablecerModulo() {
   if (modHomeEditingKey) {
     delete MOD_LABELS_CUSTOM[modHomeEditingKey];
     localStorage.setItem("ceot_home_mod_labels", JSON.stringify(MOD_LABELS_CUSTOM));
+    syncPush("ceot_home_mod_labels");
   }
   admHomeCerrarModModal();
   admHomeRenderResults();
@@ -6523,10 +6591,15 @@ function actionDoneCargar() {
     var raw = localStorage.getItem("ceot_action_done");
     if (raw) ACTION_DONE_KEYS = JSON.parse(raw) || {};
   } catch (e) { ACTION_DONE_KEYS = {}; }
+  syncPull("ceot_action_done", function() {
+    actionDoneCargar();
+    actionDoneRepintarTodo();
+  });
 }
 
 function actionDoneGuardar() {
   localStorage.setItem("ceot_action_done", JSON.stringify(ACTION_DONE_KEYS));
+  syncPush("ceot_action_done");
 }
 
 function actionDoneKey(btn) {
@@ -7676,6 +7749,10 @@ function accSidenavEditar(id) {
 function accStorageKey() { return "ceot_accesos_custom"; }
 
 function accCargarCustom() {
+  syncPull("ceot_accesos_all", function() {
+    accCargarCustom();
+    admHomeRenderResults();
+  });
   try {
     var rawAll = localStorage.getItem("ceot_accesos_all");
     if (rawAll) {
@@ -7789,6 +7866,7 @@ function accGuardarNuevo() {
 
 function accGuardarTodo() {
   localStorage.setItem("ceot_accesos_all", JSON.stringify(ACCESOS_DATA));
+  syncPush("ceot_accesos_all");
 }
 
 // ══════ WA GASTOS A ══════════════════════════════════════════
@@ -8608,7 +8686,7 @@ function renderSueldoDirector() {
 
   var periodo = adminPeriodoAct || tabMesActual();
 
-  var html = '<div style="padding:16px">'
+  var html = '<div id="sueldoDirectorScreenRoot" style="padding:16px">'
     + sueldoDirectorPeriodoSelectorHtml(periodo)
     + transfFamResumenMesHtml(periodo)
     + sueldoDirectorTabHtml(periodo)
@@ -8666,7 +8744,14 @@ function sueldoDirectorToggleHecho(periodo, apellido) {
 
 var GASTOS_A_CALC_KEY = "ceot_gastos_a_calc";
 
+var _gastosACalcPulled = false;
 function gastosACalcCargar(periodo) {
+  if (!_gastosACalcPulled) {
+    _gastosACalcPulled = true;
+    syncPull(GASTOS_A_CALC_KEY, function() {
+      if (document.getElementById('sueldoDirectorScreenRoot')) renderSueldoDirector();
+    });
+  }
   try {
     var all = JSON.parse(localStorage.getItem(GASTOS_A_CALC_KEY) || "{}");
     return all[periodo] || { claves: [], total: null, divisor: 13 };
@@ -8676,7 +8761,7 @@ function gastosACalcGuardar(periodo, data) {
   var all;
   try { all = JSON.parse(localStorage.getItem(GASTOS_A_CALC_KEY) || "{}"); } catch (e) { all = {}; }
   all[periodo] = data;
-  try { localStorage.setItem(GASTOS_A_CALC_KEY, JSON.stringify(all)); } catch (e) {}
+  try { localStorage.setItem(GASTOS_A_CALC_KEY, JSON.stringify(all)); syncPush(GASTOS_A_CALC_KEY); } catch (e) {}
 }
 
 function gastosANetoPorFecha(periodo) {
@@ -8846,10 +8931,15 @@ function transfFamCargar() {
     var raw = localStorage.getItem("ceot_transf_familiares");
     if (raw) TRANSF_FAM = JSON.parse(raw) || {};
   } catch (e) { TRANSF_FAM = {}; }
+  syncPull("ceot_transf_familiares", function() {
+    transfFamCargar();
+    if (document.getElementById('sueldoDirectorScreenRoot')) renderSueldoDirector();
+  });
 }
 
 function transfFamGuardarTodo() {
   localStorage.setItem("ceot_transf_familiares", JSON.stringify(TRANSF_FAM));
+  syncPush("ceot_transf_familiares");
 }
 
 function transfFamKey(periodo, apellido, fecha) {
@@ -8871,10 +8961,15 @@ function netoOverrideCargar() {
     var raw = localStorage.getItem("ceot_neto_override");
     if (raw) NETO_OVERRIDE = JSON.parse(raw) || {};
   } catch (e) { NETO_OVERRIDE = {}; }
+  syncPull("ceot_neto_override", function() {
+    netoOverrideCargar();
+    if (document.getElementById('sueldoDirectorScreenRoot')) renderSueldoDirector();
+  });
 }
 
 function netoOverrideGuardarTodo() {
   localStorage.setItem("ceot_neto_override", JSON.stringify(NETO_OVERRIDE));
+  syncPush("ceot_neto_override");
 }
 
 function netoEfectivo(key, netoOriginal) {
@@ -8960,10 +9055,15 @@ function transfFamDefaultCargar() {
     var raw = localStorage.getItem("ceot_transf_familiares_default");
     if (raw) TRANSF_FAM_DEFAULT = JSON.parse(raw) || {};
   } catch (e) { TRANSF_FAM_DEFAULT = {}; }
+  syncPull("ceot_transf_familiares_default", function() {
+    transfFamDefaultCargar();
+    if (document.getElementById('sueldoDirectorScreenRoot')) renderSueldoDirector();
+  });
 }
 
 function transfFamDefaultGuardarTodo() {
   localStorage.setItem("ceot_transf_familiares_default", JSON.stringify(TRANSF_FAM_DEFAULT));
+  syncPush("ceot_transf_familiares_default");
 }
 
 var transfFamDefEditApellido = null, transfFamDefEditIdx = null;
@@ -9213,10 +9313,15 @@ function transfFamHechoCargar() {
     var raw = localStorage.getItem("ceot_transf_familiares_hecho");
     if (raw) TRANSF_FAM_HECHO = JSON.parse(raw) || {};
   } catch (e) { TRANSF_FAM_HECHO = {}; }
+  syncPull("ceot_transf_familiares_hecho", function() {
+    transfFamHechoCargar();
+    if (document.getElementById('sueldoDirectorScreenRoot')) renderSueldoDirector();
+  });
 }
 
 function transfFamHechoGuardarTodo() {
   localStorage.setItem("ceot_transf_familiares_hecho", JSON.stringify(TRANSF_FAM_HECHO));
+  syncPush("ceot_transf_familiares_hecho");
 }
 
 function transfFamHechoKey(key, idx) {
@@ -10494,7 +10599,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-24-copiarATransferir';
+  var CURRENT_BUILD = '2026-08-25-syncEstadoMultiPC';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
