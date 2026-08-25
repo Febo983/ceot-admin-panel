@@ -4192,6 +4192,7 @@ function mostrarNotificaciones(doctor) {
 
 var homeSearchQ = "";
 var homeSearchCat = "Todos";
+var USAGE_COUNT = {};
 
 var ADM_HOME_MODULOS = [
   { key:"liquidaciones",    ico:"bar-chart-3",     lbl:"Liquidaciones", cat:"cat-fin", fn:"renderAdminPanelPage(tabMesActual())" },
@@ -4249,6 +4250,37 @@ function admHomeCargarModLabels() {
   });
 }
 
+function admHomeCargarUsage() {
+  try {
+    var raw = localStorage.getItem("ceot_usage_count");
+    USAGE_COUNT = raw ? (JSON.parse(raw) || {}) : {};
+  } catch (e) { USAGE_COUNT = {}; }
+  syncPull("ceot_usage_count", function() {
+    admHomeCargarUsage();
+    admHomeRenderResults();
+  });
+}
+
+function admHomeRegistrarUso(key) {
+  try {
+    USAGE_COUNT[key] = (USAGE_COUNT[key] || 0) + 1;
+    localStorage.setItem("ceot_usage_count", JSON.stringify(USAGE_COUNT));
+    syncPush("ceot_usage_count");
+  } catch (e) {}
+}
+
+// Orden estable, más usado primero; sin uso registrado mantiene el orden original.
+function admHomeOrdenarPorUso(lista, keyFn) {
+  return lista.map(function(item, i) { return { item: item, i: i }; })
+    .sort(function(a, b) {
+      var ua = USAGE_COUNT[keyFn(a.item)] || 0;
+      var ub = USAGE_COUNT[keyFn(b.item)] || 0;
+      if (ub !== ua) return ub - ua;
+      return a.i - b.i;
+    })
+    .map(function(x) { return x.item; });
+}
+
 function admHomeCargarTema() {
   try { admHomeTheme = localStorage.getItem("ceot_home_theme") || "clasico"; }
   catch (e) { admHomeTheme = "clasico"; }
@@ -4280,10 +4312,11 @@ function admHomeTile(ico, lbl, colorRgba, opts) {
   opts = opts || {};
   var editing = homeEditMode && opts.editFn;
   var tag = (opts.href && !editing) ? "a" : "div";
+  var track = (!editing && opts.usageKey) ? "admHomeRegistrarUso('" + opts.usageKey + "');" : "";
   var attrs;
   if (editing) attrs = ' onclick="' + opts.editFn + '"';
-  else if (opts.href) attrs = ' href="' + opts.href + '" target="_blank"';
-  else if (opts.fn) attrs = ' onclick="' + opts.fn + '"';
+  else if (opts.href) attrs = ' href="' + opts.href + '" target="_blank" onclick="' + track + '"';
+  else if (opts.fn) attrs = ' onclick="' + track + opts.fn + '"';
   else attrs = "";
   var cursor = (opts.href || opts.fn || editing) ? "pointer" : "default";
   var retro = admHomeTheme === "retro";
@@ -4410,12 +4443,12 @@ function admHomeRenderResults() {
     return '<span onclick="admHomeSetCat(\'' + c + '\')" style="flex-shrink:0;cursor:pointer;font-size:0.7rem;padding:5px 12px;border-radius:20px;border:' + (on ? onBorder : offBorder) + ';background:' + (on ? onBg : offBg) + ';color:' + (on ? onText : offText) + ';font-weight:700;white-space:nowrap">' + c + '</span>';
   }).join("");
 
-  var modMatch = ADM_HOME_MODULOS.filter(function(m) {
+  var modMatch = admHomeOrdenarPorUso(ADM_HOME_MODULOS.filter(function(m) {
     return (homeSearchCat === "Todos" || homeSearchCat === "Módulos") && (!q || m.lbl.toLowerCase().indexOf(q) !== -1);
-  });
-  var accMatch = ACCESOS_DATA.filter(function(a) {
+  }), function(m) { return "mod:" + m.key; });
+  var accMatch = admHomeOrdenarPorUso(ACCESOS_DATA.filter(function(a) {
     return (homeSearchCat === "Todos" || homeSearchCat === a.cat) && (!q || a.title.toLowerCase().indexOf(q) !== -1 || a.desc.toLowerCase().indexOf(q) !== -1);
-  });
+  }), function(a) { return "acc:" + a.id; });
 
   var flatMode = !!q || homeSearchCat !== "Todos";
   var html = '<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;scrollbar-width:none">' + chips + '</div>';
@@ -4433,25 +4466,25 @@ function admHomeRenderResults() {
       html += '<div style="padding:26px 10px;text-align:center;color:rgba(32,36,31,.3);font-size:0.8rem">Sin resultados.</div>';
     } else {
       var tiles = modMatch.map(function(m) {
-        return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(32,36,31,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')" });
+        return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(32,36,31,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key });
       }).concat(accMatch.map(function(a) {
         var ico = LUCIDE_ACC_ICON[a.title] || "link";
-        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[a.cat] || "rgba(32,36,31,0.1)", { href: a.url, editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")" });
+        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[a.cat] || "rgba(32,36,31,0.1)", { href: a.url, editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id });
       }));
       html += '<div style="' + tileWrap + ';margin-bottom:6px">' + tiles.join("") + '</div>';
     }
   } else {
     html += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.32);margin:0 0 6px">Módulos</div>';
     html += '<div style="' + tileWrap + ';margin-bottom:14px">'
-      + ADM_HOME_MODULOS.map(function(m) { return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(32,36,31,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')" }); }).join("")
+      + admHomeOrdenarPorUso(ADM_HOME_MODULOS, function(m) { return "mod:" + m.key; }).map(function(m) { return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(32,36,31,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key }); }).join("")
       + '</div>';
 
     ["Finanzas","Clínica","Admin","Otros"].forEach(function(cat) {
-      var items = ACCESOS_DATA.filter(function(a) { return a.cat === cat; });
+      var items = admHomeOrdenarPorUso(ACCESOS_DATA.filter(function(a) { return a.cat === cat; }), function(a) { return "acc:" + a.id; });
       if (!items.length && !homeEditMode) return;
       var tiles = items.map(function(a) {
         var ico = LUCIDE_ACC_ICON[a.title] || "link";
-        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[cat], { href: a.url, editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")" });
+        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[cat], { href: a.url, editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id });
       });
       if (homeEditMode) {
         tiles.push('<div onclick="admHomeNuevoAcceso(\'' + cat + '\')" style="cursor:pointer;background:rgba(32,36,31,0.03);border:1px dashed rgba(32,36,31,.3);border-radius:10px;padding:12px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;min-height:64px">'
@@ -4485,6 +4518,7 @@ function renderAdmHome() {
   homeSearchCat = "Todos";
   homeEditMode = false;
   admHomeCargarModLabels();
+  admHomeCargarUsage();
   admHomeCargarTema();
   checklistActualizarBadge();
   var retro = admHomeTheme === "retro";
@@ -10691,7 +10725,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-25-repartoIncidenciaFondo';
+  var CURRENT_BUILD = '2026-08-25-ordenPorUso';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
