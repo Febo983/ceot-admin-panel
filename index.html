@@ -3454,6 +3454,21 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   if (osdeValTotal) subPartes.push("OSDE");
   if (cmValTotal)   subPartes.push("CEM");
 
+  // IIBB y CPSM — calculados temprano para poder anotarlos en el 4to y 5to
+  // cheque (ver forEach de abajo), que es de donde salen en la práctica.
+  var iibbData2 = PERIODO_IIBB[periodo];
+  var cpsmData2 = PERIODO_CPSM[periodo];
+  var esLab2    = (doctor.user === "labayen");
+  var osdeForNet = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
+  var brutoParaDesc = total + osdeForNet;
+  var iibbAmt  = iibbData2 === null
+               ? Math.round(brutoParaDesc * 0.035)
+               : Math.round((iibbData2[doctor.apellido]||0));
+  var cpsmAmt  = esLab2 ? 0
+               : (cpsmData2 === null || cpsmData2[doctor.apellido] == null
+                  ? 0
+                  : Math.round(cpsmData2[doctor.apellido] || 0));
+
   // Retención Ganancias y Préstamo Casa — calculados temprano para poder anotarlos
   // en cada cheque individual (ver forEach de abajo), además de las líneas resumen
   // que ya se arman más abajo en esta misma función.
@@ -3493,17 +3508,30 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     var fecha = fechas[idx];
     var acred = chequeAcreditado(fecha);
     var anot = '';
+    var iibbLineAmt = 0, cpsmLineAmt = 0;
     if (idx === 0 && prestamoIndCheq) {
       anot += prestamoIndCheq > 0
         ? '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(prestamoIndCheq) + ' préstamo</div>'
         : '<div style="font-size:.62rem;font-weight:600;color:#166534">+' + fmt(-prestamoIndCheq) + ' reintegro</div>';
     }
+    if (idx === 3 && iibbAmt) {
+      iibbLineAmt = iibbAmt;
+      anot += '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(iibbAmt) + ' IIBB (3,5%)</div>';
+    }
+    if (idx === 4) {
+      if (esLab2) {
+        anot += '<div style="font-size:.62rem;font-weight:600;color:#16a34a">CPSM exento</div>';
+      } else if (cpsmAmt) {
+        cpsmLineAmt = cpsmAmt;
+        anot += '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(cpsmAmt) + ' CPSM (5%)</div>';
+      }
+    }
     if (pctApCheq) {
       anot += '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(Math.round(monto * pctApCheq)) + ' ret. (' + (pctApCheq*100) + '%)</div>';
     }
-    if ((idx === 0 && prestamoIndCheq) || pctApCheq) {
-      var netoCheque = monto - (idx === 0 ? prestamoIndCheq : 0) - (pctApCheq ? Math.round(monto * pctApCheq) : 0);
-      anot += '<div style="font-size:.68rem;font-weight:700;color:#1f3a2e;border-top:1px dashed rgba(32,36,31,.2);margin-top:2px;padding-top:2px">= ' + fmt(netoCheque) + '</div>';
+    if ((idx === 0 && prestamoIndCheq) || pctApCheq || iibbLineAmt || cpsmLineAmt) {
+      var netoCheque = monto - (idx === 0 ? prestamoIndCheq : 0) - (pctApCheq ? Math.round(monto * pctApCheq) : 0) - iibbLineAmt - cpsmLineAmt;
+      anot += '<div style="font-size:.68rem;font-weight:700;color:#166534;border-top:1px dashed rgba(32,36,31,.2);margin-top:2px;padding-top:2px">= ' + fmt(netoCheque) + '</div>';
     }
     html += '<div class="cl-row' + (acred ? ' cl-acreditado' : ' cl-pendiente') + '">'
       + '<span class="cl-date">' + fecha + '</span>'
@@ -3573,20 +3601,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
         + '</div>';
     }
   }
-  // ── IIBB y CPSM en pantalla ──────────────────────────────
-  var iibbData2 = PERIODO_IIBB[periodo];
-  var cpsmData2 = PERIODO_CPSM[periodo];
-  var esLab2    = (doctor.user === "labayen");
-  var osdeForNet = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
-  var brutoParaDesc = total + osdeForNet;
-  var iibbAmt  = iibbData2 === null
-               ? Math.round(brutoParaDesc * 0.035)
-               : Math.round((iibbData2[doctor.apellido]||0));
-  var cpsmAmt  = esLab2 ? 0
-               : (cpsmData2 === null || cpsmData2[doctor.apellido] == null
-                  ? 0
-                  : Math.round(cpsmData2[doctor.apellido] || 0));
-
+  // ── IIBB y CPSM ya calculados más arriba (iibbAmt / cpsmAmt / esLab2) ────
   var cmForNet = (!cmExt.pendiente && cmExt.val) ? cmExt.val : 0;
   var gaAmt    = gaPP || 0;
   var apAmt    = 0;
@@ -3620,9 +3635,9 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   html += '</div>';
 
   // ── NETO total ───────────────────────────────────────────
-  html += '<div class="hist-neto-line" style="margin:8px 0 4px;padding:10px 12px;background:rgba(32,36,31,0.08);border-radius:0;border-left:3px solid #1f3a2e">'
-    + '<span style="font-weight:700;color:#20241f;letter-spacing:.05em">NETO ESTIMADO</span>'
-    + '<span style="font-weight:700;font-size:1.1rem;color:#20241f">' + fmt(netoFinal) + '</span>'
+  html += '<div class="hist-neto-line" style="margin:8px 0 4px;padding:10px 12px;background:rgba(22,101,52,0.08);border-radius:0;border-left:3px solid #166534">'
+    + '<span style="font-weight:700;color:#166534;letter-spacing:.05em">NETO ESTIMADO</span>'
+    + '<span style="font-weight:700;font-size:1.1rem;color:#166534">' + fmt(netoFinal) + '</span>'
     + '</div>';
 
   html += '<div class="mini-disc">📅 Los cheques se acreditan 48 hs. posteriores a la fecha indicada</div>';
