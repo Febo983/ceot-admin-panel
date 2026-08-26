@@ -8657,10 +8657,10 @@ function incidenciaFondoWrapHtml(total) {
     return '<tr><td>' + (doc ? doc.nombre : ap) + '</td>'
       + '<td>' + (Math.round(pct * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%</td>'
       + '<td>' + fmt(acum) + '</td>'
+      + '<td style="color:#b13a2c">' + fmt(falta) + '</td>'
       + '<td style="font-weight:700">' + fmt(monto)
       +   ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(monto) + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle">📋</button>'
       + '</td>'
-      + '<td style="' + (falta < 0 ? 'color:#b13a2c' : '') + '">' + fmt(falta) + '</td>'
       + '</tr>';
   }).join("");
   var totalCalc = apellidos.reduce(function(s, ap) { return s + Math.round(total * INCIDENCIA_FONDO_PCT[ap]); }, 0);
@@ -8670,9 +8670,9 @@ function incidenciaFondoWrapHtml(total) {
     return (doc ? doc.nombre : ap) + '\t' + numParaPegar(Math.round(total * INCIDENCIA_FONDO_PCT[ap]));
   }).join('\n');
   return '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-    + '<th>Profesional</th><th>% de incidencia</th><th>Acumulado</th><th>Importe a pagar</th><th>Falta</th>'
+    + '<th>Profesional</th><th>% de incidencia</th><th>Acumulado</th><th>Falta</th><th>Importe a pagar</th>'
     + '</tr></thead><tbody>' + filas
-    + '<tr class="adm-totals"><td>TOTAL</td><td>100,00%</td><td>' + fmt(totalAcum) + '</td><td>' + fmt(totalCalc) + '</td><td>' + fmt(totalCalc - totalAcum) + '</td></tr>'
+    + '<tr class="adm-totals"><td>TOTAL</td><td>100,00%</td><td>' + fmt(totalAcum) + '</td><td style="color:#b13a2c">' + fmt(totalCalc - totalAcum) + '</td><td>' + fmt(totalCalc) + '</td></tr>'
     + '</tbody></table></div>';
 }
 
@@ -10749,7 +10749,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-26-fondoAcumuladoFalta';
+  var CURRENT_BUILD = '2026-08-26-fondoOrdenColumnas';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
