@@ -8628,27 +8628,51 @@ function incidenciaTotalGuardar(v) {
   syncPush(INCIDENCIA_TOTAL_KEY);
 }
 
+// Suma, por apellido, el aporteCeot ya cargado en cada período de APORTE_CEOT_DESDE
+// — misma lógica que la fila ACUMULADO de "Registro mensual" en renderAporteCeot(),
+// factorizada acá para reusarla también en la tabla de Reparto del fondo.
+function getAporteCeotAcumuladoPorApellido(apellidos) {
+  var acumulado = {};
+  apellidos.forEach(function(ap) { acumulado[ap] = 0; });
+  APORTE_CEOT_DESDE.forEach(function(p) {
+    apellidos.forEach(function(ap) {
+      var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
+      if (!doc) return;
+      var c = calcularNetoLocal(p, doc);
+      if (c) acumulado[ap] += (c.aporteCeot || 0);
+    });
+  });
+  return acumulado;
+}
+
 function incidenciaFondoWrapHtml(total) {
   var apellidos = Object.keys(INCIDENCIA_FONDO_PCT);
+  var acumulado = getAporteCeotAcumuladoPorApellido(apellidos);
   var filas = apellidos.map(function(ap) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
     var pct = INCIDENCIA_FONDO_PCT[ap];
     var monto = Math.round(total * pct);
+    var acum = acumulado[ap] || 0;
+    var falta = monto - acum;
     return '<tr><td>' + (doc ? doc.nombre : ap) + '</td>'
       + '<td>' + (Math.round(pct * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%</td>'
+      + '<td>' + fmt(acum) + '</td>'
       + '<td style="font-weight:700">' + fmt(monto)
       +   ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(monto) + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle">📋</button>'
-      + '</td></tr>';
+      + '</td>'
+      + '<td style="' + (falta < 0 ? 'color:#b13a2c' : '') + '">' + fmt(falta) + '</td>'
+      + '</tr>';
   }).join("");
   var totalCalc = apellidos.reduce(function(s, ap) { return s + Math.round(total * INCIDENCIA_FONDO_PCT[ap]); }, 0);
+  var totalAcum = apellidos.reduce(function(s, ap) { return s + (acumulado[ap] || 0); }, 0);
   window._incidenciaTexto = apellidos.map(function(ap) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
     return (doc ? doc.nombre : ap) + '\t' + numParaPegar(Math.round(total * INCIDENCIA_FONDO_PCT[ap]));
   }).join('\n');
   return '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-    + '<th>Profesional</th><th>% de incidencia</th><th>Importe a pagar</th>'
+    + '<th>Profesional</th><th>% de incidencia</th><th>Acumulado</th><th>Importe a pagar</th><th>Falta</th>'
     + '</tr></thead><tbody>' + filas
-    + '<tr class="adm-totals"><td>TOTAL</td><td>100,00%</td><td>' + fmt(totalCalc) + '</td></tr>'
+    + '<tr class="adm-totals"><td>TOTAL</td><td>100,00%</td><td>' + fmt(totalAcum) + '</td><td>' + fmt(totalCalc) + '</td><td>' + fmt(totalCalc - totalAcum) + '</td></tr>'
     + '</tbody></table></div>';
 }
 
@@ -10725,7 +10749,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-25-ordenPorUso';
+  var CURRENT_BUILD = '2026-08-26-fondoAcumuladoFalta';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
