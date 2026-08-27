@@ -3307,9 +3307,9 @@ function retencionExtraAnotHtml(monto, pct) {
   if (!pct || !monto) return '';
   var ret = Math.round(monto * pct);
   var neto = monto - ret;
-  var netoTxt = neto < 0 ? '<span style="color:#b13a2c">' + fmt(neto) + '</span>' : fmt(neto);
+  var netoTxt = '<span style="color:' + (neto < 0 ? '#b13a2c' : '#166534') + '">' + fmt(neto) + '</span>';
   return ' <span style="color:rgba(32,36,31,.4);font-weight:400">→</span> ' + netoTxt
-    + '<div style="font-size:.62rem;font-weight:400;color:rgba(32,36,31,.45);margin-top:1px">ret. ' + (pct*100) + '% −' + fmt(ret) + '</div>';
+    + '<div style="font-size:.62rem;font-weight:400;color:#b13a2c;margin-top:1px">ret. ' + (pct*100) + '% −' + fmt(ret) + '</div>';
 }
 
 // ══════ RENDER MAYO (datos individuales por profesional) ════
@@ -3552,14 +3552,14 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
       else if (cpsmAmt) { cpsmLineAmt = cpsmAmt; descPartes.push('CPSM −' + fmt(cpsmAmt)); }
     }
     var retCheq = pctApCheq ? Math.round(monto * pctApCheq) : 0;
-    if (retCheq) descPartes.push('ret. ' + (pctApCheq*100) + '% −' + fmt(retCheq));
+    if (retCheq) descPartes.push('<span style="color:#b13a2c">ret. ' + (pctApCheq*100) + '% −' + fmt(retCheq) + '</span>');
 
     var tieneDesc = (idx === 0 && prestamoIndCheq) || retCheq || iibbLineAmt || cpsmLineAmt;
     var amtHtml = fmt(monto);
     if (tieneDesc) {
       var netoCheque = monto - (idx === 0 ? prestamoIndCheq : 0) - retCheq - iibbLineAmt - cpsmLineAmt;
       amtHtml += ' <span style="color:rgba(32,36,31,.4);font-weight:400">→</span> '
-        + (netoCheque < 0 ? '<span style="color:#b13a2c">' + fmt(netoCheque) + '</span>' : fmt(netoCheque))
+        + '<span style="color:' + (netoCheque < 0 ? '#b13a2c' : '#166534') + '">' + fmt(netoCheque) + '</span>'
         + '<div style="font-size:.62rem;font-weight:400;color:rgba(32,36,31,.45);margin-top:1px">' + descPartes.join('  ·  ') + '</div>';
     }
     html += '<div class="cl-row' + (acred ? ' cl-acreditado' : ' cl-pendiente') + '">'
@@ -10942,7 +10942,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-27-detalle-mes-mas-limpio';
+  var CURRENT_BUILD = '2026-08-27-retencion-roja-neto-verde';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
