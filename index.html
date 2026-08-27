@@ -3281,13 +3281,14 @@ document.querySelectorAll(".period-tab").forEach(btn => {
 });
 
 // ── Helper: fila extra (OSDE / CM) con estado pendiente ─────
-function extraRow(label, ext) {
+function extraRow(label, ext, anot) {
+  anot = anot || '';
   var note = ext.fecha || (label === "OSDE" ? "~3ra semana del mes" : "1ra semana del mes");
   if (!ext.pendiente && ext.val !== null) {
     return '<div class="cl-row cl-sep-row">'
       + '<span class="cl-date">—</span>'
       + '<span class="cl-lbl">' + label + '</span>'
-      + '<span class="cl-amt">' + fmt(ext.val) + '</span>'
+      + '<span class="cl-amt">' + fmt(ext.val) + anot + '</span>'
       + '</div>';
   }
   return '<div class="cl-row cl-sep-row">'
@@ -3296,6 +3297,18 @@ function extraRow(label, ext) {
     +   ' <span style="font-size:.68rem;color:rgba(32,36,31,.35)">· acredita ' + note + '</span></span>'
     + '<span class="cl-amt" style="color:rgba(32,36,31,.35);font-size:.75rem">pendiente</span>'
     + '</div>';
+}
+
+// Anotación de Retención Ganancias + neto para OSDE/CEM en Portal Profesionales
+// — mismo criterio que ya se usa por cheque (pctApCheq dentro del forEach de
+// renderIndividual), acá para las filas extra que no pasan por ese loop.
+function retencionExtraAnotHtml(monto, pct) {
+  if (!pct || !monto) return '';
+  var ret = Math.round(monto * pct);
+  var neto = monto - ret;
+  var netoColor = neto < 0 ? '#b13a2c' : '#166534';
+  return '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(ret) + ' ret. (' + (pct*100) + '%)</div>'
+    + '<div style="font-size:.68rem;font-weight:700;color:' + netoColor + ';border-top:1px dashed rgba(32,36,31,.2);margin-top:2px;padding-top:2px">= ' + fmt(neto) + '</div>';
 }
 
 // ══════ RENDER MAYO (datos individuales por profesional) ════
@@ -3541,11 +3554,13 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
       + '</div>';
   });
   // OSDE — siempre presente
-  html += extraRow("OSDE", osdeExt);
+  var osdeValAnot = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
+  html += extraRow("OSDE", osdeExt, retencionExtraAnotHtml(osdeValAnot, pctApCheq));
   // Centro Médico — liquidación del mes anterior, acreditado 1ra semana del mes actual
   var prevMesNombre = {"mayo":"Abril","junio":"Mayo","julio":"Junio","agosto":"Julio","septiembre":"Agosto","octubre":"Sep","noviembre":"Oct","diciembre":"Nov"};
   var cmLabel = "Centro Médico" + (prevMesNombre[periodo] ? " · Liquid. " + prevMesNombre[periodo] : "");
-  html += extraRow(cmLabel, cmExt);
+  var cmValAnot = (!cmExt.pendiente && cmExt.val) ? cmExt.val : 0;
+  html += extraRow(cmLabel, cmExt, retencionExtraAnotHtml(cmValAnot, pctApCheq));
   // Gastos A — se descuenta del cheque actual para cubrir gastos del mes siguiente
   var sigMesNombre = {"febrero":"Marzo","marzo":"Abril","abril":"Mayo","mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre"};
   var gaLabelMes = sigMesNombre[periodo] ? " · " + sigMesNombre[periodo] + " 2026" : "";
@@ -6794,7 +6809,8 @@ function descargarComprobanteHistorial(pid) {
   doc.setDrawColor(31, 58, 46); doc.line(LM, y, RM, y); y += 6;
   doc.setFont("helvetica", "bold"); doc.setFontSize(11);
   doc.text("NETO", LM + 5, y);
-  doc.setTextColor(31, 58, 46);
+  if (c.neto < 0) doc.setTextColor(177, 58, 44);
+  else            doc.setTextColor(31, 58, 46);
   doc.text(fmtPDF(c.neto), RM, y, { align:"right" });
   doc.setTextColor(0, 0, 0); y += 10;
 
@@ -9156,7 +9172,7 @@ function netoChequeCeldaHtml(key, netoOriginal, nextKey, nextNetoOriginal) {
   var nextOrigArg = (nextNetoOriginal != null) ? nextNetoOriginal : "null";
   return '<td style="font-weight:600" id="netoCell_' + idS + '">'
     + '<div style="display:flex;align-items:center;gap:4px;white-space:nowrap;width:100%">'
-    +   '<span id="netoVal_' + idS + '" style="display:inline-block;min-width:92px;text-align:right;flex-shrink:0">' + fmt(val) + '</span>'
+    +   '<span id="netoVal_' + idS + '" style="display:inline-block;min-width:92px;text-align:right;flex-shrink:0' + (val < 0 ? ';color:#b13a2c' : '') + '">' + fmt(val) + '</span>'
     +   '<span style="display:inline-block;width:12px;flex-shrink:0;font-size:.6rem;color:#8a6423" title="' + (overridden ? 'Importe editado a mano' : '') + '">' + (overridden ? '✎' : '') + '</span>'
     +   '<button type="button" title="Copiar neto cheque" onclick="copiarTexto(\'' + numParaPegar(val) + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle;flex-shrink:0">📋</button>'
     +   '<a href="javascript:void(0)" onclick="netoEditarAbrir(\'' + kEsc + '\',' + netoOriginal + ',' + nextArg + ',' + nextOrigArg + ')" style="font-size:.6rem;color:#1f3a2e;text-decoration:underline;flex-shrink:0">editar</a>'
@@ -9655,10 +9671,11 @@ function sueldoDirectorTabHtml(periodo) {
         + '<td style="font-size:.62rem;color:rgba(32,36,31,.5)">' + (extra.join('<br>') || '—') + '</td>'
         + netoChequeCeldaHtml(keyFam, d.neto, nextKey, nextNetoOriginal)
         + transfFamCeldaHtml(keyFam, netoEfectivo(keyFam, d.neto))
-        + '<td style="' + (esCorte ? 'font-weight:700;color:#8a6423' : '') + '">' + fmt(d.acumulado) + (esCorte ? ' ✓ $4M' : '') + '</td>'
+        + '<td style="' + (esCorte ? 'font-weight:700;color:#8a6423' : (d.acumulado < 0 ? 'color:#b13a2c' : '')) + '">' + fmt(d.acumulado) + (esCorte ? ' ✓ $4M' : '') + '</td>'
         + '</tr>';
     }).join('');
 
+    var totalNetoMesStyle = s.totalNetoMes < 0 ? 'color:#b13a2c' : '';
     return '<div style="margin-bottom:16px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:8px;padding:10px 12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
       +   '<div><b>' + doc.apellido + '</b> — ' + estadoFecha + transfFamDefBadgeHtml(doc.apellido) + '</div>'
@@ -9672,7 +9689,7 @@ function sueldoDirectorTabHtml(periodo) {
                 + '<input type="checkbox"' + (sueldoDirectorEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="sueldoDirectorToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">'
                 + 'Sueldo ya transferido</label>'
               : '')
-      +     '<span>Total neto mes <b>' + fmt(s.totalNetoMes) + '</b></span>'
+      +     '<span>Total neto mes <b style="' + totalNetoMesStyle + '">' + fmt(s.totalNetoMes) + '</b></span>'
       +     '<span>Saldo tras sueldo <b style="' + saldoStyle + '">' + fmt(s.saldoFinal) + '</b> <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.saldoFinal) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></span>'
       +   '</div>'
       + '</div>'
@@ -9741,14 +9758,15 @@ function restoProfesionalesTabHtml(periodo) {
         + '<td style="font-size:.62rem;color:rgba(32,36,31,.5)">' + (extra.join('<br>') || '—') + '</td>'
         + netoChequeCeldaHtml(keyFam, d.neto, nextKey, nextNetoOriginal)
         + transfFamCeldaHtml(keyFam, netoEfectivo(keyFam, d.neto))
-        + '<td>' + fmt(d.acumulado) + '</td>'
+        + '<td' + (d.acumulado < 0 ? ' style="color:#b13a2c"' : '') + '>' + fmt(d.acumulado) + '</td>'
         + '</tr>';
     }).join('');
 
+    var totalNetoMesChipStyle = base.totalNetoMes < 0 ? '#b13a2c' : colores.chipFg;
     return '<div style="margin-bottom:16px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:8px;padding:10px 12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
       +   '<div><b>' + doc.apellido + '</b>' + pendTxt + transfFamDefBadgeHtml(doc.apellido) + '</div>'
-      +   '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + colores.chipFg + ';border-radius:6px;padding:5px 10px;font-weight:700;font-size:.8rem">'
+      +   '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + totalNetoMesChipStyle + ';border-radius:6px;padding:5px 10px;font-weight:700;font-size:.8rem">'
       +     fmt(base.totalNetoMes) + ' · ' + colores.txt
       +     '<button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(base.totalNetoMes) + '\', this)" style="border:none;background:rgba(255,255,255,.35);border-radius:4px;cursor:pointer;font-size:.72rem;padding:1px 4px;vertical-align:middle">📋</button>'
       +   '</span>'
