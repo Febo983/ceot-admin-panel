@@ -3281,13 +3281,14 @@ document.querySelectorAll(".period-tab").forEach(btn => {
 });
 
 // ── Helper: fila extra (OSDE / CM) con estado pendiente ─────
-function extraRow(label, ext, anot) {
+function extraRow(label, ext, anot, labelChip) {
   anot = anot || '';
+  labelChip = labelChip || '';
   var note = ext.fecha || (label === "OSDE" ? "~3ra semana del mes" : "1ra semana del mes");
   if (!ext.pendiente && ext.val !== null) {
     return '<div class="cl-row cl-sep-row">'
       + '<span class="cl-date">—</span>'
-      + '<span class="cl-lbl">' + label + '</span>'
+      + '<span class="cl-lbl">' + label + labelChip + '</span>'
       + '<span class="cl-amt">' + fmt(ext.val) + anot + '</span>'
       + '</div>';
   }
@@ -3306,9 +3307,9 @@ function retencionExtraAnotHtml(monto, pct) {
   if (!pct || !monto) return '';
   var ret = Math.round(monto * pct);
   var neto = monto - ret;
-  var netoColor = neto < 0 ? '#b13a2c' : '#166534';
-  return '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(ret) + ' ret. (' + (pct*100) + '%)</div>'
-    + '<div style="font-size:.68rem;font-weight:700;color:' + netoColor + ';border-top:1px dashed rgba(32,36,31,.2);margin-top:2px;padding-top:2px">= ' + fmt(neto) + '</div>';
+  var netoTxt = neto < 0 ? '<span style="color:#b13a2c">' + fmt(neto) + '</span>' : fmt(neto);
+  return ' <span style="color:rgba(32,36,31,.4);font-weight:400">→</span> ' + netoTxt
+    + '<div style="font-size:.62rem;font-weight:400;color:rgba(32,36,31,.45);margin-top:1px">ret. ' + (pct*100) + '% −' + fmt(ret) + '</div>';
 }
 
 // ══════ RENDER MAYO (datos individuales por profesional) ════
@@ -3466,11 +3467,12 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var gaProf   = (gaPub && gaPub.porProfesional && gaPub.porProfesional[doctor.apellido]) || null;
   var gaPartes = gaProf && gaProf.partes && gaProf.partes.length ? gaProf.partes : null;
   var gaFaltante = gaProf ? (gaProf.faltante || 0) : 0;
-  function gaAporteAnot(clave) {
+  // Chip discreto al lado de la acreditación que aporta a Gastos A (sin monto —
+  // los montos van consolidados en un solo recuadro debajo de la línea Gastos A).
+  function gaChipFor(clave) {
     if (!gaPartes) return '';
-    var pt = gaPartes.filter(function(p){ return p.clave === clave; })[0];
-    if (!pt || !pt.monto) return '';
-    return '<div style="font-size:.62rem;font-weight:600;color:#92610f">↳ ' + fmt(pt.monto) + ' aporta a Gastos A</div>';
+    if (!gaPartes.filter(function(p){ return p.clave === clave; })[0]) return '';
+    return ' <span style="display:inline-block;font-size:.6rem;font-weight:700;background:rgba(146,97,15,.14);color:#92610f;border-radius:9px;padding:1px 7px;margin-left:5px;vertical-align:1px;text-transform:uppercase;letter-spacing:.03em">Gastos A</span>';
   }
 
   // Bruto total del período: 5 cheques Colón + OSDE + CEM cuando ya estén
@@ -3535,48 +3537,45 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   vals.forEach(function(monto, idx) {
     var fecha = fechas[idx];
     var acred = chequeAcreditado(fecha);
-    var anot = '';
-    var iibbLineAmt = 0, cpsmLineAmt = 0;
+    // Descuentos de este cheque, consolidados en una sola línea gris tenue
+    // (antes eran 2-4 renglones rojos por cheque). El neto se muestra en la
+    // misma línea del bruto: "$ bruto → $ neto".
+    var descPartes = [];
+    var iibbLineAmt = 0, cpsmLineAmt = 0, prestamoLineAmt = 0;
     if (idx === 0 && prestamoIndCheq) {
-      anot += prestamoIndCheq > 0
-        ? '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(prestamoIndCheq) + ' préstamo</div>'
-        : '<div style="font-size:.62rem;font-weight:600;color:#166534">+' + fmt(-prestamoIndCheq) + ' reintegro</div>';
+      prestamoLineAmt = prestamoIndCheq;
+      descPartes.push(prestamoIndCheq > 0 ? 'préstamo −' + fmt(prestamoIndCheq) : 'reintegro +' + fmt(-prestamoIndCheq));
     }
-    if (idx === 3 && iibbAmt) {
-      iibbLineAmt = iibbAmt;
-      anot += '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(iibbAmt) + ' IIBB (3,5%)</div>';
-    }
+    if (idx === 3 && iibbAmt) { iibbLineAmt = iibbAmt; descPartes.push('IIBB −' + fmt(iibbAmt)); }
     if (idx === 4) {
-      if (esLab2) {
-        anot += '<div style="font-size:.62rem;font-weight:600;color:#16a34a">CPSM exento</div>';
-      } else if (cpsmAmt) {
-        cpsmLineAmt = cpsmAmt;
-        anot += '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(cpsmAmt) + ' CPSM (5%)</div>';
-      }
+      if (esLab2) descPartes.push('CPSM exento');
+      else if (cpsmAmt) { cpsmLineAmt = cpsmAmt; descPartes.push('CPSM −' + fmt(cpsmAmt)); }
     }
-    if (pctApCheq) {
-      anot += '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(Math.round(monto * pctApCheq)) + ' ret. (' + (pctApCheq*100) + '%)</div>';
-    }
-    anot += gaAporteAnot(fecha);
-    if ((idx === 0 && prestamoIndCheq) || pctApCheq || iibbLineAmt || cpsmLineAmt) {
-      var netoCheque = monto - (idx === 0 ? prestamoIndCheq : 0) - (pctApCheq ? Math.round(monto * pctApCheq) : 0) - iibbLineAmt - cpsmLineAmt;
-      var netoChequeColor = netoCheque < 0 ? '#b13a2c' : '#166534';
-      anot += '<div style="font-size:.68rem;font-weight:700;color:' + netoChequeColor + ';border-top:1px dashed rgba(32,36,31,.2);margin-top:2px;padding-top:2px">= ' + fmt(netoCheque) + '</div>';
+    var retCheq = pctApCheq ? Math.round(monto * pctApCheq) : 0;
+    if (retCheq) descPartes.push('ret. ' + (pctApCheq*100) + '% −' + fmt(retCheq));
+
+    var tieneDesc = (idx === 0 && prestamoIndCheq) || retCheq || iibbLineAmt || cpsmLineAmt;
+    var amtHtml = fmt(monto);
+    if (tieneDesc) {
+      var netoCheque = monto - (idx === 0 ? prestamoIndCheq : 0) - retCheq - iibbLineAmt - cpsmLineAmt;
+      amtHtml += ' <span style="color:rgba(32,36,31,.4);font-weight:400">→</span> '
+        + (netoCheque < 0 ? '<span style="color:#b13a2c">' + fmt(netoCheque) + '</span>' : fmt(netoCheque))
+        + '<div style="font-size:.62rem;font-weight:400;color:rgba(32,36,31,.45);margin-top:1px">' + descPartes.join('  ·  ') + '</div>';
     }
     html += '<div class="cl-row' + (acred ? ' cl-acreditado' : ' cl-pendiente') + '">'
       + '<span class="cl-date">' + fecha + '</span>'
-      + '<span class="cl-lbl">Cheque ' + (idx+1) + (acred ? ' <span class="cl-status-icon">✓</span>' : '') + '</span>'
-      + '<span class="cl-amt">' + fmt(monto) + anot + '</span>'
+      + '<span class="cl-lbl">Cheque ' + (idx+1) + (acred ? ' <span class="cl-status-icon">✓</span>' : '') + gaChipFor(fecha) + '</span>'
+      + '<span class="cl-amt">' + amtHtml + '</span>'
       + '</div>';
   });
   // OSDE — siempre presente
   var osdeValAnot = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
-  html += extraRow("OSDE", osdeExt, retencionExtraAnotHtml(osdeValAnot, pctApCheq) + gaAporteAnot("Cheque OSDE"));
+  html += extraRow("OSDE", osdeExt, retencionExtraAnotHtml(osdeValAnot, pctApCheq), gaChipFor("Cheque OSDE"));
   // Centro Médico — liquidación del mes anterior, acreditado 1ra semana del mes actual
   var prevMesNombre = {"mayo":"Abril","junio":"Mayo","julio":"Junio","agosto":"Julio","septiembre":"Agosto","octubre":"Sep","noviembre":"Oct","diciembre":"Nov"};
   var cmLabel = "Centro Médico" + (prevMesNombre[periodo] ? " · Liquid. " + prevMesNombre[periodo] : "");
   var cmValAnot = (!cmExt.pendiente && cmExt.val) ? cmExt.val : 0;
-  html += extraRow(cmLabel, cmExt, retencionExtraAnotHtml(cmValAnot, pctApCheq) + gaAporteAnot("Acreditación CEM"));
+  html += extraRow(cmLabel, cmExt, retencionExtraAnotHtml(cmValAnot, pctApCheq), gaChipFor("Acreditación CEM"));
   // Gastos A — se descuenta del cheque actual para cubrir gastos del mes siguiente
   var sigMesNombre = {"febrero":"Marzo","marzo":"Abril","abril":"Mayo","mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre"};
   var gaLabelMes = sigMesNombre[periodo] ? " · " + sigMesNombre[periodo] + " 2026" : "";
@@ -3597,11 +3596,15 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     var gaResumen = gaPartes.map(function(p){
       var etq = p.clave === "Cheque OSDE" ? "OSDE" : (p.clave === "Acreditación CEM" ? "CEM" : "Cheque " + p.clave);
       return etq + ' ' + fmt(p.monto);
-    }).join('  ·  ');
+    }).join('  +  ');
     if (gaFaltante) gaResumen += '  ·  resto ' + fmt(gaFaltante);
-    html += '<div style="font-size:.62rem;color:#92610f;padding:2px 0 4px 8px">cubierto con: ' + gaResumen + '</div>';
+    html += '<div style="margin:4px 0 2px;padding:7px 10px;background:rgba(146,97,15,.10);border-radius:8px;font-size:.66rem;color:#92610f;line-height:1.5">'
+      + 'Se cubre con: ' + gaResumen
+      + '<br><span style="opacity:.8">Se descuenta este mes para cubrir ' + ((sigMesNombre[periodo] || 'el mes siguiente').toLowerCase()) + '.</span>'
+      + '</div>';
+  } else {
+    html += '<div style="font-size:.62rem;color:rgba(32,36,31,.35);padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
   }
-  html += '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
   html += '</div>';
 
   // Préstamo Casa 14 de julio 2067 (grupo B: descuento · grupo A: reintegro, desde Agosto 2026)
@@ -3618,6 +3621,10 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
       + '<span class="cl-amt"' + (prestamoInd < 0 ? ' style="color:#166534"' : '') + '>' + (prestamoInd > 0 ? '−' + fmt(prestamoInd) : '+' + fmt(-prestamoInd)) + '</span>'
       + '</div></div>';
   }
+
+  // ── Descuentos del período (Retención Ganancias + IIBB + CPSM en un bloque) ──
+  html += '<div style="font-size:.62rem;letter-spacing:.04em;text-transform:uppercase;color:rgba(32,36,31,.4);margin:12px 2px 3px">Descuentos del período</div>';
+  html += '<div class="cheque-list">';
 
   // Retención Ganancias (desde julio en adelante)
   var periodoConAporteInd = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
@@ -3651,9 +3658,9 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   }
   var netoFinal = total + osdeForNet + cmForNet - iibbAmt - cpsmAmt - gaAmt - apAmt - prestamoInd;
 
-  html += '<div class="cheque-list" style="margin-top:6px">';
-  // IIBB
-  html += '<div class="cl-row cl-sep-row cl-neg">'
+  // IIBB — mismo bloque "Descuentos del período", color neutro (el rojo queda
+  // solo para Retención Ganancias, que es el descuento grande)
+  html += '<div class="cl-row cl-sep-row">'
     + '<span class="cl-date">—</span>'
     + '<span class="cl-lbl">IIBB (3,5%)</span>'
     + '<span class="cl-amt">−' + fmt(iibbAmt) + '</span>'
@@ -3666,7 +3673,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
       + '<span class="cl-amt" style="color:#16a34a;font-size:.75rem">EXENTO ✓</span>'
       + '</div>';
   } else {
-    html += '<div class="cl-row cl-sep-row cl-neg">'
+    html += '<div class="cl-row cl-sep-row">'
       + '<span class="cl-date">—</span>'
       + '<span class="cl-lbl">CPSM (5%)</span>'
       + '<span class="cl-amt">−' + fmt(cpsmAmt) + '</span>'
@@ -10935,7 +10942,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-27-gastosA-origen-publicado';
+  var CURRENT_BUILD = '2026-08-27-detalle-mes-mas-limpio';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
