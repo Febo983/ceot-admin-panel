@@ -3458,6 +3458,21 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var osdeExt = getExtra(periodo, "osde", doctor.apellido);
   var cmExt   = getExtra(periodo, "cm",   doctor.apellido);
 
+  // Gastos A — de qué acreditación sale la parte de este profesional (snapshot
+  // publicado desde el panel admin, calculadora de Gastos A). Solo informativo:
+  // no cambia ningún total. gaAporteAnot(clave) devuelve la línea "↳ $X aporta
+  // a Gastos A" para el cheque/OSDE/CEM que corresponda.
+  var gaPub    = (typeof gastosAPublicadoCargar === "function") ? gastosAPublicadoCargar(periodo) : null;
+  var gaProf   = (gaPub && gaPub.porProfesional && gaPub.porProfesional[doctor.apellido]) || null;
+  var gaPartes = gaProf && gaProf.partes && gaProf.partes.length ? gaProf.partes : null;
+  var gaFaltante = gaProf ? (gaProf.faltante || 0) : 0;
+  function gaAporteAnot(clave) {
+    if (!gaPartes) return '';
+    var pt = gaPartes.filter(function(p){ return p.clave === clave; })[0];
+    if (!pt || !pt.monto) return '';
+    return '<div style="font-size:.62rem;font-weight:600;color:#92610f">↳ ' + fmt(pt.monto) + ' aporta a Gastos A</div>';
+  }
+
   // Bruto total del período: 5 cheques Colón + OSDE + CEM cuando ya estén
   // disponibles (mientras estén pendientes no se suman — ver extraRow más abajo).
   var osdeValTotal = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
@@ -3542,6 +3557,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     if (pctApCheq) {
       anot += '<div style="font-size:.62rem;font-weight:600;color:#b13a2c">-' + fmt(Math.round(monto * pctApCheq)) + ' ret. (' + (pctApCheq*100) + '%)</div>';
     }
+    anot += gaAporteAnot(fecha);
     if ((idx === 0 && prestamoIndCheq) || pctApCheq || iibbLineAmt || cpsmLineAmt) {
       var netoCheque = monto - (idx === 0 ? prestamoIndCheq : 0) - (pctApCheq ? Math.round(monto * pctApCheq) : 0) - iibbLineAmt - cpsmLineAmt;
       var netoChequeColor = netoCheque < 0 ? '#b13a2c' : '#166534';
@@ -3555,12 +3571,12 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   });
   // OSDE — siempre presente
   var osdeValAnot = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
-  html += extraRow("OSDE", osdeExt, retencionExtraAnotHtml(osdeValAnot, pctApCheq));
+  html += extraRow("OSDE", osdeExt, retencionExtraAnotHtml(osdeValAnot, pctApCheq) + gaAporteAnot("Cheque OSDE"));
   // Centro Médico — liquidación del mes anterior, acreditado 1ra semana del mes actual
   var prevMesNombre = {"mayo":"Abril","junio":"Mayo","julio":"Junio","agosto":"Julio","septiembre":"Agosto","octubre":"Sep","noviembre":"Oct","diciembre":"Nov"};
   var cmLabel = "Centro Médico" + (prevMesNombre[periodo] ? " · Liquid. " + prevMesNombre[periodo] : "");
   var cmValAnot = (!cmExt.pendiente && cmExt.val) ? cmExt.val : 0;
-  html += extraRow(cmLabel, cmExt, retencionExtraAnotHtml(cmValAnot, pctApCheq));
+  html += extraRow(cmLabel, cmExt, retencionExtraAnotHtml(cmValAnot, pctApCheq) + gaAporteAnot("Acreditación CEM"));
   // Gastos A — se descuenta del cheque actual para cubrir gastos del mes siguiente
   var sigMesNombre = {"febrero":"Marzo","marzo":"Abril","abril":"Mayo","mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre"};
   var gaLabelMes = sigMesNombre[periodo] ? " · " + sigMesNombre[periodo] + " 2026" : "";
@@ -3576,6 +3592,14 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
       + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:rgba(32,36,31,.35);font-weight:400">' + gaLabelMes + '</span></span>'
       + '<span class="cl-amt" style="color:rgba(32,36,31,.35);font-size:.75rem">pendiente</span>'
       + '</div>';
+  }
+  if (gaPP && gaPartes) {
+    var gaResumen = gaPartes.map(function(p){
+      var etq = p.clave === "Cheque OSDE" ? "OSDE" : (p.clave === "Acreditación CEM" ? "CEM" : "Cheque " + p.clave);
+      return etq + ' ' + fmt(p.monto);
+    }).join('  ·  ');
+    if (gaFaltante) gaResumen += '  ·  resto ' + fmt(gaFaltante);
+    html += '<div style="font-size:.62rem;color:#92610f;padding:2px 0 4px 8px">cubierto con: ' + gaResumen + '</div>';
   }
   html += '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
   html += '</div>';
@@ -6604,6 +6628,19 @@ function handleLogout() {
   var nb = document.getElementById("notifBanner"); if (nb) nb.style.display = "none";
 }
 
+// Re-render de los meses del portal del profesional logueado — para cuando
+// llega tarde un syncPull (ej. Gastos A recién publicado desde el panel admin).
+function rerenderPortalMeses() {
+  if (!doctorActual) return;
+  renderIndividual(JUNIO_RAW,       JUNIO_FECHAS,       "junio",       "pane-junio",       doctorActual);
+  renderIndividual(JULIO_RAW,       JULIO_FECHAS,       "julio",       "pane-julio",       doctorActual);
+  renderIndividual(AGOSTO_RAW,      AGOSTO_FECHAS,      "agosto",      "pane-agosto",      doctorActual);
+  renderIndividual(SEPTIEMBRE_RAW,  SEPTIEMBRE_FECHAS,  "septiembre",  "pane-septiembre",  doctorActual);
+  renderIndividual(OCTUBRE_RAW,     OCTUBRE_FECHAS,     "octubre",     "pane-octubre",     doctorActual);
+  renderIndividual(NOVIEMBRE_RAW,   NOVIEMBRE_FECHAS,   "noviembre",   "pane-noviembre",   doctorActual);
+  renderIndividual(DICIEMBRE_RAW,   DICIEMBRE_FECHAS,   "diciembre",   "pane-diciembre",   doctorActual);
+}
+
 document.getElementById("loginBtn").addEventListener("click", handleLogin);
 if (window.lucide) lucide.createIcons();
 document.getElementById("refreshBtn").addEventListener("click", async function() {
@@ -8948,6 +8985,116 @@ function gastosACalcGuardar(periodo, data) {
   try { localStorage.setItem(GASTOS_A_CALC_KEY, JSON.stringify(all)); syncPush(GASTOS_A_CALC_KEY); } catch (e) {}
 }
 
+// ── Gastos A — publicación a profesionales ──────────────────────────
+// La calculadora de arriba es la herramienta de trabajo de Marcelo (tildar
+// cheques, cargar total, ver el neto a transferir). "Publicar a profesionales"
+// congela esa selección en una clave aparte (ceot_gastos_a_publicado) y
+// calcula, por profesional, de qué acreditación sale su parte de Gastos A —
+// en CASCADA: OSDE primero, después los cheques del más viejo al más nuevo, y
+// CEM al final; cada acreditación aporta hasta agotar su neto y el resto pasa
+// a la siguiente. El portal del profesional lee ese snapshot y lo muestra al
+// lado de cada acreditación en el detalle del mes (renderIndividual). No toca
+// ningún total ni el Sheet: es informativo. Botón explícito para no filtrar
+// una selección a medio hacer.
+var GASTOS_A_PUB_KEY = "ceot_gastos_a_publicado";
+var _gastosAPubPulled = false;
+function gastosAPublicadoCargar(periodo) {
+  if (!_gastosAPubPulled) {
+    _gastosAPubPulled = true;
+    syncPull(GASTOS_A_PUB_KEY, function() {
+      if (document.getElementById('sueldoDirectorScreenRoot')) renderSueldoDirector();
+      else if (typeof doctorActual !== "undefined" && doctorActual && typeof rerenderPortalMeses === "function") rerenderPortalMeses();
+    });
+  }
+  try {
+    var all = JSON.parse(localStorage.getItem(GASTOS_A_PUB_KEY) || "{}");
+    return all[periodo] || null;
+  } catch (e) { return null; }
+}
+function gastosAOrdenarClaves(claves) {
+  var osde = [], cem = [], fechas = [], otras = [];
+  claves.forEach(function(c) {
+    if (c === "Cheque OSDE") osde.push(c);
+    else if (c === "Acreditación CEM") cem.push(c);
+    else if (/^\d{2}\/\d{2}$/.test(c)) fechas.push(c);
+    else otras.push(c);
+  });
+  fechas.sort(function(a, b) {
+    var pa = a.split("/"), pb = b.split("/");
+    return (pa[1] + pa[0]) - (pb[1] + pb[0]);
+  });
+  return osde.concat(fechas).concat(cem).concat(otras);
+}
+function gastosAPublicar(btn) {
+  var periodo = window._gastosAPeriodoActual;
+  var porClave = window._gastosAPorFecha || {};
+  var chks = document.querySelectorAll(".gastosa-fecha-chk:checked");
+  var clavesSel = Array.prototype.map.call(chks, function(c) { return c.value; });
+  var totalEl = document.getElementById("gastosa-total");
+  var divisorEl = document.getElementById("gastosa-divisor");
+  var totalRaw = totalEl ? totalEl.value.trim() : "";
+  var total = totalRaw ? (parseFloat(totalRaw.replace(/\./g, "").replace(",", ".")) || 0) : 0;
+  var divisor = divisorEl ? (parseFloat(divisorEl.value) || 0) : 0;
+  var share = divisor > 0 ? Math.round(total / divisor) : 0;
+  if (!clavesSel.length || !share) {
+    alert("Antes de publicar: tildá al menos un cheque/OSDE y cargá el total de Gastos A.");
+    return;
+  }
+  var orden = gastosAOrdenarClaves(clavesSel);
+  var aps = {};
+  orden.forEach(function(clave) {
+    var info = porClave[clave];
+    if (info) info.entradas.forEach(function(x) { aps[x.apellido] = true; });
+  });
+  var porProfesional = {};
+  Object.keys(aps).forEach(function(ap) {
+    var remaining = share, partes = [];
+    orden.forEach(function(clave) {
+      if (remaining <= 0) return;
+      var info = porClave[clave];
+      if (!info) return;
+      var ent = info.entradas.filter(function(e) { return e.apellido === ap; })[0];
+      var neto = ent ? Math.max(0, Math.round(ent.neto)) : 0;
+      if (neto <= 0) return;
+      var take = Math.min(remaining, neto);
+      partes.push({ clave: clave, monto: take });
+      remaining -= take;
+    });
+    porProfesional[ap] = { partes: partes, faltante: Math.max(0, remaining) };
+  });
+  var snap = { total: total, divisor: divisor, share: share, orden: orden, porProfesional: porProfesional, ts: Date.now() };
+  var all;
+  try { all = JSON.parse(localStorage.getItem(GASTOS_A_PUB_KEY) || "{}"); } catch (e) { all = {}; }
+  all[periodo] = snap;
+  try { localStorage.setItem(GASTOS_A_PUB_KEY, JSON.stringify(all)); syncPush(GASTOS_A_PUB_KEY); } catch (e) {}
+  gastosARenderEstadoPublicado(periodo);
+  if (btn) {
+    btn.textContent = "✓ Publicado";
+    setTimeout(function() { btn.textContent = "📢 Publicar a profesionales"; }, 2500);
+  }
+}
+function gastosAEstadoPublicadoHtml(periodo) {
+  var snap = null;
+  try {
+    var all = JSON.parse(localStorage.getItem(GASTOS_A_PUB_KEY) || "{}");
+    snap = all[periodo] || null;
+  } catch (e) {}
+  if (!snap) {
+    return '<span style="font-size:.7rem;color:rgba(32,36,31,.4)">Nada publicado para ' + periodo + ' todavía.</span>';
+  }
+  var d = new Date(snap.ts || 0);
+  var f = isNaN(d.getTime()) ? '—'
+    : (('0'+d.getDate()).slice(-2) + '/' + ('0'+(d.getMonth()+1)).slice(-2) + ' ' + ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2));
+  var claves = (snap.orden || []).map(function(c) {
+    return c === "Cheque OSDE" ? "OSDE" : (c === "Acreditación CEM" ? "CEM" : "Cheque " + c);
+  }).join(' → ');
+  return '<span style="font-size:.7rem;color:#166534">✓ Publicado ' + f + ' · ' + fmt(snap.share) + ' p/prof · orden: ' + claves + '</span>';
+}
+function gastosARenderEstadoPublicado(periodo) {
+  var el = document.getElementById("gastosa-pub-estado");
+  if (el) el.innerHTML = gastosAEstadoPublicadoHtml(periodo);
+}
+
 function gastosANetoPorFecha(periodo) {
   var porClave = {};
   TODOS_SOCIOS_INVERSION.forEach(function(apellido) {
@@ -9091,9 +9238,12 @@ function gastosASectionHtml(periodo) {
     +   '</div>'
     + '</div>'
     + '<div id="gastosa-preview-wrap" style="margin-bottom:10px"></div>'
-    + '<div class="cpsm-btn-row">'
+    + '<div class="cpsm-btn-row" style="align-items:center;gap:10px;flex-wrap:wrap">'
     +   '<button class="cpsm-calc-btn" onclick="copiarTexto(window._gastosATexto || \'\', this)">📋 Copiar tabla (apellido + a transferir)</button>'
-    + '</div>';
+    +   '<button class="cpsm-calc-btn" style="background:#1f3a2e;color:#fff" onclick="gastosAPublicar(this)">📢 Publicar a profesionales</button>'
+    +   '<span id="gastosa-pub-estado">' + gastosAEstadoPublicadoHtml(periodo) + '</span>'
+    + '</div>'
+    + '<div style="font-size:.62rem;color:rgba(32,36,31,.4);padding:6px 2px 0 2px">Publicar congela la selección actual y le muestra a cada profesional, en el detalle de su mes, de qué acreditación sale su parte de Gastos A (cascada: OSDE → cheques viejo→nuevo → CEM). No cambia ningún total ni toca el Sheet.</div>';
 }
 
 // Selector de período propio de esta pantalla — los tabs Ene..Dic de arriba
@@ -10785,7 +10935,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-26-fondoOrdenColumnas';
+  var CURRENT_BUILD = '2026-08-27-gastosA-origen-publicado';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
