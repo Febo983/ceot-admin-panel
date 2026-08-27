@@ -3540,16 +3540,20 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     // Descuentos de este cheque, consolidados en una sola línea gris tenue
     // (antes eran 2-4 renglones rojos por cheque). El neto se muestra en la
     // misma línea del bruto: "$ bruto → $ neto".
+    // Color: descuentos en rojo, créditos (reintegro/exento) en verde. El bruto
+    // arranca en negro (.cl-amt) y el neto va en verde/rojo más abajo.
     var descPartes = [];
     var iibbLineAmt = 0, cpsmLineAmt = 0, prestamoLineAmt = 0;
     if (idx === 0 && prestamoIndCheq) {
       prestamoLineAmt = prestamoIndCheq;
-      descPartes.push(prestamoIndCheq > 0 ? 'préstamo −' + fmt(prestamoIndCheq) : 'reintegro +' + fmt(-prestamoIndCheq));
+      descPartes.push(prestamoIndCheq > 0
+        ? '<span style="color:#b13a2c">préstamo −' + fmt(prestamoIndCheq) + '</span>'
+        : '<span style="color:#166534">reintegro +' + fmt(-prestamoIndCheq) + '</span>');
     }
-    if (idx === 3 && iibbAmt) { iibbLineAmt = iibbAmt; descPartes.push('IIBB −' + fmt(iibbAmt)); }
+    if (idx === 3 && iibbAmt) { iibbLineAmt = iibbAmt; descPartes.push('<span style="color:#b13a2c">IIBB −' + fmt(iibbAmt) + '</span>'); }
     if (idx === 4) {
-      if (esLab2) descPartes.push('CPSM exento');
-      else if (cpsmAmt) { cpsmLineAmt = cpsmAmt; descPartes.push('CPSM −' + fmt(cpsmAmt)); }
+      if (esLab2) descPartes.push('<span style="color:#166534">CPSM exento</span>');
+      else if (cpsmAmt) { cpsmLineAmt = cpsmAmt; descPartes.push('<span style="color:#b13a2c">CPSM −' + fmt(cpsmAmt) + '</span>'); }
     }
     var retCheq = pctApCheq ? Math.round(monto * pctApCheq) : 0;
     if (retCheq) descPartes.push('<span style="color:#b13a2c">ret. ' + (pctApCheq*100) + '% −' + fmt(retCheq) + '</span>');
@@ -3658,9 +3662,8 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   }
   var netoFinal = total + osdeForNet + cmForNet - iibbAmt - cpsmAmt - gaAmt - apAmt - prestamoInd;
 
-  // IIBB — mismo bloque "Descuentos del período", color neutro (el rojo queda
-  // solo para Retención Ganancias, que es el descuento grande)
-  html += '<div class="cl-row cl-sep-row">'
+  // IIBB — bloque "Descuentos del período", en rojo como todo descuento
+  html += '<div class="cl-row cl-sep-row cl-neg">'
     + '<span class="cl-date">—</span>'
     + '<span class="cl-lbl">IIBB (3,5%)</span>'
     + '<span class="cl-amt">−' + fmt(iibbAmt) + '</span>'
@@ -3670,10 +3673,10 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     html += '<div class="cl-row cl-sep-row">'
       + '<span class="cl-date">—</span>'
       + '<span class="cl-lbl">CPSM (5%)</span>'
-      + '<span class="cl-amt" style="color:#16a34a;font-size:.75rem">EXENTO ✓</span>'
+      + '<span class="cl-amt" style="color:#166534;font-size:.75rem">EXENTO ✓</span>'
       + '</div>';
   } else {
-    html += '<div class="cl-row cl-sep-row">'
+    html += '<div class="cl-row cl-sep-row cl-neg">'
       + '<span class="cl-date">—</span>'
       + '<span class="cl-lbl">CPSM (5%)</span>'
       + '<span class="cl-amt">−' + fmt(cpsmAmt) + '</span>'
@@ -10942,7 +10945,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-27-retencion-roja-neto-verde';
+  var CURRENT_BUILD = '2026-08-27-color-consistente-desc-rojo';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
