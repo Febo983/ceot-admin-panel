@@ -210,7 +210,7 @@ body {
   text-transform: uppercase; letter-spacing: .2px; margin-left: 4px;
   border: 1px solid #e5e7eb;
 }
-.tb-act  { background: white; color: #166534; border-color: #bbf7d0; }
+.tb-act  { background: white; color: #16a34a; border-color: #bbf7d0; }
 .tb-ind  { background: white; color: #374151; border-color: #e5e7eb; }
 .tb-ant  { background: white; color: #9ca3af; border-color: #e5e7eb; }
 
@@ -266,7 +266,7 @@ body {
 }
 .chtag-gray, .chtag-green, .chtag-blue,
 .chtag-violet, .chtag-teal { background: #e5e7eb; color: #374151; }
-.ch.total-row .chtag { background: #dcfce7; color: #166534; }
+.ch.total-row .chtag { background: #dcfce7; color: #16a34a; }
 
 .ch-items { display: flex; flex-wrap: wrap; gap: 5px; }
 .chi {
@@ -279,7 +279,7 @@ body {
 .chi-val  { font-size: 0.94rem; font-weight: 700; color: #1a1a1a; }
 .chi-val.ind-mayo, .chi-val.ind-junio,
 .chi-val.ind-julio, .chi-val.ind-agosto { color: #1a1a1a; font-size: 0.98rem; }
-.chi-val.total-v   { color: #166534; }
+.chi-val.total-v   { color: #16a34a; }
 
 .nota-pill {
   background: #f9fafb; border: 1px solid #e5e7eb;
@@ -361,7 +361,7 @@ body {
   transition: background .15s ease;
 }
 .mp-mov-row:hover { background: rgba(201,147,58,.10); }
-.mp-mov-pos { color: #166534; font-weight: 600; }
+.mp-mov-pos { color: #16a34a; font-weight: 600; }
 .mp-mov-neg { color: #dc2626; font-weight: 600; }
 .mp-link-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 9px; }
 .mp-link-card {
@@ -424,6 +424,14 @@ body {
   pointer-events: none; opacity: 1; transition: opacity .15s;
 }
 .home-mes-strip-wrap.co-at-end::after { opacity: 0; }
+/* Fade de scroll horizontal reutilizable (Home admin — tiras de meses / chips) */
+.adm-sf-wrap { position: relative; }
+.adm-sf-wrap::after {
+  content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 22px;
+  background: linear-gradient(to right, rgba(255,250,241,0), #fffaf1);
+  pointer-events: none; opacity: 1; transition: opacity .15s;
+}
+.adm-sf-wrap.co-at-end::after { opacity: 0; }
 .home-mes-strip {
   display: flex;
   gap: 5px;
@@ -920,9 +928,9 @@ body {
 .deb-btn-pri { background:#1f3a2e; color:#fff; border-color:#1f3a2e; }
 .deb-btn-pri:hover { opacity:.82; }
 .deb-btn-pri.action-done { background:#c9933a !important; border-color:#c9933a !important; color:#20241f !important; transform:scale(1.015); }
-.deb-saved-msg { font-size:0.72rem; color:#166534; display:none; }
+.deb-saved-msg { font-size:0.72rem; color:#16a34a; display:none; }
 /* Marcado persistente (📋 copiar / guardar / descargar) — queda en verde hasta que se vuelve a clickear */
-.action-marked { background:#166534 !important; border-color:#166534 !important; color:#fff !important; }
+.action-marked { background:#16a34a !important; border-color:#16a34a !important; color:#fff !important; }
 .action-marked::after { content:" ✓"; }
 .deb-table-wrap { overflow-x:auto; }
 .deb-table { width:100%; border-collapse:collapse; font-size:0.74rem; }
@@ -996,9 +1004,9 @@ body {
   border-top: 1px solid rgba(32,36,31,.3); border-bottom: none;
 }
 .adm-neg { color: #b13a2c !important; }
-.adm-pos { color: #166534 !important; }
+.adm-pos { color: #16a34a !important; }
 .adm-neto { color: #20241f !important; font-weight: 800 !important; }
-.adm-exento { font-size: 0.59rem; color: #166534; font-weight: 700; background: rgba(74,222,128,.12); padding: 1px 5px; border-radius: 3px; }
+.adm-exento { font-size: 0.59rem; color: #16a34a; font-weight: 700; background: rgba(74,222,128,.12); padding: 1px 5px; border-radius: 3px; }
 .adm-pend { color: rgba(32,36,31,.35); font-weight: 400; }
 .adm-est-badge { font-size: 0.56rem; background: rgba(31,58,46,.18); color: #1f3a2e; padding: 1px 5px; border-radius: 3px; font-weight: 700; vertical-align: middle; }
 .adm-footer { text-align: center; font-size: 0.63rem; color: rgba(32,36,31,.3); padding: 6px 0 2px; border-top: 1px solid rgba(32,36,31,.1); margin-top: 4px; }
@@ -1104,7 +1112,7 @@ body {
 .imp-colon-input { padding: 7px 9px; border: 1px solid rgba(32,36,31,.15); border-radius: 6px; font-size: 0.84rem; font-family: inherit; width: 100%; background: rgba(32,36,31,.05); color: #20241f; }
 .imp-colon-fecha { padding: 7px 9px; border: 1px solid rgba(32,36,31,.15); border-radius: 6px; font-size: 0.84rem; font-family: inherit; width: 100%; background: rgba(32,36,31,.05); color: #20241f; }
 .imp-sheet-msg { text-align: center; font-size: 0.82rem; color: rgba(32,36,31,.5); padding: 8px 0 2px; min-height: 28px; }
-.imp-sheet-msg.imp-ok  { color: #166534; }
+.imp-sheet-msg.imp-ok  { color: #16a34a; }
 .imp-sheet-msg.imp-err { color: #b13a2c; }
 .imp-undo-area { display:none; text-align:center; padding: 4px 0 2px; }
 .imp-btn-undo {
@@ -1149,7 +1157,7 @@ body { background: var(--iv0); color: var(--ink); }
 .chi-lbl    { color: rgba(32,36,31,0.38); }
 .chi-val    { color: var(--ink); }
 .chi-val.ind-mayo,.chi-val.ind-junio,.chi-val.ind-julio,.chi-val.ind-agosto { color: var(--ink); }
-.chi-val.total-v { color: #166534; }
+.chi-val.total-v { color: #16a34a; }
 .mp-label   { color: rgba(32,36,31,0.4); }
 .mp-big     { color: var(--ink); }
 .mp-sub     { color: rgba(32,36,31,0.3); }
@@ -1162,7 +1170,7 @@ body { background: var(--iv0); color: var(--ink); }
 .mp-link-card-sub   { color: rgba(32,36,31,0.35); }
 .mp-link-more { color: rgba(32,36,31,0.5); border-color: var(--iv3); }
 .mp-mov-row   { color: rgba(32,36,31,0.6); }
-.mp-mov-pos   { color: #166534; }
+.mp-mov-pos   { color: #16a34a; }
 .mp-mov-neg   { color: #b13a2c; }
 .nota-pill    { color: rgba(32,36,31,0.6); }
 .sin-datos    { color: rgba(32,36,31,0.3); }
@@ -1270,7 +1278,7 @@ body { background: var(--iv0); color: var(--ink); }
 .chtag,.chtag-gray,.chtag-green,.chtag-blue,.chtag-violet,.chtag-teal {
   background: rgba(32,36,31,0.06) !important; border-color: rgba(32,36,31,0.15) !important; border-radius: 0; color: #20241f !important;
 }
-.ch.total-row .chtag { background: #eef2ea !important; color: #166534 !important; border-color: rgba(31,58,46,0.3) !important; }
+.ch.total-row .chtag { background: #eef2ea !important; color: #16a34a !important; border-color: rgba(31,58,46,0.3) !important; }
 
 /* ── CHI ITEMS ── */
 .chi { background: rgba(32,36,31,0.04) !important; border-color: rgba(32,36,31,0.09) !important; border-radius: 0; }
@@ -1308,7 +1316,7 @@ body { background: var(--iv0); color: var(--ink); }
 
 /* ── BADGES ── */
 .tbadge { border-radius: 0; }
-.tb-act { background: rgba(32,36,31,0.12) !important; color: #166534 !important; border-color: rgba(77,217,167,0.25) !important; }
+.tb-act { background: rgba(32,36,31,0.12) !important; color: #16a34a !important; border-color: rgba(77,217,167,0.25) !important; }
 .tb-ind { background: rgba(32,36,31,0.06) !important; }
 .tb-ant { background: rgba(32,36,31,0.04) !important; }
 
@@ -1333,7 +1341,7 @@ body { background: var(--iv0); color: var(--ink); }
 .sb-persona-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
 .sb-persona-nombre { font-weight:700; font-size:0.9rem; color:#20241f; }
 .sb-persona-legajo { font-size:0.72rem; color:rgba(32,36,31,.4); }
-.sb-persona-total { font-weight:700; font-size:0.95rem; color:#166534; }
+.sb-persona-total { font-weight:700; font-size:0.95rem; color:#16a34a; }
 .sb-tag { font-size:0.68rem; background:rgba(32,36,31,.1); border-radius:4px; padding:2px 6px; margin-left:6px; color:rgba(32,36,31,.6); }
 .sb-calcular-btn { background:#1f3a2e; color:#fff; border:none; border-radius:8px; padding:10px 24px; font-weight:700; font-size:0.9rem; cursor:pointer; margin-top:4px; transition:background .25s ease, transform .2s ease; }
 .sb-calcular-btn:hover { opacity:.82; }
@@ -1342,7 +1350,7 @@ body { background: var(--iv0); color: var(--ink); }
 .sb-print-btn:hover { background:rgba(32,36,31,.15); }
 .sb-print-btn.action-done { background:rgba(201,147,58,.16); border-color:#c9933a; color:#92610f; }
 .sb-print-all-btn { background:#22c55e; color:#fff; border:none; border-radius:6px; padding:8px 18px; font-size:0.85rem; font-weight:700; cursor:pointer; margin-bottom:16px; transition:background .25s ease, transform .2s ease; }
-.sb-print-all-btn:hover { background:#15803d; }
+.sb-print-all-btn:hover { background:#16a34a; }
 .sb-print-all-btn.action-done { background:#c9933a; transform:scale(1.015); }
 .sb-toggle { display:flex; align-items:center; gap:8px; font-size:0.8rem; color:rgba(32,36,31,.6); cursor:pointer; }
 .sb-toggle input[type=checkbox] { cursor:pointer; }
@@ -1361,7 +1369,7 @@ body { background: var(--iv0); color: var(--ink); }
 .cpsm-tabla tr:last-child td { border-bottom:none; }
 .cpsm-tabla .cpsm-input { width:100%; border:1px solid rgba(32,36,31,.15); border-radius:5px; padding:5px 7px; font-size:0.85rem; text-align:right; color:#20241f; background:rgba(32,36,31,.05); }
 .cpsm-tabla .cpsm-input:focus { border-color:#1f3a2e; outline:none; background:rgba(32,36,31,.08); }
-.cpsm-result { font-weight:700; color:#166534; min-width:70px; display:inline-block; }
+.cpsm-result { font-weight:700; color:#16a34a; min-width:70px; display:inline-block; }
 .cpsm-exento { font-size:0.68rem; color:rgba(32,36,31,.4); }
 .cpsm-total-row td { font-weight:700; background:rgba(32,36,31,.08); border-top:1px solid rgba(32,36,31,.3) !important; font-size:0.88rem; color:#20241f; }
 .cpsm-btn-row { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
@@ -1369,7 +1377,7 @@ body { background: var(--iv0); color: var(--ink); }
 .cpsm-calc-btn:hover { opacity:.82; }
 .cpsm-calc-btn.action-done { background:#c9933a; opacity:1; transform:scale(1.015); }
 .cpsm-dl-btn { background:#22c55e; color:#fff; border:none; border-radius:7px; padding:9px 20px; font-weight:700; font-size:0.88rem; cursor:pointer; display:none; transition:background .25s ease, transform .2s ease; }
-.cpsm-dl-btn:hover { background:#15803d; }
+.cpsm-dl-btn:hover { background:#16a34a; }
 .cpsm-dl-btn.action-done { background:#c9933a; transform:scale(1.015); }
 .cpsm-fuente-badge { font-size:0.7rem; background:rgba(32,36,31,.1); border-radius:4px; padding:3px 8px; color:rgba(32,36,31,.55); }
 #cpsm-mes-liq option { background:#ffffff; color:#20241f; }
@@ -3307,7 +3315,7 @@ function retencionExtraAnotHtml(monto, pct) {
   if (!pct || !monto) return '';
   var ret = Math.round(monto * pct);
   var neto = monto - ret;
-  var netoTxt = '<span style="color:' + (neto < 0 ? '#b13a2c' : '#166534') + '">' + fmt(neto) + '</span>';
+  var netoTxt = '<span style="color:' + (neto < 0 ? '#b13a2c' : '#16a34a') + '">' + fmt(neto) + '</span>';
   return ' <span style="color:rgba(32,36,31,.4);font-weight:400">→</span> ' + netoTxt
     + '<div style="font-size:.62rem;font-weight:400;color:#b13a2c;margin-top:1px">ret. ' + (pct*100) + '% −' + fmt(ret) + '</div>';
 }
@@ -3548,11 +3556,11 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
       prestamoLineAmt = prestamoIndCheq;
       descPartes.push(prestamoIndCheq > 0
         ? '<span style="color:#b13a2c">préstamo −' + fmt(prestamoIndCheq) + '</span>'
-        : '<span style="color:#166534">reintegro +' + fmt(-prestamoIndCheq) + '</span>');
+        : '<span style="color:#16a34a">reintegro +' + fmt(-prestamoIndCheq) + '</span>');
     }
     if (idx === 3 && iibbAmt) { iibbLineAmt = iibbAmt; descPartes.push('<span style="color:#b13a2c">IIBB −' + fmt(iibbAmt) + '</span>'); }
     if (idx === 4) {
-      if (esLab2) descPartes.push('<span style="color:#166534">CPSM exento</span>');
+      if (esLab2) descPartes.push('<span style="color:#16a34a">CPSM exento</span>');
       else if (cpsmAmt) { cpsmLineAmt = cpsmAmt; descPartes.push('<span style="color:#b13a2c">CPSM −' + fmt(cpsmAmt) + '</span>'); }
     }
     var retCheq = pctApCheq ? Math.round(monto * pctApCheq) : 0;
@@ -3563,7 +3571,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     if (tieneDesc) {
       var netoCheque = monto - (idx === 0 ? prestamoIndCheq : 0) - retCheq - iibbLineAmt - cpsmLineAmt;
       amtHtml += ' <span style="color:rgba(32,36,31,.4);font-weight:400">→</span> '
-        + '<span style="color:' + (netoCheque < 0 ? '#b13a2c' : '#166534') + '">' + fmt(netoCheque) + '</span>'
+        + '<span style="color:' + (netoCheque < 0 ? '#b13a2c' : '#16a34a') + '">' + fmt(netoCheque) + '</span>'
         + '<div style="font-size:.62rem;font-weight:400;color:rgba(32,36,31,.45);margin-top:1px">' + descPartes.join('  ·  ') + '</div>';
     }
     html += '<div class="cl-row' + (acred ? ' cl-acreditado' : ' cl-pendiente') + '">'
@@ -3622,7 +3630,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     html += '<div class="cheque-list"><div class="cl-row cl-sep-row' + (prestamoInd > 0 ? ' cl-neg' : '') + '">'
       + '<span class="cl-date">—</span>'
       + '<span class="cl-lbl">Préstamo Casa <span style="font-size:.68rem;color:rgba(32,36,31,.35);font-weight:400">' + (prestamoInd > 0 ? 'cuota' : 'reintegro') + ' ' + prestamoCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + '</span></span>'
-      + '<span class="cl-amt"' + (prestamoInd < 0 ? ' style="color:#166534"' : '') + '>' + (prestamoInd > 0 ? '−' + fmt(prestamoInd) : '+' + fmt(-prestamoInd)) + '</span>'
+      + '<span class="cl-amt"' + (prestamoInd < 0 ? ' style="color:#16a34a"' : '') + '>' + (prestamoInd > 0 ? '−' + fmt(prestamoInd) : '+' + fmt(-prestamoInd)) + '</span>'
       + '</div></div>';
   }
 
@@ -3673,7 +3681,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     html += '<div class="cl-row cl-sep-row">'
       + '<span class="cl-date">—</span>'
       + '<span class="cl-lbl">CPSM (5%)</span>'
-      + '<span class="cl-amt" style="color:#166534;font-size:.75rem">EXENTO ✓</span>'
+      + '<span class="cl-amt" style="color:#16a34a;font-size:.75rem">EXENTO ✓</span>'
       + '</div>';
   } else {
     html += '<div class="cl-row cl-sep-row cl-neg">'
@@ -3685,8 +3693,8 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   html += '</div>';
 
   // ── NETO total ───────────────────────────────────────────
-  var netoFinalColor = netoFinal < 0 ? '#b13a2c' : '#166534';
-  var netoFinalBg     = netoFinal < 0 ? 'rgba(177,58,44,0.08)' : 'rgba(22,101,52,0.08)';
+  var netoFinalColor = netoFinal < 0 ? '#b13a2c' : '#16a34a';
+  var netoFinalBg     = netoFinal < 0 ? 'rgba(177,58,44,0.08)' : 'rgba(22,163,74,0.08)';
   html += '<div class="hist-neto-line" style="margin:8px 0 4px;padding:10px 12px;background:' + netoFinalBg + ';border-radius:0;border-left:3px solid ' + netoFinalColor + '">'
     + '<span style="font-weight:700;color:' + netoFinalColor + ';letter-spacing:.05em">NETO ESTIMADO</span>'
     + '<span style="font-weight:700;font-size:1.1rem;color:' + netoFinalColor + '">' + fmt(netoFinal) + '</span>'
@@ -3985,7 +3993,7 @@ function renderHistorial(doctor) {
     var prestamoHtml = c.prestamoCasa > 0
       ? '<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val neg">−' + fmt(c.prestamoCasa) + '</span></div>'
       : c.prestamoCasa < 0
-      ? '<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val" style="color:#166534">+' + fmt(-c.prestamoCasa) + '</span></div>'
+      ? '<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val" style="color:#16a34a">+' + fmt(-c.prestamoCasa) + '</span></div>'
       : '';
 
     var aporteHtml = '';
@@ -4186,11 +4194,11 @@ function renderMiPanel(doctor) {
       if (el2067) {
         var v2067 = typeof d.casa2067 === 'number' ? d.casa2067 : parseFloat(String(d.casa2067).replace(/[$\.]/g,'').replace(',','.'));
         el2067.textContent = fmt(v2067);
-        el2067.style.color = v2067 >= 0 ? '#166534' : '#dc2626';
+        el2067.style.color = v2067 >= 0 ? '#16a34a' : '#dc2626';
       }
       if (elGerling) {
         elGerling.textContent = fmt(d.gerling);
-        elGerling.style.color = d.gerling >= 0 ? '#166534' : '#dc2626';
+        elGerling.style.color = d.gerling >= 0 ? '#16a34a' : '#dc2626';
       }
       marcarEndpointStatus("cajas", true);
     })
@@ -4348,14 +4356,15 @@ function admHomeOrdenarPorUso(lista, keyFn) {
     .map(function(x) { return x.item; });
 }
 
+// La vista clásica quedó retirada (Marcelo solo usa la retro). Se fuerza retro
+// siempre; el código de la rama clásica sigue en el archivo pero es inalcanzable.
 function admHomeCargarTema() {
-  try { admHomeTheme = localStorage.getItem("ceot_home_theme") || "clasico"; }
-  catch (e) { admHomeTheme = "clasico"; }
+  admHomeTheme = "retro";
+  try { localStorage.setItem("ceot_home_theme", "retro"); } catch (e) {}
 }
 
 function admHomeToggleTema() {
-  admHomeTheme = admHomeTheme === "retro" ? "clasico" : "retro";
-  try { localStorage.setItem("ceot_home_theme", admHomeTheme); } catch (e) {}
+  admHomeTheme = "retro";
   renderAdmHome();
 }
 
@@ -4518,7 +4527,7 @@ function admHomeRenderResults() {
   }), function(a) { return "acc:" + a.id; });
 
   var flatMode = !!q || homeSearchCat !== "Todos";
-  var html = '<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;scrollbar-width:none">' + chips + '</div>';
+  var html = '<div class="adm-sf-wrap" id="admCatChipsWrap" style="margin-bottom:12px"><div id="admCatChipsScroll" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">' + chips + '</div></div>';
 
   if (homeEditMode) {
     html += '<div style="font-size:0.68rem;color:rgba(31,58,46,.85);margin-bottom:12px;padding:8px 10px;background:rgba(31,58,46,.08);border:1px solid rgba(31,58,46,.25);border-radius:8px">✏ Modo edición: tocá cualquier tile para renombrarlo' + (flatMode ? '' : ' o eliminarlo') + '.</div>';
@@ -4565,6 +4574,7 @@ function admHomeRenderResults() {
   }
 
   root.innerHTML = html;
+  coInitScrollFade("admCatChipsScroll", "admCatChipsWrap");
   if (window.lucide) lucide.createIcons();
 }
 
@@ -4615,7 +4625,7 @@ function renderAdmHome() {
   var statNetoColor = retro ? '#1c2b3a' : '#20241f';
   var statNeto = totalMes ? ('<span style="font-size:1.2rem;font-weight:800;color:' + statNetoColor + '">' + fmt(totalMes) + '</span><div style="font-size:9px;color:rgba(29,158,117,0.85);margin-top:2px">total socios · ' + mesAct + '</div>') : ('<span style="font-size:1.2rem;color:rgba(32,36,31,0.3)">—</span>');
 
-  var toggleBtn = '<button onclick="admHomeToggleTema()" style="flex-shrink:0;background:' + (retro ? '#fffaf1' : 'rgba(32,36,31,.06)') + ';border:' + (retro ? '2px solid #0f1c28' : '1px solid rgba(32,36,31,.12)') + ';color:' + (retro ? '#1c2b3a' : 'rgba(32,36,31,.6)') + ';font-size:0.68rem;font-weight:700;padding:0 12px;border-radius:10px;cursor:pointer;font-family:inherit;height:41px">' + (retro ? '<i data-lucide="file-text" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px" stroke-width="2"></i>Vista clásica' : '<i data-lucide="gamepad-2" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px" stroke-width="2"></i>Vista retro') + '</button>';
+  var toggleBtn = '';  // toggle de tema retirado — solo queda la vista retro
 
   var html;
 
@@ -4645,7 +4655,7 @@ function renderAdmHome() {
       +   '<div style="font-size:0.72rem;color:#5b6b7a">' + saludo + ', Marcelo</div>'
       + '</div>'
 
-      + '<div style="display:flex;gap:5px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none">' + mesStrip + '</div>'
+      + '<div class="adm-sf-wrap" id="admMesStripWrap" style="margin-bottom:14px"><div id="admMesStripScroll" style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none">' + mesStrip + '</div></div>'
 
       + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'
       +   '<div style="flex:1;display:flex;align-items:center;gap:10px;background:#fffaf1;border:2px solid #0f1c28;border-radius:14px;padding:10px 14px">'
@@ -4712,6 +4722,7 @@ function renderAdmHome() {
 
   document.getElementById("adm-content").innerHTML = html;
   admHomeRenderResults();
+  coInitScrollFade("admMesStripScroll", "admMesStripWrap");
   if (retro) initAdmHomeBg(); else stopAdmHomeBg();
 }
 
@@ -4964,6 +4975,18 @@ function renderPendientes() {
       ? '<td style="text-align:center;color:#16a34a;font-weight:700">' + (txt||'✓') + '</td>'
       : '<td style="text-align:center;color:#d1d5db">·</td>';
   }
+  // Celda de 3 estados para Colón/OSDE/CEM: cargado completo / parcial (faltan
+  // profesionales) / nada. El parcial es el que antes pasaba silencioso — la
+  // celda daba ✓ aunque faltara la mitad de los profesionales.
+  function cel3(cargados, ref) {
+    if (!cargados) return '<td style="text-align:center;color:#d1d5db">·</td>';
+    if (ref && cargados < ref) return '<td style="text-align:center;color:#92610f;font-weight:700" title="Parcial: ' + cargados + '/' + ref + ' profesionales">◐</td>';
+    return '<td style="text-align:center;color:#16a34a;font-weight:700">✓</td>';
+  }
+  function contarMap(m) {
+    if (!m) return 0;
+    return Object.keys(m).filter(function(k){ return m[k]; }).length;
+  }
 
   var html = '<div class="adm-sec-title">Estado de carga por período</div>';
   html += '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>';
@@ -4971,22 +4994,26 @@ function renderPendientes() {
 
   periodos.forEach(function(pid) {
     var raw        = rawMap[pid];
-    var tieneColon = raw && raw.length > 0;
+    var colonN     = raw ? raw.filter(function(r){ return (r.f1||r.f2||r.f3||r.f4||r.f5); }).length : 0;
+    var ref        = colonN || 10;   // universo de referencia del mes (los que tienen cheque Colón)
     var pe         = PERIOD_EXTRAS[pid];
-    var tieneOsde  = pe && pe.osde && !pe.osde.pendiente && Object.keys(pe.osde.m||{}).length > 0;
-    var tieneCM    = pe && pe.cm   && !pe.cm.pendiente   && Object.keys(pe.cm.m||{}).length > 0;
+    var osdeN      = (pe && pe.osde && !pe.osde.pendiente) ? contarMap(pe.osde.m) : 0;
+    var cmN        = (pe && pe.cm   && !pe.cm.pendiente)   ? contarMap(pe.cm.m)   : 0;
+    var tieneColon = colonN > 0;
+    var tieneOsde  = osdeN > 0;
+    var tieneCM    = cmN > 0;
     var tieneIIBB  = PERIODO_IIBB[pid] !== null;
     var tieneCPSM  = PERIODO_CPSM[pid] !== null;
     var tieneGA    = GASTOS_A[pid] != null;
-    var todo       = tieneColon && tieneOsde && tieneCM && tieneIIBB && tieneCPSM && tieneGA;
+    var todo       = tieneColon && colonN >= ref && osdeN >= ref && cmN >= ref && tieneIIBB && tieneCPSM && tieneGA;
     html += '<tr' + (todo ? ' style="background:rgba(74,222,128,.08)"' : '') + '>';
     html += '<td style="font-weight:700">' + labels[pid] + ' 2026</td>';
-    html += cel(tieneColon) + cel(tieneOsde) + cel(tieneCM) + cel(tieneIIBB) + cel(tieneCPSM) + cel(tieneGA);
+    html += cel3(colonN, ref) + cel3(osdeN, ref) + cel3(cmN, ref) + cel(tieneIIBB) + cel(tieneCPSM) + cel(tieneGA);
     html += '</tr>';
   });
 
   html += '</tbody></table></div>';
-  html += '<div style="font-size:0.7rem;color:rgba(32,36,31,.4);margin-top:10px">✓ datos cargados &nbsp;·&nbsp; · pendiente</div>';
+  html += '<div style="font-size:0.7rem;color:rgba(32,36,31,.4);margin-top:10px">✓ completo &nbsp;·&nbsp; <span style="color:#92610f">◐</span> parcial (faltan profesionales) &nbsp;·&nbsp; · sin cargar</div>';
   document.getElementById("adm-content").innerHTML = html;
 }
 
@@ -5029,7 +5056,7 @@ var LIC_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwAt8sO7iFOQPUL63rah
 var LIC_TYPE_STYLE = {
   feriado:    { bg:'rgba(177,58,44,.10)',  fg:'#b13a2c', lbl:'Feriado' },
   licencia:   { bg:'rgba(146,97,15,.10)',  fg:'#92610f', lbl:'Licencia' },
-  vacaciones: { bg:'rgba(22,101,52,.10)',  fg:'#166534', lbl:'Vacaciones' },
+  vacaciones: { bg:'rgba(22,163,74,.10)',  fg:'#16a34a', lbl:'Vacaciones' },
   cumple:     { bg:'rgba(109,40,217,.10)', fg:'#6d28d9', lbl:'Cumpleaños' },
   mudanza:    { bg:'rgba(29,78,216,.10)',  fg:'#1d4ed8', lbl:'Mudanza' }
 };
@@ -5267,7 +5294,7 @@ function procesarTransferencias() {
     cards += '<div id="tf-card-' + i + '" style="margin-bottom:10px;padding:12px;background:var(--iv1);border-left:3px solid var(--iv3)">';
     cards += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
     cards += '<span style="font-size:.85rem;font-weight:700;color:var(--ink)">' + r.nombre + '</span>';
-    cards += '<span style="font-size:.85rem;font-weight:700;color:#166534">' + fmtN(r.trans) + '</span>';
+    cards += '<span style="font-size:.85rem;font-weight:700;color:#16a34a">' + fmtN(r.trans) + '</span>';
     cards += '</div>';
     cards += '<div style="' + rs + '"><span>Cheque Colón ' + c1lbl + '</span><span>' + fmtN(r.c1) + '</span></div>';
     cards += '<div style="' + rs + '"><span>2do cheque OSDE</span><span>' + fmtN(r.osde) + '</span></div>';
@@ -6311,13 +6338,13 @@ function renderAdminPanel(periodo) {
     html += '<div class="adm-br-row" style="background:rgba(177,58,44,.14)"><span class="adm-br-lbl">Préstamo Casa</span><span class="adm-br-val" style="color:#b13a2c">− ' + fmt(totPrestamo) + '</span></div>';
   }
   if (tienePrestamo && totPrestamoCredito > 0) {
-    html += '<div class="adm-br-row" style="background:rgba(22,163,74,.12)"><span class="adm-br-lbl">Préstamo Casa (reintegro)</span><span class="adm-br-val" style="color:#166534">+ ' + fmt(totPrestamoCredito) + '</span></div>';
+    html += '<div class="adm-br-row" style="background:rgba(22,163,74,.12)"><span class="adm-br-lbl">Préstamo Casa (reintegro)</span><span class="adm-br-val" style="color:#16a34a">+ ' + fmt(totPrestamoCredito) + '</span></div>';
   }
   if (tieneAporte && totAporte > 0) {
     html += '<div class="adm-br-row" style="background:rgba(124,58,237,.14)"><span class="adm-br-lbl">Retención Ganancias</span><span class="adm-br-val" style="color:#6d28d9">− ' + fmt(totAporte) + '</span></div>';
   }
   if (totCM > 0) {
-    html += '<div class="adm-br-row" style="background:rgba(22,163,74,.12)"><span class="adm-br-lbl">Centro Médico (ingreso)</span><span class="adm-br-val" style="color:#166534">+ ' + fmt(totCM) + '</span></div>';
+    html += '<div class="adm-br-row" style="background:rgba(22,163,74,.12)"><span class="adm-br-lbl">Centro Médico (ingreso)</span><span class="adm-br-val" style="color:#16a34a">+ ' + fmt(totCM) + '</span></div>';
   }
   html += '</div>';
   if (totGA > 0) {
@@ -6368,7 +6395,7 @@ function renderAdminPanel(periodo) {
     if (tienePrestamo && c.prestamoCasa > 0) {
       prestamoAnot = ' <span style="font-size:.58rem;color:#b13a2c">(-' + fmt(c.prestamoCasa) + ' · cuota ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span>';
     } else if (tienePrestamo && c.prestamoCasa < 0) {
-      prestamoAnot = ' <span style="font-size:.58rem;color:#166534">(+' + fmt(-c.prestamoCasa) + ' · reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span>';
+      prestamoAnot = ' <span style="font-size:.58rem;color:#16a34a">(+' + fmt(-c.prestamoCasa) + ' · reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span>';
     }
     html += '<td>' + fmt(c.colonBruto) + prestamoAnot + '</td>';
     html += '<td>' + (c.osdePendiente
@@ -6409,7 +6436,7 @@ function renderAdminPanel(periodo) {
   if (tienePrestamo && totPrestamoNeto !== 0) {
     totPrestamoAnot = totPrestamoNeto > 0
       ? ' <span style="font-size:.58rem;color:#b13a2c">(-' + fmt(totPrestamoNeto) + ' préstamo neto)</span>'
-      : ' <span style="font-size:.58rem;color:#166534">(+' + fmt(-totPrestamoNeto) + ' préstamo neto)</span>';
+      : ' <span style="font-size:.58rem;color:#16a34a">(+' + fmt(-totPrestamoNeto) + ' préstamo neto)</span>';
   }
   html += '<td>' + fmt(totColon) + totPrestamoAnot + '</td>';
   html += '<td>' + (hayOsdePend ? '<span class="adm-pend">pend</span>' : fmt(totOsde)) + '</td>';
@@ -6456,7 +6483,7 @@ function admAbrirVentanaImpresion(titulo, innerHtml) {
     + '.adm-table th{padding:8px 9px;text-align:right;font-weight:700;text-transform:uppercase;font-size:9px;border-bottom:1px solid #ccc;background:#f0efe9}'
     + '.adm-table th:first-child,.adm-table td:first-child{text-align:left}'
     + '.adm-table td{padding:6px 9px;text-align:right;border-bottom:1px solid #eee}'
-    + '.adm-neg{color:#b13a2c}.adm-pos{color:#166534}.adm-exento{color:#16a34a;font-weight:700}'
+    + '.adm-neg{color:#b13a2c}.adm-pos{color:#16a34a}.adm-exento{color:#16a34a;font-weight:700}'
     + '.adm-pend{color:#999;font-size:10px}.adm-est-badge{background:#fde68a;color:#78350f;font-size:8px;padding:1px 5px;border-radius:4px;margin-left:4px}'
     + '.adm-totals td{font-weight:800;border-top:2px solid #111}'
     + '.no-print{display:none!important}';
@@ -7149,7 +7176,7 @@ async function procesarArchivosImport() {
     if (prevTfoot) prevTfoot.remove();
     var tfootRows = '';
     if (artTotal > 0) {
-      tfootRows += '<tr style="background:#f0fdf4"><td colspan="4" style="padding:6px 10px;font-size:0.7rem;color:#15803d;font-weight:600;">' +
+      tfootRows += '<tr style="background:#f0fdf4"><td colspan="4" style="padding:6px 10px;font-size:0.7rem;color:#16a34a;font-weight:600;">' +
         'ART incluida: ' + fmtImp(artTotal) + ' → DEG 35% + TRI 35% + MAZ 30%</td></tr>';
     }
     if (gasEqAjenoOsde || gasEqAjenoDif) {
@@ -8837,7 +8864,7 @@ function renderAporteCeot() {
         ? '<td style="font-weight:700">' + fmt(totPeriodo) + '</td>'
         : '<td><span class="adm-pend" style="font-size:.68rem">pendiente</span></td>';
       var estadoCell = estaCerrado
-        ? '<td><span style="font-size:.68rem;color:#166534;font-weight:700;white-space:nowrap">🔒 Cerrado</span> <button onclick="reabrirMesAporteCeot(\'' + p + '\')" style="background:none;border:none;color:rgba(32,36,31,.4);font-size:.68rem;text-decoration:underline;cursor:pointer;font-family:inherit;padding:0;margin-left:4px">reabrir</button></td>'
+        ? '<td><span style="font-size:.68rem;color:#16a34a;font-weight:700;white-space:nowrap">🔒 Cerrado</span> <button onclick="reabrirMesAporteCeot(\'' + p + '\')" style="background:none;border:none;color:rgba(32,36,31,.4);font-size:.68rem;text-decoration:underline;cursor:pointer;font-family:inherit;padding:0;margin-left:4px">reabrir</button></td>'
         : (hayDatoPeriodo
             ? '<td><button onclick="cerrarMesAporteCeot(\'' + p + '\')" style="background:rgba(32,36,31,.06);border:1px solid rgba(32,36,31,.2);color:rgba(32,36,31,.7);font-size:.68rem;padding:3px 8px;border-radius:5px;cursor:pointer;font-family:inherit;white-space:nowrap">Cerrar mes</button></td>'
             : '<td></td>');
@@ -9098,7 +9125,7 @@ function gastosAEstadoPublicadoHtml(periodo) {
   var claves = (snap.orden || []).map(function(c) {
     return c === "Cheque OSDE" ? "OSDE" : (c === "Acreditación CEM" ? "CEM" : "Cheque " + c);
   }).join(' → ');
-  return '<span style="font-size:.7rem;color:#166534">✓ Publicado ' + f + ' · ' + fmt(snap.share) + ' p/prof · orden: ' + claves + '</span>';
+  return '<span style="font-size:.7rem;color:#16a34a">✓ Publicado ' + f + ' · ' + fmt(snap.share) + ' p/prof · orden: ' + claves + '</span>';
 }
 function gastosARenderEstadoPublicado(periodo) {
   var el = document.getElementById("gastosa-pub-estado");
@@ -9697,7 +9724,7 @@ function transfFamCeldaHtml(key, netoCheque) {
       +   '<div style="font-weight:600">' + escAttr(e.nombre) + ' — ' + fmt(e.importe) + '</div>'
       +   (linea2 ? '<div style="font-size:.6rem;color:rgba(32,36,31,.55)">' + escAttr(linea2) + btnCopiarCbu + '</div>' : '')
       +   '<div style="margin-top:2px">'
-      +     '<a href="javascript:void(0)" onclick="transfFamToggleTransferido(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;text-decoration:underline;margin-right:8px;' + (hecho ? 'color:#166534;font-weight:700' : 'color:#1f3a2e') + '">' + (hecho ? '✓ transferido' : 'marcar transferido') + '</a>'
+      +     '<a href="javascript:void(0)" onclick="transfFamToggleTransferido(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;text-decoration:underline;margin-right:8px;' + (hecho ? 'color:#16a34a;font-weight:700' : 'color:#1f3a2e') + '">' + (hecho ? '✓ transferido' : 'marcar transferido') + '</a>'
       +     '<a href="javascript:void(0)" onclick="transfFamAbrirModal(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;color:#1f3a2e;text-decoration:underline;margin-right:8px">editar</a>'
       +     '<a href="javascript:void(0)" onclick="transfFamEliminar(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;color:#b13a2c;text-decoration:underline">quitar</a>'
       +   '</div>'
@@ -10945,7 +10972,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-27-color-consistente-desc-rojo';
+  var CURRENT_BUILD = '2026-08-27-admin-scrollfade-retro-verde';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
