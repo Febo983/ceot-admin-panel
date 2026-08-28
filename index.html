@@ -4774,13 +4774,13 @@ function initAdmHomeBg() {
     [".###.",".###.","#####",".###.",".###.",".###.",".#.#."]
   ];
   function makeWalkers() {
-    var n = width < 520 ? 2 : 3;
+    var n = width < 520 ? 1 : 2;
     walkers = [];
     for (var i = 0; i < n; i++) {
       walkers.push({
         x: Math.random() * Math.max(width, 1),
         dir: Math.random() < 0.5 ? 1 : -1,
-        speed: 0.22 + Math.random() * 0.22,
+        speed: 0.13 + Math.random() * 0.12,
         phase: Math.floor(Math.random() * 100),
         kind: i % 2
       });
@@ -4877,10 +4877,10 @@ function initAdmHomeBg() {
     for (var k = 0; k < walkers.length; k++) {
       var w = walkers[k];
       w.x += w.dir * w.speed;
-      w.phase++;
+      w.phase += w.speed * 4;   // cadencia del paso atada a la velocidad
       if (w.x < -24) w.x = width + 12;
       else if (w.x > width + 24) w.x = -12;
-      if (Math.random() < 0.0012) w.dir *= -1;
+      if (Math.random() < 0.0009) w.dir *= -1;
     }
     draw();
     _admHomeBgRaf = requestAnimationFrame(tick);
@@ -11271,7 +11271,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-28-honorariosTilesIguales';
+  var CURRENT_BUILD = '2026-08-28-sprites2Lentos';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
