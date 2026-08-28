@@ -4294,7 +4294,7 @@ var ADM_HOME_MOD_COLOR = {
 // Módulos del home agrupados por "mundo" (tema retro ordenado).
 // Cualquier key que no figure acá cae automáticamente en un grupo "Más".
 var ADM_HOME_MOD_GRUPOS = [
-  { t:"Plata",   c:"rgba(29,158,117,0.9)",  keys:["liquidaciones","totalceot","sueldodirector","transferencias","cpsm","aporteceot","debitos","facturas","presentacion"] },
+  { t:"Honorarios", c:"rgba(29,158,117,0.9)",  keys:["liquidaciones","totalceot","sueldodirector","transferencias","cpsm","aporteceot","debitos","facturas","presentacion"] },
   { t:"Gestión", c:"rgba(127,119,221,0.9)", keys:["sueldob","nomina","licencias","mensajeswa","accesos"] }
 ];
 var ADM_HOME_ACC_COLOR = {
@@ -4425,13 +4425,13 @@ function admHomeTile(ico, lbl, colorRgba, opts) {
   var icoRadius  = "12px";
   var icoBorder  = "border:2px solid #0f1c28;";
   var icoColor   = "#1c2b3a";
-  var labelStyle = "font-size:10.5px;color:#1c2b3a;text-align:center;font-weight:700;letter-spacing:0.2px;line-height:1.3";
+  var labelStyle = "font-size:10.5px;color:#1c2b3a;text-align:center;font-weight:700;letter-spacing:0.2px;line-height:1.3;min-height:27px;display:flex;align-items:center;justify-content:center";
 
   var del = (editing && opts.delFn)
     ? '<div onclick="event.stopPropagation();' + opts.delFn + '" title="Eliminar" style="position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:4px;background:rgba(220,38,38,.85);color:#fff;font-size:9px;line-height:16px;text-align:center;cursor:pointer">✕</div>'
     : "";
   var pencil = editing ? '<div style="position:absolute;top:3px;left:3px;font-size:9px;opacity:.6">✏</div>' : "";
-  return "<" + tag + attrs + " class=\"adm-home-tile-retro\" style=\"position:relative;text-decoration:none;background:" + boxBg + ";border:" + border + ";border-radius:" + boxRadius + ";" + boxShadow + "padding:22px 10px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:" + cursor + "\" onmouseover=\"this.style.background='" + boxBgHover + "'\" onmouseout=\"this.style.background='" + boxBg + "'\">"
+  return "<" + tag + attrs + " class=\"adm-home-tile-retro\" style=\"position:relative;text-decoration:none;background:" + boxBg + ";border:" + border + ";border-radius:" + boxRadius + ";" + boxShadow + "padding:22px 10px 16px;min-height:127px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;cursor:" + cursor + "\" onmouseover=\"this.style.background='" + boxBgHover + "'\" onmouseout=\"this.style.background='" + boxBg + "'\">"
     + pencil + del
     + '<div style="width:52px;height:52px;border-radius:' + icoRadius + ';background:' + colorRgba + ';' + icoBorder + 'display:flex;align-items:center;justify-content:center"><i data-lucide="' + ico + '" style="width:24px;height:24px;color:' + icoColor + '" stroke-width="1.75"></i></div>'
     + '<div style="' + labelStyle + '">' + lbl + '</div>'
@@ -11271,7 +11271,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-28-portalRetroSprites';
+  var CURRENT_BUILD = '2026-08-28-honorariosTilesIguales';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
