@@ -5133,19 +5133,34 @@ function renderGastosPagos() {
   var b = document.getElementById("adm-sidenav-gastospagos");
   if (b) b.className = "adm-sidenav-btn active";
   document.getElementById("adm-content").innerHTML =
-    '<div class="adm-sec-title">Gastos y Pagos</div>' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
+      '<div class="adm-sec-title" style="margin:0">Gastos y Pagos</div>' +
+      '<button id="gpRefreshBtn" onclick="gpRefrescar(this)" style="flex-shrink:0;border:1px solid rgba(32,36,31,.2);background:#fff;border-radius:7px;padding:4px 12px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;color:rgba(32,36,31,.65)">↻ Actualizar</button>' +
+    '</div>' +
     '<div id="gpBody" style="font-size:.8rem;color:rgba(32,36,31,.5);padding:20px 4px">⏳ Trayendo el detalle del sheet…</div>';
   if (GP_DATA) { gpRender(); return; }
+  gpTraer();
+}
+// Trae (o re-trae) el sheet y pinta el body. gpRefrescar fuerza el re-fetch
+// descartando el cache; el botón "↻ Actualizar" lo usa para no tener que F5.
+function gpTraer() {
   gpFetch(function (data, err) {
     var body = document.getElementById("gpBody");
+    var btn = document.getElementById("gpRefreshBtn");
+    if (btn) { btn.disabled = false; btn.textContent = "↻ Actualizar"; }
     if (!body) return;
     if (!data) {
       body.innerHTML = '<div style="color:#b13a2c">No se pudo traer el sheet (' + (err || "?") + '). ' +
-        '<button onclick="renderGastosPagos()" style="border:1px solid rgba(32,36,31,.2);background:#fff;border-radius:6px;padding:3px 10px;cursor:pointer;font-family:inherit">Reintentar</button></div>';
+        '<button onclick="gpRefrescar(this)" style="border:1px solid rgba(32,36,31,.2);background:#fff;border-radius:6px;padding:3px 10px;cursor:pointer;font-family:inherit">Reintentar</button></div>';
       return;
     }
     gpRender();
   });
+}
+function gpRefrescar(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ …"; }
+  GP_DATA = null;
+  gpTraer();
 }
 function gpRender(mes) {
   if (!GP_DATA) return;
@@ -11184,7 +11199,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-27-gastos-pagos-sueldos-totales';
+  var CURRENT_BUILD = '2026-08-27-gastos-pagos-refresh';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
