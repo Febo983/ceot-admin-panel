@@ -5064,22 +5064,45 @@ function gpParse(rows) {
   var meses = [], porMes = {}, cur = null;
   rows.forEach(function (r) {
     var c = r.c || [];
-    var a = ((c[0] && c[0].v) || "").toString().trim();
+    var v = function (i) { return (c[i] && c[i].v != null ? c[i].v : "").toString().trim(); };
+    var a = v(0);
     var mm = a.match(MESES_RE);
     if (mm) {
       cur = mm[1].toLowerCase();
-      if (!porMes[cur]) { porMes[cur] = { filas: [], total: null }; meses.push(cur); }
+      if (!porMes[cur]) { porMes[cur] = { filas: [], total: null, emp: [], sec: {} }; meses.push(cur); }
       return;
     }
-    if (!cur || a === "RUBRO" || a === "") return;
-    var imp = gpNum(c[11] && c[11].v);
-    var met = ((c[10] && c[10].v) || "").toString().trim();
-    if (a.indexOf("TOTAL GASTOS A") !== -1) { porMes[cur].total = imp; return; }
-    if (imp == null && !met) return;
-    porMes[cur].filas.push({
-      rubro: a, detalle: ((c[1] && c[1].v) || "").toString().trim(),
-      importe: imp, metodo: met, estado: gpEstado(met, imp)
-    });
+    if (!cur) return;
+    var S = porMes[cur].sec;
+
+    // ── Lado izquierdo: gastos (servicios / alquiler / honorarios) ──
+    if (a && a !== "RUBRO") {
+      if (a.indexOf("TOTAL GASTOS A") !== -1) {
+        porMes[cur].total = gpNum(v(11));
+      } else {
+        var imp = gpNum(v(11)), met = v(10);
+        if (imp != null || met) {
+          porMes[cur].filas.push({ rubro: a, detalle: v(1), importe: imp, metodo: met, estado: gpEstado(met, imp) });
+        }
+      }
+    }
+
+    // ── Lado derecho: sueldos y otras secciones (cols N–Q ≈ idx 13–16) ──
+    var d13 = v(13), up = d13.toUpperCase();
+    var n14 = gpNum(v(14)), n15 = gpNum(v(15)), n16 = gpNum(v(16));
+    if (d13) {
+      if (up.indexOf("TOTAL POR CONCEPTO") === 0) { S.sueldoA = n14; S.sueldoB = n15; if (n16 != null) S.sueldoTot = n16; }
+      else if (up.indexOf("FONDO CAJA CHICA") === 0) { S.cajaChica = (n16 != null ? n16 : n15); }
+      else if (up.indexOf("CARGAS SOCIALES") === 0) { S.cargas = n16; }
+      else if (up.indexOf("SINDICATOS") === 0) { S.sindicatos = n16; }
+      else if (/\/\s*13\s*=?/.test(d13)) {
+        var x = d13.match(/([\d.,]+)\s*\/\s*13\s*=?\s*([\d.,]+)/);
+        if (x) { S.divMonto = gpNum(x[1]); S.divPorProf = gpNum(x[2]); }
+      } else if (!/EMPLEADOS|SUELDO|TOTAL|GERLING|DETALLE/.test(up) && (n14 != null || n15 != null)) {
+        porMes[cur].emp.push({ nombre: d13, sa: n14, sb: n15, tot: (n16 != null ? n16 : (((n14 || 0) + (n15 || 0)) || null)) });
+      }
+    }
+    if (v(15).toUpperCase().indexOf("TOTAL FINAL") === 0) { var tf = gpNum(v(16)); if (tf != null) S.sueldoTot = tf; }
   });
   return { meses: meses, porMes: porMes };
 }
@@ -5162,6 +5185,36 @@ function gpRender(mes) {
       '<td style="text-align:center;font-size:.68rem;font-weight:700;color:' + stColor[f.estado] + '">' + stLbl[f.estado] + '</td>' +
       '</tr>';
   }).join("");
+  // ── Totales del mes (todas las secciones del bloque) ──
+  var sc = d.sec || {};
+  var sueldoTot = sc.sueldoTot != null ? sc.sueldoTot : (((sc.sueldoA || 0) + (sc.sueldoB || 0)) || null);
+  var lin = function (lbl, val) {
+    return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(32,36,31,.07)">' +
+      '<span style="color:rgba(32,36,31,.7)">' + lbl + '</span><span style="font-weight:700">' + (val != null ? fmt(val) : '—') + '</span></div>';
+  };
+  var totalesHtml =
+    '<div style="margin-top:18px"><div class="adm-sec-title" style="font-size:.8rem">Totales del mes</div>' +
+    '<div style="background:rgba(32,36,31,.03);border:1px solid rgba(32,36,31,.1);border-radius:8px;padding:10px 12px;font-size:.78rem">' +
+    lin('Gastos A (servicios · alquiler · honorarios)', d.total) +
+    lin('Sueldos empleados' + ((sc.sueldoA != null || sc.sueldoB != null) ? ' (A ' + fmt(sc.sueldoA || 0) + ' + B ' + fmt(sc.sueldoB || 0) + ')' : ''), sueldoTot) +
+    lin('Cargas sociales', sc.cargas) +
+    lin('Sindicatos', sc.sindicatos) +
+    lin('Fondo caja chica', sc.cajaChica) +
+    (sc.divMonto != null
+      ? '<div style="display:flex;justify-content:space-between;padding:8px 0 2px;margin-top:4px;border-top:2px solid rgba(32,36,31,.2);font-weight:700"><span>Total mensual ÷ 13</span><span>' + fmt(sc.divMonto) + '</span></div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:.82rem;color:#1f3a2e;font-weight:700"><span>Por profesional</span><span>' + (sc.divPorProf != null ? fmt(sc.divPorProf) : '—') + '</span></div>'
+      : '') +
+    '</div></div>';
+  var empHtml = '';
+  if (d.emp && d.emp.length) {
+    empHtml = '<details style="margin-top:14px"><summary style="cursor:pointer;font-size:.78rem;font-weight:700;color:rgba(32,36,31,.65)">Detalle de sueldos (' + d.emp.length + ')</summary>' +
+      '<div class="adm-table-wrap" style="margin-top:8px"><table class="adm-table"><thead><tr><th>Empleado</th><th style="text-align:right">Sueldo A</th><th style="text-align:right">Sueldo B</th><th style="text-align:right">Total</th></tr></thead><tbody>' +
+      d.emp.map(function (e) {
+        return '<tr><td>' + e.nombre + '</td><td style="text-align:right">' + (e.sa != null ? fmt(e.sa) : '—') + '</td><td style="text-align:right">' + (e.sb != null ? fmt(e.sb) : '—') + '</td><td style="text-align:right;font-weight:700">' + (e.tot != null ? fmt(e.tot) : '—') + '</td></tr>';
+      }).join('') +
+      '</tbody></table></div></details>';
+  }
+
   body.innerHTML =
     '<div style="font-size:.68rem;color:rgba(32,36,31,.45);margin-bottom:8px">Espejo de la pestaña <b>GASTOS MENSUALES</b> del sheet Gastos y Pagos CEOT. Solo lectura — se edita en el sheet. El estado sale del Método de Pago.</div>' +
     '<div class="adm-sf-wrap" id="gpChipsWrap" style="margin-bottom:12px"><div id="gpChipsScroll" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">' + chips + '</div></div>' +
@@ -5171,7 +5224,8 @@ function gpRender(mes) {
     '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:.72rem;color:rgba(32,36,31,.5);margin-top:10px">' +
     '<span>' + d.filas.length + ' gastos' + (nPend ? ' · <span style="color:#b13a2c">' + nPend + ' pendiente' + (nPend > 1 ? 's' : '') + '</span>' : '') + (nSd ? ' · ' + nSd + ' sin dato' : '') + '</span>' +
     '<span><b>Total Gastos A ' + cap(mes) + ': ' + (d.total != null ? fmt(d.total) : "—") + '</b></span>' +
-    '</div>';
+    '</div>' +
+    totalesHtml + empHtml;
   coInitScrollFade("gpChipsScroll", "gpChipsWrap");
 }
 
@@ -11130,7 +11184,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-27-modulo-gastos-pagos';
+  var CURRENT_BUILD = '2026-08-27-gastos-pagos-sueldos-totales';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
