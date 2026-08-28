@@ -1746,8 +1746,8 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
     <div class="ph-left">
       <div class="ph-avatar ph-seal">CEOT</div>
       <div class="ph-info">
-        <h3 class="adm-masthead-title">Ortopedia y Traumatología</h3>
-        <p>Clínica Colón</p>
+        <h3 class="adm-masthead-title">CEOT ADMIN</h3>
+        <p>Ortopedia y Traumatología · Clínica Colón</p>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
@@ -4291,6 +4291,12 @@ var ADM_HOME_MOD_COLOR = {
   "cat-fin":"rgba(29,158,117,0.22)","cat-cli":"rgba(55,138,221,0.22)",
   "cat-adm":"rgba(127,119,221,0.22)","cat-gst":"rgba(216,90,48,0.22)","cat-inf":"rgba(32,36,31,0.1)"
 };
+// Módulos del home agrupados por "mundo" (tema retro ordenado).
+// Cualquier key que no figure acá cae automáticamente en un grupo "Más".
+var ADM_HOME_MOD_GRUPOS = [
+  { t:"Plata",   c:"rgba(29,158,117,0.9)",  keys:["liquidaciones","totalceot","sueldodirector","transferencias","cpsm","aporteceot","debitos","facturas","presentacion"] },
+  { t:"Gestión", c:"rgba(127,119,221,0.9)", keys:["sueldob","nomina","licencias","mensajeswa","accesos"] }
+];
 var ADM_HOME_ACC_COLOR = {
   "Finanzas":"rgba(29,158,117,0.22)","Clínica":"rgba(55,138,221,0.22)",
   "Admin":"rgba(127,119,221,0.22)","Otros":"rgba(32,36,31,0.1)"
@@ -4552,10 +4558,22 @@ function admHomeRenderResults() {
       html += '<div style="' + tileWrap + ';margin-bottom:6px">' + tiles.join("") + '</div>';
     }
   } else {
-    html += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.32);margin:0 0 6px">Módulos</div>';
-    html += '<div style="' + tileWrap + ';margin-bottom:14px">'
-      + admHomeOrdenarPorUso(ADM_HOME_MODULOS, function(m) { return "mod:" + m.key; }).map(function(m) { return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(32,36,31,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key }); }).join("")
-      + '</div>';
+    // Módulos separados por "mundo" (Plata / Gestión / Más), cada uno con
+    // divisor pixel y su color de categoría en el borde izquierdo.
+    var _modEnGrupos = ADM_HOME_MOD_GRUPOS.reduce(function(a, g) { return a.concat(g.keys); }, []);
+    var _modSueltos = ADM_HOME_MODULOS.filter(function(m) { return _modEnGrupos.indexOf(m.key) === -1; });
+    var _modGrupos = ADM_HOME_MOD_GRUPOS.concat(_modSueltos.length ? [{ t:"Más", c:"rgba(32,36,31,0.4)", keys:_modSueltos.map(function(m){ return m.key; }) }] : []);
+    _modGrupos.forEach(function(g) {
+      var mods = admHomeOrdenarPorUso(ADM_HOME_MODULOS.filter(function(m) { return g.keys.indexOf(m.key) !== -1; }), function(m) { return "mod:" + m.key; });
+      if (!mods.length) return;
+      html += '<div style="display:flex;align-items:center;gap:7px;margin:0 0 7px">'
+        + '<span style="width:9px;height:9px;border-radius:3px;background:' + g.c + ';border:2px solid #0f1c28;flex-shrink:0"></span>'
+        + '<span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.42)">' + g.t + ' <span style="color:rgba(32,36,31,.2);font-weight:500">· ' + mods.length + '</span></span>'
+        + '</div>';
+      html += '<div style="' + tileWrap + ';margin-bottom:16px;border-left:3px solid ' + g.c + ';padding-left:10px">'
+        + mods.map(function(m) { return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(32,36,31,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key }); }).join("")
+        + '</div>';
+    });
 
     ["Finanzas","Clínica","Admin","Otros"].forEach(function(cat) {
       var items = admHomeOrdenarPorUso(ACCESOS_DATA.filter(function(a) { return a.cat === cat; }), function(a) { return "acc:" + a.id; });
@@ -4633,14 +4651,14 @@ function renderAdmHome() {
 
   if (retro) {
     html = '<div class="adm-home-retro adm-home-retro-wrap"><canvas id="admHomeBg" aria-hidden="true"></canvas><div class="adm-home-retro-inner">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fffaf1;border:3px solid #0f1c28;border-radius:18px;padding:12px 18px;box-shadow:0 5px 0 #0f1c28,0 10px 18px rgba(15,28,40,.18);margin-bottom:16px">'
+      + '<div id="admHeroCard" style="position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fffaf1;border:3px solid #0f1c28;border-radius:18px;padding:12px 18px;box-shadow:0 5px 0 #0f1c28,0 10px 18px rgba(15,28,40,.18);margin-bottom:24px">'
       +   '<div style="display:flex;align-items:center;gap:12px">'
       +     '<div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(160deg,#2f7de0 0%,#1f5cab 100%);border:3px solid #0f1c28;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -4px 0 rgba(0,0,0,.18);flex-shrink:0">'
       +       '<svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M12 3v18M3 12h18" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>'
       +     '</div>'
       +     '<div>'
       +       '<div style="font-family:\'PixelDisplay\',monospace;font-size:11px;color:#1c2b3a;letter-spacing:.5px">CEOT ADMIN</div>'
-      +       '<div style="font-size:10px;color:#5b6b7a;margin-top:4px;letter-spacing:.4px">Reino de Honorarios</div>'
+      +       '<div style="font-size:8.5px;color:#5b6b7a;margin-top:4px;letter-spacing:.3px">Ortopedia y Traumatología · Clínica Colón</div>'
       +     '</div>'
       +   '</div>'
       +   '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
@@ -4748,7 +4766,50 @@ function initAdmHomeBg() {
   var GOLD = "239,111,162"; // #ef6fa2 — acento rosa del avatar retro
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
-  var width = 0, height = 0, nodes = [];
+  var width = 0, height = 0, nodes = [], walkers = [], groundY = 110;
+
+  // Sprites 8-bit propios (no son de Nintendo): 5px de ancho, 7 de alto, 2 cuadros de caminata.
+  var WALK_FRAMES = [
+    [".###.",".###.","#####",".###.",".###.",".#.#.","#...#"],
+    [".###.",".###.","#####",".###.",".###.",".###.",".#.#."]
+  ];
+  function makeWalkers() {
+    var n = width < 520 ? 2 : 3;
+    walkers = [];
+    for (var i = 0; i < n; i++) {
+      walkers.push({
+        x: Math.random() * Math.max(width, 1),
+        dir: Math.random() < 0.5 ? 1 : -1,
+        speed: 0.22 + Math.random() * 0.22,
+        phase: Math.floor(Math.random() * 100),
+        kind: i % 2
+      });
+    }
+  }
+  function updateGroundY() {
+    var card = document.getElementById("admHeroCard");
+    if (!card) { groundY = Math.min(120, height - 14); return; }
+    var cy = card.getBoundingClientRect().bottom - canvas.getBoundingClientRect().top;
+    // Caminan en el hueco entre la tarjeta hero y el título "DASH BOARD".
+    groundY = Math.max(18, Math.min(cy + 22, height - 14));
+  }
+  function drawWalker(w) {
+    var s = 3;
+    var frame = WALK_FRAMES[Math.floor(w.phase / 7) % 2];
+    var topY = groundY - frame.length * s;
+    var px = Math.round(w.x);
+    ctx.fillStyle = "rgba(" + (w.kind ? "31,58,46" : INK) + ",0.82)";
+    for (var r = 0; r < frame.length; r++) {
+      var row = frame[r];
+      for (var c = 0; c < row.length; c++) {
+        if (row[c] === ".") continue;
+        var cx = w.dir > 0 ? c : (row.length - 1 - c);
+        ctx.fillRect(px + cx * s, topY + r * s, s, s);
+      }
+    }
+    ctx.fillStyle = "rgba(" + GOLD + ",0.9)";       // cabecita rosa (2 filas de alto)
+    ctx.fillRect(px + s, topY, 3 * s, 2 * s);
+  }
 
   function makeNodes() {
     var count = Math.max(14, Math.min(45, Math.round((width * height) / 15000)));
@@ -4781,6 +4842,8 @@ function initAdmHomeBg() {
       ctx.fillStyle = "rgba(" + (n.pink ? GOLD : INK) + "," + (n.pink ? 0.55 : 0.25) + ")";
       ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.fill();
     }
+    updateGroundY();
+    for (i = 0; i < walkers.length; i++) drawWalker(walkers[i]);
   }
 
   function resize(w, h) {
@@ -4789,6 +4852,7 @@ function initAdmHomeBg() {
     canvas.width = w * dpr; canvas.height = h * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     makeNodes();
+    makeWalkers();
     draw();
   }
 
@@ -4809,6 +4873,14 @@ function initAdmHomeBg() {
       n.x += n.vx; n.y += n.vy;
       if (n.x < 0 || n.x > width) n.vx *= -1;
       if (n.y < 0 || n.y > height) n.vy *= -1;
+    }
+    for (var k = 0; k < walkers.length; k++) {
+      var w = walkers[k];
+      w.x += w.dir * w.speed;
+      w.phase++;
+      if (w.x < -24) w.x = width + 12;
+      else if (w.x > width + 24) w.x = -12;
+      if (Math.random() < 0.0012) w.dir *= -1;
     }
     draw();
     _admHomeBgRaf = requestAnimationFrame(tick);
@@ -11199,7 +11271,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-27-gastos-pagos-refresh';
+  var CURRENT_BUILD = '2026-08-28-portalRetroSprites';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
