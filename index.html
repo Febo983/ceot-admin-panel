@@ -1359,6 +1359,14 @@ body { background: var(--iv0); color: var(--ink); }
 .cpsm-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
 .cpsm-title { font-size:1rem; font-weight:800; color:#20241f; }
 .cpsm-subtitle { font-size:0.72rem; color:rgba(32,36,31,.45); margin-top:2px; }
+.sd-acc { border:1px solid rgba(32,36,31,.15); border-radius:10px; margin-bottom:12px; background:#fffdf8; }
+.sd-acc-head { cursor:pointer; list-style:none; padding:12px 14px; font-weight:800; font-size:.9rem; color:#20241f; display:flex; align-items:center; gap:8px; user-select:none; -webkit-user-select:none; }
+.sd-acc-head::-webkit-details-marker { display:none; }
+.sd-acc-head::before { content:"\25B8"; font-size:.8rem; color:rgba(32,36,31,.45); transition:transform .15s; }
+.sd-acc[open] > .sd-acc-head::before { transform:rotate(90deg); }
+.sd-acc[open] > .sd-acc-head { border-bottom:1px solid rgba(32,36,31,.12); }
+.sd-acc-body { padding:12px 14px; }
+.sd-acc-body > .cpsm-header { display:none; }
 .cpsm-periodo-row { display:flex; gap:10px; margin-bottom:16px; }
 .cpsm-periodo-row .sb-field { flex:1; }
 .cpsm-tabla { width:100%; border-collapse:collapse; margin-bottom:16px; }
@@ -9235,6 +9243,19 @@ function renderAporteCeot() {
 // arma cuándo se completa el monto de sueldo (cheques más tempranos primero) y
 // qué le queda disponible una vez cubiertos IIBB/CPSM/Gastos A/Retención
 // Ganancias/Préstamo Casa — reusa calcularNetoLocal, no duplica datos.
+// Acordeon de la pantalla Transferencias del Mes: cada seccion se pliega.
+// Arranca solo con "Sueldo Director" abierta; SD_ACC_OPEN recuerda el estado
+// mientras dure la sesion para que un re-render no cierre lo que se abrio.
+// El .cpsm-header interno de cada seccion se oculta por CSS (el titulo va en el <summary>).
+var SD_ACC_OPEN = { sd: true, resto: false, gastosa: false, inv: false };
+function sdAcc(id, titulo, contenido) {
+  var abierta = !!SD_ACC_OPEN[id];
+  return '<details class="sd-acc" data-acc="' + id + '"' + (abierta ? ' open' : '') + '>'
+    + '<summary class="sd-acc-head">' + titulo + '</summary>'
+    + '<div class="sd-acc-body">' + contenido + '</div>'
+    + '</details>';
+}
+
 function renderSueldoDirector() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
@@ -9247,16 +9268,16 @@ function renderSueldoDirector() {
     + sueldoDirectorPeriodoSelectorHtml(periodo)
     + sueldoDirectorResumenHtml(periodo)
     + transfFamResumenMesHtml(periodo)
-    + sueldoDirectorTabHtml(periodo)
-    + '<div style="height:28px;border-bottom:1px solid rgba(32,36,31,.15);margin-bottom:20px"></div>'
-    + restoProfesionalesTabHtml(periodo)
-    + '<div style="height:28px;border-bottom:1px solid rgba(32,36,31,.15);margin-bottom:20px"></div>'
-    + gastosASectionHtml(periodo)
-    + '<div style="height:28px;border-bottom:1px solid rgba(32,36,31,.15);margin-bottom:20px"></div>'
-    + inversionesSectionHtml(periodo)
+    + sdAcc('sd', '🏦 Sueldo Director', sueldoDirectorTabHtml(periodo))
+    + sdAcc('resto', '💳 Resto de profesionales', restoProfesionalesTabHtml(periodo))
+    + sdAcc('gastosa', '🧾 Gastos A — cheques + descuento', gastosASectionHtml(periodo))
+    + sdAcc('inv', '💰 Inversiones — fondo Retención Ganancias', inversionesSectionHtml(periodo))
     + '</div>';
 
   document.getElementById("adm-content").innerHTML = html;
+  document.querySelectorAll('#sueldoDirectorScreenRoot > .sd-acc').forEach(function(d) {
+    d.addEventListener('toggle', function() { SD_ACC_OPEN[d.getAttribute('data-acc')] = d.open; });
+  });
   gastosARecalcularPreview();
   invRecalcularPreview();
 }
@@ -11354,7 +11375,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-31-resumen-sueldos-dir';
+  var CURRENT_BUILD = '2026-08-31-acordeon-transf-mes';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
