@@ -4565,7 +4565,8 @@ function admHomeRenderResults() {
         return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(32,36,31,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key });
       }).concat(accMatch.map(function(a) {
         var ico = LUCIDE_ACC_ICON[a.title] || "link";
-        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[a.cat] || "rgba(32,36,31,0.1)", { href: a.url, editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id });
+        var nav = a.fn ? { fn: a.fn } : { href: a.url };
+        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[a.cat] || "rgba(32,36,31,0.1)", Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
       }));
       html += '<div style="' + tileWrap + ';margin-bottom:6px">' + tiles.join("") + '</div>';
     }
@@ -4592,7 +4593,8 @@ function admHomeRenderResults() {
       if (!items.length && !homeEditMode) return;
       var tiles = items.map(function(a) {
         var ico = LUCIDE_ACC_ICON[a.title] || "link";
-        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[cat], { href: a.url, editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id });
+        var nav = a.fn ? { fn: a.fn } : { href: a.url };
+        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[cat], Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
       });
       if (homeEditMode) {
         tiles.push('<div onclick="admHomeNuevoAcceso(\'' + cat + '\')" style="cursor:pointer;background:rgba(32,36,31,0.03);border:1px dashed rgba(32,36,31,.3);border-radius:10px;padding:12px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;min-height:64px">'
@@ -8736,7 +8738,7 @@ var ACCESOS_DATA = [
   { id:28, cat:"Admin", title:"Documentación CEOT",         desc:"Documentos y archivos generales del CEOT",                  url:"https://drive.google.com/drive/folders/1eOUfTKOEkFZTsgsctzwNhq0IJ-Wdp3N7?usp=drive_link" },
   { id:29, cat:"Admin", title:"Archivos Reuniones",         desc:"Minutas y acuerdos de reuniones del equipo",                url:"https://drive.google.com/drive/folders/1jnwuKnJaNdR45_QfGvqOmURQL7yrLdTA?usp=drive_link" },
   { id:35, cat:"Admin", title:"Normas Convenios OOSS",      desc:"Autorizaciones, coseguros y manuales por obra social",      url:"https://febo983.github.io/ceot-normas-convenios/" },
-  { id:36, cat:"Admin", title:"Premios por Desempeño",      desc:"Sistema de premios por desempeño del personal CEOT",        url:"https://premios-ceot.netlify.app/" },
+  { id:36, cat:"Admin", title:"Premios por Desempeño",      desc:"Liquidación de premios al personal (abril y octubre)",       url:"https://premios-ceot.netlify.app/", fn:"renderPremios()" },
   // ── Otros
   { id:30, cat:"Otros", title:"Encuesta Secretarias",       desc:"Evaluación y premios a secretarias",                        url:"https://docs.google.com/spreadsheets/d/19ITME1mzL2eIYX4YIudIGwP7yeGBDP93XM6Y2gfperw/edit?usp=sharing" },
   { id:31, cat:"Otros", title:"Encuesta Satisfacción",      desc:"Encuesta de satisfacción de pacientes CEOT",                url:"https://docs.google.com/spreadsheets/d/1T9Rck2IdVg-aYDnjZo3sQJ_0dZ0MvhDBrlWFE1EVAvs/edit?usp=sharing" },
@@ -8827,7 +8829,10 @@ function accCargarCustom() {
       // Agregar defaults que no estén en el localStorage (nuevos accesos agregados en el código)
       var savedIds = saved.map(function(a) { return a.id; });
       ACCESOS_DATA.forEach(function(def) {
-        if (savedIds.indexOf(def.id) === -1) saved.push(def);
+        var idx = savedIds.indexOf(def.id);
+        if (idx === -1) { saved.push(def); return; }
+        // re-sincronizar el "wiring" interno (fn) desde el código, aunque el acceso ya esté guardado
+        if (def.fn) saved[idx].fn = def.fn; else delete saved[idx].fn;
       });
       ACCESOS_DATA = saved;
       accNextId = Math.max.apply(null, ACCESOS_DATA.map(function(a){return a.id;}))+1;
@@ -8871,7 +8876,9 @@ function renderAccesos(filtro) {
       + '<div class="acc-card-title">'+a.title+'</div>'
       + '<div class="acc-card-desc">'+a.desc+'</div>'
       + '<div class="acc-card-actions">'
-      + '<a href="'+a.url+'" target="_blank" class="acc-open-btn">↗ Abrir</a>'
+      + (a.fn
+          ? '<button class="acc-open-btn" onclick="'+a.fn+'">↗ Abrir</button>'
+          : '<a href="'+a.url+'" target="_blank" class="acc-open-btn">↗ Abrir</a>')
       + '<button class="acc-del-btn" onclick="accModalOrigin=\'accesos\';accAbrirModal(ACCESOS_DATA.find(function(x){return x.id==='+a.id+';}))" title="Editar" style="border-color:rgba(32,36,31,.2);background:rgba(32,36,31,.06);color:#20241f">✏</button>'
       + '<button class="acc-del-btn" onclick="accEliminar('+a.id+')" title="Eliminar">✕</button>'
       + '</div></div>';
