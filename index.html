@@ -8738,7 +8738,6 @@ var ACCESOS_DATA = [
   { id:28, cat:"Admin", title:"Documentación CEOT",         desc:"Documentos y archivos generales del CEOT",                  url:"https://drive.google.com/drive/folders/1eOUfTKOEkFZTsgsctzwNhq0IJ-Wdp3N7?usp=drive_link" },
   { id:29, cat:"Admin", title:"Archivos Reuniones",         desc:"Minutas y acuerdos de reuniones del equipo",                url:"https://drive.google.com/drive/folders/1jnwuKnJaNdR45_QfGvqOmURQL7yrLdTA?usp=drive_link" },
   { id:35, cat:"Admin", title:"Normas Convenios OOSS",      desc:"Autorizaciones, coseguros y manuales por obra social",      url:"https://febo983.github.io/ceot-normas-convenios/" },
-  { id:36, cat:"Admin", title:"Premios por Desempeño",      desc:"Liquidación de premios al personal (abril y octubre)",       url:"https://premios-ceot.netlify.app/", fn:"renderPremios()" },
   // ── Otros
   { id:30, cat:"Otros", title:"Encuesta Secretarias",       desc:"Evaluación y premios a secretarias",                        url:"https://docs.google.com/spreadsheets/d/19ITME1mzL2eIYX4YIudIGwP7yeGBDP93XM6Y2gfperw/edit?usp=sharing" },
   { id:31, cat:"Otros", title:"Encuesta Satisfacción",      desc:"Encuesta de satisfacción de pacientes CEOT",                url:"https://docs.google.com/spreadsheets/d/1T9Rck2IdVg-aYDnjZo3sQJ_0dZ0MvhDBrlWFE1EVAvs/edit?usp=sharing" },
@@ -8826,6 +8825,9 @@ function accCargarCustom() {
     var rawAll = localStorage.getItem("ceot_accesos_all");
     if (rawAll) {
       var saved = JSON.parse(rawAll);
+      // Acceso #36 "Premios por Desempeño" se retiró del código (quedó sólo el
+      // tile del módulo en Gestión) — sacarlo también de lo ya guardado en localStorage.
+      saved = saved.filter(function(a) { return a.id !== 36; });
       // Agregar defaults que no estén en el localStorage (nuevos accesos agregados en el código)
       var savedIds = saved.map(function(a) { return a.id; });
       ACCESOS_DATA.forEach(function(def) {
