@@ -1986,7 +1986,10 @@ var PERIODO_CPSM = { enero:null, febrero:{
 }, abril:{
   "BRUNI":578355.32,"CORELICH":166600.58,"DE LA COLINA":724804.25,"DEGANUTTI":1077114.18,
   "LEON":228514.58,"MAZZOLA":477652.69,"PERLASCO":506303.83,"SOULE":448966.49,"TRIVELLINI":617015.18,
-}, mayo:null, junio:null, julio:null, agosto:null, septiembre:null, octubre:null, noviembre:null, diciembre:null };
+}, mayo:null, junio:null, julio:null, agosto:{
+  "BRUNI":978146.45,"CORELICH":358263.80,"DE LA COLINA":1149627.10,"DEGANUTTI":1928352.40,
+  "LEON":331733.60,"MAZZOLA":790061.80,"PERLASCO":402392.85,"SOULE":421247.45,"TRIVELLINI":953503.20,
+}, septiembre:null, octubre:null, noviembre:null, diciembre:null };
 
 function calcularCPSMDesde(rawData, osdeMap) {
   var difMap = {}, totalDif = 0;
@@ -11380,7 +11383,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-08-31-cuotas-ganancias-nov-ene';
+  var CURRENT_BUILD = '2026-09-01-cpsm-agosto';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
