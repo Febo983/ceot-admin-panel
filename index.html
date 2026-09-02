@@ -7823,7 +7823,7 @@ const MAPE_MAP = {
   '40796362':'BRUNI',      '41796362':'CORELICH',    '42796362':'DEGANUTTI',
   '43796362':'LABAYEN',    '44796362':'TRIVELLINI',  '45796362':'MAZZOLA',
   '46796362':'DE LA COLINA','47796362':'PERLASCO',   '48796362':'LEON',
-  '49796362':'SOULE'
+  '49796362':'SOULE',      '50796362':'GARMENDIA'
 };
 
 var impOsdeBilling = {}, impDifBilling = {}, impOsdeNeto = {};
@@ -8556,6 +8556,9 @@ async function procesarCentroMedico() {
 
   var totales = {};
   SOCIOS_IMP.forEach(function(k){ totales[k] = 0; });
+  // Garmendia (MAPE 50796362) u otro profesional mapeado fuera de SOCIOS_IMP:
+  // si su MAPE aparece en el CSV, el importe se le atribuye a esa persona.
+  Object.keys(MAPE_MAP).forEach(function(m){ if (totales[MAPE_MAP[m]] === undefined) totales[MAPE_MAP[m]] = 0; });
 
   try {
     for (var f = 0; f < files.length; f++) {
@@ -8588,20 +8591,25 @@ async function procesarCentroMedico() {
     // prorratea entre los profesionales según el % que cada uno sacó de los CSV — mismo
     // criterio que ya se usa para el cheque OSDE/Colón (el archivo da el %, el depósito
     // real da el monto a repartir).
-    var totalCSV = SOCIOS_IMP.reduce(function(s,k){ return s+(totales[k]||0); }, 0);
+    // SOCIOS_IMP + cualquier profesional mapeado (ej. Garmendia) que tenga importe en el CSV
+    var profsCM = SOCIOS_IMP.concat(Object.keys(totales).filter(function(k){
+      return SOCIOS_IMP.indexOf(k) < 0 && (totales[k] || 0) > 0;
+    }));
+
+    var totalCSV = profsCM.reduce(function(s,k){ return s+(totales[k]||0); }, 0);
     var totalReal = parsearMontoImp(document.getElementById('impCMTotalReal').value);
     var usarTotalReal = totalReal > 0 && totalCSV > 0;
 
     var montos = {};
-    SOCIOS_IMP.forEach(function(k) {
+    profsCM.forEach(function(k) {
       montos[k] = usarTotalReal ? totalReal * (totales[k]||0) / totalCSV : (totales[k]||0);
     });
     impCMTotales = montos;
-    var total = SOCIOS_IMP.reduce(function(s,k){ return s+(montos[k]||0); }, 0);
+    var total = profsCM.reduce(function(s,k){ return s+(montos[k]||0); }, 0);
 
     var tbody = document.getElementById('impCMBody');
     tbody.innerHTML = '';
-    SOCIOS_IMP.forEach(function(k) {
+    profsCM.forEach(function(k) {
       var imp = montos[k]||0;
       var pct = total > 0 ? (imp/total*100) : 0;
       var tr = document.createElement('tr');
@@ -9441,16 +9449,16 @@ function imprimirDebitos() {
 
 /* ── CPSM ── */
 var CPSM_PROF = [
-  { ap:"BRUNI",        nombre:"Maximiliano Ezequiel",  mat:"94435", cuit:"23-27940042-9" },
-  { ap:"CORELICH",     nombre:"Daniel Oscar",           mat:"92859", cuit:"20-18129265-3" },
-  { ap:"DE LA COLINA", nombre:"Juan Pablo",             mat:"95943", cuit:"24-36384171-2" },
-  { ap:"DEGANUTTI",    nombre:"Cristian Gabriel",       mat:"94391", cuit:"20-27466325-2" },
-  { ap:"LABAYEN",      nombre:"Daniel Guillermo",       mat:"18863", cuit:"20-13704461-8", exento:true },
-  { ap:"LEON",         nombre:"Joaquin Eduardo",        mat:"96521", cuit:"20-37405582-9" },
-  { ap:"MAZZOLA",      nombre:"Maximiliano Tomas",      mat:"95178", cuit:"20-29593564-3" },
-  { ap:"PERLASCO",     nombre:"Camilo Nicolas",         mat:"95074", cuit:"20-29593933-9" },
-  { ap:"SOULE",        nombre:"Ivan",                   mat:"96211", cuit:"20-35296127-3" },
-  { ap:"TRIVELLINI",   nombre:"Amilcar",                mat:"93078", cuit:"20-20654988-3" },
+  { ap:"BRUNI",        nombre:"Maximiliano Ezequiel",  mat:"94435", mape:"40796362", notaNombre:"DR. BRUNI MAXIMILIANO",       cuit:"23-27940042-9" },
+  { ap:"CORELICH",     nombre:"Daniel Oscar",           mat:"92859", mape:"41796362", notaNombre:"DR. CORELICH DANIEL",         cuit:"20-18129265-3" },
+  { ap:"DE LA COLINA", nombre:"Juan Pablo",             mat:"95943", mape:"46796362", notaNombre:"DR. DE LA COLINA JUAN PABLO", cuit:"24-36384171-2" },
+  { ap:"DEGANUTTI",    nombre:"Cristian Gabriel",       mat:"94391", mape:"42796362", notaNombre:"DR. DEGANUTTI CRISTIAN",      cuit:"20-27466325-2" },
+  { ap:"LABAYEN",      nombre:"Daniel Guillermo",       mat:"18863", mape:"43796362", notaNombre:"DR. LABAYEN DANIEL",          cuit:"20-13704461-8", exento:true },
+  { ap:"LEON",         nombre:"Joaquin Eduardo",        mat:"96521", mape:"48796362", notaNombre:"DR. JOAQUIN LEON",            cuit:"20-37405582-9" },
+  { ap:"MAZZOLA",      nombre:"Maximiliano Tomas",      mat:"95178", mape:"45796362", notaNombre:"DR. MAZZOLA MAXIMILIANO",     cuit:"20-29593564-3" },
+  { ap:"PERLASCO",     nombre:"Camilo Nicolas",         mat:"95074", mape:"47796362", notaNombre:"DR. PERLASCO CAMILO",         cuit:"20-29593933-9" },
+  { ap:"SOULE",        nombre:"Ivan",                   mat:"96211", mape:"49796362", notaNombre:"DR. IVAN SOULÉ",              cuit:"20-35296127-3" },
+  { ap:"TRIVELLINI",   nombre:"Amilcar",                mat:"93078", mape:"44796362", notaNombre:"DR. TRIVELLINI AMILCAR",      cuit:"20-20654988-3" },
 ];
 var MESES_CPSM = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
@@ -9599,14 +9607,30 @@ function renderCpsm() {
     +   '<button class="cpsm-calc-btn" onclick="actionFeedback(this); cpsmActualizarResultados()">Recalcular</button>'
     +   '<button class="cpsm-dl-btn" id="cpsm-dl-btn" onclick="actionFeedback(this); cpsmDescargarExcel()" style="display:none">⬇ Descargar Excel</button>'
     + '</div>'
+    + '<div style="margin-top:26px;border-top:1px solid rgba(32,36,31,.12);padding-top:18px">'
+    +   '<div class="cpsm-title" style="font-size:1rem">📄 Nota constancia CEM</div>'
+    +   '<div class="cpsm-subtitle">% de la acreditación CEM de cada profesional sobre el total del mes — para la nota que se manda a CEM. Mes: <strong id="cemnota-mes-lbl">' + (MESES_CPSM[mesActNum-1].charAt(0).toUpperCase()+MESES_CPSM[mesActNum-1].slice(1)) + ' ' + anioAct + '</strong>'
+    +   '  <span id="cemnota-status" style="margin-left:8px;font-size:0.72rem">Cargando...</span></div>'
+    +   '<table class="cpsm-tabla" style="margin-top:10px">'
+    +     '<thead><tr><th>MAPE</th><th>Profesional</th><th>Importe acred. CEM</th><th>%</th></tr></thead>'
+    +     '<tbody id="cemnota-tbody"></tbody>'
+    +     '<tfoot><tr class="cpsm-total-row"><td colspan="2">TOTAL</td><td><span id="cemnota-tot-imp">$ 0</span></td><td><span id="cemnota-tot-pct">0,00%</span></td></tr></tfoot>'
+    +   '</table>'
+    +   '<div class="cpsm-btn-row">'
+    +     '<button class="cpsm-calc-btn" onclick="actionFeedback(this); cemNotaActualizar()">Recalcular</button>'
+    +     '<button class="cpsm-dl-btn" id="cemnota-pdf-btn" style="display:none" onclick="actionFeedback(this); cemNotaGenerarPDF()">📄 Generar nota (PDF)</button>'
+    +   '</div>'
+    + '</div>'
     + '</div>';
 
   document.getElementById("adm-content").innerHTML = html;
 
   // Render tabla vacía mientras carga
   cpsmRenderTabla(null);
+  cemNotaRenderTabla(null);
   // Fetch automático
   cpsmFetchHonorarios(fuenteStr);
+  cemNotaFetch(MESES_CPSM[mesActNum-1]);
 }
 
 function cpsmCambiarPeriodo() {
@@ -9614,6 +9638,15 @@ function cpsmCambiarPeriodo() {
   var lbl = document.getElementById("cpsm-fuente-label");
   var fuente = lbl ? lbl.textContent.split(" ")[0].toLowerCase() : "";
   if (fuente) cpsmFetchHonorarios(fuente);
+  // La nota CEM usa el MES DE LIQUIDACIÓN (no M-2)
+  var mesLiqEl = document.getElementById("cpsm-mes-liq");
+  var anioEl   = document.getElementById("cpsm-anio");
+  if (mesLiqEl) {
+    var lbl2 = document.getElementById("cemnota-mes-lbl");
+    if (lbl2) lbl2.textContent = mesLiqEl.value.charAt(0).toUpperCase() + mesLiqEl.value.slice(1)
+      + (anioEl ? " " + anioEl.value : "");
+    cemNotaFetch(mesLiqEl.value);
+  }
 }
 
 function cpsmActualizarFuente() {
@@ -9628,6 +9661,164 @@ function cpsmActualizarFuente() {
   if (fuenteIdx < 0) { fuenteIdx += 12; anioFuente = anio - 1; }
   var fuente = MESES_CPSM[fuenteIdx];
   lbl.textContent = fuente.charAt(0).toUpperCase() + fuente.slice(1) + " " + anioFuente;
+}
+
+// ══════ Nota constancia CEM — % de acreditación CEM por profesional (para CPSM) ═════
+// Nota que CEOT manda a CEM los primeros días de cada mes: cada profesional con
+// su MAPE (matrícula CEM) y el % que representa su acreditación CEM del mes sobre
+// el total acreditado. pct = importe / total * 100 — mismo criterio que la preview
+// del importador de CEM (procesarCentroMedico). Importes precargados desde
+// ?action=leer&tipo=cm; editables a mano si el Sheet no los tiene.
+var CEM_NOTA_EMPRESA = {
+  razon:  "CEOT Traumatología Mar del Plata S.A.",
+  cuit:   "30-71911954-5",
+  cierre: "CEOT - Traumatología Clínica Colon"
+};
+
+function cemNotaProfsOrdenados() {
+  return CPSM_PROF.slice().sort(function(a, b) {
+    return String(a.mape || "").localeCompare(String(b.mape || ""));
+  });
+}
+
+function cemNotaLeerImportes() {
+  var vals = {};
+  CPSM_PROF.forEach(function(p) {
+    var el = document.getElementById("cemnota-in-" + p.ap.replace(/ /g, "_"));
+    var raw = el ? el.value.replace(/\./g, "").replace(",", ".").trim() : "0";
+    vals[p.ap] = parseFloat(raw) || 0;
+  });
+  return vals;
+}
+
+function cemNotaPct(imp, total) {
+  if (!total || !imp) return null;
+  return Math.round(imp / total * 10000) / 100; // 2 decimales
+}
+
+function cemNotaFmtPct(pct) {
+  if (pct === null) return "–";
+  return pct.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
+}
+
+function cemNotaActualizar() {
+  var vals = cemNotaLeerImportes();
+  var total = 0;
+  CPSM_PROF.forEach(function(p) { total += vals[p.ap] || 0; });
+  var sumaPct = 0;
+  CPSM_PROF.forEach(function(p) {
+    var cell = document.getElementById("cemnota-pct-" + p.ap.replace(/ /g, "_"));
+    if (!cell) return;
+    var pct = cemNotaPct(vals[p.ap] || 0, total);
+    if (pct !== null) sumaPct += pct;
+    cell.textContent = cemNotaFmtPct(pct);
+  });
+  var totImpEl = document.getElementById("cemnota-tot-imp");
+  if (totImpEl) totImpEl.textContent = "$ " + cpsmFmt(Math.round(total));
+  var totPctEl = document.getElementById("cemnota-tot-pct");
+  if (totPctEl) totPctEl.textContent = (Math.round(sumaPct * 100) / 100)
+    .toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
+  var btn = document.getElementById("cemnota-pdf-btn");
+  if (btn) btn.style.display = total > 0 ? "inline-block" : "none";
+}
+
+function cemNotaRenderTabla(importesData) {
+  var filas = cemNotaProfsOrdenados().map(function(p) {
+    var key = p.ap.replace(/ /g, "_");
+    var valor = importesData ? Math.round(importesData[p.ap] || 0) : 0;
+    return '<tr>'
+      + '<td style="color:rgba(32,36,31,.55)">' + (p.mape || "—") + '</td>'
+      + '<td><strong>' + p.ap + '</strong></td>'
+      + '<td><input class="cpsm-input" id="cemnota-in-' + key + '" type="text" value="' + valor + '" oninput="cemNotaActualizar()" onblur="this.value=this.value.trim()"></td>'
+      + '<td><span class="cpsm-result" id="cemnota-pct-' + key + '">–</span></td>'
+      + '</tr>';
+  }).join("");
+  var tbody = document.getElementById("cemnota-tbody");
+  if (tbody) tbody.innerHTML = filas;
+  var st = document.getElementById("cemnota-status");
+  if (st) {
+    st.textContent = importesData ? "Importes cargados desde RESUMEN (Centro Médico)." : "Sin datos del Sheet — cargá los importes de la acreditación CEM a mano.";
+    st.style.color = importesData ? "#1a7a52" : "#b45309";
+  }
+  cemNotaActualizar();
+}
+
+async function cemNotaFetch(mesLiq) {
+  var st = document.getElementById("cemnota-status");
+  if (st) { st.textContent = "Cargando acreditación CEM..."; st.style.color = "#888"; }
+  try {
+    var url = LIQUIDACION_ENDPOINT + "?action=leer&tipo=cm&mes=" + encodeURIComponent(mesLiq);
+    var data = await (await fetch(authURL(url))).json();
+    var v = data && data.ok ? (data.valores || {}) : null;
+    var sum = v ? Object.keys(v).reduce(function(s, k) { return s + (parseFloat(v[k]) || 0); }, 0) : 0;
+    cemNotaRenderTabla(sum > 0 ? v : null);
+  } catch (e) {
+    cemNotaRenderTabla(null);
+  }
+}
+
+function cemNotaGenerarPDF() {
+  if (!window.jspdf) { alert("La librería PDF aún se está cargando. Esperá un segundo y volvé a intentar."); return; }
+  var vals = cemNotaLeerImportes();
+  var total = 0;
+  CPSM_PROF.forEach(function(p) { total += vals[p.ap] || 0; });
+  if (!total) { alert("Cargá primero los importes de la acreditación CEM."); return; }
+
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  var LM = 25, RM = 185;
+  var hoy = new Date();
+  var fechaStr = "Mar del Plata, " + hoy.getDate() + " de " + MESES_CPSM[hoy.getMonth()] + " de " + hoy.getFullYear();
+
+  doc.setTextColor(0, 0, 0);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.text(fechaStr, RM, 28, { align: "right" });
+
+  var y = 48;
+  doc.text("Por medio de la presente, dejamos constancia de los porcentajes a aplicar para la CPSM", LM, y);
+  y += 12;
+  doc.setFont("helvetica", "bold");
+  doc.text(CEM_NOTA_EMPRESA.razon, LM, y);
+  y += 10;
+  doc.text("Datos de la Empresa:", LM, y);
+  y += 9;
+  doc.setFont("helvetica", "normal");
+  doc.text("•  Razón Social: " + CEM_NOTA_EMPRESA.razon, LM, y);
+  y += 7;
+  doc.text("•  CUIT: " + CEM_NOTA_EMPRESA.cuit, LM, y);
+  y += 14;
+  doc.text("Profesionales que lo integran:", LM, y);
+  y += 8;
+
+  var c0 = LM, c1 = LM + 32, c2 = RM - 28, cEnd = RM, rowH = 9;
+  function fila(mape, prof, pct, bold) {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setFontSize(10);
+    doc.rect(c0, y, c1 - c0, rowH);
+    doc.rect(c1, y, c2 - c1, rowH);
+    doc.rect(c2, y, cEnd - c2, rowH);
+    doc.text(String(mape), c0 + 2.5, y + 6);
+    doc.text(String(prof), c1 + 2.5, y + 6);
+    doc.text(String(pct), (c2 + cEnd) / 2, y + 6, { align: "center" });
+    y += rowH;
+  }
+  fila("MAPE", "PROFESIONAL", "%", true);
+  cemNotaProfsOrdenados().forEach(function(p) {
+    var pct = cemNotaPct(vals[p.ap] || 0, total);
+    fila(p.mape || "", p.notaNombre || ("DR. " + p.ap), cemNotaFmtPct(pct), false);
+  });
+
+  y += 16;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.text("Sin más saluda atte.", LM, y);
+  y += 12;
+  doc.text(CEM_NOTA_EMPRESA.cierre, LM, y);
+
+  var mesLiqEl = document.getElementById("cpsm-mes-liq");
+  var mesLiq = mesLiqEl ? mesLiqEl.value : MESES_CPSM[hoy.getMonth()];
+  doc.save("Constancia_Porcentajes_CPSM_CEM_" + mesLiq + "_" + hoy.getFullYear() + ".pdf");
 }
 
 // ── Reparto del fondo por % de incidencia fija (INCIDENCIA_FONDO_PCT) ──────
@@ -11988,7 +12179,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-01-cpsm-agosto';
+  var CURRENT_BUILD = '2026-09-02-nota-cem-cpsm';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
