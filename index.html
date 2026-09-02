@@ -7506,6 +7506,7 @@ async function handleLogin() {
     netoOverrideCargar();
     sbTarifaCargar();
     sueldoDirectorHechoCargar();
+    transfNotasCargar();
     renderSidenavLinks();
     renderAdmHome();
     checklistActualizarBadge();
@@ -10125,6 +10126,49 @@ function sueldoDirectorToggleHecho(periodo, apellido) {
   renderSueldoDirector();
 }
 
+// ── Machete de transferencias ──────────────────────────────────────────────
+// Nota libre por profesional y por período en la pantalla "Transferencias del
+// Mes" — apunte personal de Marcelo (a quién transferir, cuánto, recordatorios).
+// NO entra en ningún cálculo. Se guarda en localStorage y se sincroniza entre
+// PCs con el mismo patrón que TRANSF_FAM (syncPush/syncPull).
+var TRANSF_NOTAS = {};
+function transfNotasCargar() {
+  try {
+    var raw = localStorage.getItem("ceot_transf_notas");
+    if (raw) TRANSF_NOTAS = JSON.parse(raw) || {};
+  } catch (e) { TRANSF_NOTAS = {}; }
+  syncPull("ceot_transf_notas", function() {
+    transfNotasCargar();
+    if (document.getElementById('sueldoDirectorScreenRoot')) renderSueldoDirector();
+  });
+}
+function transfNotasKey(periodo, apellido) { return periodo + "|" + apellido; }
+function transfNotasGet(periodo, apellido) {
+  return TRANSF_NOTAS[transfNotasKey(periodo, apellido)] || "";
+}
+function transfNotasSet(periodo, apellido, texto) {
+  var k = transfNotasKey(periodo, apellido);
+  if (texto && texto.trim()) TRANSF_NOTAS[k] = texto;
+  else delete TRANSF_NOTAS[k];
+  try { localStorage.setItem("ceot_transf_notas", JSON.stringify(TRANSF_NOTAS)); } catch (e) {}
+  syncPush("ceot_transf_notas");
+}
+// Textarea del machete para un profesional. onchange (al salir del campo)
+// persiste + sincroniza; no re-renderiza para no interrumpir la escritura.
+function transfNotasHtml(periodo, apellido) {
+  var aEsc = apellido.replace(/'/g, "\\'");
+  return '<div style="margin-bottom:8px">'
+    + '<textarea rows="2" spellcheck="false"'
+    +   ' onchange="transfNotasSet(\'' + periodo + '\',\'' + aEsc + '\',this.value)"'
+    +   ' placeholder="📝 Machete — mis notas sobre las transferencias de ' + escAttr(apellido) + '…"'
+    +   ' style="width:100%;box-sizing:border-box;font-family:inherit;font-size:.72rem;line-height:1.4;'
+    +   'padding:5px 8px;border:1px dashed rgba(32,36,31,.3);border-radius:6px;'
+    +   'background:rgba(255,247,214,.5);color:#20241f;resize:vertical">'
+    +   escAttr(transfNotasGet(periodo, apellido))
+    + '</textarea>'
+    + '</div>';
+}
+
 var GASTOS_A_CALC_KEY = "ceot_gastos_a_calc";
 
 var _gastosACalcPulled = false;
@@ -11087,6 +11131,7 @@ function sueldoDirectorTabHtml(periodo) {
       +     '<span>Saldo tras sueldo <b style="' + saldoStyle + '">' + fmt(s.saldoFinal) + '</b> <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.saldoFinal) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></span>'
       +   '</div>'
       + '</div>'
+      + transfNotasHtml(periodo, doc.apellido)
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
       +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a familiar</th><th>Acumulado</th>'
       + '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
@@ -11165,6 +11210,7 @@ function restoProfesionalesTabHtml(periodo) {
       +     '<button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(base.totalNetoMes) + '\', this)" style="border:none;background:rgba(255,255,255,.35);border-radius:4px;cursor:pointer;font-size:.72rem;padding:1px 4px;vertical-align:middle">📋</button>'
       +   '</span>'
       + '</div>'
+      + transfNotasHtml(periodo, doc.apellido)
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
       +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a familiar</th><th>Acumulado</th>'
       + '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
@@ -12179,7 +12225,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-02-nota-cem-cpsm';
+  var CURRENT_BUILD = '2026-09-02-machete-transferencias';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
