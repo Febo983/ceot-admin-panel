@@ -5226,12 +5226,12 @@ function gpFetch(cb) {
 // ══════ PAGOS DE OBRA ═══════════════════════════════════════
 // Armador de lote para transferencias a proveedores de la obra de los
 // consultorios nuevos. 3 partes: cola de la semana (lo que se paga el jueves),
-// agenda de proveedores (nombre/rubro/CBU/alias/CUIT, editable) e historial de
-// lo ya pagado. Exporta un CSV genérico (Proveedor,CBU,CUIT,Importe,Concepto)
-// para cargar a mano en BBVA. Todo en localStorage + syncPush/syncPull
-// (claves ceot_obra_agenda / ceot_obra_cola / ceot_obra_hist), sin backend nuevo.
-// La agenda se siembra la primera vez con los proveedores sacados del histórico
-// de la obra "Casa 14 de julio 2067" (rubro + alias; el CBU lo carga Marcelo).
+// agenda de proveedores (nombre/rubro/Alias-o-CBU/CUIT, editable) e historial
+// de lo ya pagado. Exporta un CSV genérico (Proveedor,Alias/CBU,CUIT,Importe,
+// Concepto) para cargar a mano en BBVA. Todo en localStorage + syncPush/
+// syncPull (claves ceot_obra_agenda / ceot_obra_cola / ceot_obra_hist), sin
+// backend nuevo. La agenda se siembra la primera vez con los proveedores
+// sacados del histórico de la obra "Casa 14 de julio 2067".
 
 var OBRA_K_AG = "ceot_obra_agenda";
 var OBRA_K_CO = "ceot_obra_cola";
@@ -5294,10 +5294,16 @@ function obraAgenda() {
   var a = obraLeer(OBRA_K_AG, null);
   if (!a) {
     a = OBRA_AGENDA_SEED.map(function (s) {
-      return { id: obraUID(), nombre: s.n, rubro: s.r || "", alias: s.a || "", cbu: "", cuit: "", nota: "" };
+      return { id: obraUID(), nombre: s.n, rubro: s.r || "", destino: s.a || "", cuit: "", nota: "" };
     });
     obraGuardar(OBRA_K_AG, a);
+    return a;
   }
+  var mig = false;
+  a.forEach(function (p) {
+    if (p.destino == null) { p.destino = p.cbu || p.alias || ""; delete p.cbu; delete p.alias; mig = true; }
+  });
+  if (mig) obraGuardar(OBRA_K_AG, a);
   return a;
 }
 function obraCola() { return obraLeer(OBRA_K_CO, []); }
@@ -5337,18 +5343,17 @@ function renderObraPagos() {
       return '<option value="' + p.id + '">' + obraEsc(p.nombre) + (p.rubro ? " — " + obraEsc(p.rubro) : "") + '</option>';
     }).join("");
 
-  var totCola = 0, sinCbu = 0;
+  var totCola = 0, sinDest = 0;
   var filasCola = cola.map(function (it) {
-    var p = agById[it.provId] || { nombre: "(proveedor borrado)", rubro: "", cbu: "", alias: "" };
+    var p = agById[it.provId] || { nombre: "(proveedor borrado)", rubro: "", destino: "" };
     totCola += obraNum(it.monto);
-    var cbuTxt = p.cbu ? obraEsc(p.cbu)
-      : '<span class="obra-warn">' + (p.alias ? "alias " + obraEsc(p.alias) + " · " : "") + "falta CBU</span>";
-    if (!p.cbu) sinCbu++;
+    var destTxt = p.destino ? obraEsc(p.destino) : '<span class="obra-warn">falta alias/CBU</span>';
+    if (!p.destino) sinDest++;
     return '<tr>'
       + '<td>' + obraEsc(p.nombre) + '</td>'
       + '<td>' + obraEsc(p.rubro) + '</td>'
       + '<td><input value="' + obraEsc(it.concepto || "") + '" onchange="obraColaSet(\'' + it.id + '\',\'concepto\',this.value)"></td>'
-      + '<td>' + cbuTxt + '</td>'
+      + '<td>' + destTxt + '</td>'
       + '<td><input value="' + obraEsc(it.monto || "") + '" onchange="obraColaSet(\'' + it.id + '\',\'monto\',this.value)" style="width:110px;text-align:right"></td>'
       + '<td style="text-align:center"><input type="checkbox"' + (it.urgente ? " checked" : "") + ' onchange="obraColaSet(\'' + it.id + '\',\'urgente\',this.checked)"></td>'
       + '<td style="text-align:center"><button class="obra-x" title="Quitar" onclick="obraColaQuitar(\'' + it.id + '\')">✕</button></td>'
@@ -5370,12 +5375,12 @@ function renderObraPagos() {
     html += '<div style="padding:14px 4px;color:rgba(32,36,31,.4);font-size:.8rem">La cola está vacía. Agregá pagos arriba.</div>';
   } else {
     html += '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-      + '<th>Proveedor</th><th>Rubro</th><th>Concepto / factura</th><th>CBU</th><th>Importe</th><th>Urg.</th><th></th>'
+      + '<th>Proveedor</th><th>Rubro</th><th>Concepto / factura</th><th>Alias/CBU</th><th>Importe</th><th>Urg.</th><th></th>'
       + '</tr></thead><tbody>' + filasCola + '</tbody><tfoot><tr>'
       + '<td colspan="4" style="text-align:right;font-weight:700">Total cola (' + cola.length + ')</td>'
       + '<td style="text-align:right;font-weight:700">' + obraFmt(totCola) + '</td><td colspan="2"></td>'
       + '</tr></tfoot></table></div>';
-    if (sinCbu) html += '<div class="obra-warn" style="display:block;margin:6px 2px">⚠ ' + sinCbu + ' pago(s) sin CBU — cargá el CBU en la Agenda antes de exportar.</div>';
+    if (sinDest) html += '<div class="obra-warn" style="display:block;margin:6px 2px">⚠ ' + sinDest + ' pago(s) sin alias/CBU — cargalo en la Agenda antes de exportar.</div>';
     html += '<div class="cpsm-btn-row" style="margin-top:10px">'
       + '<button class="cpsm-calc-btn" onclick="obraDescargarCSV()">⬇ Descargar CSV de lote</button>'
       + '<button class="cpsm-calc-btn" onclick="obraMarcarPagado()">✓ Marcar todo como pagado</button>'
@@ -5388,13 +5393,14 @@ function renderObraPagos() {
         + ' onchange="obraAgSet(\'' + p.id + '\',\'' + campo + '\',this.value)">';
     }
     return '<tr><td>' + inp("nombre", p.nombre) + '</td><td>' + inp("rubro", p.rubro) + '</td>'
-      + '<td>' + inp("cbu", p.cbu, "22 dígitos") + '</td><td>' + inp("alias", p.alias) + '</td>'
+      + '<td>' + inp("destino", p.destino, "alias o CBU") + '</td>'
       + '<td>' + inp("cuit", p.cuit) + '</td><td>' + inp("nota", p.nota) + '</td>'
       + '<td style="text-align:center"><button class="obra-x" title="Borrar" onclick="obraAgBorrar(\'' + p.id + '\')">✕</button></td></tr>';
   }).join("");
   html += '<details class="sd-acc" style="margin-top:18px"><summary class="sd-acc-head">📇 Agenda de proveedores (' + ag.length + ')</summary><div class="sd-acc-body">'
+    + '<div style="font-size:.7rem;color:rgba(32,36,31,.45);margin-bottom:8px">Se guarda solo al salir de cada casilla. En Alias/CBU va el alias o el CBU, lo que uses para transferir.</div>'
     + '<button class="cpsm-calc-btn" style="margin-bottom:8px" onclick="obraAgNuevo()">+ Nuevo proveedor</button>'
-    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Nombre</th><th>Rubro</th><th>CBU</th><th>Alias</th><th>CUIT</th><th>Nota</th><th></th></tr></thead><tbody>'
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Nombre</th><th>Rubro</th><th>Alias/CBU</th><th>CUIT</th><th>Nota</th><th></th></tr></thead><tbody>'
     + filasAg + '</tbody></table></div></div></details>';
 
   var totHi = 0;
@@ -5458,10 +5464,10 @@ function obraDescargarCSV() {
   if (!cola.length) { alert("La cola está vacía."); return; }
   var agById = {}; obraAgenda().forEach(function (p) { agById[p.id] = p; });
   var esc = function (v) { v = String(v == null ? "" : v); return /[",;\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-  var rows = [["Proveedor", "CBU", "CUIT", "Importe", "Concepto"]];
+  var rows = [["Proveedor", "Alias/CBU", "CUIT", "Importe", "Concepto"]];
   cola.forEach(function (it) {
-    var p = agById[it.provId] || { nombre: "(borrado)", cbu: "", cuit: "" };
-    rows.push([p.nombre, p.cbu || "", p.cuit || "", Math.round(obraNum(it.monto)), it.concepto || ""]);
+    var p = agById[it.provId] || { nombre: "(borrado)", destino: "", cuit: "" };
+    rows.push([p.nombre, p.destino || "", p.cuit || "", Math.round(obraNum(it.monto)), it.concepto || ""]);
   });
   var csv = rows.map(function (r) { return r.map(esc).join(","); }).join("\r\n");
   var blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
@@ -5478,7 +5484,7 @@ function obraAgSet(id, campo, val) {
 }
 function obraAgNuevo() {
   var ag = obraAgenda();
-  ag.push({ id: obraUID(), nombre: "Nuevo proveedor", rubro: "", alias: "", cbu: "", cuit: "", nota: "" });
+  ag.push({ id: obraUID(), nombre: "Nuevo proveedor", rubro: "", destino: "", cuit: "", nota: "" });
   obraGuardar(OBRA_K_AG, ag);
   renderObraPagos();
 }
@@ -5497,7 +5503,6 @@ function obraHiBorrar(id) {
   obraGuardar(OBRA_K_HI, obraHist().filter(function (x) { return x.id !== id; }));
   renderObraPagos();
 }
-
 
 function renderGastosPagos() {
   cerrarAdmSidenav();
@@ -12511,7 +12516,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-02-pagos-obra';
+  var CURRENT_BUILD = '2026-09-02-pagos-obra-2';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
