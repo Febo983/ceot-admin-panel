@@ -1367,6 +1367,14 @@ body { background: var(--iv0); color: var(--ink); }
 .sd-acc[open] > .sd-acc-head { border-bottom:1px solid rgba(32,36,31,.12); }
 .sd-acc-body { padding:12px 14px; }
 .sd-acc-body > .cpsm-header { display:none; }
+.obra-add { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0 14px; }
+.obra-add select, .obra-add input { padding:6px 8px; border:1px solid rgba(32,36,31,.2); background:#fff; font:inherit; font-size:.8rem; box-sizing:border-box; }
+.obra-add select { min-width:200px; max-width:280px; }
+.obra-add > input:not([type=checkbox]) { flex:1; min-width:120px; }
+.obra-urg { font-size:.72rem; color:rgba(32,36,31,.55); display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
+.obra-x { border:none; background:none; color:#b13a2c; cursor:pointer; font-size:.85rem; padding:2px 6px; }
+.obra-warn { color:#b13a2c; font-size:.7rem; font-weight:700; }
+#obraPagosRoot .adm-table input { width:100%; border:1px solid rgba(32,36,31,.18); background:#fff; padding:3px 5px; font:inherit; font-size:.75rem; box-sizing:border-box; }
 .cpsm-periodo-row { display:flex; gap:10px; margin-bottom:16px; }
 .cpsm-periodo-row .sb-field { flex:1; }
 .cpsm-tabla { width:100%; border-collapse:collapse; margin-bottom:16px; }
@@ -1785,6 +1793,7 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
       <button class="adm-sidenav-btn" id="adm-sidenav-aporteceot"  onclick="renderAporteCeot()"><i data-lucide="percent" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Retención Ganancias</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-sueldodirector" onclick="renderSueldoDirector()"><i data-lucide="banknote" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Transferencias del Mes</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-licencias" onclick="renderLicencias()"><i data-lucide="calendar-heart" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Licencias</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-obrapagos" onclick="renderObraPagos()"><i data-lucide="hard-hat" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Pagos de obra</button>
       <div class="adm-sidenav-sep" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
         <span>Accesos</span>
         <button id="btnEditLinks" onclick="toggleEditLinks()" title="Editar links" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:rgba(255,255,255,.35);padding:0 2px">✏</button>
@@ -4298,6 +4307,7 @@ var ADM_HOME_MODULOS = [
   { key:"licencias",        ico:"calendar-heart",  lbl:"Licencias",     cat:"cat-adm", fn:"renderLicencias()" },
   { key:"presentacion",     ico:"presentation",    lbl:"Presentación",  cat:"cat-fin", fn:"renderPresentacion()" },
   { key:"premios",          ico:"award",           lbl:"Premios",       cat:"cat-adm", fn:"renderPremios()" },
+  { key:"obrapagos",        ico:"hard-hat",        lbl:"Pagos de obra", cat:"cat-adm", fn:"renderObraPagos()" },
 ];
 var ADM_HOME_MOD_COLOR = {
   "cat-fin":"rgba(29,158,117,0.22)","cat-cli":"rgba(55,138,221,0.22)",
@@ -5213,6 +5223,282 @@ function gpFetch(cb) {
     "/gviz/tq?gid=" + GP_GID + "&headers=0&tqx=out:json;responseHandler:" + cbName;
   document.head.appendChild(script);
 }
+// ══════ PAGOS DE OBRA ═══════════════════════════════════════
+// Armador de lote para transferencias a proveedores de la obra de los
+// consultorios nuevos. 3 partes: cola de la semana (lo que se paga el jueves),
+// agenda de proveedores (nombre/rubro/CBU/alias/CUIT, editable) e historial de
+// lo ya pagado. Exporta un CSV genérico (Proveedor,CBU,CUIT,Importe,Concepto)
+// para cargar a mano en BBVA. Todo en localStorage + syncPush/syncPull
+// (claves ceot_obra_agenda / ceot_obra_cola / ceot_obra_hist), sin backend nuevo.
+// La agenda se siembra la primera vez con los proveedores sacados del histórico
+// de la obra "Casa 14 de julio 2067" (rubro + alias; el CBU lo carga Marcelo).
+
+var OBRA_K_AG = "ceot_obra_agenda";
+var OBRA_K_CO = "ceot_obra_cola";
+var OBRA_K_HI = "ceot_obra_hist";
+var _obraPulled = false;
+var OBRA_AGENDA_SEED = /*__SEED__*/[
+  {n:"Alejandro Ruben silva",r:"Mano de obra / albañilería",a:"ARPA.TANQUE.MAMA"},
+  {n:"MARCH CERAM SA",r:"Cerámicos / pegamento",a:"CERAMICO.PEGAMENTO"},
+  {n:"Bertello Luis (1 contenedor)",r:"Volquetes / contenedores",a:"aforo.aleta.edad"},
+  {n:"zingueria Toletum srl",r:"Zinguería",a:"0140466501619005138383"},
+  {n:"Materiales aire acondicionado",r:"Aire acondicionado",a:"jony.aire"},
+  {n:"Honorarios Plomeria",r:"Plomería (mano de obra)",a:"Sur.idea.bozal"},
+  {n:"Techista: HECTOR MARCELO,FRIAS",r:"Techista",a:"0140323503420072541219"},
+  {n:"Electricista",r:"Electricidad",a:"SICMAGALICIA"},
+  {n:"GM SANITARIOS SRL GM SANITARIOS",r:"Sanitarios / grifería / gas",a:"CC $ 0235-004712/8"},
+  {n:"Electricista",r:"Electricidad",a:"alejandro.1364"},
+  {n:"Pablo Daniel Gomez",r:"Durlock / placas",a:"0000003100024631570262"},
+  {n:"Marcos Cristobal Asensio (yesero)",r:"Yesería",a:"0000003100064311104471"},
+  {n:"Julio Diaz",r:"Fletes",a:"sprinter99"},
+  {n:"TERMO ATLANTICA S A",r:"Sanitarios / grifería / gas",a:"0070166820000001810451"},
+  {n:"Aberturas ANAYA (20%)",r:"Aberturas",a:"0150865702000100676406"},
+  {n:"GM Sanitarios Srl",r:"Sanitarios / grifería / gas",a:"0170235620000000471286"},
+  {n:"Mano de obra Plomeria",r:"Plomería (mano de obra)",a:"lucas.273.ajeno.mp"},
+  {n:"Héctor Marcelo frías",r:"Techista",a:"Bolsa.china.blonda"},
+  {n:"materiales tech sider group",r:"Herrería / hierros / acero",a:"0070122420000005950717"},
+  {n:"cableado constitución 4901",r:"Cableado Constitución 4901",a:"CC $ 0094-351474/7"},
+  {n:"Hierros FAULE",r:"Herrería / hierros / acero",a:"Cobre.Banana.Grano"},
+  {n:"Constitucion 4901",r:"Cableado Constitución 4901",a:"30718517733"},
+  {n:"Alejandro Ruben Silva",r:"Mano de obra / albañilería",a:"0150524501000132432556"},
+  {n:"SERVISTEEL MAR DEL PLATA SRL",r:"Herrería / hierros / acero",a:"0720459720000000044604"},
+  {n:"SILVA FRANCO EXEQUIEL",r:"Mano de obra / albañilería",a:"0720459788000035986786"},
+  {n:"Plomeria honorarios",r:"Plomería (mano de obra)",a:"Jmg.flia"},
+  {n:"Honorarios Herrero",r:"Herrería / hierros / acero",a:"walter.annese75"},
+  {n:"Instalacion Alarma",r:"Alarma",a:"2850684130094215735601"},
+  {n:"PLASTIGAS",r:"Sanitarios / grifería / gas",a:"0140401601618900587649"},
+  {n:"Lopez lucas (Jardineria)",r:"Jardinería",a:"Jardineria.sosa17"},
+  {n:"Durlero",r:"Durlock / placas",a:"daniel.gomez.id"},
+  {n:"Marcos Cristobal Asensio (yesos)",r:"Yesería",a:"marcos.yeso.mp"},
+  {n:"Honorarios Ingeniero",r:"Honorarios ingeniero",a:"pedropronzati.mp"},
+  {n:"MARCOS DANIEL,AGUIRRE (membrana)",r:"Membrana / impermeabilización",a:"0140442903610552049689"},
+  {n:"Pérez Rivera maderas",r:"Maderas",a:"0070084920000030433140"},
+  {n:"Nuevo Frio (repuestos)",r:"Sanitarios / grifería / gas",a:"CC $ 090-412829/3"},
+  {n:"Federico Javier López",r:"Mano de obra",a:"EstiLop"},
+  {n:"ASERRADERO JESKE SRL",r:"Maderas",a:"0720212620000000481140"},
+  {n:"GH construcciones",r:"Herrería / hierros / acero",a:"0720067020000001013522"},
+  {n:"Silva Franco",r:"Mano de obra / albañilería",a:"20388319705"},
+  {n:"Raptor Monocomando Bañera C/T CROMO HIDROMET",r:"Sanitarios / grifería / gas",a:"0110350020035000580450"}
+];
+
+function obraLeer(k, def) {
+  try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? def : v; }
+  catch (e) { return def; }
+}
+function obraGuardar(k, val) {
+  try { localStorage.setItem(k, JSON.stringify(val)); syncPush(k); } catch (e) {}
+}
+function obraUID() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+function obraAgenda() {
+  var a = obraLeer(OBRA_K_AG, null);
+  if (!a) {
+    a = OBRA_AGENDA_SEED.map(function (s) {
+      return { id: obraUID(), nombre: s.n, rubro: s.r || "", alias: s.a || "", cbu: "", cuit: "", nota: "" };
+    });
+    obraGuardar(OBRA_K_AG, a);
+  }
+  return a;
+}
+function obraCola() { return obraLeer(OBRA_K_CO, []); }
+function obraHist() { return obraLeer(OBRA_K_HI, []); }
+
+function obraNum(s) {
+  s = String(s == null ? "" : s).replace(/[^\d,.-]/g, "");
+  if (s.indexOf(",") > -1 && s.indexOf(".") > -1) s = s.replace(/\./g, "").replace(",", ".");
+  else if (s.indexOf(",") > -1) s = /,\d{1,2}$/.test(s) ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
+  else if (s.indexOf(".") > -1 && !/\.\d{1,2}$/.test(s)) s = s.replace(/\./g, "");
+  var n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+function obraFmt(n) { return "$ " + Math.round(n).toLocaleString("es-AR"); }
+function obraEsc(s) {
+  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function renderObraPagos() {
+  cerrarAdmSidenav();
+  admDesactivarSidebar();
+  var b = document.getElementById("adm-sidenav-obrapagos");
+  if (b) b.className = "adm-sidenav-btn active";
+
+  if (!_obraPulled) {
+    _obraPulled = true;
+    [OBRA_K_AG, OBRA_K_CO, OBRA_K_HI].forEach(function (k) {
+      syncPull(k, function () { if (document.getElementById("obraPagosRoot")) renderObraPagos(); });
+    });
+  }
+
+  var ag = obraAgenda(), cola = obraCola(), hist = obraHist();
+  var agById = {}; ag.forEach(function (p) { agById[p.id] = p; });
+  var opts = ag.slice().sort(function (a, c) { return a.nombre.localeCompare(c.nombre); })
+    .map(function (p) {
+      return '<option value="' + p.id + '">' + obraEsc(p.nombre) + (p.rubro ? " — " + obraEsc(p.rubro) : "") + '</option>';
+    }).join("");
+
+  var totCola = 0, sinCbu = 0;
+  var filasCola = cola.map(function (it) {
+    var p = agById[it.provId] || { nombre: "(proveedor borrado)", rubro: "", cbu: "", alias: "" };
+    totCola += obraNum(it.monto);
+    var cbuTxt = p.cbu ? obraEsc(p.cbu)
+      : '<span class="obra-warn">' + (p.alias ? "alias " + obraEsc(p.alias) + " · " : "") + "falta CBU</span>";
+    if (!p.cbu) sinCbu++;
+    return '<tr>'
+      + '<td>' + obraEsc(p.nombre) + '</td>'
+      + '<td>' + obraEsc(p.rubro) + '</td>'
+      + '<td><input value="' + obraEsc(it.concepto || "") + '" onchange="obraColaSet(\'' + it.id + '\',\'concepto\',this.value)"></td>'
+      + '<td>' + cbuTxt + '</td>'
+      + '<td><input value="' + obraEsc(it.monto || "") + '" onchange="obraColaSet(\'' + it.id + '\',\'monto\',this.value)" style="width:110px;text-align:right"></td>'
+      + '<td style="text-align:center"><input type="checkbox"' + (it.urgente ? " checked" : "") + ' onchange="obraColaSet(\'' + it.id + '\',\'urgente\',this.checked)"></td>'
+      + '<td style="text-align:center"><button class="obra-x" title="Quitar" onclick="obraColaQuitar(\'' + it.id + '\')">✕</button></td>'
+      + '</tr>';
+  }).join("");
+
+  var html = '<div id="obraPagosRoot" style="padding:16px">'
+    + '<div class="cpsm-header"><div><div class="cpsm-title">🏗️ Pagos de obra</div>'
+    + '<div class="cpsm-subtitle">Cola de pagos a proveedores de los consultorios nuevos · descargá el CSV, cargalo a mano en BBVA y marcá pagado al terminar</div></div></div>'
+    + '<div class="obra-add">'
+    +   '<select id="obraAddProv">' + opts + '</select>'
+    +   '<input id="obraAddConcepto" placeholder="Concepto / N° factura">'
+    +   '<input id="obraAddMonto" placeholder="Importe" style="max-width:120px;text-align:right">'
+    +   '<label class="obra-urg"><input type="checkbox" id="obraAddUrg"> urgente</label>'
+    +   '<button class="cpsm-calc-btn" onclick="obraColaAgregar()">+ Agregar</button>'
+    + '</div>';
+
+  if (!cola.length) {
+    html += '<div style="padding:14px 4px;color:rgba(32,36,31,.4);font-size:.8rem">La cola está vacía. Agregá pagos arriba.</div>';
+  } else {
+    html += '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+      + '<th>Proveedor</th><th>Rubro</th><th>Concepto / factura</th><th>CBU</th><th>Importe</th><th>Urg.</th><th></th>'
+      + '</tr></thead><tbody>' + filasCola + '</tbody><tfoot><tr>'
+      + '<td colspan="4" style="text-align:right;font-weight:700">Total cola (' + cola.length + ')</td>'
+      + '<td style="text-align:right;font-weight:700">' + obraFmt(totCola) + '</td><td colspan="2"></td>'
+      + '</tr></tfoot></table></div>';
+    if (sinCbu) html += '<div class="obra-warn" style="display:block;margin:6px 2px">⚠ ' + sinCbu + ' pago(s) sin CBU — cargá el CBU en la Agenda antes de exportar.</div>';
+    html += '<div class="cpsm-btn-row" style="margin-top:10px">'
+      + '<button class="cpsm-calc-btn" onclick="obraDescargarCSV()">⬇ Descargar CSV de lote</button>'
+      + '<button class="cpsm-calc-btn" onclick="obraMarcarPagado()">✓ Marcar todo como pagado</button>'
+      + '</div>';
+  }
+
+  var filasAg = ag.slice().sort(function (a, c) { return a.nombre.localeCompare(c.nombre); }).map(function (p) {
+    function inp(campo, val, ph) {
+      return '<input value="' + obraEsc(val) + '"' + (ph ? ' placeholder="' + ph + '"' : "")
+        + ' onchange="obraAgSet(\'' + p.id + '\',\'' + campo + '\',this.value)">';
+    }
+    return '<tr><td>' + inp("nombre", p.nombre) + '</td><td>' + inp("rubro", p.rubro) + '</td>'
+      + '<td>' + inp("cbu", p.cbu, "22 dígitos") + '</td><td>' + inp("alias", p.alias) + '</td>'
+      + '<td>' + inp("cuit", p.cuit) + '</td><td>' + inp("nota", p.nota) + '</td>'
+      + '<td style="text-align:center"><button class="obra-x" title="Borrar" onclick="obraAgBorrar(\'' + p.id + '\')">✕</button></td></tr>';
+  }).join("");
+  html += '<details class="sd-acc" style="margin-top:18px"><summary class="sd-acc-head">📇 Agenda de proveedores (' + ag.length + ')</summary><div class="sd-acc-body">'
+    + '<button class="cpsm-calc-btn" style="margin-bottom:8px" onclick="obraAgNuevo()">+ Nuevo proveedor</button>'
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Nombre</th><th>Rubro</th><th>CBU</th><th>Alias</th><th>CUIT</th><th>Nota</th><th></th></tr></thead><tbody>'
+    + filasAg + '</tbody></table></div></div></details>';
+
+  var totHi = 0;
+  var filasHi = hist.slice().reverse().map(function (h) {
+    totHi += obraNum(h.monto);
+    return '<tr><td>' + obraEsc(h.fecha) + '</td><td>' + obraEsc(h.nombre) + '</td>'
+      + '<td style="text-align:right">' + obraFmt(obraNum(h.monto)) + '</td><td>' + obraEsc(h.concepto) + '</td>'
+      + '<td><input value="' + obraEsc(h.comprobante || "") + '" onchange="obraHiSet(\'' + h.id + '\',\'comprobante\',this.value)" style="width:120px"></td>'
+      + '<td style="text-align:center"><button class="obra-x" title="Borrar" onclick="obraHiBorrar(\'' + h.id + '\')">✕</button></td></tr>';
+  }).join("");
+  html += '<details class="sd-acc" style="margin-top:12px"><summary class="sd-acc-head">🧾 Historial de pagos (' + hist.length + ' · ' + obraFmt(totHi) + ')</summary><div class="sd-acc-body">'
+    + (hist.length
+        ? '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Fecha</th><th>Proveedor</th><th>Importe</th><th>Concepto</th><th>Comprobante</th><th></th></tr></thead><tbody>' + filasHi + '</tbody></table></div>'
+        : '<div style="color:rgba(32,36,31,.4);font-size:.8rem">Sin pagos registrados todavía.</div>')
+    + '</div></details></div>';
+
+  document.getElementById("adm-content").innerHTML = html;
+}
+
+function obraColaAgregar() {
+  var sel = document.getElementById("obraAddProv");
+  if (!sel || !sel.value) { alert("Elegí un proveedor."); return; }
+  var cola = obraCola();
+  cola.push({
+    id: obraUID(), provId: sel.value,
+    concepto: (document.getElementById("obraAddConcepto").value || "").trim(),
+    monto: obraNum(document.getElementById("obraAddMonto").value) || "",
+    urgente: !!document.getElementById("obraAddUrg").checked, ts: Date.now()
+  });
+  obraGuardar(OBRA_K_CO, cola);
+  renderObraPagos();
+}
+function obraColaSet(id, campo, val) {
+  var cola = obraCola();
+  for (var i = 0; i < cola.length; i++) if (cola[i].id === id) {
+    cola[i][campo] = (campo === "monto") ? obraNum(val) : val; break;
+  }
+  obraGuardar(OBRA_K_CO, cola);
+  if (campo === "monto") renderObraPagos();
+}
+function obraColaQuitar(id) {
+  obraGuardar(OBRA_K_CO, obraCola().filter(function (x) { return x.id !== id; }));
+  renderObraPagos();
+}
+function obraMarcarPagado() {
+  var cola = obraCola();
+  if (!cola.length) return;
+  if (!confirm("¿Marcar los " + cola.length + " pagos de la cola como pagados y moverlos al historial?")) return;
+  var agById = {}; obraAgenda().forEach(function (p) { agById[p.id] = p; });
+  var hoy = new Date().toLocaleDateString("es-AR"), hist = obraHist();
+  cola.forEach(function (it) {
+    var p = agById[it.provId] || { nombre: "(borrado)" };
+    hist.push({ id: obraUID(), fecha: hoy, nombre: p.nombre, monto: obraNum(it.monto), concepto: it.concepto || "", comprobante: "", ts: Date.now() });
+  });
+  obraGuardar(OBRA_K_HI, hist);
+  obraGuardar(OBRA_K_CO, []);
+  renderObraPagos();
+}
+function obraDescargarCSV() {
+  var cola = obraCola();
+  if (!cola.length) { alert("La cola está vacía."); return; }
+  var agById = {}; obraAgenda().forEach(function (p) { agById[p.id] = p; });
+  var esc = function (v) { v = String(v == null ? "" : v); return /[",;\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  var rows = [["Proveedor", "CBU", "CUIT", "Importe", "Concepto"]];
+  cola.forEach(function (it) {
+    var p = agById[it.provId] || { nombre: "(borrado)", cbu: "", cuit: "" };
+    rows.push([p.nombre, p.cbu || "", p.cuit || "", Math.round(obraNum(it.monto)), it.concepto || ""]);
+  });
+  var csv = rows.map(function (r) { return r.map(esc).join(","); }).join("\r\n");
+  var blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "lote_pagos_obra_" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
+}
+function obraAgSet(id, campo, val) {
+  var ag = obraAgenda();
+  for (var i = 0; i < ag.length; i++) if (ag[i].id === id) { ag[i][campo] = val; break; }
+  obraGuardar(OBRA_K_AG, ag);
+}
+function obraAgNuevo() {
+  var ag = obraAgenda();
+  ag.push({ id: obraUID(), nombre: "Nuevo proveedor", rubro: "", alias: "", cbu: "", cuit: "", nota: "" });
+  obraGuardar(OBRA_K_AG, ag);
+  renderObraPagos();
+}
+function obraAgBorrar(id) {
+  if (!confirm("¿Borrar este proveedor de la agenda?")) return;
+  obraGuardar(OBRA_K_AG, obraAgenda().filter(function (x) { return x.id !== id; }));
+  renderObraPagos();
+}
+function obraHiSet(id, campo, val) {
+  var hi = obraHist();
+  for (var i = 0; i < hi.length; i++) if (hi[i].id === id) { hi[i][campo] = val; break; }
+  obraGuardar(OBRA_K_HI, hi);
+}
+function obraHiBorrar(id) {
+  if (!confirm("¿Borrar este registro del historial?")) return;
+  obraGuardar(OBRA_K_HI, obraHist().filter(function (x) { return x.id !== id; }));
+  renderObraPagos();
+}
+
+
 function renderGastosPagos() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
@@ -7121,7 +7407,7 @@ function sbImprimirTodos() {
 
 function admDesactivarSidebar() {
   window.scrollTo(0, 0);
-  ["debitos","accesos","pendientes","gastospagos","facturas","transferencias","totalceot","sueldob","cpsm","aporteceot","sueldodirector","licencias"].forEach(function(k) {
+  ["debitos","accesos","pendientes","gastospagos","facturas","transferencias","totalceot","sueldob","cpsm","aporteceot","sueldodirector","licencias","obrapagos"].forEach(function(k) {
     var b = document.getElementById("adm-sidenav-" + k);
     if (b) b.className = "adm-sidenav-btn";
   });
@@ -12225,7 +12511,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-02-machete-transferencias';
+  var CURRENT_BUILD = '2026-09-02-pagos-obra';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
