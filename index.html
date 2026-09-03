@@ -1656,6 +1656,10 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
             <div class="home-mod-ico ico-cli"><i data-lucide="history" style="width:17px;height:17px" stroke-width="1.75"></i></div>
             <div class="home-mod-lbl">Historial</div>
           </div>
+          <div class="home-mod" onclick="irTab('estadisticas')">
+            <div class="home-mod-ico ico-fin"><i data-lucide="line-chart" style="width:17px;height:17px" stroke-width="1.75"></i></div>
+            <div class="home-mod-lbl">Estadísticas</div>
+          </div>
         </div>
         <div class="home-stats-row">
           <div class="home-stat-card" id="homeStatNeto">
@@ -1682,6 +1686,7 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
       <div class="period-tabs" id="periodTabs">
         <button class="period-tab" id="tab-mipanel" data-tab="mipanel" style="display:none"></button>
         <button class="period-tab" id="tab-historial" data-tab="historial" style="display:none"></button>
+        <button class="period-tab" id="tab-estadisticas" data-tab="estadisticas" style="display:none"></button>
         <button class="period-tab" id="tab-enero" data-tab="enero">
           <span class="tab-top">Ene 2026 <span class="tbadge tb-ant" id="badge-enero">anterior</span></span>
         </button>
@@ -1746,6 +1751,7 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
       <div class="tab-pane" id="pane-diciembre"></div>
       <div class="tab-pane" id="pane-historial"></div>
       <div class="tab-pane" id="pane-mipanel"></div>
+      <div class="tab-pane" id="pane-estadisticas"></div>
     </div>
 
     <div class="footer-note">Informe privado · solo para el profesional</div>
@@ -1794,6 +1800,7 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
       <button class="adm-sidenav-btn" id="adm-sidenav-sueldodirector" onclick="renderSueldoDirector()"><i data-lucide="banknote" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Transferencias del Mes</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-licencias" onclick="renderLicencias()"><i data-lucide="calendar-heart" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Licencias</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-obrapagos" onclick="renderObraPagos()"><i data-lucide="hard-hat" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Pagos de obra</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-estadisticas" onclick="renderEstadisticasCeot()"><i data-lucide="line-chart" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Estadísticas CEOT</button>
       <div class="adm-sidenav-sep" style="margin-top:10px;display:flex;align-items:center;justify-content:space-between">
         <span>Accesos</span>
         <button id="btnEditLinks" onclick="toggleEditLinks()" title="Editar links" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:rgba(255,255,255,.35);padding:0 2px">✏</button>
@@ -1931,15 +1938,17 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-03-refactor-9"></script>
-<script src="js/portal-render.js?v=2026-09-03-refactor-9"></script>
-<script src="js/admin-home.js?v=2026-09-03-refactor-9"></script>
-<script src="js/gastos-obra.js?v=2026-09-03-refactor-9"></script>
-<script src="js/presentacion.js?v=2026-09-03-refactor-9"></script>
-<script src="js/sueldo-b.js?v=2026-09-03-refactor-9"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-03-refactor-9"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-03-refactor-9"></script>
-<script src="js/accesos-debitos.js?v=2026-09-03-refactor-9"></script>
+<script src="js/datos.js?v=2026-09-03-estadisticas-ceot"></script>
+<script src="js/portal-render.js?v=2026-09-03-estadisticas-ceot"></script>
+<script src="js/admin-home.js?v=2026-09-03-estadisticas-ceot"></script>
+<script src="js/gastos-obra.js?v=2026-09-03-estadisticas-ceot"></script>
+<script src="js/presentacion.js?v=2026-09-03-estadisticas-ceot"></script>
+<script src="js/sueldo-b.js?v=2026-09-03-estadisticas-ceot"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-03-estadisticas-ceot"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-03-estadisticas-ceot"></script>
+<script src="js/accesos-debitos.js?v=2026-09-03-estadisticas-ceot"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-03-estadisticas-ceot"></script>
+<script src="js/estadisticas.js?v=2026-09-03-estadisticas-ceot"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -2451,6 +2460,7 @@ function cambiarTab(tab) {
   });
   document.getElementById("pane-" + tab).classList.add("active");
   document.getElementById("tab-"  + tab).classList.add("act-" + tab);
+  if (tab === "estadisticas" && typeof estProfActivarCharts === "function") estProfActivarCharts();
 }
 
 // Vincular tabs via addEventListener (no onclick en HTML → evita problemas de scope)
@@ -2770,7 +2780,7 @@ function renderTotalCeot() {
 
 function admDesactivarSidebar() {
   window.scrollTo(0, 0);
-  ["debitos","accesos","pendientes","gastospagos","facturas","transferencias","totalceot","sueldob","cpsm","aporteceot","sueldodirector","licencias","obrapagos"].forEach(function(k) {
+  ["debitos","accesos","pendientes","gastospagos","facturas","transferencias","totalceot","sueldob","cpsm","aporteceot","sueldodirector","licencias","obrapagos","estadisticas"].forEach(function(k) {
     var b = document.getElementById("adm-sidenav-" + k);
     if (b) b.className = "adm-sidenav-btn";
   });
@@ -3199,6 +3209,7 @@ async function handleLogin() {
   renderIndividual(DICIEMBRE_RAW,   DICIEMBRE_FECHAS,   "diciembre",   "pane-diciembre",   doctor);
   renderHistorial(doctor);
   renderMiPanel(doctor);
+  if (typeof renderEstadisticasProf === "function") renderEstadisticasProf(doctor);
   mostrarNotificaciones(doctor);
 
   actualizarTabsNeto(doctor);
@@ -5684,7 +5695,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-03-refactor-9';
+  var CURRENT_BUILD = '2026-09-03-estadisticas-ceot';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');

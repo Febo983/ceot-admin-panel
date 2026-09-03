@@ -11,9 +11,13 @@
 
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+// fileURLToPath decodifica %20 y arma bien la ruta en Windows (con espacios
+// y letra de unidad). Con new URL(..).pathname quedaba "/C:/.../mix%20de..."
+// y readFileSync fallaba.
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const rd = (p) => readFileSync(ROOT + p, 'utf8');
 
 let errors = 0;
