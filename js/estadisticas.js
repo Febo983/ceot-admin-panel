@@ -17,6 +17,23 @@ var estProfCtx    = null;           // datos para (re)dibujar los charts del por
 function estN(n) { return (n == null || n === "") ? "—" : Number(n).toLocaleString("es-AR"); }
 function estPct(n) { return (Math.round(n * 1000) / 10).toLocaleString("es-AR") + "%"; }
 function estCap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+function estSum(a) { return (a || []).reduce(function (s, v) { return s + (v || 0); }, 0); }
+// Suma de un array hasta el mes n (mismo período que 2026 lleva cargado).
+function estSumHasta(a, n) { return estSum((a || []).slice(0, n)); }
+// Color del año de comparación (2025) — ámbar, el mismo que ya usan las
+// líneas punteadas de "años anteriores" en los charts de evolución.
+var EST_COL_2025      = "#c9933a";
+var EST_COL_2025_SOFT = "rgba(201,147,58,.45)";
+// Delta con flecha: "▲ +12" verde / "▼ -8" rojo / "= 0" gris. dPos/dNeg
+// son los colores (por defecto verde/rojo, invertibles si "más" es malo).
+function estDelta(cur, prev) {
+  if (prev == null || cur == null) return '<span style="color:var(--co-ink-dim,#6b6a5a)">sin dato 2025</span>';
+  var d = cur - prev;
+  var col = d > 0 ? "#166534" : (d < 0 ? "#b13a2c" : "#6b6a5a");
+  var ar  = d > 0 ? "▲ +" : (d < 0 ? "▼ " : "= ");
+  var pc  = prev ? " (" + (d >= 0 ? "+" : "") + Math.round(d / prev * 100) + "%)" : "";
+  return '<span style="color:' + col + '">' + ar + estN(Math.abs(d)) + pc + " vs 2025</span>";
+}
 
 // ── Estado sincronizado ───────────────────────────────────────────
 function estCargar(onDone) {
@@ -322,19 +339,24 @@ function estAdminConsultas() {
     return { label: m.label, total: s };
   }).filter(function (x) { return x.total > 0; }).sort(function (a, b) { return b.total - a.total; });
 
+  // Mismo período 2025 (servicio) para comparar.
+  var srv2025 = EST_SEED.consultas.totalPorMesAnual["2025"];
+  var ytd2025 = estSumHasta(srv2025, meses.length);
+
   var html = '<div class="adm-kpis" style="flex-wrap:wrap">'
-    + estKpi("Consultas 2026 (a la fecha)", estN(ytd), meses.length + " meses", "#1f3a2e")
-    + estKpi("Promedio mensual", estN(prom), "", "#1c78b0")
+    + estKpi("Consultas 2026 (a la fecha)", estN(ytd), estDelta(ytd, ytd2025), "#1f3a2e")
+    + estKpi("Promedio mensual", estN(prom), "2025: " + estN(Math.round(ytd2025 / meses.length)) + "/mes", "#1c78b0")
     + estKpi("Último mes cargado", ultMes != null ? estCap(EST_MESES[ultMes]) + " · " + estN(totMes[ultMes]) : "—", deltaTxt, "#c9933a")
     + '</div>';
 
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:6px">'
-    + estChartCard("Evolución mensual — servicio (2026 vs años anteriores)", "estChartConsEvo", 260)
-    + estChartCard("Ranking por profesional · 2026", "estChartConsRank", Math.max(240, rank.length * 26))
+    + estChartCard("Evolución mensual — servicio (2026 vs 2025 · 2024)", "estChartConsEvo", 260)
+    + estChartCard("Ranking por profesional · 2026 vs 2025 (mismo período)", "estChartConsRank", Math.max(240, rank.length * 30))
     + '</div>';
 
-  // Tabla prof × mes
-  html += '<div style="margin-top:14px">' + estCardWrap("Detalle por profesional y mes · 2026", estTablaMatriz(mat, totMes, meses)) + '</div>';
+  // Tabla prof × mes + comparación 2025
+  html += '<div style="margin-top:14px">' + estCardWrap("Detalle por profesional y mes · 2026",
+    estTablaMatriz(mat, totMes, meses, EST_SEED.consultas.porProf2025, meses.length)) + '</div>';
   return html;
 }
 
@@ -353,20 +375,26 @@ function estAdminCirugias() {
     return { label: m.label, total: s };
   }).filter(function (x) { return x.total > 0; }).sort(function (a, b) { return b.total - a.total; });
 
+  var totCob2025 = EST_SEED.cirugias.coberturaPorMes2025.total;
+  var totYtd2025 = estSumHasta(totCob2025, meses.length);
+  var artYtd2025 = estSumHasta(EST_SEED.cirugias.coberturaPorMes2025.art, meses.length);
+  var parYtd2025 = estSumHasta(EST_SEED.cirugias.coberturaPorMes2025.particular, meses.length);
+
   var html = '<div class="adm-kpis" style="flex-wrap:wrap">'
-    + estKpi("Cirugías 2026 (a la fecha)", estN(totYtd), meses.length + " meses", "#1f3a2e")
-    + estKpi("Con ART", estN(ytd.art), estPct(ytd.art / (totYtd || 1)) + " del total", "#d85a30")
-    + estKpi("Particulares", estN(ytd.particular), estPct(ytd.particular / (totYtd || 1)) + " del total", "#7f77dd")
+    + estKpi("Cirugías 2026 (a la fecha)", estN(totYtd), estDelta(totYtd, totYtd2025), "#1f3a2e")
+    + estKpi("Con ART", estN(ytd.art), estPct(ytd.art / (totYtd || 1)) + " · 2025: " + estN(artYtd2025), "#d85a30")
+    + estKpi("Particulares", estN(ytd.particular), estPct(ytd.particular / (totYtd || 1)) + " · 2025: " + estN(parYtd2025), "#7f77dd")
     + '</div>';
 
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:6px">'
-    + estChartCard("Evolución mensual (2026 vs años anteriores)", "estChartCxEvo", 260)
-    + estChartCard("Ranking por cirujano · 2026", "estChartCxRank", Math.max(240, rank.length * 26))
+    + estChartCard("Evolución mensual (2026 vs 2025 · 2024)", "estChartCxEvo", 260)
+    + estChartCard("Ranking por cirujano · 2026 vs 2025 (mismo período)", "estChartCxRank", Math.max(240, rank.length * 30))
     + estChartCard("Cobertura por mes · 2026 (ART / particular / obras sociales)", "estChartCxCob", 260)
-    + estChartCard("Cobertura acumulada · 2026", "estChartCxDona", 260)
+    + estChartCard("Cobertura acumulada · 2026 vs 2025", "estChartCxDona", 260)
     + '</div>';
 
-  html += '<div style="margin-top:14px">' + estCardWrap("Detalle por cirujano y mes · 2026", estTablaMatriz(mat, totMes, meses)) + '</div>';
+  html += '<div style="margin-top:14px">' + estCardWrap("Detalle por cirujano y mes · 2026",
+    estTablaMatriz(mat, totMes, meses, EST_SEED.cirugias.porCirujano2025, meses.length)) + '</div>';
 
   html += '<div style="margin-top:14px">' + estCardWrap("Por obra social individual",
     '<div style="font-size:0.78rem;color:var(--co-ink-dim,#6b6a5a);line-height:1.5">'
@@ -377,23 +405,36 @@ function estAdminCirugias() {
 }
 
 // ── Tabla genérica médico × mes ─────────────────────────────────
-function estTablaMatriz(mat, totMes, meses) {
+// cmp2025 (opcional): { KEY: [12 valores] } → agrega columnas "2025 (mismo
+// período)" y "Δ" comparando contra los primeros `nComp` meses de 2025.
+function estTablaMatriz(mat, totMes, meses, cmp2025, nComp) {
+  var cmp = cmp2025 || null;
+  var n = nComp || meses.length;
   var filas = EST_MEDICOS.map(function (m) {
     var row = mat[m.key];
     if (!row) return null;
     var tot = row.reduce(function (a, v) { return a + (v || 0); }, 0);
     if (!tot) return null;
-    return { label: m.label, row: row, tot: tot };
+    var prev = cmp && cmp[m.key] ? estSumHasta(cmp[m.key], n) : null;
+    return { label: m.label, row: row, tot: tot, prev: prev };
   }).filter(Boolean).sort(function (a, b) { return b.tot - a.tot; });
 
   var th = '<th style="padding:5px 8px;text-align:left;position:sticky;left:0;background:var(--co-card,#fbf8f0)">Médico</th>';
   meses.forEach(function (m) { th += '<th style="padding:5px 8px;text-align:right">' + EST_MESES_CORTO[m] + '</th>'; });
-  th += '<th style="padding:5px 8px;text-align:right">Total</th>';
+  th += '<th style="padding:5px 8px;text-align:right">Total 2026</th>';
+  if (cmp) th += '<th style="padding:5px 8px;text-align:right;color:' + EST_COL_2025 + '">2025 (mismo per.)</th><th style="padding:5px 8px;text-align:right">Δ</th>';
 
   var body = filas.map(function (f) {
     var tds = '<td style="padding:4px 8px;font-weight:600;position:sticky;left:0;background:var(--co-card,#fbf8f0)">' + f.label + '</td>';
     meses.forEach(function (m) { tds += '<td style="padding:4px 8px;text-align:right">' + estN(f.row[m]) + '</td>'; });
     tds += '<td style="padding:4px 8px;text-align:right;font-weight:700">' + estN(f.tot) + '</td>';
+    if (cmp) {
+      var d = f.prev == null ? null : f.tot - f.prev;
+      var dc = d == null ? "var(--co-ink-dim,#6b6a5a)" : (d > 0 ? "#166534" : (d < 0 ? "#b13a2c" : "#6b6a5a"));
+      var dt = d == null ? "–" : (d > 0 ? "+" : "") + estN(d);
+      tds += '<td style="padding:4px 8px;text-align:right;color:' + EST_COL_2025 + '">' + estN(f.prev) + '</td>'
+           + '<td style="padding:4px 8px;text-align:right;font-weight:600;color:' + dc + '">' + dt + '</td>';
+    }
     return '<tr>' + tds + '</tr>';
   }).join("");
 
@@ -401,6 +442,12 @@ function estTablaMatriz(mat, totMes, meses) {
   var gran = 0;
   meses.forEach(function (m) { totRow += '<td style="padding:5px 8px;text-align:right;font-weight:800">' + estN(totMes[m]) + '</td>'; gran += (totMes[m] || 0); });
   totRow += '<td style="padding:5px 8px;text-align:right;font-weight:800">' + estN(gran) + '</td>';
+  if (cmp) {
+    var granPrev = filas.reduce(function (s, f) { return s + (f.prev || 0); }, 0);
+    var gd = gran - granPrev;
+    totRow += '<td style="padding:5px 8px;text-align:right;font-weight:800;color:' + EST_COL_2025 + '">' + estN(granPrev) + '</td>'
+            + '<td style="padding:5px 8px;text-align:right;font-weight:800;color:' + (gd >= 0 ? "#166534" : "#b13a2c") + '">' + (gd >= 0 ? "+" : "") + estN(gd) + '</td>';
+  }
 
   return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.76rem">'
     + '<thead><tr style="background:rgba(32,36,31,.05)">' + th + '</tr></thead>'
@@ -450,16 +497,28 @@ function estInitChartsConsultas() {
 
   var rk = document.getElementById("estChartConsRank");
   if (rk) {
+    var nMeses = estMesesConDato(totMes).length;
+    var p2025 = EST_SEED.consultas.porProf2025;
     var rank = EST_MEDICOS.map(function (m) {
       var row = mat[m.key] || [];
-      return { label: m.label, total: row.reduce(function (a, v) { return a + (v || 0); }, 0) };
+      return {
+        label: m.label,
+        total: row.reduce(function (a, v) { return a + (v || 0); }, 0),
+        prev: p2025[m.key] ? estSumHasta(p2025[m.key], nMeses) : null
+      };
     }).filter(function (x) { return x.total > 0; }).sort(function (a, b2) { return b2.total - a.total; });
     estChartInstances.estChartConsRank = new Chart(rk, {
       type: "bar",
-      data: { labels: rank.map(function (r) { return r.label; }), datasets: [{ label: "Consultas", data: rank.map(function (r) { return r.total; }), backgroundColor: "#1c78b0", borderRadius: 4 }] },
+      data: {
+        labels: rank.map(function (r) { return r.label; }),
+        datasets: [
+          { label: "2026", data: rank.map(function (r) { return r.total; }), backgroundColor: "#1c78b0", borderRadius: 4 },
+          { label: "2025 (mismo período)", data: rank.map(function (r) { return r.prev; }), backgroundColor: EST_COL_2025, borderRadius: 4 }
+        ]
+      },
       options: {
         indexAxis: "y", responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } } },
         scales: { x: { grid: { color: b.grid } }, y: { grid: { display: false }, ticks: { autoSkip: false } } }
       }
     });
@@ -498,16 +557,28 @@ function estInitChartsCirugias() {
 
   var rk = document.getElementById("estChartCxRank");
   if (rk) {
+    var nMeses = estMesesConDato(totMes).length;
+    var c2025 = EST_SEED.cirugias.porCirujano2025;
     var rank = EST_MEDICOS.map(function (m) {
       var row = mat[m.key] || [];
-      return { label: m.label, total: row.reduce(function (a, v) { return a + (v || 0); }, 0) };
+      return {
+        label: m.label,
+        total: row.reduce(function (a, v) { return a + (v || 0); }, 0),
+        prev: c2025[m.key] ? estSumHasta(c2025[m.key], nMeses) : null
+      };
     }).filter(function (x) { return x.total > 0; }).sort(function (a, b2) { return b2.total - a.total; });
     estChartInstances.estChartCxRank = new Chart(rk, {
       type: "bar",
-      data: { labels: rank.map(function (r) { return r.label; }), datasets: [{ label: "Cirugías", data: rank.map(function (r) { return r.total; }), backgroundColor: "#1f3a2e", borderRadius: 4 }] },
+      data: {
+        labels: rank.map(function (r) { return r.label; }),
+        datasets: [
+          { label: "2026", data: rank.map(function (r) { return r.total; }), backgroundColor: "#1f3a2e", borderRadius: 4 },
+          { label: "2025 (mismo período)", data: rank.map(function (r) { return r.prev; }), backgroundColor: EST_COL_2025, borderRadius: 4 }
+        ]
+      },
       options: {
         indexAxis: "y", responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } } },
         scales: { x: { grid: { color: b.grid } }, y: { grid: { display: false }, ticks: { autoSkip: false } } }
       }
     });
@@ -538,17 +609,27 @@ function estInitChartsCirugias() {
 
   var dona = document.getElementById("estChartCxDona");
   if (dona) {
-    var totYtd = cob.total.reduce(function (a, v) { return a + v; }, 0);
+    var nMeses = estMesesConDato(totMes).length;
+    var totYtd = estSumHasta(cob.total, nMeses);
     var restoYtd = totYtd - ytd.art - ytd.particular;
+    var c25 = EST_SEED.cirugias.coberturaPorMes2025;
+    var art25 = estSumHasta(c25.art, nMeses), par25 = estSumHasta(c25.particular, nMeses);
+    var resto25 = estSumHasta(c25.total, nMeses) - art25 - par25;
     estChartInstances.estChartCxDona = new Chart(dona, {
       type: "doughnut",
       data: {
         labels: ["Obras sociales", "ART", "Particular"],
-        datasets: [{ data: [restoYtd, ytd.art, ytd.particular], backgroundColor: ["#1c78b0", "#d85a30", "#7f77dd"], borderWidth: 0 }]
+        datasets: [
+          { label: "2026", data: [restoYtd, ytd.art, ytd.particular], backgroundColor: ["#1c78b0", "#d85a30", "#7f77dd"], borderWidth: 1, borderColor: "var(--co-card,#fbf8f0)" },
+          { label: "2025", data: [resto25, art25, par25], backgroundColor: ["rgba(28,120,176,.4)", "rgba(216,90,48,.4)", "rgba(127,119,221,.4)"], borderWidth: 1, borderColor: "var(--co-card,#fbf8f0)" }
+        ]
       },
       options: {
-        responsive: true, maintainAspectRatio: false, cutout: "60%",
-        plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } } }
+        responsive: true, maintainAspectRatio: false, cutout: "42%",
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } },
+          tooltip: { callbacks: { label: function (c) { return (c.dataset.label || "") + " · " + c.label + ": " + estN(c.parsed); } } }
+        }
       }
     });
   }
@@ -578,8 +659,14 @@ function estPintarProf(doctor) {
   var mesesC = estMesesConDato(totC);
   var mesesX = estMesesConDato(totX);
 
+  var misC2025 = (EST_SEED.consultas.porProf2025[apellido] || null);
+  var misX2025 = (EST_SEED.cirugias.porCirujano2025[apellido] || null);
+  var nC = mesesC.length, nX = mesesX.length;
+
   var miCYtd = misC.reduce(function (a, v) { return a + (v || 0); }, 0);
   var miXYtd = misX.reduce(function (a, v) { return a + (v || 0); }, 0);
+  var miCYtd25 = misC2025 ? estSumHasta(misC2025, nC) : null;
+  var miXYtd25 = misX2025 ? estSumHasta(misX2025, nX) : null;
   var srvCYtd = mesesC.reduce(function (a, m) { return a + (totC[m] || 0); }, 0);
   var srvXYtd = mesesX.reduce(function (a, m) { return a + (totX[m] || 0); }, 0);
 
@@ -596,26 +683,26 @@ function estPintarProf(doctor) {
   html += '<div class="mp-section-label">Estadísticas del servicio</div>';
 
   html += '<div class="adm-kpis" style="flex-wrap:wrap;margin-bottom:12px">'
-    + estKpi("Mis consultas 2026", mp(miCYtd), srvCYtd ? estPct(miCYtd / srvCYtd) + " del servicio" : "", "#1c78b0")
-    + estKpi("Mis cirugías 2026", mp(miXYtd), srvXYtd ? estPct(miXYtd / srvXYtd) + " del servicio" : "", "#1f3a2e")
+    + estKpi("Mis consultas 2026", mp(miCYtd), estDelta(miCYtd, miCYtd25), "#1c78b0")
+    + estKpi("Mis cirugías 2026", mp(miXYtd), estDelta(miXYtd, miXYtd25), "#1f3a2e")
     + estKpi("Mi lugar en cirugías", puestoTxt, "por volumen 2026", "#c9933a")
     + '</div>';
 
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">'
-    + estChartCard("Mis consultas por mes · 2026", "estProfCons", 220)
-    + estChartCard("Mis cirugías por mes · 2026", "estProfCx", 220)
-    + estChartCard("Mi participación en el total del servicio", "estProfPart", 220)
+    + estChartCard("Mis consultas por mes · 2026 vs 2025", "estProfCons", 220)
+    + estChartCard("Mis cirugías por mes · 2026 vs 2025", "estProfCx", 220)
+    + estChartCard("Mi participación en el total del servicio · 2026", "estProfPart", 220)
     + '</div>';
 
   html += '<div style="margin-top:12px;font-size:0.72rem;color:var(--co-ink-dim,#6b6a5a)">'
-    + 'Se comparan tus números contra el total de CEOT. El detalle individual del resto de los profesionales solo lo ve la administración.'
+    + 'La barra <span style="color:' + EST_COL_2025 + ';font-weight:700">ámbar</span> es 2025, para comparar. Tus números se comparan contra el total de CEOT; el detalle individual del resto solo lo ve la administración.'
     + '</div>';
   html += '</div>';
 
   pane.innerHTML = html;
   if (window.lucide) lucide.createIcons();
 
-  estProfCtx = { misC: misC, misX: misX, totC: totC, totX: totX };
+  estProfCtx = { misC: misC, misX: misX, totC: totC, totX: totX, misC2025: misC2025, misX2025: misX2025 };
   estProfActivarCharts();
 }
 
@@ -628,15 +715,26 @@ function estProfActivarCharts() {
   var b = estChartBase();
   var c = estProfCtx;
 
+  var grpOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } } },
+    scales: { x: { grid: { display: false } }, y: { grid: { color: b.grid }, beginAtZero: true } }
+  };
   estChartInstances.estProfCons = new Chart(document.getElementById("estProfCons"), {
     type: "bar",
-    data: { labels: EST_MESES_CORTO, datasets: [{ label: "Consultas", data: c.misC, backgroundColor: "#1c78b0", borderRadius: 4 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: b.grid }, beginAtZero: true } } }
+    data: { labels: EST_MESES_CORTO, datasets: [
+      { label: "2026", data: c.misC, backgroundColor: "#1c78b0", borderRadius: 4 },
+      { label: "2025", data: c.misC2025 || [], backgroundColor: EST_COL_2025, borderRadius: 4 }
+    ] },
+    options: grpOpts
   });
   estChartInstances.estProfCx = new Chart(document.getElementById("estProfCx"), {
     type: "bar",
-    data: { labels: EST_MESES_CORTO, datasets: [{ label: "Cirugías", data: c.misX, backgroundColor: "#1f3a2e", borderRadius: 4 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: b.grid }, beginAtZero: true } } }
+    data: { labels: EST_MESES_CORTO, datasets: [
+      { label: "2026", data: c.misX, backgroundColor: "#1f3a2e", borderRadius: 4 },
+      { label: "2025", data: c.misX2025 || [], backgroundColor: EST_COL_2025, borderRadius: 4 }
+    ] },
+    options: grpOpts
   });
   var partC = document.getElementById("estProfPart");
   if (partC) {

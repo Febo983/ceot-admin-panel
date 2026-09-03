@@ -81,6 +81,23 @@ var EST_SEED = {
       "LEON":         [207,163,149,104,135,187,158],
       "SOULE":        [193,184,153,135,159,246,202]
     },
+    // 2025 completo, por profesional (12 meses) — para comparar contra 2026.
+    // Fuente: "CONSULTAS 2025.pdf". GARMENDIA no tiene 2025 (se sumó en 2026).
+    porProf2025: {
+      "CORELICH":     [307,376,176,259,341,327,369,319,321,380,238,306],
+      "LABAYEN":      [343,136,280,298,311,302,310,294,284,339,304,143],
+      "TRIVELLINI":   [312,302,298,315,324,304,322,193,337,304,256,183],
+      "DEGANUTTI":    [537,258,419,330,463,431,245,489,437,482,335,440],
+      "FISSER":       [235,272,266,237,259,245,244,223,294,269,206,231],
+      "BRUNI":        [299,197,289,339,255,254,264,309,320,293,271,175],
+      "GUILERA":      [220,218,234,213,218,150,239,204,220,167,198,126],
+      "MAZZOLA":      [275,272,205,228,318,277,188,277,258,381,178,280],
+      "GERLING":      [80,79,56,85,63,43,91,83,77,80,78,69],
+      "DE LA COLINA": [286,289,179,245,238,277,322,333,315,238,209,221],
+      "PERLASCO":     [234,255,246,212,144,265,257,228,258,192,202,151],
+      "LEON":         [116,67,90,135,119,34,194,191,160,187,165,221],
+      "SOULE":        [203,158,163,192,178,142,237,144,211,229,239,231]
+    },
     // Total del servicio por mes, por año (2017-2026). 12 posiciones;
     // null = mes sin dato todavía. Fuente: cuadro "POR MES / POR AÑO".
     totalPorMesAnual: {
@@ -124,6 +141,22 @@ var EST_SEED = {
       "SOULE":        [1,6,0,2,4,2,8],
       "TRIVELLINI":   [10,19,6,7,6,15,10]
     },
+    // 2025 completo, por cirujano (12 meses). Fuente: "CIRUGIAS 2025.pdf".
+    // Sin GARMENDIA (no operaba en CEOT en 2025).
+    porCirujano2025: {
+      "BRUNI":        [20,10,21,21,20,25,29,15,25,21,22,19],
+      "CORELICH":     [10,3,4,11,7,5,13,8,5,13,1,6],
+      "DE LA COLINA": [27,27,19,18,18,21,24,21,27,17,20,17],
+      "DEGANUTTI":    [22,18,19,28,26,31,20,30,30,29,24,27],
+      "FISSER":       [6,2,5,5,5,4,10,6,7,3,2,3],
+      "GUILERA":      [1,0,0,3,0,0,1,2,0,1,1,1],
+      "LABAYEN":      [8,2,3,5,6,4,3,2,1,4,5,1],
+      "LEON":         [1,1,1,0,2,0,0,0,1,0,0,0],
+      "MAZZOLA":      [6,14,18,8,17,10,11,11,14,17,9,16],
+      "PERLASCO":     [15,11,12,16,7,15,17,19,21,10,16,13],
+      "SOULE":        [4,4,0,6,5,0,3,5,4,3,5,4],
+      "TRIVELLINI":   [9,15,11,6,11,11,14,8,11,12,6,10]
+    },
     // 2026, cobertura por mes, índice 0=enero … 6=julio.
     //   art        — cirugías con ART
     //   particular — cirugías particulares (sin cobertura)
@@ -135,6 +168,13 @@ var EST_SEED = {
     },
     // Acumulado 2026 hasta julio (del pie del PDF).
     ytd2026: { art:178, particular:47, otras:740 },
+    // 2025 completo, cobertura por mes (12 meses). Fuente: "CIRUGIAS 2025.pdf".
+    coberturaPorMes2025: {
+      art:        [26,29,32,30,29,26,30,20,24,30,23,25],
+      particular: [7,5,6,7,3,7,6,5,7,7,0,9],
+      total:      [129,107,113,127,124,126,145,127,146,130,111,117]
+    },
+    ytd2025: { art:324, particular:69 },
     // Desglose por obra social individual (OSDE, IOMA, PAMI, Swiss…).
     // VACÍO: el PDF actual no lo trae. Se llena cuando el Excel mensual
     // de cirugías incluya la columna de obra social.  Shape previsto:
