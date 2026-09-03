@@ -34,7 +34,7 @@ const html = rd('index.html');
   else ok('sin marcadores de conflicto');
 }
 
-// 2. sintaxis de cada <script> inline
+// 2a. sintaxis de cada <script> inline
 {
   const re = /<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
   let m, i = 0, bad = 0;
@@ -51,6 +51,29 @@ const html = rd('index.html');
   }
   if (i === 0) fail('no se encontró ningún <script> inline en index.html');
   else if (!bad) ok(`${i} bloques <script> inline parsean OK`);
+}
+
+// 2b. sintaxis de cada <script src="..."> local + cache-bust ?v= al día
+{
+  const ver = rd('version.txt').trim();
+  const re = /<script\b[^>]*\bsrc=["']([^"']+?)["'][^>]*>/gi;
+  let m, i = 0, bad = 0, staleBust = 0;
+  while ((m = re.exec(html))) {
+    let src = m[1];
+    if (/^https?:/.test(src)) continue;
+    i++;
+    const q = src.split('?')[1] || '';
+    const path = src.split('?')[0];
+    const vq = new URLSearchParams(q).get('v');
+    if (vq !== ver) { staleBust++; fail(`${src}: el ?v= ("${vq}") no coincide con version.txt ("${ver}") — actualizá el include`); }
+    try {
+      new vm.Script(rd(path), { filename: path });
+    } catch (e) {
+      bad++;
+      fail(`${path}: ${e.message}`);
+    }
+  }
+  if (i && !bad && !staleBust) ok(`${i} archivo(s) <script src> local(es): sintaxis OK y ?v= al día`);
 }
 
 // 3. version.txt === CURRENT_BUILD
