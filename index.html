@@ -3552,9 +3552,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   if (typeof SUELDO_DIRECTOR_LISTA !== "undefined" && SUELDO_DIRECTOR_LISTA.indexOf(doctor.apellido) !== -1 && typeof calcularSueldoDirector === "function") {
     var sd = calcularSueldoDirector(periodo, doctor, SUELDO_DIRECTOR_MONTO);
     if (sd) {
-      var sdTxt = sd.alcanza
-        ? fmt(sd.monto) + ' el ' + (sd.fechaCompleta || '—')
-        : fmt(sd.monto - sd.faltante) + ' disponible hasta ahora (faltan ' + fmt(sd.faltante) + ')';
+      var sdTxt = fmt(sd.monto);
       html += '<div style="background:rgba(201,147,58,.12);border:1px solid rgba(201,147,58,.35);border-radius:10px;padding:10px 12px;margin-bottom:10px">'
         + '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.04em">🏦 Sueldo Director' + avisoTransferidoChipHtml(periodo, doctor) + '</div>'
         + '<div style="font-size:.85rem;font-weight:700;color:#20241f;margin-top:2px">' + sdTxt + '</div>'
