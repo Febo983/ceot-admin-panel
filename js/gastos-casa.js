@@ -12,8 +12,10 @@
 //   espejado con syncPush/syncPull, igual que el resto de los módulos
 //   editables. El Sheet NO se toca: la fuente de verdad pasa a ser el panel.
 //   El SEED de abajo se bajó del Google Sheet "liquidaciones CEOT actualizado"
-//   (pestaña APORTES 14 DE JULIO 2067) vía gviz — 99 filas + 1 de apertura + 1
-//   de ajuste. Rubros clasificados automáticamente por palabras clave.
+//   (pestaña APORTES 14 DE JULIO 2067) vía gviz — 99 filas del libro + 10 filas
+//   de "primer aporte" por profesional (columna PRIMER APORTE de la grilla, suma
+//   $76.800.000 = saldo inicial del fondo) + 1 fila de ajuste. Rubros clasificados
+//   automáticamente por palabras clave.
 // ═══════════════════════════════════════════════════════════════════
 
 var GC_K      = "ceot_gastos_casa";       // [] de movimientos
@@ -24,8 +26,8 @@ var _gcFiltroRubro = "";
 var _gcFiltroTxt = "";
 var _gcEditando = false;
 
-// Saldo con el que arranca el libro (antes del primer movimiento importado).
-// La 1ª fila del SEED es el aporte inicial de la Dra. Garmendia, así que va 0.
+// Saldo con el que arranca el libro. Va en 0: el fondo se llena con las 10 filas
+// de "primer aporte" por profesional que abren el SEED (suman $76.800.000).
 var GC_APERTURA_DEFAULT = 0;
 
 // ── Rubros (orden fijo + color para torta/barras) ──────────────────
@@ -52,7 +54,7 @@ var GC_RUBRO_COLOR = {
 // ── Profesionales / socios (apellido tal como aparece en el Sheet) ──
 // comprometido = lo declarado en la grilla "APORTES PARA 14 DE JULIO 2067".
 var GC_SOCIOS = [
-  { k: "GARMENDIA",     n: "Garmendia, Valeria",           comprometido: 76800000 },
+  { k: "GARMENDIA",     n: "Garmendia, Valeria",           comprometido: 22189400 }, // $3.740.000 + US$ 12.680 @ $1.455
   { k: "BRUNI",         n: "Bruni, Maximiliano E.",         comprometido: 30000000 },
   { k: "CORELICH",      n: "Corelich, Daniel O.",           comprometido: 30000000 },
   { k: "DEGANUTTI",     n: "Deganutti, Cristian G.",        comprometido: 40000000 },
@@ -107,7 +109,18 @@ function gcAutocompletar(concepto) {
 // que el contador hizo directo sobre la columna Saldo del Sheet sin cargarlas como movimiento. Está para que
 // el total cierre en $35.515.331 igual que la planilla. Se va reduciendo a medida que se itemicen esas correcciones.
 var GC_SEED = [
-  { f: "2026-03-01", c: "Aporte inicial · Dra. Garmendia", m: "Aporte capital", d: "", fac: "", imp: 76800000, sSheet: 76800000, tipo: "aporte", socio: "GARMENDIA", rubro: "Aporte de capital" },
+  // Primer aporte de cada profesional (columna PRIMER APORTE de la grilla, suma exacta $76.800.000
+  // = saldo con el que el fondo arranca antes del primer gasto). Fecha estimada — ajustá si tenés la real.
+  { f: "2026-03-01", c: "Primer aporte · Bruni", m: "Transferencia", d: "", fac: "", imp: 10000000, sSheet: null, tipo: "aporte", socio: "BRUNI", rubro: "Aporte de capital" },
+  { f: "2026-03-01", c: "Primer aporte · Corelich", m: "Transferencia", d: "", fac: "", imp: 10000000, sSheet: null, tipo: "aporte", socio: "CORELICH", rubro: "Aporte de capital" },
+  { f: "2026-03-01", c: "Primer aporte · De la Colina", m: "Transferencia", d: "", fac: "", imp: 5000000, sSheet: null, tipo: "aporte", socio: "DE LA COLINA", rubro: "Aporte de capital" },
+  { f: "2026-03-01", c: "Primer aporte · Deganutti", m: "Transferencia", d: "", fac: "", imp: 10000000, sSheet: null, tipo: "aporte", socio: "DEGANUTTI", rubro: "Aporte de capital" },
+  { f: "2026-03-01", c: "Primer aporte · Labayen", m: "Transferencia", d: "", fac: "", imp: 10000000, sSheet: null, tipo: "aporte", socio: "LABAYEN", rubro: "Aporte de capital" },
+  { f: "2026-03-01", c: "Primer aporte · León", m: "Transferencia", d: "", fac: "", imp: 5000000, sSheet: null, tipo: "aporte", socio: "LEON", rubro: "Aporte de capital" },
+  { f: "2026-03-01", c: "Primer aporte · Mazzola", m: "Transferencia", d: "", fac: "", imp: 5000000, sSheet: null, tipo: "aporte", socio: "MAZZOLA", rubro: "Aporte de capital" },
+  { f: "2026-03-01", c: "Primer aporte · Perlasco", m: "Transferencia", d: "", fac: "", imp: 6800000, sSheet: null, tipo: "aporte", socio: "PERLASCO", rubro: "Aporte de capital" },
+  { f: "2026-03-01", c: "Primer aporte · Soule", m: "Transferencia", d: "", fac: "", imp: 5000000, sSheet: null, tipo: "aporte", socio: "SOULE", rubro: "Aporte de capital" },
+  { f: "2026-03-01", c: "Primer aporte · Trivellini", m: "Transferencia", d: "", fac: "", imp: 10000000, sSheet: 76800000, tipo: "aporte", socio: "TRIVELLINI", rubro: "Aporte de capital" },
   { f: "2026-03-16", c: "GM Sanitarios Srl", m: "Transferencia", d: "0170235620000000471286", fac: "A0004-00020099", imp: 5837260, sSheet: 70962740, tipo: "gasto", rubro: "Sanitarios / grifería / gas" },
   { f: "2026-03-19", c: "Mano de obra Plomeria", m: "Transferencia", d: "Sur.idea.bozal", fac: "FC0001-000183", imp: 4230000, sSheet: 66732740, tipo: "gasto", rubro: "Plomería" },
   { f: "2026-03-25", c: "Lopez lucas (Jardineria)", m: "Transferencia", d: "Jardineria.sosa17", fac: "", imp: 545000, sSheet: 66187740, tipo: "gasto", rubro: "Jardinería" },
