@@ -10,12 +10,16 @@
 //      gráficos por rubro y para seguir cargando gastos nuevos con
 //      autocompletado de proveedor/rubro/alias-CBU.
 //
-//   El "Saldo del fondo" NO se reconstruye sumando 99 movimientos históricos
-//   (esa columna del Sheet tiene ajustes manuales del contador que no están
-//   cargados como filas — no cierra sola). En cambio arranca directo del
-//   último "Saldo Actual" real de la planilla (GC_SALDO_ANCLA, 03/09/2026)
-//   y sólo se mueve con los movimientos NUEVOS que se cargan desde acá en
-//   adelante. Así el saldo siempre es exacto, sin filas de "ajuste" inventadas.
+//   El "Saldo del fondo" se recalcula de cero, fila por fila, a partir de la
+//   columna Importe del libro (gasto resta, aporte suma) — NO se copia de la
+//   columna "Saldo Actual" del Sheet, que tiene correcciones manuales del
+//   contador sin cargar como fila (jamás cierra sola). Arranca en
+//   GC_APERTURA = $76.800.000, la plata con la que se fondeó la obra antes
+//   del primer gasto (= la columna PRIMER APORTE de los 10 socios, ver
+//   GC_APORTES_SEED — cierra exacto con el primer "Saldo Actual" del Sheet:
+//   76.800.000 − 5.837.260 = 70.962.740). Cada fila guarda además el
+//   "Saldo Actual" que tenía en el Sheet (sSheet), sólo de referencia, para
+//   poder comparar visualmente dónde arrancó a desviarse la planilla.
 //
 //   Persistencia: localStorage (ceot_gastos_casa / ceot_gastos_casa_aportes /
 //   ceot_gastos_casa_cfg) + syncPush/syncPull, igual que el resto de los
@@ -26,16 +30,20 @@
 
 var GC_K         = "ceot_gastos_casa";           // [] movimientos del libro
 var GC_K_APORTES = "ceot_gastos_casa_aportes";   // [] aportes de capital por profesional
-var GC_K_CFG     = "ceot_gastos_casa_cfg";       // { ancla:n }
+var GC_K_CFG     = "ceot_gastos_casa_cfg";       // legado — sólo se limpia (ver gcResetSeed), ya no se lee ni se sincroniza
 var _gcPulled = false;
 var _gcCharts = {};
 var _gcFiltroRubro = "";
 var _gcFiltroTxt = "";
 
-// Saldo real de la planilla en su última fila cargada (Inyección capital
-// Trivellini, 03/09/2026) — punto de partida del saldo del fondo.
-var GC_SALDO_ANCLA = 35515331;
-var GC_SALDO_ANCLA_FECHA = "2026-09-03";
+// Saldo con el que arranca el fondo: la columna PRIMER APORTE de los 10
+// socios (todos menos Garmendia), transferida antes del primer gasto del
+// libro (16/03/2026).
+var GC_APERTURA = 76800000;
+var GC_APERTURA_FECHA = "2026-03-01";
+// Último "Saldo Actual" que declaraba el Sheet (fila del 03/09/2026) — sólo
+// como referencia para el cartel de abajo, ya no se usa para calcular nada.
+var GC_SALDO_SHEET_FINAL = 35515331;
 var GC_TC_USD = 1455; // tipo de cambio usado para valuar el aporte en USD de Garmendia
 
 // ── Rubros (orden fijo + color para torta/barras) ──────────────────
@@ -247,9 +255,8 @@ function gcFechaAR(iso) {
 // ── libro de movimientos: leer/guardar ──────────────────────────────
 function gcLeer() {
   // Sólo se confía en lo guardado si YA tiene el esquema nuevo (campo "hist" en
-  // cada fila). Esto migra automáticamente cache/sync viejo de versiones
-  // anteriores del módulo (que no tenían "hist") — sin este chequeo, esas filas
-  // se tratarían todas como "nuevas" y arruinarían el saldo (ver GC_SALDO_ANCLA).
+  // cada fila) — migra automáticamente cache/sync viejo de versiones
+  // anteriores del módulo que no lo tenían.
   try {
     var v = JSON.parse(localStorage.getItem(GC_K));
     if (Array.isArray(v) && v.length && v.every(function (r) { return r && "hist" in r; })) return v;
@@ -282,44 +289,34 @@ function gcAportesGuardar(arr) {
   try { localStorage.setItem(GC_K_APORTES, JSON.stringify(arr)); if (typeof syncPush === "function") syncPush(GC_K_APORTES); } catch (e) {}
 }
 
-function gcCfg() {
-  // Igual que gcLeer(): sólo se confía en el cfg guardado si tiene "ancla" —
-  // esquema viejo (comprometido/apertura, de versiones anteriores) se ignora.
-  try {
-    var v = JSON.parse(localStorage.getItem(GC_K_CFG));
-    if (v && typeof v === "object" && v.ancla != null) return v;
-  } catch (e) {}
-  return { ancla: GC_SALDO_ANCLA };
-}
-function gcCfgGuardar(c) {
-  try { localStorage.setItem(GC_K_CFG, JSON.stringify(c)); if (typeof syncPush === "function") syncPush(GC_K_CFG); } catch (e) {}
-}
-
 // ── cálculo del libro: rubros + saldo del fondo ─────────────────────
-// El saldo arranca en el ancla real de la planilla (gcCfg().ancla) y sólo se
-// mueve con los movimientos NUEVOS (hist:false, los que cargues desde acá).
-// Los 99 movimientos históricos importados quedan para el gráfico de rubros
-// y para consulta, pero no recalculan el saldo — así siempre da exacto.
+// Saldo recalculado de cero: arranca en GC_APERTURA ($76.800.000, constante
+// fija — a propósito NO se guarda en localStorage/sync, así ningún cache
+// viejo la puede pisar) y suma/resta el Importe de CADA fila en orden,
+// aporte o gasto, histórico o nuevo, todo por igual. La única excepción es
+// el aporte en USD de Garmendia: el propio Sheet lo anota "(no resta)"
+// porque se pagó directo a un proveedor, nunca entró al fondo en pesos —
+// no suma ni resta acá tampoco.
 function gcCalcular() {
   var mov = gcLeer();
-  var ancla = gcNum(gcCfg().ancla);
-  var carry = ancla;
-  var totGasto = 0, totGastoNuevo = 0;
+  var apertura = GC_APERTURA;
+  var carry = apertura;
+  var totGasto = 0;
   var porRubro = {};
   var filas = mov.map(function (m) {
     var imp = gcNum(m.imp);
     if (m.tipo === "gasto") {
       totGasto += imp;
-      if (!m.hist) totGastoNuevo += imp;
       var rk = m.rubro || "Otros";
       porRubro[rk] = (porRubro[rk] || 0) + imp;
+      carry -= imp;
+    } else if (m.mon !== "USD") {
+      carry += imp;
     }
-    var saldo = null;
-    if (!m.hist) { carry += (m.tipo === "aporte" ? imp : -imp); saldo = carry; }
-    return { m: m, saldo: saldo };
+    return { m: m, saldo: carry };
   });
   return {
-    filas: filas, saldo: carry, ancla: ancla, totGasto: totGasto, totGastoNuevo: totGastoNuevo,
+    filas: filas, saldo: carry, apertura: apertura, totGasto: totGasto,
     porRubro: porRubro, n: mov.length
   };
 }
@@ -337,16 +334,13 @@ function gcCalcularAportes() {
   return { filas: filas, totPrimerArs: totPrimerArs, totSegundo: totSegundo, totTercer: totTercer, totTotal: totTotal };
 }
 
-// ── por qué "aportado − gastado" no da el "saldo del fondo" ────────
-// Los aportes de la grilla YA están 100% transferidos (confirmado por
-// Marce) — el hueco no es plata pendiente de entrar. Es gasto real que el
-// contador descontó directo de la columna de saldo del Sheet sin cargarlo
-// como fila individual en el libro (ver la nota "REAL $2.142.981,48" que
-// dejó en la fila del 21/08 — un ajuste a la baja del saldo que tenía
-// calculado, o sea gasto de más, no aporte de menos). Dinámico: se
-// recalcula solo si se edita el libro o la grilla de aportes.
-function gcReconciliacion(c, ap) {
-  return { gastoNoItemizado: ap.totTotal - c.totGasto - GC_SALDO_ANCLA };
+// ── comparación contra el "Saldo Actual" que declaraba el Sheet ─────
+// Sólo informativo — ya no se usa para forzar nada. Si da positivo, la
+// planilla tenía MENOS saldo del que da la cuenta limpia (gasto real que el
+// contador descontó de la columna sin cargarlo como fila — ver la nota
+// "REAL $2.142.981,48" de la fila del 21/08, evidencia de eso mismo).
+function gcVsSheet(c) {
+  return c.saldo - GC_SALDO_SHEET_FINAL;
 }
 
 // ═══════ RENDER ═══════════════════════════════════════════════════
@@ -360,7 +354,7 @@ function renderGastosCasa() {
     _gcPulled = true;
     syncPull(GC_K, function () { if (document.getElementById("gcRoot")) renderGastosCasa(); });
     syncPull(GC_K_APORTES, function () { if (document.getElementById("gcRoot")) renderGastosCasa(); });
-    syncPull(GC_K_CFG, function () { if (document.getElementById("gcRoot")) renderGastosCasa(); });
+    // OJO: GC_K_CFG (apertura) a propósito no se sincroniza más — ver comentario en gcCalcular().
   }
 
   var c = gcCalcular();
@@ -369,16 +363,19 @@ function renderGastosCasa() {
   if (!cont) return;
 
   // —— KPIs ——
-  var rec = gcReconciliacion(c, ap);
+  var vsSheet = gcVsSheet(c);
   var kpis =
     '<div class="adm-kpis" style="flex-wrap:wrap">' +
       gcKpi("Aportado (capital)", gcFmt(ap.totTotal), ap.filas.length + " profesionales, ya transferido", "#1f3a2e") +
-      gcKpi("Gastado (histórico)", gcFmt(c.totGasto), c.n + " movimientos", "#b13a2c") +
-      gcKpi("Saldo del fondo", gcFmt(c.saldo), c.totGastoNuevo || c.saldo !== c.ancla ? "ancla " + gcFmt(c.ancla) + " + lo nuevo" : "al " + gcFechaAR(GC_SALDO_ANCLA_FECHA) + ", igual que la planilla", c.saldo < 0 ? "#b13a2c" : "#1c78b0") +
+      gcKpi("Gastado", gcFmt(c.totGasto), c.n + " movimientos", "#b13a2c") +
+      gcKpi("Saldo del fondo", gcFmt(c.saldo), "apertura " + gcFmt(GC_APERTURA) + " + Importe de cada fila", c.saldo < 0 ? "#b13a2c" : "#1c78b0") +
       gcKpi("Rubros con gasto", String(Object.keys(c.porRubro).length), "de " + GC_RUBROS.length + " definidos", "#c9933a") +
     '</div>' +
     '<div style="font-size:.66rem;color:rgba(32,36,31,.5);background:rgba(28,120,176,.08);border:1px solid rgba(28,120,176,.2);border-radius:8px;padding:8px 10px;margin-bottom:14px;line-height:1.6">' +
-      '<b>¿Por qué ' + gcFmt(ap.totTotal) + ' − ' + gcFmt(c.totGasto) + ' no da ' + gcFmt(c.saldo) + '?</b> Los aportes ya están 100% transferidos — no es plata pendiente de entrar. La diferencia (<b>' + gcFmt(rec.gastoNoItemizado) + '</b>) es <b>gasto real</b> que el contador descontó directo de la columna de saldo del Sheet, sin cargarlo como fila individual en el libro (evidencia: dejó la nota "REAL $2.142.981,48" en la fila del 21/08 — un ajuste a la baja del saldo que tenía calculado, o sea gasto de más, no aporte de menos). El <b>Saldo del fondo</b> que ves acá es el real de la planilla. A medida que identifiques esos gastos sueltos y los cargues como movimiento, esta diferencia se va a ir achicando.' +
+      'ℹ️ El <b>Saldo del fondo</b> se recalcula de cero acá, fila por fila, sumando/restando la columna <b>Importe</b> — arranca en <b>' + gcFmt(GC_APERTURA) + '</b> (columna PRIMER APORTE de los 10 socios, antes del primer gasto del 16/03) y no usa la columna "Saldo Actual" del Sheet para nada.' +
+      (Math.abs(vsSheet) > 1000
+        ? ' Da <b>' + (vsSheet > 0 ? gcFmt(vsSheet) + ' más' : gcFmt(-vsSheet) + ' menos') + '</b> que el último "Saldo Actual" que tenía la planilla (' + gcFmt(GC_SALDO_SHEET_FINAL) + ' al ' + gcFechaAR("2026-09-03") + '), porque esa columna tiene correcciones que el contador metió directo sin cargarlas como fila (evidencia: su nota "REAL $2.142.981,48" en la fila del 21/08). Cada fila del libro de abajo muestra, chiquito y gris, el saldo que tenía en el Sheet — para ver a simple vista dónde empieza a desviarse.'
+        : ' Coincide con el último "Saldo Actual" de la planilla.') +
     '</div>';
 
   // —— gráficos ——
@@ -418,7 +415,7 @@ function renderGastosCasa() {
   var hoy = new Date().toISOString().slice(0, 10);
   var alta =
     '<div class="adm-sec-title" style="margin-top:20px">Nuevo movimiento</div>' +
-    '<div style="font-size:.68rem;color:rgba(32,36,31,.45);margin-bottom:6px">Lo que cargues acá (fecha ' + gcFechaAR(GC_SALDO_ANCLA_FECHA) + ' en adelante) mueve el saldo del fondo.</div>' +
+    '<div style="font-size:.68rem;color:rgba(32,36,31,.45);margin-bottom:6px">Se suma al final del libro y mueve el saldo del fondo.</div>' +
     '<datalist id="gcDic">' + dicList + '</datalist>' +
     '<div class="gc-add">' +
       '<input type="date" id="gcAddF" value="' + hoy + '" title="Fecha">' +
@@ -503,10 +500,9 @@ function gcFilaHtml(x) {
     : '<select onchange="gcSet(\'' + id + '\',\'rubro\',this.value)" style="font-size:.66rem">' + rubroOpts + '</select>';
   var impCol = esAporte ? "#16a34a" : "#b13a2c";
   var signo = esAporte ? "+" : "−";
-  var saldoTxt, saldoCol;
-  if (x.saldo != null) { saldoTxt = gcFmt(x.saldo); saldoCol = x.saldo < 0 ? "#b13a2c" : "rgba(32,36,31,.85)"; }
-  else if (m.sSheet != null) { saldoTxt = gcFmt(m.sSheet); saldoCol = "rgba(32,36,31,.3)"; }
-  else { saldoTxt = "—"; saldoCol = "rgba(32,36,31,.3)"; }
+  var saldoCol = x.saldo < 0 ? "#b13a2c" : "rgba(32,36,31,.85)";
+  var saldoRef = (m.sSheet != null && Math.abs(m.sSheet - x.saldo) > 1000)
+    ? '<div style="font-size:.6rem;color:rgba(32,36,31,.35);font-weight:400" title="Saldo Actual que tenía esta fila en el Sheet">pl. ' + gcFmt(m.sSheet) + '</div>' : '';
   return '<tr class="' + (esAporte ? "gc-r-aporte" : "") + '">' +
     '<td><input type="date" value="' + gcEsc(m.f) + '" onchange="gcSet(\'' + id + '\',\'f\',this.value)" style="font-size:.66rem"></td>' +
     '<td style="min-width:170px"><input value="' + gcEsc(m.c) + '" onchange="gcSet(\'' + id + '\',\'c\',this.value)"></td>' +
@@ -515,8 +511,8 @@ function gcFilaHtml(x) {
     '<td><input value="' + gcEsc(m.d) + '" onchange="gcSet(\'' + id + '\',\'d\',this.value)" style="width:150px"></td>' +
     '<td><input value="' + gcEsc(m.fac) + '" onchange="gcSet(\'' + id + '\',\'fac\',this.value)" style="width:100px"></td>' +
     '<td style="text-align:right;white-space:nowrap"><span style="color:' + impCol + ';font-weight:700">' + signo + '</span> <input value="' + m.imp + '" onchange="gcSet(\'' + id + '\',\'imp\',this.value)" style="width:100px;text-align:right">' +
-      (m.mon === "USD" ? ' <span style="font-size:.6rem;color:#1c78b0;font-weight:700">US$</span>' : '') + '</td>' +
-    '<td style="text-align:right;font-weight:700;color:' + saldoCol + '">' + saldoTxt + '</td>' +
+      (m.mon === "USD" ? ' <span style="font-size:.6rem;color:#1c78b0;font-weight:700" title="No mueve el saldo en pesos, ver nota del Sheet">US$ · no resta</span>' : '') + '</td>' +
+    '<td style="text-align:right;font-weight:700;color:' + saldoCol + '">' + gcFmt(x.saldo) + saldoRef + '</td>' +
     '<td style="text-align:center"><button class="obra-x" title="Borrar" onclick="gcBorrar(\'' + id + '\')">✕</button></td>' +
     '</tr>';
 }
@@ -670,14 +666,15 @@ function gcExportExcel() {
   apSheet.push(["TOTAL", "", "", "", ap.totTotal]);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(apSheet), "Aportes de capital");
 
-  var mov = [["Fecha", "Concepto", "Tipo", "Socio", "Rubro", "Método", "Alias/CBU", "Factura", "Moneda", "Importe", "Saldo (nuevos) / Saldo planilla (histórico)"]];
+  var mov = [["Fecha", "Concepto", "Tipo", "Socio", "Rubro", "Método", "Alias/CBU", "Factura", "Moneda", "Importe", "Saldo (recalculado)", "Saldo planilla (referencia)"]];
   c.filas.forEach(function (x) {
     var m = x.m;
-    mov.push([gcFechaAR(m.f), m.c, m.tipo, m.socio || "", m.rubro || "", m.m || "", m.d || "", m.fac || "", m.mon || "ARS", gcNum(m.imp) * (m.tipo === "aporte" ? 1 : -1), x.saldo != null ? Math.round(x.saldo) : (m.sSheet != null ? Math.round(m.sSheet) : "")]);
+    mov.push([gcFechaAR(m.f), m.c, m.tipo, m.socio || "", m.rubro || "", m.m || "", m.d || "", m.fac || "", m.mon || "ARS", gcNum(m.imp) * (m.tipo === "aporte" ? 1 : -1), Math.round(x.saldo), m.sSheet != null ? Math.round(m.sSheet) : ""]);
   });
   mov.push([]);
-  mov.push(["", "", "", "", "", "", "", "Saldo ancla (" + gcFechaAR(GC_SALDO_ANCLA_FECHA) + ")", c.ancla]);
-  mov.push(["", "", "", "", "", "", "", "Saldo del fondo (hoy)", Math.round(c.saldo)]);
+  mov.push(["", "", "", "", "", "", "", "Apertura (" + gcFechaAR(GC_APERTURA_FECHA) + ")", c.apertura]);
+  mov.push(["", "", "", "", "", "", "", "Saldo del fondo (recalculado)", Math.round(c.saldo)]);
+  mov.push(["", "", "", "", "", "", "", "Último \"Saldo Actual\" de la planilla (03/09/2026)", GC_SALDO_SHEET_FINAL]);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(mov), "Movimientos");
 
   var rub = [["Rubro", "Total gastado", "% del gasto"]];
@@ -770,8 +767,7 @@ function gcExportPDF() {
     doc.setTextColor(m.tipo === "aporte" ? 22 : 177, m.tipo === "aporte" ? 163 : 58, m.tipo === "aporte" ? 74 : 44);
     doc.text((m.tipo === "aporte" ? "+ " : "− ") + (m.mon === "USD" ? "US$" + gcNum(m.imp).toLocaleString("es-AR") : gcFmtPDF(gcNum(m.imp))), cImp, y, { align: "right" });
     doc.setTextColor(0, 0, 0);
-    var sal = x.saldo != null ? x.saldo : m.sSheet;
-    doc.text(sal == null ? "—" : gcFmtPDF(sal), cSal, y, { align: "right" });
+    doc.text(gcFmtPDF(x.saldo), cSal, y, { align: "right" });
     y += 4.3;
   });
 
