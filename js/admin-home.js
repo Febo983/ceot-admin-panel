@@ -22,13 +22,9 @@ var ADM_HOME_MODULOS = [
   { key:"aporteceot",       ico:"percent",         lbl:"Retención Ganancias",   cat:"cat-fin", fn:"renderAporteCeot()" },
   { key:"sueldodirector",   ico:"banknote",        lbl:"Transferencias del Mes", cat:"cat-fin", fn:"renderSueldoDirector()" },
   { key:"licenciashon",     ico:"plane-takeoff",   lbl:"Licencias (Honorarios)", cat:"cat-fin", fn:"renderLicenciasHon()" },
-  { key:"accesos",          ico:"link-2",          lbl:"Accesos",       cat:"cat-inf", fn:"renderAccesos(null)" },
-  { key:"mensajeswa",       ico:"message-circle",  lbl:"Mensajes WA",   cat:"cat-cli", fn:"" },
-  { key:"nomina",           ico:"users",           lbl:"Nómina",        cat:"cat-adm", fn:"renderNomina()" },
   { key:"licencias",        ico:"calendar-heart",  lbl:"Licencias",     cat:"cat-adm", fn:"renderLicencias()" },
   { key:"presentacion",     ico:"presentation",    lbl:"Presentación",  cat:"cat-fin", fn:"renderPresentacion()" },
   { key:"premios",          ico:"award",           lbl:"Premios",       cat:"cat-adm", fn:"renderPremios()" },
-  { key:"obrapagos",        ico:"hard-hat",        lbl:"Pagos de obra", cat:"cat-adm", fn:"renderObraPagos()" },
   { key:"estadisticas",     ico:"line-chart",      lbl:"Estadísticas CEOT", cat:"cat-inf", fn:"renderEstadisticasCeot()" },
   { key:"gastoscasa",       ico:"home",            lbl:"Gastos Casa",   cat:"cat-gst", fn:"renderGastosCasa()" },
 ];
@@ -40,7 +36,7 @@ var ADM_HOME_MOD_COLOR = {
 // Cualquier key que no figure acá cae automáticamente en un grupo "Más".
 var ADM_HOME_MOD_GRUPOS = [
   { t:"Honorarios", c:"rgba(29,158,117,0.9)",  keys:["liquidaciones","totalceot","sueldodirector","licenciashon","transferencias","cpsm","aporteceot","debitos","facturas","presentacion"] },
-  { t:"Gestión", c:"rgba(127,119,221,0.9)", keys:["sueldob","nomina","licencias","premios","mensajeswa","accesos","estadisticas","obrapagos","gastoscasa"] }
+  { t:"Gestión", c:"rgba(127,119,221,0.9)", keys:["sueldob","licencias","premios","estadisticas","gastoscasa"] }
 ];
 var ADM_HOME_ACC_COLOR = {
   "Finanzas":"rgba(29,158,117,0.22)","Clínica":"rgba(55,138,221,0.22)",
