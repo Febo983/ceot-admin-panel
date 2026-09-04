@@ -1,34 +1,42 @@
 // ═══════════════════════════════════════════════════════════════════
 // gastos-casa.js — Módulo "Gastos Casa" · obra 14 de Julio 2067.
 //
-//   · Libro de movimientos (gastos + aportes de capital), 100% editable.
-//   · Se agregan movimientos nuevos desde el panel — autocompleta proveedor,
-//     rubro, método y alias/CBU al tipear el concepto; sólo cargás el importe.
-//   · Gráficos: gasto por rubro (torta) + aporte por profesional (barras).
-//   · Detalle del aporte de cada profesional (comprometido vs aportado).
-//   · Exporta a Excel (SheetJS) y a PDF (jsPDF) — ambas ya cargadas en el head.
+//   Dos tablas separadas, igual que en el Sheet:
+//   1) APORTES DE CAPITAL — un renglón por profesional con Primer/Segundo/
+//      Tercer aporte + Total, editable, espejo de la grilla "APORTES PARA
+//      14 DE JULIO 2067" del Sheet. No se mezcla con el saldo del fondo.
+//   2) LIBRO DE MOVIMIENTOS — el historial de gastos (+ inyecciones de
+//      capital, a título informativo) importado del Sheet, para los
+//      gráficos por rubro y para seguir cargando gastos nuevos con
+//      autocompletado de proveedor/rubro/alias-CBU.
 //
-//   Persistencia: localStorage 'ceot_gastos_casa' (+ 'ceot_gastos_casa_cfg')
-//   espejado con syncPush/syncPull, igual que el resto de los módulos
-//   editables. El Sheet NO se toca: la fuente de verdad pasa a ser el panel.
-//   El SEED de abajo se bajó del Google Sheet "liquidaciones CEOT actualizado"
-//   (pestaña APORTES 14 DE JULIO 2067) vía gviz — 99 filas del libro + 10 filas
-//   de "primer aporte" por profesional (columna PRIMER APORTE de la grilla, suma
-//   $76.800.000 = saldo inicial del fondo) + 1 fila de ajuste. Rubros clasificados
-//   automáticamente por palabras clave.
+//   El "Saldo del fondo" NO se reconstruye sumando 99 movimientos históricos
+//   (esa columna del Sheet tiene ajustes manuales del contador que no están
+//   cargados como filas — no cierra sola). En cambio arranca directo del
+//   último "Saldo Actual" real de la planilla (GC_SALDO_ANCLA, 03/09/2026)
+//   y sólo se mueve con los movimientos NUEVOS que se cargan desde acá en
+//   adelante. Así el saldo siempre es exacto, sin filas de "ajuste" inventadas.
+//
+//   Persistencia: localStorage (ceot_gastos_casa / ceot_gastos_casa_aportes /
+//   ceot_gastos_casa_cfg) + syncPush/syncPull, igual que el resto de los
+//   módulos editables. El Sheet queda de respaldo, no se toca desde acá.
+//   Datos bajados del Google Sheet "liquidaciones CEOT actualizado"
+//   (pestaña APORTES 14 DE JULIO 2067, gid 818194589) vía gviz el 2026-09-04.
 // ═══════════════════════════════════════════════════════════════════
 
-var GC_K      = "ceot_gastos_casa";       // [] de movimientos
-var GC_K_CFG  = "ceot_gastos_casa_cfg";   // { comprometido:{SOCIO:n}, apertura:n }
+var GC_K         = "ceot_gastos_casa";           // [] movimientos del libro
+var GC_K_APORTES = "ceot_gastos_casa_aportes";   // [] aportes de capital por profesional
+var GC_K_CFG     = "ceot_gastos_casa_cfg";       // { ancla:n }
 var _gcPulled = false;
 var _gcCharts = {};
 var _gcFiltroRubro = "";
 var _gcFiltroTxt = "";
-var _gcEditando = false;
 
-// Saldo con el que arranca el libro. Va en 0: el fondo se llena con las 10 filas
-// de "primer aporte" por profesional que abren el SEED (suman $76.800.000).
-var GC_APERTURA_DEFAULT = 0;
+// Saldo real de la planilla en su última fila cargada (Inyección capital
+// Trivellini, 03/09/2026) — punto de partida del saldo del fondo.
+var GC_SALDO_ANCLA = 35515331;
+var GC_SALDO_ANCLA_FECHA = "2026-09-03";
+var GC_TC_USD = 1455; // tipo de cambio usado para valuar el aporte en USD de Garmendia
 
 // ── Rubros (orden fijo + color para torta/barras) ──────────────────
 var GC_RUBROS = [
@@ -51,20 +59,23 @@ var GC_RUBRO_COLOR = {
   "Cableado Constitución 4901": "#6b6a5a", "Otros": "#9a8c78", "Aporte de capital": "#1f3a2e"
 };
 
-// ── Profesionales / socios (apellido tal como aparece en el Sheet) ──
-// comprometido = lo declarado en la grilla "APORTES PARA 14 DE JULIO 2067".
-var GC_SOCIOS = [
-  { k: "GARMENDIA",     n: "Garmendia, Valeria",           comprometido: 22189400 }, // $3.740.000 + US$ 12.680 @ $1.455
-  { k: "BRUNI",         n: "Bruni, Maximiliano E.",         comprometido: 30000000 },
-  { k: "CORELICH",      n: "Corelich, Daniel O.",           comprometido: 35000000 },
-  { k: "DEGANUTTI",     n: "Deganutti, Cristian G.",        comprometido: 39865431 },
-  { k: "LABAYEN",       n: "Labayen, Daniel G.",            comprometido: 36000000 },
-  { k: "TRIVELLINI",    n: "Trivellini, Amilcar",           comprometido: 30000000 },
-  { k: "DE LA COLINA",  n: "De la Colina, Juan P.",         comprometido: 5000000 },
-  { k: "LEON",          n: "León, Joaquín E.",              comprometido: 5000000 },
-  { k: "MAZZOLA",       n: "Mazzola, Maximiliano T.",       comprometido: 5000000 },
-  { k: "PERLASCO",      n: "Perlasco, Camilo N.",           comprometido: 6800000 },
-  { k: "SOULE",         n: "Soule, Iván",                   comprometido: 5000000 }
+// ═══════ APORTES DE CAPITAL — espejo de la grilla "APORTES PARA 14 DE JULIO 2067" ═══════
+// primer/segundo/tercer en pesos; Garmendia tiene primerUsd (dólares) en vez de primer.
+// total NO se deriva solo — se toma tal cual la columna TOTAL del Sheet (a veces no
+// cierra con la suma de las 3 columnas, ej. Deganutti $39.865.431 vs 10+20+10=40M;
+// Trivellini $30.000.000 vs 10+20+5=35M) — el Sheet manda, se puede editar acá.
+var GC_APORTES_SEED = [
+  { k: "BRUNI",        n: "Bruni, Maximiliano E.",   primer: 10000000, segundo: 20000000, tercer: 0,        total: 30000000 },
+  { k: "CORELICH",     n: "Corelich, Daniel O.",     primer: 10000000, segundo: 20000000, tercer: 5000000,  total: 35000000 },
+  { k: "DE LA COLINA", n: "De la Colina, Juan P.",   primer: 5000000,  segundo: 0,        tercer: 0,        total: 5000000 },
+  { k: "DEGANUTTI",    n: "Deganutti, Cristian G.",  primer: 10000000, segundo: 20000000, tercer: 10000000, total: 39865431 },
+  { k: "LABAYEN",      n: "Labayen, Daniel G.",      primer: 10000000, segundo: 20000000, tercer: 6000000,  total: 36000000 },
+  { k: "LEON",         n: "León, Joaquín E.",        primer: 5000000,  segundo: 0,        tercer: 0,        total: 5000000 },
+  { k: "MAZZOLA",      n: "Mazzola, Maximiliano T.", primer: 5000000,  segundo: 0,        tercer: 0,        total: 5000000 },
+  { k: "PERLASCO",     n: "Perlasco, Camilo N.",     primer: 6800000,  segundo: 0,        tercer: 0,        total: 6800000 },
+  { k: "SOULE",        n: "Soule, Iván",             primer: 5000000,  segundo: 0,        tercer: 0,        total: 5000000 },
+  { k: "TRIVELLINI",   n: "Trivellini, Amilcar",     primer: 10000000, segundo: 20000000, tercer: 5000000,  total: 30000000 },
+  { k: "GARMENDIA",    n: "Garmendia, Valeria",      primerUsd: 12680, segundo: 3740000,  tercer: 0,        total: 22189400 }
 ];
 
 // ── Diccionario de autocompletado ─────────────────────────────────
@@ -75,10 +86,8 @@ function gcDiccionario() {
   var base = (typeof OBRA_AGENDA_SEED !== "undefined" ? OBRA_AGENDA_SEED : []).map(function (s) {
     return { term: s.n, rubro: s.r || "Otros", metodo: "Transferencia", destino: s.d || s.a || "", cuit: s.c || "" };
   });
-  // Conceptos "genéricos" frecuentes en el libro que no matchean un proveedor.
   base.push({ term: "inyeccion de capital", rubro: "Aporte de capital", metodo: "Transferencia", destino: "", cuit: "" });
   base.push({ term: "aporte capital", rubro: "Aporte de capital", metodo: "Transferencia", destino: "", cuit: "" });
-  base.push({ term: "aporte inicial", rubro: "Aporte de capital", metodo: "Transferencia", destino: "", cuit: "" });
   // Lo ya cargado en el propio libro (aprende de lo que fuiste tipeando).
   gcLeer().forEach(function (m) {
     if (m.c && !base.some(function (b) { return gcNorm(b.term) === gcNorm(m.c); })) {
@@ -100,27 +109,13 @@ function gcAutocompletar(concepto) {
   return best;
 }
 
-// ═══════ SEED — importado del Google Sheet "liquidaciones CEOT actualizado" (pestaña APORTES 14 DE JULIO 2067) ═══════
-// Bajado vía gviz el 2026-09-04. f=fecha ISO · c=concepto · m=método · d=alias/CBU · fac=factura
-// imp=importe · sSheet="Saldo Actual" que tenía esa fila en la planilla (referencia, no se usa para calcular) ·
-// tipo="gasto"|"aporte" · socio=clave (si es aporte) · noFondo=true: aporte que no entra al fondo común (se pagó directo).
-// El rubro se clasificó automáticamente por palabras clave — corregilo donde no acierte.
-// La última fila "Ajustes de saldo de la planilla" ($14.529.773) NO es un gasto real: son las correcciones
-// que el contador hizo directo sobre la columna Saldo del Sheet sin cargarlas como movimiento. Está para que
-// el total cierre en $35.515.331 igual que la planilla. Se va reduciendo a medida que se itemicen esas correcciones.
+// ═══════ LIBRO DE MOVIMIENTOS — historial real bajado del Sheet ════
+// f=fecha ISO · c=concepto · m=método · d=alias/CBU · fac=factura · imp=importe
+// sSheet="Saldo Actual" que tenía esa fila en la planilla (solo de referencia,
+// no se usa para calcular) · tipo="gasto"|"aporte" (aporte = inyección de
+// capital histórica, informativo — el detalle real por profesional está en
+// GC_APORTES_SEED de arriba). Rubro clasificado por palabras clave.
 var GC_SEED = [
-  // Primer aporte de cada profesional (columna PRIMER APORTE de la grilla, suma exacta $76.800.000
-  // = saldo con el que el fondo arranca antes del primer gasto). Fecha estimada — ajustá si tenés la real.
-  { f: "2026-03-01", c: "Primer aporte · Bruni", m: "Transferencia", d: "", fac: "", imp: 10000000, sSheet: null, tipo: "aporte", socio: "BRUNI", rubro: "Aporte de capital" },
-  { f: "2026-03-01", c: "Primer aporte · Corelich", m: "Transferencia", d: "", fac: "", imp: 10000000, sSheet: null, tipo: "aporte", socio: "CORELICH", rubro: "Aporte de capital" },
-  { f: "2026-03-01", c: "Primer aporte · De la Colina", m: "Transferencia", d: "", fac: "", imp: 5000000, sSheet: null, tipo: "aporte", socio: "DE LA COLINA", rubro: "Aporte de capital" },
-  { f: "2026-03-01", c: "Primer aporte · Deganutti", m: "Transferencia", d: "", fac: "", imp: 10000000, sSheet: null, tipo: "aporte", socio: "DEGANUTTI", rubro: "Aporte de capital" },
-  { f: "2026-03-01", c: "Primer aporte · Labayen", m: "Transferencia", d: "", fac: "", imp: 10000000, sSheet: null, tipo: "aporte", socio: "LABAYEN", rubro: "Aporte de capital" },
-  { f: "2026-03-01", c: "Primer aporte · León", m: "Transferencia", d: "", fac: "", imp: 5000000, sSheet: null, tipo: "aporte", socio: "LEON", rubro: "Aporte de capital" },
-  { f: "2026-03-01", c: "Primer aporte · Mazzola", m: "Transferencia", d: "", fac: "", imp: 5000000, sSheet: null, tipo: "aporte", socio: "MAZZOLA", rubro: "Aporte de capital" },
-  { f: "2026-03-01", c: "Primer aporte · Perlasco", m: "Transferencia", d: "", fac: "", imp: 6800000, sSheet: null, tipo: "aporte", socio: "PERLASCO", rubro: "Aporte de capital" },
-  { f: "2026-03-01", c: "Primer aporte · Soule", m: "Transferencia", d: "", fac: "", imp: 5000000, sSheet: null, tipo: "aporte", socio: "SOULE", rubro: "Aporte de capital" },
-  { f: "2026-03-01", c: "Primer aporte · Trivellini", m: "Transferencia", d: "", fac: "", imp: 10000000, sSheet: 76800000, tipo: "aporte", socio: "TRIVELLINI", rubro: "Aporte de capital" },
   { f: "2026-03-16", c: "GM Sanitarios Srl", m: "Transferencia", d: "0170235620000000471286", fac: "A0004-00020099", imp: 5837260, sSheet: 70962740, tipo: "gasto", rubro: "Sanitarios / grifería / gas" },
   { f: "2026-03-19", c: "Mano de obra Plomeria", m: "Transferencia", d: "Sur.idea.bozal", fac: "FC0001-000183", imp: 4230000, sSheet: 66732740, tipo: "gasto", rubro: "Plomería" },
   { f: "2026-03-25", c: "Lopez lucas (Jardineria)", m: "Transferencia", d: "Jardineria.sosa17", fac: "", imp: 545000, sSheet: 66187740, tipo: "gasto", rubro: "Jardinería" },
@@ -135,7 +130,7 @@ var GC_SEED = [
   { f: "2026-04-27", c: "Materiales aire acondicionado", m: "Transferencia", d: "jony.aire", fac: "", imp: 416675, sSheet: 50641324.74, tipo: "gasto", rubro: "Aire acondicionado" },
   { f: "2026-04-27", c: "GM SANITARIOS SRL GM SANITARIOS", m: "Transferencia", d: "CC $ 0235-004712/8", fac: "", imp: 530925, sSheet: 50110399.74, tipo: "gasto", rubro: "Sanitarios / grifería / gas" },
   { f: "2026-04-30", c: "honorarios Aire acondicionado", m: "Transferencia", d: "jony.aire", fac: "", imp: 450000, sSheet: 57829679.74, tipo: "gasto", rubro: "Aire acondicionado" },
-  { f: "2026-04-30", c: "Aporte capital · Dra. Garmendia — US$ 12.680 @ $1.455, pagado directo a Aberturas ANAYA (50%)", m: "Transferencia", d: "", fac: "Aberturas ANAYA (50%)", imp: 18449400, sSheet: null, tipo: "aporte", socio: "GARMENDIA", rubro: "Aporte de capital", noFondo: true },
+  { f: "2026-04-30", c: "Inyección de capital · Dra. Garmendia (Aberturas ANAYA 50%, no entra al fondo)", m: "Transferencia", d: "", fac: "", imp: 12680, mon: "USD", sSheet: null, tipo: "aporte", socio: "GARMENDIA", rubro: "Aporte de capital" },
   { f: "2026-04-30", c: "Aberturas ANAYA (20%)", m: "Transferencia", d: "0150865702000100676406", fac: "", imp: 5931680, sSheet: 51897999.74, tipo: "gasto", rubro: "Aberturas" },
   { f: "2026-06-02", c: "Toletum", m: "Transferencia", d: "0140466501619005138383", fac: "", imp: 2478536.99, sSheet: 37016840.38, tipo: "gasto", rubro: "Zinguería" },
   { f: "2026-06-02", c: "Alejandro Ruben Silva", m: "Transferencia", d: "0150524501000132432556", fac: "", imp: 1575000, sSheet: 35441840.38, tipo: "gasto", rubro: "Mano de obra / albañilería" },
@@ -159,24 +154,24 @@ var GC_SEED = [
   { f: "2026-06-25", c: "Alejandro Ruben silva", m: "Transferencia", d: "ARPA.TANQUE.MAMA", fac: "", imp: 3025000, sSheet: 220629.42, tipo: "gasto", rubro: "Mano de obra / albañilería" },
   { f: "2026-06-26", c: "Alejandro Ruben silva", m: "Transferencia", d: "ARPA.TANQUE.MAMA", fac: "Diferencia no abonada el 25", imp: 605000, sSheet: -384370.58, tipo: "gasto", rubro: "Mano de obra / albañilería" },
   { f: "2026-06-26", c: "Electricista", m: "Transferencia", d: "alejandro.1364", fac: "", imp: 1000000, sSheet: -1384370.58, tipo: "gasto", rubro: "Electricidad" },
-  { f: "2026-06-29", c: "Transferencia Dr.Deganutti", m: "Transferencia", d: "", fac: "", imp: 10000000, sSheet: 8616000, tipo: "aporte", socio: "DEGANUTTI", rubro: "Aporte de capital" },
+  { f: "2026-06-29", c: "Inyección de capital · Dr. Deganutti", m: "Transferencia", d: "", fac: "", imp: 10000000, sSheet: 8616000, tipo: "aporte", socio: "DEGANUTTI", rubro: "Aporte de capital" },
   { f: "2026-07-02", c: "Alejandro Ruben silva", m: "Transferencia", d: "ARPA.TANQUE.MAMA", fac: "", imp: 4840000, sSheet: 3776000, tipo: "gasto", rubro: "Mano de obra / albañilería" },
-  { f: "2026-07-06", c: "Aporte Dra. Garmendia", m: "transferencia", d: "restan $3.170.000", fac: "", imp: 1000000, sSheet: 4170000, tipo: "aporte", socio: "GARMENDIA", rubro: "Aporte de capital" },
+  { f: "2026-07-06", c: "Aporte · Dra. Garmendia (restan $3.170.000)", m: "transferencia", d: "", fac: "", imp: 1000000, sSheet: 4170000, tipo: "aporte", socio: "GARMENDIA", rubro: "Aporte de capital" },
   { f: "2026-07-08", c: "Alejandro Ruben silva", m: "Transferencia", d: "ARPA.TANQUE.MAMA", fac: "", imp: 4840000, sSheet: -670000, tipo: "gasto", rubro: "Mano de obra / albañilería" },
-  { f: "2026-07-08", c: "Transferencia Dr.Corelich", m: "Transferencia", d: "", fac: "", imp: 19900000, sSheet: 19230000, tipo: "aporte", socio: "CORELICH", rubro: "Aporte de capital" },
+  { f: "2026-07-08", c: "Inyección de capital · Dr. Corelich", m: "Transferencia", d: "", fac: "", imp: 19900000, sSheet: 19230000, tipo: "aporte", socio: "CORELICH", rubro: "Aporte de capital" },
   { f: "2026-07-13", c: "Bertello Luis", m: "transferencia", d: "Aforo aleta.edad", fac: "", imp: 270000, sSheet: 18960000, tipo: "gasto", rubro: "Volquetes / contenedores" },
   { f: "2026-07-15", c: "Alejandro Ruben silva", m: "transferencia", d: "ARPA.TANQUE.MAMA", fac: "", imp: 4840000, sSheet: 13850000, tipo: "gasto", rubro: "Mano de obra / albañilería" },
   { f: "2026-07-15", c: "Bertello Luis", m: "transferencia", d: "Aforo aleta.edad", fac: "", imp: 90000, sSheet: 13760000, tipo: "gasto", rubro: "Volquetes / contenedores" },
   { f: "2026-07-15", c: "Héctor Marcelo frías", m: "transferencia", d: "Bolsa.china.blonda", fac: "", imp: 3000000, sSheet: 10760000, tipo: "gasto", rubro: "Techista" },
-  { f: "2026-07-16", c: "Transferencia Dr.Bruni", m: "transferencia", d: "", fac: "", imp: 19369272.94, sSheet: 29369272.94, tipo: "aporte", socio: "BRUNI", rubro: "Aporte de capital" },
-  { f: "2026-07-16", c: "transferencia Dr. Deganutti", m: "transferencia", d: "", fac: "", imp: 10000000, sSheet: 39000000, tipo: "aporte", socio: "DEGANUTTI", rubro: "Aporte de capital" },
-  { f: "2026-07-17", c: "transferencia Dr. Labayen", m: "transferencia", d: "", fac: "", imp: 20000000, sSheet: 59000000, tipo: "aporte", socio: "LABAYEN", rubro: "Aporte de capital" },
+  { f: "2026-07-16", c: "Inyección de capital · Dr. Bruni", m: "transferencia", d: "", fac: "", imp: 19369272.94, sSheet: 29369272.94, tipo: "aporte", socio: "BRUNI", rubro: "Aporte de capital" },
+  { f: "2026-07-16", c: "Inyección de capital · Dr. Deganutti", m: "transferencia", d: "", fac: "", imp: 10000000, sSheet: 39000000, tipo: "aporte", socio: "DEGANUTTI", rubro: "Aporte de capital" },
+  { f: "2026-07-17", c: "Inyección de capital · Dr. Labayen", m: "transferencia", d: "", fac: "", imp: 20000000, sSheet: 59000000, tipo: "aporte", socio: "LABAYEN", rubro: "Aporte de capital" },
   { f: "2026-07-23", c: "Constitucion 4901", m: "transferencia", d: "30718517733", fac: "", imp: 1790261.35, sSheet: 57209738.65, tipo: "gasto", rubro: "Cableado Constitución 4901" },
   { f: "2026-07-23", c: "Alejandro Ruben silva", m: "transferencia", d: "ARPA.TANQUE.MAMA", fac: "", imp: 7260000, sSheet: 49949738.65, tipo: "gasto", rubro: "Mano de obra / albañilería" },
   { f: "2026-07-23", c: "Silva Franco", m: "transferencia", d: "20388319705", fac: "", imp: 142600, sSheet: 49807138.65, tipo: "gasto", rubro: "Mano de obra / albañilería" },
   { f: "2026-07-24", c: "Bertello Luis", m: "transferencia", d: "Aforo aleta.edad", fac: "", imp: 90000, sSheet: 49717138.65, tipo: "gasto", rubro: "Volquetes / contenedores" },
   { f: "2026-07-24", c: "honorarios Aire acondicionado", m: "Transferencia", d: "jony.aire", fac: "", imp: 1000000, sSheet: 48717138.65, tipo: "gasto", rubro: "Aire acondicionado" },
-  { f: "2026-07-24", c: "Dra. Garmendia", m: "Transferencia", d: "", fac: "", imp: 1000000, sSheet: 49717138.65, tipo: "aporte", socio: "GARMENDIA", rubro: "Aporte de capital" },
+  { f: "2026-07-24", c: "Aporte capital · Dra. Garmendia", m: "Transferencia", d: "", fac: "", imp: 1000000, sSheet: 49717138.65, tipo: "aporte", socio: "GARMENDIA", rubro: "Aporte de capital" },
   { f: "2026-07-29", c: "MARCH CERAM SA", m: "Transferencia", d: "CERAMICO.PEGAMENTO", fac: "", imp: 702155.27, sSheet: 49014983.38, tipo: "gasto", rubro: "Cerámicos / pegamento" },
   { f: "2026-07-29", c: "Alejandro Ruben silva", m: "transferencia", d: "ARPA.TANQUE.MAMA", fac: "", imp: 7260000, sSheet: 41754983.38, tipo: "gasto", rubro: "Mano de obra / albañilería" },
   { f: "2026-07-29", c: "Hierros FAULE", m: "transferencia", d: "Cobre.Banana.Grano", fac: "", imp: 1825137.79, sSheet: 39929845.59, tipo: "gasto", rubro: "Herrería / hierros / acero" },
@@ -203,24 +198,23 @@ var GC_SEED = [
   { f: "2026-08-20", c: "Durlero", m: "transferencia", d: "daniel.gomez.id", fac: "", imp: 500000, sSheet: 6214104.58, tipo: "gasto", rubro: "Durlock / placas" },
   { f: "2026-08-20", c: "Techista: HECTOR MARCELO,FRIAS", m: "transferencia", d: "0140323503420072541219", fac: "", imp: 2500000, sSheet: 3704104.58, tipo: "gasto", rubro: "Techista" },
   { f: "2026-08-21", c: "MARCH CERAM SA", m: "Transferencia", d: "CERAMICO.PEGAMENTO", fac: "", imp: 147238.67, sSheet: 3566865.91, tipo: "gasto", rubro: "Cerámicos / pegamento" },
-  { f: "2026-08-25", c: "Dra. Garmendia", m: "Transferencia", d: "", fac: "", imp: 2170400, sSheet: 4313381.48, tipo: "aporte", socio: "GARMENDIA", rubro: "Aporte de capital" },
-  { f: "2026-08-25", c: "Dr. Trivellini", m: "Transferencia", d: "", fac: "", imp: 19865431, sSheet: 24178812.48, tipo: "aporte", socio: "TRIVELLINI", rubro: "Aporte de capital" },
-  { f: "2026-08-31", c: "Marcos Cristobal Asensio (yesero)", m: "transferencia", d: "0000003100064311104471", fac: "", imp: 500000, sSheet: 23678812, tipo: "gasto", rubro: "Yesería" },
+  { f: "2026-08-25", c: "Aporte capital · Dra. Garmendia", m: "Transferencia", d: "", fac: "", imp: 2170400, sSheet: 4313381.48, tipo: "aporte", socio: "GARMENDIA", rubro: "Aporte de capital" },
+  { f: "2026-08-25", c: "Aporte capital · Dr. Trivellini", m: "Transferencia", d: "", fac: "", imp: 19865431, sSheet: 24178812.48, tipo: "aporte", socio: "TRIVELLINI", rubro: "Aporte de capital" },
+  { f: "2026-08-27", c: "Marcos Cristobal Asensio (yesero)", m: "transferencia", d: "0000003100064311104471", fac: "", imp: 500000, sSheet: 23678812, tipo: "gasto", rubro: "Yesería" },
   { f: "2026-08-27", c: "MARCOS DANIEL,AGUIRRE (membrana)", m: "transferencia", d: "0140442903610552049689", fac: "", imp: 300000, sSheet: 23378812, tipo: "gasto", rubro: "Membrana / impermeabilización" },
   { f: "2026-08-27", c: "Pablo Daniel Gomez", m: "transferencia", d: "0000003100024631570262", fac: "", imp: 800000, sSheet: 22578812, tipo: "gasto", rubro: "Durlock / placas" },
   { f: "2026-08-27", c: "SILVA FRANCO EXEQUIEL", m: "transferencia", d: "0720459788000035986786", fac: "", imp: 1500000, sSheet: 21078812, tipo: "gasto", rubro: "Mano de obra / albañilería" },
   { f: "2026-08-27", c: "march", m: "Transferencia", d: "CERAMICO.PEGAMENTO", fac: "", imp: 363481.67, sSheet: 27715331, tipo: "gasto", rubro: "Cerámicos / pegamento" },
   { f: "2026-08-27", c: "Alejandro Ruben silva", m: "transferencia", d: "ARPA.TANQUE.MAMA", fac: "", imp: 2500000, sSheet: 18215331, tipo: "gasto", rubro: "Mano de obra / albañilería" },
-  { f: "2026-09-02", c: "Inyeccion capital LABAYEN", m: "transferencia", d: "", fac: "", imp: 6000000, sSheet: 24215331, tipo: "aporte", socio: "LABAYEN", rubro: "Aporte de capital" },
-  { f: "2026-09-03", c: "Inyeccion capital DEGANUTTI", m: "transferencia", d: "de honorarios", fac: "", imp: 10000000, sSheet: 34215331, tipo: "aporte", socio: "DEGANUTTI", rubro: "Aporte de capital" },
+  { f: "2026-09-02", c: "Inyección de capital · Labayen", m: "transferencia", d: "", fac: "", imp: 6000000, sSheet: 24215331, tipo: "aporte", socio: "LABAYEN", rubro: "Aporte de capital" },
+  { f: "2026-09-02", c: "Inyección de capital · Corelich", m: "transferencia", d: "", fac: "", imp: 5000000, sSheet: 30515331, tipo: "aporte", socio: "CORELICH", rubro: "Aporte de capital" },
+  { f: "2026-09-03", c: "Inyección de capital · Deganutti (de honorarios)", m: "transferencia", d: "", fac: "", imp: 10000000, sSheet: 34215331, tipo: "aporte", socio: "DEGANUTTI", rubro: "Aporte de capital" },
   { f: "2026-09-03", c: "Durlero", m: "transferencia", d: "daniel.gomez.id", fac: "", imp: 1500000, sSheet: 32715331, tipo: "gasto", rubro: "Durlock / placas" },
   { f: "2026-09-03", c: "Albañil Franco Silva", m: "transferencia", d: "construcciones.obras", fac: "", imp: 1500000, sSheet: 31215331, tipo: "gasto", rubro: "Mano de obra / albañilería" },
   { f: "2026-09-03", c: "Alejandro Ruben silva", m: "transferencia", d: "ARPA.TANQUE.MAMA", fac: "", imp: 2500000, sSheet: 28715331, tipo: "gasto", rubro: "Mano de obra / albañilería" },
   { f: "2026-09-03", c: "Electricista", m: "transferencia", d: "Alejandro.1364", fac: "", imp: 2000000, sSheet: 26715331, tipo: "gasto", rubro: "Electricidad" },
   { f: "2026-09-03", c: "Pintor", m: "transferencia", d: "Marcelo.parrado.04", fac: "", imp: 1200000, sSheet: 25515331, tipo: "gasto", rubro: "Pintura" },
-  { f: "2026-09-02", c: "Inyeccion capital CORELICH", m: "transferencia", d: "", fac: "", imp: 5000000, sSheet: 30515331, tipo: "aporte", socio: "CORELICH", rubro: "Aporte de capital" },
-  { f: "2026-09-03", c: "Inyeccion capital TRIVELLINI", m: "transferencia", d: "", fac: "", imp: 5000000, sSheet: 35515331, tipo: "aporte", socio: "TRIVELLINI", rubro: "Aporte de capital" },
-  { f: "2026-09-03", c: "Ajustes de saldo de la planilla (correcciones del contador, no itemizados)", m: "—", d: "", fac: "", imp: 14529773.38, sSheet: 35515331, tipo: "gasto", rubro: "Otros" }
+  { f: "2026-09-03", c: "Inyección de capital · Trivellini", m: "transferencia", d: "", fac: "", imp: 5000000, sSheet: 35515331, tipo: "aporte", socio: "TRIVELLINI", rubro: "Aporte de capital" }
 ];
 
 // ── helpers ───────────────────────────────────────────────────────
@@ -250,15 +244,21 @@ function gcFechaAR(iso) {
   return p[2] + "/" + p[1] + "/" + p[0];
 }
 
+// ── libro de movimientos: leer/guardar ──────────────────────────────
 function gcLeer() {
-  try { var v = JSON.parse(localStorage.getItem(GC_K)); if (Array.isArray(v)) return v; }
-  catch (e) {}
-  // primera vez: sembrar
+  // Sólo se confía en lo guardado si YA tiene el esquema nuevo (campo "hist" en
+  // cada fila). Esto migra automáticamente cache/sync viejo de versiones
+  // anteriores del módulo (que no tenían "hist") — sin este chequeo, esas filas
+  // se tratarían todas como "nuevas" y arruinarían el saldo (ver GC_SALDO_ANCLA).
+  try {
+    var v = JSON.parse(localStorage.getItem(GC_K));
+    if (Array.isArray(v) && v.length && v.every(function (r) { return r && "hist" in r; })) return v;
+  } catch (e) {}
   var seed = GC_SEED.map(function (r) {
     return {
       id: gcUID(), f: r.f, c: r.c, m: r.m || "Transferencia", d: r.d || "", fac: r.fac || "",
-      imp: r.imp, tipo: r.tipo || "gasto", socio: r.socio || "", rubro: r.rubro || "Otros",
-      sSheet: (r.sSheet == null ? null : r.sSheet), noFondo: !!r.noFondo
+      imp: r.imp, mon: r.mon || "ARS", tipo: r.tipo || "gasto", socio: r.socio || "", rubro: r.rubro || "Otros",
+      sSheet: (r.sSheet == null ? null : r.sSheet), hist: true
     };
   });
   gcGuardar(seed);
@@ -267,48 +267,74 @@ function gcLeer() {
 function gcGuardar(arr) {
   try { localStorage.setItem(GC_K, JSON.stringify(arr)); if (typeof syncPush === "function") syncPush(GC_K); } catch (e) {}
 }
+
+// ── aportes de capital: leer/guardar ────────────────────────────────
+function gcAportesLeer() {
+  try {
+    var v = JSON.parse(localStorage.getItem(GC_K_APORTES));
+    if (Array.isArray(v) && v.length && v.every(function (r) { return r && r.k; })) return v;
+  } catch (e) {}
+  var seed = GC_APORTES_SEED.map(function (r) { return Object.assign({}, r); });
+  gcAportesGuardar(seed);
+  return seed;
+}
+function gcAportesGuardar(arr) {
+  try { localStorage.setItem(GC_K_APORTES, JSON.stringify(arr)); if (typeof syncPush === "function") syncPush(GC_K_APORTES); } catch (e) {}
+}
+
 function gcCfg() {
-  try { var v = JSON.parse(localStorage.getItem(GC_K_CFG)); if (v && typeof v === "object") return v; }
-  catch (e) {}
-  return { comprometido: {}, apertura: GC_APERTURA_DEFAULT };
+  // Igual que gcLeer(): sólo se confía en el cfg guardado si tiene "ancla" —
+  // esquema viejo (comprometido/apertura, de versiones anteriores) se ignora.
+  try {
+    var v = JSON.parse(localStorage.getItem(GC_K_CFG));
+    if (v && typeof v === "object" && v.ancla != null) return v;
+  } catch (e) {}
+  return { ancla: GC_SALDO_ANCLA };
 }
 function gcCfgGuardar(c) {
   try { localStorage.setItem(GC_K_CFG, JSON.stringify(c)); if (typeof syncPush === "function") syncPush(GC_K_CFG); } catch (e) {}
 }
 
-// ── cálculo: recorre el libro en orden y arma saldo + totales ──────
-// El saldo se calcula sumando los movimientos (aporte +, gasto −), NO se toma
-// de la columna del Sheet. Los aportes con noFondo (ej. el USD que se pagó
-// directo al proveedor) suman al total del socio pero NO al saldo del fondo.
+// ── cálculo del libro: rubros + saldo del fondo ─────────────────────
+// El saldo arranca en el ancla real de la planilla (gcCfg().ancla) y sólo se
+// mueve con los movimientos NUEVOS (hist:false, los que cargues desde acá).
+// Los 99 movimientos históricos importados quedan para el gráfico de rubros
+// y para consulta, pero no recalculan el saldo — así siempre da exacto.
 function gcCalcular() {
   var mov = gcLeer();
-  var cfg = gcCfg();
-  var saldo = gcNum(cfg.apertura);
-  var totGasto = 0, totAporte = 0, totAporteFondo = 0, totAporteExt = 0;
-  var porRubro = {}, porSocio = {};
+  var ancla = gcNum(gcCfg().ancla);
+  var carry = ancla;
+  var totGasto = 0, totGastoNuevo = 0;
+  var porRubro = {};
   var filas = mov.map(function (m) {
     var imp = gcNum(m.imp);
-    if (m.tipo === "aporte") {
-      totAporte += imp;
-      if (m.noFondo) { totAporteExt += imp; }
-      else { saldo += imp; totAporteFondo += imp; }
-      var sk = m.socio || "SIN ASIGNAR";
-      if (!porSocio[sk]) porSocio[sk] = { ars: 0, n: 0 };
-      porSocio[sk].ars += imp;
-      porSocio[sk].n++;
-    } else {
-      saldo -= imp;
+    if (m.tipo === "gasto") {
       totGasto += imp;
+      if (!m.hist) totGastoNuevo += imp;
       var rk = m.rubro || "Otros";
       porRubro[rk] = (porRubro[rk] || 0) + imp;
     }
-    return { m: m, saldo: m.noFondo ? null : saldo };
+    var saldo = null;
+    if (!m.hist) { carry += (m.tipo === "aporte" ? imp : -imp); saldo = carry; }
+    return { m: m, saldo: saldo };
   });
   return {
-    filas: filas, saldo: saldo, totGasto: totGasto, totAporte: totAporte,
-    totAporteFondo: totAporteFondo, totAporteExt: totAporteExt,
-    porRubro: porRubro, porSocio: porSocio, n: mov.length, apertura: gcNum(cfg.apertura)
+    filas: filas, saldo: carry, ancla: ancla, totGasto: totGasto, totGastoNuevo: totGastoNuevo,
+    porRubro: porRubro, n: mov.length
   };
+}
+
+// ── cálculo de aportes de capital ───────────────────────────────────
+function gcCalcularAportes() {
+  var filas = gcAportesLeer();
+  var totPrimerArs = 0, totSegundo = 0, totTercer = 0, totTotal = 0;
+  filas.forEach(function (r) {
+    if (r.primer) totPrimerArs += gcNum(r.primer);
+    totSegundo += gcNum(r.segundo);
+    totTercer += gcNum(r.tercer);
+    totTotal += gcNum(r.total);
+  });
+  return { filas: filas, totSegundo: totSegundo, totTercer: totTercer, totTotal: totTotal };
 }
 
 // ═══════ RENDER ═══════════════════════════════════════════════════
@@ -321,23 +347,25 @@ function renderGastosCasa() {
   if (!_gcPulled && typeof syncPull === "function") {
     _gcPulled = true;
     syncPull(GC_K, function () { if (document.getElementById("gcRoot")) renderGastosCasa(); });
+    syncPull(GC_K_APORTES, function () { if (document.getElementById("gcRoot")) renderGastosCasa(); });
     syncPull(GC_K_CFG, function () { if (document.getElementById("gcRoot")) renderGastosCasa(); });
   }
 
   var c = gcCalcular();
+  var ap = gcCalcularAportes();
   var cont = document.getElementById("adm-content");
   if (!cont) return;
 
   // —— KPIs ——
   var kpis =
     '<div class="adm-kpis" style="flex-wrap:wrap">' +
-      gcKpi("Aportado (capital)", gcFmt(c.totAporte), c.totAporteExt ? (gcFmt(c.totAporteExt) + " pagado directo") : (Object.keys(c.porSocio).length + " socios"), "#1f3a2e") +
-      gcKpi("Gastado", gcFmt(c.totGasto), c.n + " movimientos", "#b13a2c") +
-      gcKpi("Saldo del fondo", gcFmt(c.saldo), "= " + gcFmt(c.saldo) + " en la planilla", c.saldo < 0 ? "#b13a2c" : "#1c78b0") +
+      gcKpi("Aportado (capital)", gcFmt(ap.totTotal), ap.filas.length + " profesionales, según grilla", "#1f3a2e") +
+      gcKpi("Gastado (histórico)", gcFmt(c.totGasto), c.n + " movimientos", "#b13a2c") +
+      gcKpi("Saldo del fondo", gcFmt(c.saldo), c.totGastoNuevo || c.saldo !== c.ancla ? "ancla " + gcFmt(c.ancla) + " + lo nuevo" : "al " + gcFechaAR(GC_SALDO_ANCLA_FECHA) + ", igual que la planilla", c.saldo < 0 ? "#b13a2c" : "#1c78b0") +
       gcKpi("Rubros con gasto", String(Object.keys(c.porRubro).length), "de " + GC_RUBROS.length + " definidos", "#c9933a") +
     '</div>' +
-    '<div style="font-size:.66rem;color:rgba(32,36,31,.5);background:rgba(202,138,4,.09);border:1px solid rgba(202,138,4,.25);border-radius:8px;padding:8px 10px;margin-bottom:14px">' +
-      '⚠ El saldo se calcula sumando los movimientos. La fila <b>"Ajustes de saldo de la planilla"</b> ($14.529.773) absorbe las correcciones que el contador hizo directo sobre la columna de saldo del Sheet sin cargarlas como movimiento — está para que el total cierre en <b>$35.515.331</b> como la planilla. Se va reduciendo a medida que se itemicen.' +
+    '<div style="font-size:.66rem;color:rgba(32,36,31,.5);background:rgba(28,120,176,.08);border:1px solid rgba(28,120,176,.2);border-radius:8px;padding:8px 10px;margin-bottom:14px">' +
+      'ℹ️ Dos tablas separadas, igual que el Sheet: <b>Aportes de capital</b> (quién puso cuánto, editable) y el <b>Libro de movimientos</b> (gastos, para los gráficos y para seguir cargando). El <b>Saldo del fondo</b> no se recalcula sumando los 99 movimientos históricos — arranca directo del último saldo real de la planilla (' + gcFmt(GC_SALDO_ANCLA) + ' al ' + gcFechaAR(GC_SALDO_ANCLA_FECHA) + ') y se mueve solo con los movimientos que cargues desde acá en adelante.' +
     '</div>';
 
   // —— gráficos ——
@@ -347,46 +375,37 @@ function renderGastosCasa() {
       '<div class="gc-panel"><div class="gc-panel-t">Aporte por profesional</div><div style="position:relative;height:260px"><canvas id="gcChartSocio"></canvas></div></div>' +
     '</div>';
 
-  // —— tabla aporte por profesional ——
-  var cfg = gcCfg();
-  var totComp = 0, totAp = 0;
-  var filasSoc = GC_SOCIOS.map(function (s) {
-    var comp = (cfg.comprometido && cfg.comprometido[s.k] != null) ? gcNum(cfg.comprometido[s.k]) : s.comprometido;
-    var ap = c.porSocio[s.k] ? c.porSocio[s.k].ars : 0;
-    var n = c.porSocio[s.k] ? c.porSocio[s.k].n : 0;
-    var falta = comp - ap;
-    totComp += comp; totAp += ap;
+  // —— tabla de aportes de capital (espejo de la grilla del Sheet) ——
+  var filasAp = ap.filas.map(function (r) {
+    var primerCell = (r.k === "GARMENDIA")
+      ? '<input value="' + (r.primerUsd || 0) + '" onchange="gcAporteSet(\'' + r.k + '\',\'primerUsd\',this.value)" style="width:90px;text-align:right"> <span style="font-size:.62rem;color:#1c78b0;font-weight:700">US$</span>'
+      : '<input value="' + gcNum(r.primer) + '" onchange="gcAporteSet(\'' + r.k + '\',\'primer\',this.value)" style="width:110px;text-align:right">';
     return '<tr>' +
-      '<td>' + gcEsc(s.n) + '</td>' +
-      '<td style="text-align:right"><input value="' + comp + '" onchange="gcSetComprometido(\'' + s.k + '\',this.value)" style="width:120px;text-align:right"></td>' +
-      '<td style="text-align:right;font-weight:700">' + gcFmt(ap) + '</td>' +
-      '<td style="text-align:right;color:' + (falta > 0 ? '#b13a2c' : '#16a34a') + '">' + (falta > 0 ? gcFmt(falta) : (falta < 0 ? '+' + gcFmt(-falta) : '—')) + '</td>' +
-      '<td style="text-align:center;color:rgba(32,36,31,.5)">' + n + '</td>' +
+      '<td>' + gcEsc(r.n) + '</td>' +
+      '<td style="text-align:right">' + primerCell + '</td>' +
+      '<td style="text-align:right"><input value="' + gcNum(r.segundo) + '" onchange="gcAporteSet(\'' + r.k + '\',\'segundo\',this.value)" style="width:110px;text-align:right"></td>' +
+      '<td style="text-align:right"><input value="' + gcNum(r.tercer) + '" onchange="gcAporteSet(\'' + r.k + '\',\'tercer\',this.value)" style="width:110px;text-align:right"></td>' +
+      '<td style="text-align:right"><input value="' + gcNum(r.total) + '" onchange="gcAporteSet(\'' + r.k + '\',\'total\',this.value)" style="width:120px;text-align:right;font-weight:700"></td>' +
       '</tr>';
   }).join("");
-  var sinAsignar = c.porSocio["SIN ASIGNAR"];
-  if (sinAsignar) {
-    filasSoc += '<tr><td style="color:#b13a2c">⚠ Sin asignar</td><td></td><td style="text-align:right;font-weight:700">' + gcFmt(sinAsignar.ars) + '</td><td></td><td style="text-align:center">' + sinAsignar.n + '</td></tr>';
-  }
-  var tablaSoc =
-    '<div class="adm-sec-title" style="margin-top:6px">Aporte de cada profesional</div>' +
-    '<div style="font-size:.68rem;color:rgba(32,36,31,.45);margin-bottom:8px">"Comprometido" es lo declarado en la grilla del Sheet (editable). "Aportado" se suma solo de los movimientos tipo aporte del libro (incluye el aporte de Garmendia en USD valuado a $1.455 = $18.449.400, aunque ese se pagó directo al proveedor y no entró al fondo).</div>' +
+  var tablaAportes =
+    '<div class="adm-sec-title" style="margin-top:6px">Aportes de capital</div>' +
+    '<div style="font-size:.68rem;color:rgba(32,36,31,.45);margin-bottom:8px">Igual que la grilla "APORTES PARA 14 DE JULIO 2067" del Sheet — un renglón por profesional, editable. Garmendia aportó en dólares (US$ 12.680) + $3.740.000, valuado al ' + gcNum(GC_TC_USD).toLocaleString("es-AR") + ' del día. El Total es el que declara la planilla — no siempre es la suma exacta de las 3 columnas.</div>' +
     '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>' +
-    '<th>Profesional</th><th style="text-align:right">Comprometido</th><th style="text-align:right">Aportado</th><th style="text-align:right">Falta integrar</th><th style="text-align:center">Movs.</th>' +
-    '</tr></thead><tbody>' + filasSoc + '</tbody><tfoot><tr class="adm-totals">' +
-    '<td style="text-align:right;font-weight:800">Totales</td>' +
-    '<td style="text-align:right;font-weight:800">' + gcFmt(totComp) + '</td>' +
-    '<td style="text-align:right;font-weight:800">' + gcFmt(totAp) + '</td>' +
-    '<td style="text-align:right;font-weight:800;color:' + ((totComp - totAp) > 0 ? '#b13a2c' : '#16a34a') + '">' + gcFmt(totComp - totAp) + '</td><td></td>' +
+    '<th>Profesional</th><th style="text-align:right">Primer aporte</th><th style="text-align:right">Segundo aporte</th><th style="text-align:right">Tercer aporte</th><th style="text-align:right">Total</th>' +
+    '</tr></thead><tbody>' + filasAp + '</tbody><tfoot><tr class="adm-totals">' +
+    '<td style="text-align:right;font-weight:800">Total general</td><td></td><td></td><td></td>' +
+    '<td style="text-align:right;font-weight:800">' + gcFmt(ap.totTotal) + '</td>' +
     '</tr></tfoot></table></div>';
 
   // —— alta de movimiento ——
   var rubroOpts = GC_RUBROS.map(function (r) { return '<option value="' + gcEsc(r) + '">' + gcEsc(r) + '</option>'; }).join("");
-  var socioOpts = '<option value="">— socio —</option>' + GC_SOCIOS.map(function (s) { return '<option value="' + s.k + '">' + gcEsc(s.n) + '</option>'; }).join("");
+  var socioOpts = '<option value="">— socio —</option>' + ap.filas.map(function (s) { return '<option value="' + s.k + '">' + gcEsc(s.n) + '</option>'; }).join("");
   var dicList = gcDiccionario().map(function (e) { return '<option value="' + gcEsc(e.term) + '">'; }).join("");
   var hoy = new Date().toISOString().slice(0, 10);
   var alta =
     '<div class="adm-sec-title" style="margin-top:20px">Nuevo movimiento</div>' +
+    '<div style="font-size:.68rem;color:rgba(32,36,31,.45);margin-bottom:6px">Lo que cargues acá (fecha ' + gcFechaAR(GC_SALDO_ANCLA_FECHA) + ' en adelante) mueve el saldo del fondo.</div>' +
     '<datalist id="gcDic">' + dicList + '</datalist>' +
     '<div class="gc-add">' +
       '<input type="date" id="gcAddF" value="' + hoy + '" title="Fecha">' +
@@ -430,14 +449,11 @@ function renderGastosCasa() {
         '<button class="gc-mini" onclick="gcResetSeed()" title="Volver a la importación original">↺ Reset</button>' +
       '</div>' +
     '</div>' +
-    '<div style="display:flex;align-items:center;gap:10px;margin:6px 0 10px;font-size:.7rem;color:rgba(32,36,31,.5)">' +
-      '<label>Saldo de apertura <input value="' + c.apertura + '" onchange="gcSetApertura(this.value)" style="width:120px;text-align:right"></label>' +
-    '</div>' +
     '<div class="gc-chips">' + chips + '</div>' +
     '<div class="adm-table-wrap"><table class="adm-table gc-libro"><thead><tr>' +
-    '<th>Fecha</th><th>Concepto</th><th>Rubro</th><th>Método</th><th>Alias / CBU</th><th>Factura</th><th style="text-align:right">Importe</th><th style="text-align:right">Saldo</th><th></th>' +
+    '<th>Fecha</th><th>Concepto</th><th>Rubro / Socio</th><th>Método</th><th>Alias / CBU</th><th>Factura</th><th style="text-align:right">Importe</th><th style="text-align:right">Saldo</th><th></th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
-    '<div style="font-size:.66rem;color:rgba(32,36,31,.4);margin-top:8px">Cada celda se guarda al salir del campo. El importe de un <b>aporte</b> suma al fondo; el de un <b>gasto</b> resta. El saldo se recalcula en orden de carga.</div>';
+    '<div style="font-size:.66rem;color:rgba(32,36,31,.4);margin-top:8px">Los movimientos históricos (importados) muestran el saldo de la planilla en gris, de referencia — no se recalculan. Los que agregues vos desde hoy muestran el saldo real, en negro.</div>';
 
   cont.innerHTML =
     '<div id="gcRoot" style="padding:4px 2px 20px">' +
@@ -445,10 +461,10 @@ function renderGastosCasa() {
       '<div class="adm-sec-title" style="margin:0">🏠 Gastos Casa — 14 de Julio 2067</div>' +
     '</div>' +
     '<div style="font-size:.68rem;color:rgba(32,36,31,.45);margin:2px 0 14px">Libro de la obra importado del Sheet. Desde acá se edita y se cargan los movimientos nuevos — el Sheet queda como respaldo.</div>' +
-    kpis + graf + tablaSoc + alta + libro +
+    kpis + graf + tablaAportes + alta + libro +
     '</div>';
 
-  gcPintarCharts(c);
+  gcPintarCharts(c, ap);
 }
 
 function gcKpi(lbl, val, sub, col) {
@@ -465,14 +481,19 @@ function gcFilaHtml(x) {
   var rubroOpts = GC_RUBROS.concat(esAporte ? ["Aporte de capital"] : []).map(function (r) {
     return '<option value="' + gcEsc(r) + '"' + ((m.rubro || "Otros") === r ? " selected" : "") + '>' + gcEsc(r) + '</option>';
   }).join("");
+  var ap = gcAportesLeer();
   var socioCell = esAporte
     ? '<select onchange="gcSet(\'' + id + '\',\'socio\',this.value)" style="font-size:.66rem">' +
         '<option value="">—</option>' +
-        GC_SOCIOS.map(function (s) { return '<option value="' + s.k + '"' + (m.socio === s.k ? " selected" : "") + '>' + gcEsc(s.k) + '</option>'; }).join("") +
+        ap.map(function (s) { return '<option value="' + s.k + '"' + (m.socio === s.k ? " selected" : "") + '>' + gcEsc(s.k) + '</option>'; }).join("") +
       '</select>'
     : '<select onchange="gcSet(\'' + id + '\',\'rubro\',this.value)" style="font-size:.66rem">' + rubroOpts + '</select>';
   var impCol = esAporte ? "#16a34a" : "#b13a2c";
   var signo = esAporte ? "+" : "−";
+  var saldoTxt, saldoCol;
+  if (x.saldo != null) { saldoTxt = gcFmt(x.saldo); saldoCol = x.saldo < 0 ? "#b13a2c" : "rgba(32,36,31,.85)"; }
+  else if (m.sSheet != null) { saldoTxt = gcFmt(m.sSheet); saldoCol = "rgba(32,36,31,.3)"; }
+  else { saldoTxt = "—"; saldoCol = "rgba(32,36,31,.3)"; }
   return '<tr class="' + (esAporte ? "gc-r-aporte" : "") + '">' +
     '<td><input type="date" value="' + gcEsc(m.f) + '" onchange="gcSet(\'' + id + '\',\'f\',this.value)" style="font-size:.66rem"></td>' +
     '<td style="min-width:170px"><input value="' + gcEsc(m.c) + '" onchange="gcSet(\'' + id + '\',\'c\',this.value)"></td>' +
@@ -481,14 +502,14 @@ function gcFilaHtml(x) {
     '<td><input value="' + gcEsc(m.d) + '" onchange="gcSet(\'' + id + '\',\'d\',this.value)" style="width:150px"></td>' +
     '<td><input value="' + gcEsc(m.fac) + '" onchange="gcSet(\'' + id + '\',\'fac\',this.value)" style="width:100px"></td>' +
     '<td style="text-align:right;white-space:nowrap"><span style="color:' + impCol + ';font-weight:700">' + signo + '</span> <input value="' + m.imp + '" onchange="gcSet(\'' + id + '\',\'imp\',this.value)" style="width:100px;text-align:right">' +
-      (m.noFondo ? ' <span style="font-size:.55rem;color:#1c78b0;font-weight:700" title="no entra al fondo común">ext</span>' : '') + '</td>' +
-    '<td style="text-align:right;font-weight:700;color:' + (x.saldo == null ? "rgba(32,36,31,.3)" : (x.saldo < 0 ? "#b13a2c" : "rgba(32,36,31,.75)")) + '">' + (x.saldo == null ? "—" : gcFmt(x.saldo)) + '</td>' +
+      (m.mon === "USD" ? ' <span style="font-size:.6rem;color:#1c78b0;font-weight:700">US$</span>' : '') + '</td>' +
+    '<td style="text-align:right;font-weight:700;color:' + saldoCol + '">' + saldoTxt + '</td>' +
     '<td style="text-align:center"><button class="obra-x" title="Borrar" onclick="gcBorrar(\'' + id + '\')">✕</button></td>' +
     '</tr>';
 }
 
 // ── charts ────────────────────────────────────────────────────────
-function gcPintarCharts(c) {
+function gcPintarCharts(c, ap) {
   if (typeof Chart === "undefined") return;
   Object.keys(_gcCharts).forEach(function (k) { try { _gcCharts[k].destroy(); } catch (e) {} });
   _gcCharts = {};
@@ -516,21 +537,17 @@ function gcPintarCharts(c) {
   }
 
   var cv2 = document.getElementById("gcChartSocio");
-  if (cv2) {
-    var socs = GC_SOCIOS.filter(function (s) { return c.porSocio[s.k]; });
-    var cfg = gcCfg();
+  if (cv2 && ap.filas.length) {
+    var ordenado = ap.filas.slice().sort(function (a, b) { return gcNum(b.total) - gcNum(a.total); });
     _gcCharts.socio = new Chart(cv2, {
       type: "bar",
       data: {
-        labels: socs.map(function (s) { return s.k; }),
-        datasets: [
-          { label: "Aportado", data: socs.map(function (s) { return Math.round(c.porSocio[s.k].ars); }), backgroundColor: "#1f3a2e", borderRadius: 3 },
-          { label: "Comprometido", data: socs.map(function (s) { return (cfg.comprometido && cfg.comprometido[s.k] != null) ? gcNum(cfg.comprometido[s.k]) : s.comprometido; }), backgroundColor: "rgba(201,147,58,.55)", borderRadius: 3 }
-        ]
+        labels: ordenado.map(function (s) { return s.k; }),
+        datasets: [{ label: "Aporte total", data: ordenado.map(function (s) { return Math.round(gcNum(s.total)); }), backgroundColor: "#1f3a2e", borderRadius: 3 }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: tick, font: { size: 10 }, boxWidth: 10 } }, tooltip: { callbacks: { label: function (ct) { return " " + ct.dataset.label + ": " + gcFmt(ct.parsed.y); } } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ct) { return " " + gcFmt(ct.parsed.y); } } } },
         scales: {
           x: { ticks: { color: tick, font: { size: 9 } }, grid: { display: false } },
           y: { ticks: { color: tick, font: { size: 9 }, callback: function (v) { return "$" + (v / 1e6) + "M"; } }, grid: { color: grid } }
@@ -540,7 +557,7 @@ function gcPintarCharts(c) {
   }
 }
 
-// ── mutaciones ────────────────────────────────────────────────────
+// ── mutaciones: libro de movimientos ────────────────────────────────
 function gcSet(id, campo, val) {
   var arr = gcLeer();
   for (var i = 0; i < arr.length; i++) {
@@ -575,7 +592,7 @@ function gcAgregar() {
     imp: imp, tipo: tipo,
     socio: tipo === "aporte" ? (document.getElementById("gcAddSocio").value || "") : "",
     rubro: tipo === "aporte" ? "Aporte de capital" : (document.getElementById("gcAddRubro").value || "Otros"),
-    sSheet: null, noFondo: false
+    sSheet: null, hist: false
   });
   gcGuardar(arr);
   renderGastosCasa();
@@ -593,23 +610,9 @@ function gcAltaAuto() {
   if (m && e.metodo && (!m.value || m.value === "Transferencia")) m.value = e.metodo;
   if (d && e.destino && !d.value) d.value = e.destino;
 }
-function gcSetComprometido(k, val) {
-  var c = gcCfg();
-  if (!c.comprometido) c.comprometido = {};
-  c.comprometido[k] = gcNum(val);
-  gcCfgGuardar(c);
-  renderGastosCasa();
-}
-function gcSetApertura(val) {
-  var c = gcCfg();
-  c.apertura = gcNum(val);
-  gcCfgGuardar(c);
-  renderGastosCasa();
-}
 function gcFiltroRubro(r) { _gcFiltroRubro = r; renderGastosCasa(); }
 function gcBuscar(v) {
   _gcFiltroTxt = v;
-  // filtrado en vivo sin re-render completo (mantiene foco en el input)
   var c = gcCalcular();
   var tb = document.querySelector(".gc-libro tbody");
   if (!tb) return;
@@ -623,10 +626,20 @@ function gcBuscar(v) {
   }).map(function (x) { return gcFilaHtml(x); }).join("");
 }
 function gcResetSeed() {
-  if (!confirm("Descarta TODO lo editado y vuelve a la importación original del Sheet. ¿Seguro?")) return;
-  try { localStorage.removeItem(GC_K); localStorage.removeItem(GC_K_CFG); } catch (e) {}
-  gcLeer(); // re-siembra
+  if (!confirm("Descarta TODO lo editado (libro y aportes) y vuelve a la importación original del Sheet. ¿Seguro?")) return;
+  try { localStorage.removeItem(GC_K); localStorage.removeItem(GC_K_APORTES); localStorage.removeItem(GC_K_CFG); } catch (e) {}
+  gcLeer(); gcAportesLeer();
   _gcFiltroRubro = ""; _gcFiltroTxt = "";
+  renderGastosCasa();
+}
+
+// ── mutaciones: aportes de capital ──────────────────────────────────
+function gcAporteSet(k, campo, val) {
+  var arr = gcAportesLeer();
+  for (var i = 0; i < arr.length; i++) {
+    if (arr[i].k === k) { arr[i][campo] = gcNum(val); break; }
+  }
+  gcAportesGuardar(arr);
   renderGastosCasa();
 }
 
@@ -634,19 +647,24 @@ function gcResetSeed() {
 function gcExportExcel() {
   if (typeof XLSX === "undefined") { alert("La librería de Excel aún se está cargando."); return; }
   var c = gcCalcular();
+  var ap = gcCalcularAportes();
   var wb = XLSX.utils.book_new();
 
-  var mov = [["Fecha", "Concepto", "Tipo", "Socio", "Rubro", "Método", "Alias/CBU", "Factura", "Importe", "Saldo calculado", "Saldo planilla"]];
+  var apSheet = [["Profesional", "Primer aporte", "Segundo aporte", "Tercer aporte", "Total"]];
+  ap.filas.forEach(function (r) {
+    apSheet.push([r.n, r.k === "GARMENDIA" ? ("US$ " + (r.primerUsd || 0)) : gcNum(r.primer), gcNum(r.segundo), gcNum(r.tercer), gcNum(r.total)]);
+  });
+  apSheet.push(["TOTAL", "", "", "", ap.totTotal]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(apSheet), "Aportes de capital");
+
+  var mov = [["Fecha", "Concepto", "Tipo", "Socio", "Rubro", "Método", "Alias/CBU", "Factura", "Moneda", "Importe", "Saldo (nuevos) / Saldo planilla (histórico)"]];
   c.filas.forEach(function (x) {
     var m = x.m;
-    mov.push([gcFechaAR(m.f), m.c + (m.noFondo ? " (no entra al fondo)" : ""), m.tipo, m.socio || "", m.rubro || "", m.m || "", m.d || "", m.fac || "", gcNum(m.imp) * (m.tipo === "aporte" ? 1 : -1), x.saldo == null ? "" : Math.round(x.saldo), m.sSheet == null ? "" : Math.round(m.sSheet)]);
+    mov.push([gcFechaAR(m.f), m.c, m.tipo, m.socio || "", m.rubro || "", m.m || "", m.d || "", m.fac || "", m.mon || "ARS", gcNum(m.imp) * (m.tipo === "aporte" ? 1 : -1), x.saldo != null ? Math.round(x.saldo) : (m.sSheet != null ? Math.round(m.sSheet) : "")]);
   });
   mov.push([]);
-  mov.push(["", "", "", "", "", "", "", "Saldo apertura", c.apertura]);
-  mov.push(["", "", "", "", "", "", "", "Total aportes (incl. directos)", Math.round(c.totAporte)]);
-  mov.push(["", "", "", "", "", "", "", "  · de los cuales al fondo", Math.round(c.totAporteFondo)]);
-  mov.push(["", "", "", "", "", "", "", "Total gastos", -Math.round(c.totGasto)]);
-  mov.push(["", "", "", "", "", "", "", "Saldo final", Math.round(c.saldo)]);
+  mov.push(["", "", "", "", "", "", "", "Saldo ancla (" + gcFechaAR(GC_SALDO_ANCLA_FECHA) + ")", c.ancla]);
+  mov.push(["", "", "", "", "", "", "", "Saldo del fondo (hoy)", Math.round(c.saldo)]);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(mov), "Movimientos");
 
   var rub = [["Rubro", "Total gastado", "% del gasto"]];
@@ -655,15 +673,6 @@ function gcExportExcel() {
   });
   rub.push(["TOTAL", Math.round(c.totGasto), 100]);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rub), "Por rubro");
-
-  var cfg = gcCfg();
-  var ap = [["Profesional", "Comprometido", "Aportado", "Falta integrar", "Movimientos"]];
-  GC_SOCIOS.forEach(function (s) {
-    var comp = (cfg.comprometido && cfg.comprometido[s.k] != null) ? gcNum(cfg.comprometido[s.k]) : s.comprometido;
-    var d = c.porSocio[s.k] || { ars: 0, n: 0 };
-    ap.push([s.n, comp, Math.round(d.ars), Math.round(comp - d.ars), d.n]);
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ap), "Aportes socios");
 
   XLSX.writeFile(wb, "GastosCasa_14deJulio2067_" + new Date().toISOString().slice(0, 10) + ".xlsx");
 }
@@ -674,7 +683,7 @@ function gcExportPDF() {
   var jsPDF = window.jspdf.jsPDF;
   var doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   var c = gcCalcular();
-  var cfg = gcCfg();
+  var ap = gcCalcularAportes();
   var W = 297, LM = 12, RM = 285;
   var hoy = new Date();
   var hoyStr = String(hoy.getDate()).padStart(2, "0") + "/" + String(hoy.getMonth() + 1).padStart(2, "0") + "/" + hoy.getFullYear();
@@ -690,25 +699,23 @@ function gcExportPDF() {
 
   var y = 33;
   doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-  doc.text("Aportado: " + gcFmtPDF(c.totAporte) + (c.totAporteExt ? " (" + gcFmtPDF(c.totAporteExt) + " directo)" : ""), LM, y);
+  doc.text("Aportado (capital): " + gcFmtPDF(ap.totTotal), LM, y);
   doc.text("Gastado: " + gcFmtPDF(c.totGasto), LM + 95, y);
   doc.text("Saldo del fondo: " + gcFmtPDF(c.saldo), LM + 175, y);
   y += 8;
 
   // Aportes por socio
-  doc.setFontSize(9); doc.text("APORTE POR PROFESIONAL", LM, y); y += 2;
+  doc.setFontSize(9); doc.text("APORTES DE CAPITAL", LM, y); y += 2;
   doc.setDrawColor(31, 58, 46); doc.line(LM, y, LM + 150, y); y += 5;
   doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-  GC_SOCIOS.forEach(function (s) {
-    var comp = (cfg.comprometido && cfg.comprometido[s.k] != null) ? gcNum(cfg.comprometido[s.k]) : s.comprometido;
-    var d = c.porSocio[s.k] || { ars: 0, n: 0 };
+  ap.filas.forEach(function (s) {
     doc.text(s.n, LM, y);
-    doc.text("compr. " + gcFmtPDF(comp), LM + 55, y);
-    doc.text("aport. " + gcFmtPDF(d.ars), LM + 100, y);
-    var falta = comp - d.ars;
-    doc.setTextColor(falta > 0 ? 177 : 22, falta > 0 ? 58 : 163, falta > 0 ? 44 : 74);
-    doc.text((falta > 0 ? "falta " : "ok ") + gcFmtPDF(Math.abs(falta)), LM + 160, y);
-    doc.setTextColor(0, 0, 0);
+    doc.text("1º " + (s.k === "GARMENDIA" ? ("US$" + (s.primerUsd || 0)) : gcFmtPDF(s.primer)), LM + 55, y);
+    doc.text("2º " + gcFmtPDF(s.segundo), LM + 100, y);
+    doc.text("3º " + gcFmtPDF(s.tercer), LM + 135, y);
+    doc.setFont("helvetica", "bold");
+    doc.text("Total " + gcFmtPDF(s.total), LM + 175, y);
+    doc.setFont("helvetica", "normal");
     y += 5;
   });
   y += 3;
@@ -748,9 +755,10 @@ function gcExportPDF() {
     doc.text(doc.splitTextToSize(m.d || "", 52)[0], cD, y);
     doc.text(doc.splitTextToSize(m.fac || "", 46)[0], cFac, y);
     doc.setTextColor(m.tipo === "aporte" ? 22 : 177, m.tipo === "aporte" ? 163 : 58, m.tipo === "aporte" ? 74 : 44);
-    doc.text((m.tipo === "aporte" ? "+ " : "− ") + gcFmtPDF(gcNum(m.imp)) + (m.noFondo ? " (ext)" : ""), cImp, y, { align: "right" });
+    doc.text((m.tipo === "aporte" ? "+ " : "− ") + (m.mon === "USD" ? "US$" + gcNum(m.imp).toLocaleString("es-AR") : gcFmtPDF(gcNum(m.imp))), cImp, y, { align: "right" });
     doc.setTextColor(0, 0, 0);
-    doc.text(x.saldo == null ? "—" : gcFmtPDF(x.saldo), cSal, y, { align: "right" });
+    var sal = x.saldo != null ? x.saldo : m.sSheet;
+    doc.text(sal == null ? "—" : gcFmtPDF(sal), cSal, y, { align: "right" });
     y += 4.3;
   });
 
