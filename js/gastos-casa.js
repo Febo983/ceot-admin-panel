@@ -334,7 +334,30 @@ function gcCalcularAportes() {
     totTercer += gcNum(r.tercer);
     totTotal += gcNum(r.total);
   });
-  return { filas: filas, totSegundo: totSegundo, totTercer: totTercer, totTotal: totTotal };
+  return { filas: filas, totPrimerArs: totPrimerArs, totSegundo: totSegundo, totTercer: totTercer, totTotal: totTotal };
+}
+
+// ── por qué "comprometido − gastado" no da el "saldo del fondo" ────
+// Dos cuentas distintas, no una resta: (1) cuánto de lo comprometido en la
+// grilla tiene una transferencia con fecha en el libro (aporteLedgerDatado —
+// incluye el "primer aporte" de todos, que fondeó el arranque del libro) y
+// (2) cuánto de eso ya se gastó según ESE cálculo (saldoTeoricoCompleto) vs.
+// lo que realmente cierra la planilla (GC_SALDO_ANCLA, con las correcciones
+// del contador incluidas). Todo dinámico — si se edita el libro o la
+// grilla de aportes, estos números se recalculan solos.
+function gcReconciliacion(c, ap) {
+  var mov = gcLeer();
+  var aporteLedgerDatado = ap.totPrimerArs;
+  mov.forEach(function (m) {
+    if (m.tipo === "aporte" && m.hist && m.mon !== "USD") aporteLedgerDatado += gcNum(m.imp);
+  });
+  var saldoTeoricoCompleto = aporteLedgerDatado - c.totGasto;
+  return {
+    aporteLedgerDatado: aporteLedgerDatado,
+    saldoTeoricoCompleto: saldoTeoricoCompleto,
+    gapComprometido: ap.totTotal - aporteLedgerDatado,
+    gapContador: saldoTeoricoCompleto - GC_SALDO_ANCLA
+  };
 }
 
 // ═══════ RENDER ═══════════════════════════════════════════════════
@@ -357,15 +380,19 @@ function renderGastosCasa() {
   if (!cont) return;
 
   // —— KPIs ——
+  var rec = gcReconciliacion(c, ap);
   var kpis =
     '<div class="adm-kpis" style="flex-wrap:wrap">' +
-      gcKpi("Aportado (capital)", gcFmt(ap.totTotal), ap.filas.length + " profesionales, según grilla", "#1f3a2e") +
+      gcKpi("Comprometido (grilla)", gcFmt(ap.totTotal), ap.filas.length + " profesionales — no es lo mismo que \"transferido\"", "#1f3a2e") +
       gcKpi("Gastado (histórico)", gcFmt(c.totGasto), c.n + " movimientos", "#b13a2c") +
       gcKpi("Saldo del fondo", gcFmt(c.saldo), c.totGastoNuevo || c.saldo !== c.ancla ? "ancla " + gcFmt(c.ancla) + " + lo nuevo" : "al " + gcFechaAR(GC_SALDO_ANCLA_FECHA) + ", igual que la planilla", c.saldo < 0 ? "#b13a2c" : "#1c78b0") +
       gcKpi("Rubros con gasto", String(Object.keys(c.porRubro).length), "de " + GC_RUBROS.length + " definidos", "#c9933a") +
     '</div>' +
-    '<div style="font-size:.66rem;color:rgba(32,36,31,.5);background:rgba(28,120,176,.08);border:1px solid rgba(28,120,176,.2);border-radius:8px;padding:8px 10px;margin-bottom:14px">' +
-      'ℹ️ Dos tablas separadas, igual que el Sheet: <b>Aportes de capital</b> (quién puso cuánto, editable) y el <b>Libro de movimientos</b> (gastos, para los gráficos y para seguir cargando). El <b>Saldo del fondo</b> no se recalcula sumando los 99 movimientos históricos — arranca directo del último saldo real de la planilla (' + gcFmt(GC_SALDO_ANCLA) + ' al ' + gcFechaAR(GC_SALDO_ANCLA_FECHA) + ') y se mueve solo con los movimientos que cargues desde acá en adelante.' +
+    '<div style="font-size:.66rem;color:rgba(32,36,31,.5);background:rgba(28,120,176,.08);border:1px solid rgba(28,120,176,.2);border-radius:8px;padding:8px 10px;margin-bottom:14px;line-height:1.6">' +
+      '<b>¿Por qué ' + gcFmt(ap.totTotal) + ' − ' + gcFmt(c.totGasto) + ' no da ' + gcFmt(c.saldo) + '?</b> Porque "Comprometido" y "Saldo" no se restan entre sí — son dos cuentas distintas, igual que en el Sheet:<br>' +
+      '· De lo comprometido, sólo <b>' + gcFmt(rec.aporteLedgerDatado) + '</b> tiene una transferencia con fecha registrada en el libro — faltan <b>' + gcFmt(rec.gapComprometido) + '</b> por transferir (ej. Garmendia declaró tener pendiente $3.170.000).<br>' +
+      '· Con lo que sí se transfirió, el saldo "de libro" daría ' + gcFmt(rec.saldoTeoricoCompleto) + ' — pero la planilla real cierra en <b>' + gcFmt(GC_SALDO_ANCLA) + '</b> porque el contador hizo <b>' + gcFmt(rec.gapContador) + '</b> de correcciones directo sobre la columna de saldo, sin cargarlas como movimiento (hay una nota suya, "REAL $2.142.981,48", en la fila del 21/08 que lo confirma).<br>' +
+      'El <b>Saldo del fondo</b> que ves acá es el real de la planilla — no una resta de las otras dos tarjetas.' +
     '</div>';
 
   // —— gráficos ——
