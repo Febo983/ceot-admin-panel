@@ -15,7 +15,7 @@
 //
 // EXCLUIDAS de golden (traen datos async de endpoints y el hash varía entre
 // corridas — el harness igual avisa si TIRAN error via `errs`):
-//   renderGastosPagos, renderObraPagos, renderPresentacion, renderLicencias
+//   renderGastosPagos, renderPresentacion, renderLicencias
 //
 // Regenerar golden tras un cambio intencional de UI: ver README.md.
 (function () {
@@ -40,7 +40,7 @@
       }
     }
     const ac = document.getElementById('adm-content');
-    const admFns = [['renderAdmHome'], ['renderChecklist'], ['renderChecklistBody'], ['renderPendientes'], ['renderPresentacion', 'julio'], ['renderSueldoB'], ['renderTransferencias'], ['renderLicencias'], ['renderGastosPagos'], ['renderFacturas'], ['renderObraPagos'], ['renderTotalCeot'], ['renderAdminPanel', 'julio'], ['renderSueldoDirector']];
+    const admFns = [['renderAdmHome'], ['renderChecklist'], ['renderChecklistBody'], ['renderPendientes'], ['renderPresentacion', 'julio'], ['renderSueldoB'], ['renderLicencias'], ['renderGastosPagos'], ['renderFacturas'], ['renderTotalCeot'], ['renderAdminPanel', 'julio'], ['renderSueldoDirector']];
     for (const [fn, arg] of admFns) {
       try { if (typeof window[fn] !== 'function') { out['admR|' + fn] = 'NOFN'; continue; } if (ac) ac.innerHTML = ''; window[fn](arg); out['admR|' + fn] = ac ? ac.innerHTML : '(no #adm-content)'; }
       catch (err) { out['admR|' + fn] = 'ERR ' + err; }
