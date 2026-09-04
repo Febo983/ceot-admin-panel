@@ -21,6 +21,7 @@ var ADM_HOME_MODULOS = [
   { key:"cpsm",             ico:"landmark",        lbl:"CPSM",          cat:"cat-fin", fn:"renderCpsm()" },
   { key:"aporteceot",       ico:"percent",         lbl:"Retención Ganancias",   cat:"cat-fin", fn:"renderAporteCeot()" },
   { key:"sueldodirector",   ico:"banknote",        lbl:"Transferencias del Mes", cat:"cat-fin", fn:"renderSueldoDirector()" },
+  { key:"licenciashon",     ico:"plane-takeoff",   lbl:"Licencias (Honorarios)", cat:"cat-fin", fn:"renderLicenciasHon()" },
   { key:"accesos",          ico:"link-2",          lbl:"Accesos",       cat:"cat-inf", fn:"renderAccesos(null)" },
   { key:"mensajeswa",       ico:"message-circle",  lbl:"Mensajes WA",   cat:"cat-cli", fn:"" },
   { key:"nomina",           ico:"users",           lbl:"Nómina",        cat:"cat-adm", fn:"renderNomina()" },
@@ -38,7 +39,7 @@ var ADM_HOME_MOD_COLOR = {
 // Módulos del home agrupados por "mundo" (tema retro ordenado).
 // Cualquier key que no figure acá cae automáticamente en un grupo "Más".
 var ADM_HOME_MOD_GRUPOS = [
-  { t:"Honorarios", c:"rgba(29,158,117,0.9)",  keys:["liquidaciones","totalceot","sueldodirector","transferencias","cpsm","aporteceot","debitos","facturas","presentacion"] },
+  { t:"Honorarios", c:"rgba(29,158,117,0.9)",  keys:["liquidaciones","totalceot","sueldodirector","licenciashon","transferencias","cpsm","aporteceot","debitos","facturas","presentacion"] },
   { t:"Gestión", c:"rgba(127,119,221,0.9)", keys:["sueldob","nomina","licencias","premios","mensajeswa","accesos","estadisticas","obrapagos","gastoscasa"] }
 ];
 var ADM_HOME_ACC_COLOR = {

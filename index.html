@@ -1953,18 +1953,18 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-04-gastoscasa-6"></script>
-<script src="js/portal-render.js?v=2026-09-04-gastoscasa-6"></script>
-<script src="js/admin-home.js?v=2026-09-04-gastoscasa-6"></script>
-<script src="js/gastos-obra.js?v=2026-09-04-gastoscasa-6"></script>
-<script src="js/presentacion.js?v=2026-09-04-gastoscasa-6"></script>
-<script src="js/sueldo-b.js?v=2026-09-04-gastoscasa-6"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-04-gastoscasa-6"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-04-gastoscasa-6"></script>
-<script src="js/accesos-debitos.js?v=2026-09-04-gastoscasa-6"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-04-gastoscasa-6"></script>
-<script src="js/estadisticas.js?v=2026-09-04-gastoscasa-6"></script>
-<script src="js/gastos-casa.js?v=2026-09-04-gastoscasa-6"></script>
+<script src="js/datos.js?v=2026-09-04-licencias-honorarios"></script>
+<script src="js/portal-render.js?v=2026-09-04-licencias-honorarios"></script>
+<script src="js/admin-home.js?v=2026-09-04-licencias-honorarios"></script>
+<script src="js/gastos-obra.js?v=2026-09-04-licencias-honorarios"></script>
+<script src="js/presentacion.js?v=2026-09-04-licencias-honorarios"></script>
+<script src="js/sueldo-b.js?v=2026-09-04-licencias-honorarios"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-04-licencias-honorarios"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-04-licencias-honorarios"></script>
+<script src="js/accesos-debitos.js?v=2026-09-04-licencias-honorarios"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-04-licencias-honorarios"></script>
+<script src="js/estadisticas.js?v=2026-09-04-licencias-honorarios"></script>
+<script src="js/gastos-casa.js?v=2026-09-04-licencias-honorarios"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -2796,7 +2796,7 @@ function renderTotalCeot() {
 
 function admDesactivarSidebar() {
   window.scrollTo(0, 0);
-  ["debitos","accesos","pendientes","gastospagos","facturas","transferencias","totalceot","sueldob","cpsm","aporteceot","sueldodirector","licencias","obrapagos","estadisticas","gastoscasa"].forEach(function(k) {
+  ["debitos","accesos","pendientes","gastospagos","facturas","transferencias","totalceot","sueldob","cpsm","aporteceot","sueldodirector","licenciashon","licencias","obrapagos","estadisticas","gastoscasa"].forEach(function(k) {
     var b = document.getElementById("adm-sidenav-" + k);
     if (b) b.className = "adm-sidenav-btn";
   });
@@ -3476,6 +3476,7 @@ function renderSueldoDirector() {
   var periodo = adminPeriodoAct || tabMesActual();
 
   var html = '<div id="sueldoDirectorScreenRoot" style="padding:16px">'
+    + licHonBannerHtml()
     + sueldoDirectorPeriodoSelectorHtml(periodo)
     + sueldoDirectorResumenHtml(periodo)
     + transfFamResumenMesHtml(periodo)
@@ -3586,6 +3587,235 @@ function transfNotasHtml(periodo, apellido) {
     +   escAttr(transfNotasGet(periodo, apellido))
     + '</textarea>'
     + '</div>';
+}
+
+// ── Licencias (Honorarios) ──────────────────────────────────────────────
+// Marcelo (u otro director) se va de licencia y necesita dejarle a un
+// suplente el detalle de qué cheques del período le tocan y cuánto le
+// corresponde a cada profesional en esos cheques — sin recalcular nada a
+// mano. Pedido de Marcelo, 04/09/2026.
+//
+// Cada licencia guarda titular/período/desde/hasta + un color propio (para
+// distinguirla a simple vista) + notas libres (mismo patrón que el Machete
+// de transferencias, para excepciones tipo transferencias a familiares que
+// no son automatizables). La tabla de "qué cheque le toca a quién" se
+// arma SIEMPRE en vivo con calcularDetalleChequesProfesional — la misma
+// fuente que ya usa "Transferencias del Mes" — así nunca se desincroniza
+// de los importes reales ni duplica la lógica de retenciones/IIBB/CPSM.
+//
+// Distinto del módulo "Licencias" (key `licencias`, calendar-heart) que ya
+// existe en Gestión — ese es el calendario de licencias/asistencias de las
+// secretarias (Apps Script aparte); este es propio de Honorarios/plata.
+var LICENCIAS_HON = [];
+var _licHonPulled = false;
+var LIC_HON_PALETTE = ["#b13a2c", "#1d4ed8", "#6d28d9", "#c9933a", "#0f766e", "#be185d"];
+var LIC_HON_MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+function licHonCargar() {
+  try {
+    var raw = localStorage.getItem("ceot_licencias_hon");
+    LICENCIAS_HON = raw ? (JSON.parse(raw) || []) : [];
+  } catch (e) { LICENCIAS_HON = []; }
+  if (!_licHonPulled) {
+    _licHonPulled = true;
+    syncPull("ceot_licencias_hon", function () {
+      licHonCargar();
+      if (document.getElementById('licHonScreenRoot')) renderLicenciasHon();
+      if (document.getElementById('sueldoDirectorScreenRoot')) renderSueldoDirector();
+    });
+  }
+}
+function licHonGuardarTodo() {
+  try { localStorage.setItem("ceot_licencias_hon", JSON.stringify(LICENCIAS_HON)); } catch (e) {}
+  syncPush("ceot_licencias_hon");
+}
+function licHonHoyISO() {
+  var d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function licHonEstado(lic) {
+  var hoy = licHonHoyISO();
+  if (hoy < lic.desde) return "futura";
+  if (hoy > lic.hasta) return "pasada";
+  return "vigente";
+}
+function licHonFechaCorta(iso) {
+  if (!iso) return "—";
+  var p = iso.split("-");
+  return p[2] + "/" + p[1];
+}
+
+// Junta, para los 11 profesionales de "Transferencias del Mes" (5 directores
+// + 6 del resto), los cheques del período de la licencia cuya fecha cae
+// entre "desde" y "hasta" — reusando calcularDetalleChequesProfesional tal
+// cual (mismos netos que ve Marcelo en esa pantalla). CEM y OSDE quedan
+// afuera a propósito: no tienen fecha fija dentro del mes, se controlan aparte.
+function licHonChequesEnRango(lic) {
+  var year = parseInt((lic.desde || "").slice(0, 4), 10) || new Date().getFullYear();
+  var desdeD = new Date(lic.desde + "T00:00:00");
+  var hastaD = new Date(lic.hasta + "T23:59:59");
+  var todos = PRESTAMO_CASA_SOCIOS_A.concat(PRESTAMO_CASA_SOCIOS);
+  var fechasSet = {};
+  var porProfesional = {};
+  todos.forEach(function (apellido) {
+    var doc = DOCTORES.filter(function (d) { return d.apellido === apellido; })[0];
+    if (!doc) return;
+    var base = calcularDetalleChequesProfesional(lic.periodo, doc);
+    if (!base) return;
+    base.detalle.forEach(function (d) {
+      if (d.pendiente || !/^\d{2}\/\d{2}$/.test(d.fecha)) return;
+      var partes = d.fecha.split("/");
+      var fechaCheque = new Date(year, parseInt(partes[1], 10) - 1, parseInt(partes[0], 10));
+      if (fechaCheque < desdeD || fechaCheque > hastaD) return;
+      fechasSet[d.fecha] = fechaCheque.getTime();
+      porProfesional[apellido] = porProfesional[apellido] || {};
+      porProfesional[apellido][d.fecha] = d.neto;
+    });
+  });
+  var fechas = Object.keys(fechasSet).sort(function (a, b) { return fechasSet[a] - fechasSet[b]; });
+  return { fechas: fechas, porProfesional: porProfesional, todos: todos };
+}
+
+function licHonTablaHtml(lic) {
+  var r = licHonChequesEnRango(lic);
+  if (!r.fechas.length) {
+    return '<div class="adm-pend" style="font-size:.72rem;padding:6px 0">Todavía no hay cheques de ' + lic.periodo + ' cargados dentro de este rango de fechas.</div>';
+  }
+  var filas = r.todos.filter(function (ap) { return r.porProfesional[ap]; }).map(function (ap) {
+    var total = 0;
+    var celdas = r.fechas.map(function (f) {
+      var v = r.porProfesional[ap][f];
+      if (v != null) total += v;
+      return '<td style="text-align:right;padding:3px 8px">' + (v != null ? fmt(v) : '—') + '</td>';
+    }).join('');
+    return '<tr><td style="padding:3px 8px"><b>' + ap + '</b></td>' + celdas
+      + '<td style="text-align:right;padding:3px 8px;font-weight:600">' + fmt(total) + '</td></tr>';
+  }).join('');
+  var granTotal = 0;
+  var totalesFecha = r.fechas.map(function (f) {
+    var s = 0;
+    r.todos.forEach(function (ap) { var v = r.porProfesional[ap] && r.porProfesional[ap][f]; if (v) s += v; });
+    granTotal += s;
+    return '<td style="text-align:right;padding:3px 8px;font-weight:600">' + fmt(s) + '</td>';
+  }).join('');
+  return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.74rem">'
+    + '<thead><tr style="border-bottom:1px solid rgba(32,36,31,.15)"><th style="text-align:left;padding:3px 8px">Profesional</th>'
+    + r.fechas.map(function (f) { return '<th style="text-align:right;padding:3px 8px">' + f + '</th>'; }).join('')
+    + '<th style="text-align:right;padding:3px 8px">Total</th></tr></thead><tbody>' + filas
+    + '<tr style="border-top:2px solid rgba(32,36,31,.18)"><td style="padding:3px 8px">Total</td>' + totalesFecha
+    + '<td style="text-align:right;padding:3px 8px">' + fmt(granTotal) + '</td></tr>'
+    + '</tbody></table></div>'
+    + '<div style="font-size:.62rem;color:rgba(32,36,31,.45);margin-top:6px">No incluye CEM ni OSDE — se controlan aparte, cuando se carguen en el Sheet.</div>';
+}
+
+function licHonNotasHtml(lic) {
+  return '<textarea rows="4" spellcheck="false"'
+    + ' onchange="licHonSetNotas(\'' + lic.id + '\', this.value)"'
+    + ' placeholder="📝 Notas para quien reemplaza — a qué familiar transferirle, excepciones, alias/CBU…"'
+    + ' style="width:100%;box-sizing:border-box;font-family:inherit;font-size:.76rem;line-height:1.5;'
+    + 'padding:7px 9px;border:1px dashed rgba(32,36,31,.3);border-radius:6px;'
+    + 'background:rgba(255,247,214,.5);color:#20241f;resize:vertical">'
+    + escAttr(lic.notas || '')
+    + '</textarea>';
+}
+function licHonSetNotas(id, texto) {
+  var lic = LICENCIAS_HON.filter(function (l) { return l.id === id; })[0];
+  if (!lic) return;
+  lic.notas = texto;
+  licHonGuardarTodo();
+}
+function licHonEliminar(id) {
+  if (!confirm('¿Eliminar esta licencia del panel? (no borra ninguna transferencia, solo el aviso)')) return;
+  LICENCIAS_HON = LICENCIAS_HON.filter(function (l) { return l.id !== id; });
+  licHonGuardarTodo();
+  renderLicenciasHon();
+}
+
+function licHonCardHtml(lic) {
+  var color = lic.color || LIC_HON_PALETTE[0];
+  var estado = licHonEstado(lic);
+  var estadoTxt = estado === 'vigente' ? '🟢 Vigente ahora' : (estado === 'futura' ? '🕓 Todavía no empieza' : '⚪ Terminada');
+  return '<div class="lic-hon-card" style="border:1px solid ' + color + ';border-left:8px solid ' + color + ';border-radius:10px;'
+    + 'background:linear-gradient(0deg,' + color + '14,' + color + '14),#fffaf1;padding:14px 16px;margin-bottom:14px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">'
+    + '<div><div style="font-weight:700;font-size:1.02rem;color:' + color + '">✈️ Licencia ' + escAttr(lic.titular) + '</div>'
+    + '<div style="font-size:.78rem;color:rgba(32,36,31,.6)">' + licHonFechaCorta(lic.desde) + ' → ' + licHonFechaCorta(lic.hasta)
+    +   ' · período ' + lic.periodo + ' · ' + estadoTxt + '</div></div>'
+    + '<button onclick="licHonEliminar(\'' + lic.id + '\')" title="Eliminar" style="background:none;border:none;color:rgba(32,36,31,.4);font-size:1rem;cursor:pointer;padding:2px 6px">✕</button>'
+    + '</div>'
+    + '<div style="margin-top:10px">' + licHonTablaHtml(lic) + '</div>'
+    + '<div style="margin-top:10px"><div style="font-size:.66rem;font-weight:600;color:rgba(32,36,31,.55);margin-bottom:4px;letter-spacing:.02em">NOTAS / EXCEPCIONES</div>' + licHonNotasHtml(lic) + '</div>'
+    + '</div>';
+}
+
+// Banner que aparece arriba de "Transferencias del Mes" mientras haya una
+// licencia vigente hoy — así quien entra a transferir la ve de entrada, sin
+// tener que ir a buscar el tile nuevo del Home.
+function licHonBannerHtml() {
+  licHonCargar();
+  var vig = LICENCIAS_HON.filter(function (l) { return licHonEstado(l) === 'vigente'; });
+  if (!vig.length) return '';
+  return vig.map(function (lic) {
+    var color = lic.color || LIC_HON_PALETTE[0];
+    return '<div onclick="renderLicenciasHon()" style="cursor:pointer;border:1px solid ' + color + ';border-left:6px solid ' + color + ';'
+      + 'border-radius:8px;background:' + color + '14;padding:8px 12px;margin-bottom:12px;font-size:.8rem;'
+      + 'display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'
+      + '<span>✈️ <b>Licencia ' + escAttr(lic.titular) + '</b> · ' + licHonFechaCorta(lic.desde) + ' al ' + licHonFechaCorta(lic.hasta) + ' — ver quién cobra qué</span>'
+      + '<span style="font-size:.68rem;opacity:.6">Ver detalle →</span></div>';
+  }).join('');
+}
+
+function licHonAbrirForm() {
+  var wrap = document.getElementById('licHonFormWrap');
+  if (!wrap) return;
+  var periodoDefault = adminPeriodoAct || tabMesActual();
+  wrap.innerHTML = '<div style="border:1px dashed rgba(32,36,31,.3);border-radius:10px;padding:14px;margin-bottom:16px;background:rgba(255,255,255,.6)">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<label style="font-size:.72rem">Titular (quién se va)<br><input id="licHonInTitular" type="text" placeholder="Ej. Marcelo" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit"></label>'
+    + '<label style="font-size:.72rem">Período (Transferencias del Mes)<br><select id="licHonInPeriodo" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit">'
+    +   LIC_HON_MESES.map(function (m) { return '<option value="' + m + '"' + (m === periodoDefault ? ' selected' : '') + '>' + m.charAt(0).toUpperCase() + m.slice(1) + '</option>'; }).join('')
+    + '</select></label>'
+    + '<label style="font-size:.72rem">Desde<br><input id="licHonInDesde" type="date" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit"></label>'
+    + '<label style="font-size:.72rem">Hasta<br><input id="licHonInHasta" type="date" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit"></label>'
+    + '</div>'
+    + '<div style="margin-top:10px;display:flex;gap:8px">'
+    + '<button onclick="licHonGuardarForm()" style="padding:7px 14px;border-radius:8px;border:none;background:#16a34a;color:#fff;font-weight:600;cursor:pointer">Guardar</button>'
+    + '<button onclick="document.getElementById(\'licHonFormWrap\').innerHTML=\'\'" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(32,36,31,.25);background:none;cursor:pointer;font-family:inherit">Cancelar</button>'
+    + '</div></div>';
+}
+function licHonGuardarForm() {
+  var titular = (document.getElementById('licHonInTitular').value || '').trim();
+  var periodo = document.getElementById('licHonInPeriodo').value;
+  var desde = document.getElementById('licHonInDesde').value;
+  var hasta = document.getElementById('licHonInHasta').value;
+  if (!titular || !desde || !hasta) { alert('Completá titular, desde y hasta.'); return; }
+  if (hasta < desde) { alert('"Hasta" no puede ser antes que "Desde".'); return; }
+  var id = 'lic_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  var color = LIC_HON_PALETTE[LICENCIAS_HON.length % LIC_HON_PALETTE.length];
+  LICENCIAS_HON.push({ id: id, titular: titular, periodo: periodo, desde: desde, hasta: hasta, color: color, notas: '', creada: Date.now() });
+  licHonGuardarTodo();
+  document.getElementById('licHonFormWrap').innerHTML = '';
+  renderLicenciasHon();
+}
+
+function renderLicenciasHon() {
+  cerrarAdmSidenav();
+  admDesactivarSidebar();
+  licHonCargar();
+  var noPasadas = LICENCIAS_HON.filter(function (l) { return licHonEstado(l) !== 'pasada'; })
+    .sort(function (a, b) { return a.desde < b.desde ? -1 : 1; });
+  var pasadas = LICENCIAS_HON.filter(function (l) { return licHonEstado(l) === 'pasada'; })
+    .sort(function (a, b) { return a.desde < b.desde ? 1 : -1; });
+  var html = '<div id="licHonScreenRoot" style="padding:16px;max-width:820px;margin:0 auto">'
+    + '<h2 style="margin:0 0 4px">✈️ Licencias — Honorarios</h2>'
+    + '<div style="font-size:.8rem;color:rgba(32,36,31,.55);margin-bottom:16px">Quién cubre las transferencias del período mientras un socio está de licencia, con los cheques que le tocan y cuánto le corresponde a cada profesional.</div>'
+    + '<button onclick="licHonAbrirForm()" style="margin-bottom:16px;padding:8px 14px;border-radius:8px;border:none;background:#16a34a;color:#fff;font-weight:600;cursor:pointer">+ Agregar licencia</button>'
+    + '<div id="licHonFormWrap"></div>'
+    + (noPasadas.length ? noPasadas.map(licHonCardHtml).join('') : '<div class="adm-pend" style="font-size:.8rem">No hay licencias activas ni próximas.</div>')
+    + (pasadas.length ? '<details style="margin-top:18px"><summary style="cursor:pointer;font-size:.8rem;color:rgba(32,36,31,.5)">Licencias anteriores (' + pasadas.length + ')</summary>'
+        + pasadas.map(licHonCardHtml).join('') + '</details>' : '')
+    + '</div>';
+  document.getElementById("adm-content").innerHTML = html;
 }
 
 // ── Aviso "transferido" al profesional ─────────────────────────────────
@@ -5711,7 +5941,7 @@ async function guardarNomina() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-04-gastoscasa-6';
+  var CURRENT_BUILD = '2026-09-04-licencias-honorarios';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
