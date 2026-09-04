@@ -5,10 +5,20 @@
 
 // ══════ ACCESOS ══════════════════════════════════════════════
 
+// Semilla de Accesos — se resincronizó con lo real (04/09/2026, revisión módulo
+// por módulo con Marcelo usando ceot_usage_count) porque había divergido bastante
+// de lo guardado en ceot_accesos_all: 9 accesos agregados por Marcelo con el
+// tiempo no estaban acá, 2 títulos estaban desactualizados, y el id 35 ni
+// coincidía (acá decía "Normas Convenios OOSS", en producción es "Contable").
+// Van 13 fuera (confirmados con Marcelo uno por uno: la mayoría paneles/apps
+// viejas reemplazadas por este mismo panel u otra versión más nueva) y 2
+// renombrados. Si volvés a desincronizar esto de ceot_accesos_all, ojo: la
+// semilla es la que gana en cualquier id que ceot_accesos_all ya NO tenga
+// (accCargarCustom la vuelve a agregar) — así que un id sacado en producción
+// pero dejado acá, resucita solo la próxima vez que cargue el panel.
 var ACCESOS_DATA = [
   // ── Finanzas
-  { id:1, cat:"Finanzas", title:"Liquidaciones Clínica",   desc:"Control de liquidaciones y estado de cheques",               url:"https://docs.google.com/spreadsheets/d/1NjHxZTUy3hVinrhR09Cq22gjcMiHQuSG8P4sSIPJa98/edit?usp=sharing" },
-  { id:2, cat:"Finanzas", title:"Liquidaciones CEM",        desc:"Liquidaciones del CEM y fechas de depósitos",                url:"https://docs.google.com/spreadsheets/d/10XbaaKj2DmVa4EshrD-5RJpQZvJRgz-tfMVJHnNM_TM/edit?usp=sharing" },
+  { id:1, cat:"Finanzas", title:"Gastos casa y liquidaciones Clínica", desc:"Control de liquidaciones y estado de cheques",               url:"https://docs.google.com/spreadsheets/d/1NjHxZTUy3hVinrhR09Cq22gjcMiHQuSG8P4sSIPJa98/edit?usp=sharing" },
   { id:3, cat:"Finanzas", title:"Gastos y Sueldos",         desc:"Gastos fijos y planillas de sueldos del personal",           url:"https://docs.google.com/spreadsheets/d/1BjKNOWI4TpijG_56XFbSVz1u5QNWVQE53SD5gA1LPAc/edit?usp=sharing" },
   { id:4, cat:"Finanzas", title:"Caja Gerling",             desc:"Seguimiento y control de la caja Gerling",                   url:"https://docs.google.com/spreadsheets/d/13IYGUkv2FjZ8aGUxVuly7uL14b6MyQI4C9YiISXxHUY/edit?usp=drive_link" },
   { id:6, cat:"Finanzas", title:"Valores Convenios",        desc:"Aranceles y valores por convenio y obra social",             url:"https://valores-convenios-ceot.netlify.app/" },
@@ -16,25 +26,22 @@ var ACCESOS_DATA = [
   { id:8,  cat:"Clínica", title:"CC Clínica Colón",         desc:"Sistema interno de la Clínica Colón",                        url:"https://coloncc.com.ar/" },
   { id:9,  cat:"Clínica", title:"CC CEM MDP",               desc:"Sistema privado del Centro Médico MDP",                     url:"https://privado.centromedicomdp.org.ar/" },
   { id:10, cat:"Clínica", title:"Programación CX (Sheet)",  desc:"Calendario de cirugías — Google Sheets",                    url:"https://docs.google.com/spreadsheets/d/1VYIarOpfCgqinj5Uy2dAYCSsx6c5GL9J7YbAYKvCbdk/edit?usp=sharing" },
-  { id:12, cat:"Clínica", title:"Órdenes CX",               desc:"Gestión de órdenes de cirugías",                             url:"https://febo983.github.io/generador-de-ordenes-ceot/" },
-  { id:14, cat:"Clínica", title:"Programación CX v2",       desc:"Programación de cirugías CEOT versión 2",                   url:"https://programacion-cx-ceot-v2.netlify.app/" },
+  { id:12, cat:"Clínica", title:"Ordenes CX",               desc:"Gestión de órdenes de cirugías",                             url:"https://ordenes-ceot-cx.netlify.app/" },
   { id:15, cat:"Clínica", title:"Evoluciones",              desc:"Registro de evoluciones clínicas CEOT",                     url:"https://evoluciones-ceot.netlify.app/" },
   { id:16, cat:"Clínica", title:"Cirugías Programadas",     desc:"Agenda de cirugías programadas",                            url:"https://cirugias-progamadas.netlify.app/" },
-  { id:18, cat:"Clínica", title:"Historial CX",             desc:"Historial de cirugías CEOT",                                url:"https://historial-cx-ceot.netlify.app/" },
+  { id:19, cat:"Clínica", title:"Estadísticas CX 26 v2",    desc:"Estadísticas de cirugías CEOT 2026 — versión actualizada", url:"https://ceot-estadisticas-cx-26.netlify.app/" },
   // ── Administración
-  { id:23, cat:"Admin", title:"Admin Panel CEOT",           desc:"Panel administrativo general CEOT",                         url:"https://admin-ceot-panel.netlify.app/" },
-  { id:24, cat:"Admin", title:"Agendas CEOT",               desc:"Agendas y calendario de actividades CEOT",                  url:"https://ceot-agendas.netlify.app/" },
+  { id:24, cat:"Admin", title:"App para caja GACI",         desc:"Agendas y calendario de actividades CEOT",                  url:"https://ceot-agendas.netlify.app/" },
   { id:25, cat:"Admin", title:"Permisos ART",               desc:"Gestión de permisos de ART para cirugías",                  url:"https://permiso-art-ceot.netlify.app/" },
   { id:27, cat:"Admin", title:"Horarios y Asistencias",     desc:"Registro de horarios, asistencias y licencias",             url:"https://docs.google.com/spreadsheets/d/1M-l1KHAoRRFL7MLpmQY4tXCtY0SLj14Dm0ucQWsR5fA/edit?usp=sharing" },
   { id:28, cat:"Admin", title:"Documentación CEOT",         desc:"Documentos y archivos generales del CEOT",                  url:"https://drive.google.com/drive/folders/1eOUfTKOEkFZTsgsctzwNhq0IJ-Wdp3N7?usp=drive_link" },
   { id:29, cat:"Admin", title:"Archivos Reuniones",         desc:"Minutas y acuerdos de reuniones del equipo",                url:"https://drive.google.com/drive/folders/1jnwuKnJaNdR45_QfGvqOmURQL7yrLdTA?usp=drive_link" },
-  { id:35, cat:"Admin", title:"Normas Convenios OOSS",      desc:"Autorizaciones, coseguros y manuales por obra social",      url:"https://febo983.github.io/ceot-normas-convenios/" },
+  { id:35, cat:"Admin", title:"Contable",                   desc:"Datos contables",                                           url:"https://claude.ai/code/artifact/e7c9f19e-d865-4574-9adb-56279cb542df" },
   // ── Otros
   { id:30, cat:"Otros", title:"Encuesta Secretarias",       desc:"Evaluación y premios a secretarias",                        url:"https://docs.google.com/spreadsheets/d/19ITME1mzL2eIYX4YIudIGwP7yeGBDP93XM6Y2gfperw/edit?usp=sharing" },
   { id:31, cat:"Otros", title:"Encuesta Satisfacción",      desc:"Encuesta de satisfacción de pacientes CEOT",                url:"https://docs.google.com/spreadsheets/d/1T9Rck2IdVg-aYDnjZo3sQJ_0dZ0MvhDBrlWFE1EVAvs/edit?usp=sharing" },
   { id:32, cat:"Otros", title:"Caja de Médicos",            desc:"Autogestión Caja de Médicos",                               url:"https://www.cajademedicos.com.ar/aplicaciones/jsp/m.EntidadesAutogestion/ent_principal.jsp?mensaje=S" },
-  { id:33, cat:"Otros", title:"Banco Francés CEOT",         desc:"Home banking BBVA — cuenta CEOT",                           url:"https://www.bbva.com.ar/empresas.html" },
-  { id:34, cat:"Otros", title:"WhatsApp Web",               desc:"Bandeja de entrada de WhatsApp Web",                         url:"https://web.whatsapp.com/" },
+  { id:33, cat:"Otros", title:"BBVA CEOT",                  desc:"Home banking BBVA — cuenta CEOT",                           url:"https://www.bbva.com.ar/empresas.html" },
 ];
 
 var accNextId = 37;
