@@ -56,8 +56,8 @@ var GC_RUBRO_COLOR = {
 var GC_SOCIOS = [
   { k: "GARMENDIA",     n: "Garmendia, Valeria",           comprometido: 22189400 }, // $3.740.000 + US$ 12.680 @ $1.455
   { k: "BRUNI",         n: "Bruni, Maximiliano E.",         comprometido: 30000000 },
-  { k: "CORELICH",      n: "Corelich, Daniel O.",           comprometido: 30000000 },
-  { k: "DEGANUTTI",     n: "Deganutti, Cristian G.",        comprometido: 40000000 },
+  { k: "CORELICH",      n: "Corelich, Daniel O.",           comprometido: 35000000 },
+  { k: "DEGANUTTI",     n: "Deganutti, Cristian G.",        comprometido: 39865431 },
   { k: "LABAYEN",       n: "Labayen, Daniel G.",            comprometido: 36000000 },
   { k: "TRIVELLINI",    n: "Trivellini, Amilcar",           comprometido: 30000000 },
   { k: "DE LA COLINA",  n: "De la Colina, Juan P.",         comprometido: 5000000 },
