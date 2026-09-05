@@ -417,6 +417,37 @@ body {
   margin-bottom: 14px;
   font-weight: 500;
 }
+/* ── Aviso "transferencia realizada" — llamativo, en la pantalla de inicio,
+   para cuando Marcelo tilda "ya transferido" y el profesional no se enteraría
+   si no entra al detalle del mes. Se muestra una sola vez por transferencia
+   (ver avisoTransfVistoGuardar) hasta que la cierra. ── */
+.aviso-transf {
+  display: flex; align-items: center; gap: 12px;
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: #fff; border-radius: 10px; padding: 14px 14px 14px 16px;
+  margin-bottom: 14px; box-shadow: 0 4px 16px rgba(21,128,61,.35);
+  animation: avisoTransfIn .4s cubic-bezier(.2,.9,.3,1.3);
+}
+@keyframes avisoTransfIn {
+  from { opacity: 0; transform: translateY(-10px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) { .aviso-transf { animation: none; } }
+.aviso-transf-ico {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(255,255,255,.22); display: flex; align-items: center; justify-content: center;
+  font-size: 1.05rem; font-weight: 800;
+}
+.aviso-transf-body { flex: 1; min-width: 0; }
+.aviso-transf-title { font-size: 0.88rem; font-weight: 800; line-height: 1.3; }
+.aviso-transf-sub   { font-size: 0.78rem; opacity: .92; margin-top: 2px; line-height: 1.4; }
+.aviso-transf-cerrar {
+  flex-shrink: 0; background: rgba(255,255,255,.18); border: none; color: #fff;
+  width: 24px; height: 24px; border-radius: 50%; font-size: 0.72rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-family: inherit;
+}
+.aviso-transf-cerrar:hover { background: rgba(255,255,255,.3); }
+
 .home-mes-strip-wrap { position: relative; }
 .home-mes-strip-wrap::after {
   content: ""; position: absolute; top: 0; right: 0; bottom: 14px; width: 28px;
@@ -1677,6 +1708,14 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
     <!-- HOME DASHBOARD -->
     <div id="homeView" style="display:none;">
       <div class="home-wrap">
+        <div id="avisoTransfBanner" class="aviso-transf" style="display:none">
+          <span class="aviso-transf-ico">✓</span>
+          <div class="aviso-transf-body">
+            <div class="aviso-transf-title">La transferencia correspondiente al día de la fecha ha sido realizada</div>
+            <div class="aviso-transf-sub" id="avisoTransfSub"></div>
+          </div>
+          <button type="button" class="aviso-transf-cerrar" onclick="avisoTransfCerrar()" title="Cerrar">✕</button>
+        </div>
         <div class="home-greeting" id="homeGreeting">Buen día</div>
         <div class="home-mes-strip-wrap" id="homeMesStripWrap">
           <div class="home-mes-strip" id="homeMesStrip"></div>
@@ -3114,6 +3153,7 @@ async function handleLogin() {
   cambiarTab(tabMesActual());
 
   renderHome(doctor);
+  if (typeof avisoTransfChequear === "function") avisoTransfChequear(doctor);
 
   document.getElementById("loginView").style.display  = "none";
   document.getElementById("portalView").style.display = "block";
@@ -3862,7 +3902,10 @@ function restoProfToggleHecho(periodo, apellido) {
 // repinta sus meses del portal.
 function avisoTransferidoRerender() {
   if (document.getElementById('sueldoDirectorScreenRoot')) { renderSueldoDirector(); return; }
-  if (typeof doctorActual !== "undefined" && doctorActual && typeof rerenderPortalMeses === "function") rerenderPortalMeses();
+  if (typeof doctorActual !== "undefined" && doctorActual && typeof rerenderPortalMeses === "function") {
+    rerenderPortalMeses();
+    if (typeof avisoTransfChequear === "function") avisoTransfChequear(doctorActual);
+  }
 }
 
 // ¿La transferencia del mes de este profesional ya está hecha? Directores por

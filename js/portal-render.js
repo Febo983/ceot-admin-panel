@@ -1041,3 +1041,67 @@ function mostrarNotificaciones(doctor) {
   }
 }
 
+// ══════ AVISO "TRANSFERENCIA REALIZADA" (banner en Home) ═════
+// Tildar "ya transferido" en el admin (Sueldo Director / Resto de
+// profesionales) solo cambiaba el chip dentro del detalle del mes — si el
+// profesional no entraba ahí, no se enteraba. Este banner aparece en la
+// pantalla de inicio del portal la primera vez que entra después de que
+// Marcelo tilde el check del mes actual, y no vuelve a aparecer una vez
+// cerrado (se guarda localmente en el dispositivo del profesional, no hace
+// falta sync — cada profesional entra desde el suyo).
+var AVISO_TRANSF_VISTOS_KEY = "ceot_aviso_transf_visto";
+
+function avisoTransfVistosCargar() {
+  try {
+    var raw = localStorage.getItem(AVISO_TRANSF_VISTOS_KEY);
+    return raw ? (JSON.parse(raw) || []) : [];
+  } catch (e) { return []; }
+}
+
+function avisoTransfMarcarVisto(key) {
+  var vistos = avisoTransfVistosCargar();
+  if (vistos.indexOf(key) !== -1) return;
+  vistos.push(key);
+  if (vistos.length > 30) vistos = vistos.slice(-30); // no crece para siempre
+  try { localStorage.setItem(AVISO_TRANSF_VISTOS_KEY, JSON.stringify(vistos)); } catch (e) {}
+}
+
+// Se llama al loguearse y cada vez que llega una novedad de sync (ver
+// avisoTransferidoRerender, index.html) — solo mira el mes actual, no
+// arrastra avisos de meses viejos aunque sigan "hechos".
+function avisoTransfChequear(doctor) {
+  var banner = document.getElementById('avisoTransfBanner');
+  if (!banner || !doctor) return;
+  var periodo = (typeof tabMesActual === "function") ? tabMesActual() : null;
+  if (!periodo) { banner.style.display = 'none'; return; }
+
+  var esDirector = (typeof SUELDO_DIRECTOR_LISTA !== "undefined") && SUELDO_DIRECTOR_LISTA.indexOf(doctor.apellido) !== -1;
+  var hecho = esDirector ? sueldoDirectorEstaHecho(periodo, doctor.apellido) : restoProfEstaHecho(periodo, doctor.apellido);
+  if (!hecho) { banner.style.display = 'none'; return; }
+
+  var avisoKey = "gral|" + periodo + "|" + doctor.apellido;
+  if (avisoTransfVistosCargar().indexOf(avisoKey) !== -1) { banner.style.display = 'none'; return; }
+
+  var monto = null;
+  if (esDirector && typeof calcularSueldoDirector === "function") {
+    var sd = calcularSueldoDirector(periodo, doctor, SUELDO_DIRECTOR_MONTO);
+    monto = sd ? sd.monto : null;
+  } else if (typeof calcularDetalleChequesProfesional === "function") {
+    var base = calcularDetalleChequesProfesional(periodo, doctor);
+    monto = base ? base.totalNetoMes : null;
+  }
+
+  var mesLabel = periodo.charAt(0).toUpperCase() + periodo.slice(1);
+  var sub = document.getElementById('avisoTransfSub');
+  if (sub) sub.textContent = mesLabel + (monto != null ? ' · ' + fmt(monto) : '');
+  banner.dataset.avisoKey = avisoKey;
+  banner.style.display = 'flex';
+}
+
+function avisoTransfCerrar() {
+  var banner = document.getElementById('avisoTransfBanner');
+  if (!banner) return;
+  if (banner.dataset.avisoKey) avisoTransfMarcarVisto(banner.dataset.avisoKey);
+  banner.style.display = 'none';
+}
+
