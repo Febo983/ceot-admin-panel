@@ -728,6 +728,17 @@ function calcularSueldoDirector(periodo, doc, monto) {
   };
 }
 
+// Abre/cierra el detalle de descuentos de un período en el Historial (ver
+// renderHistorial) — colapsado por defecto para no abrumar con 3-5 líneas
+// rojas sueltas cuando lo único que importa de un vistazo es el total.
+function histToggleDesc(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var abierto = el.classList.toggle('open');
+  var arrow = document.getElementById(id + '_arrow');
+  if (arrow) arrow.textContent = abierto ? '▾' : '▸';
+}
+
 function renderHistorial(doctor) {
   var pane = document.getElementById("pane-historial");
   if (!pane) return;
@@ -780,36 +791,65 @@ function renderHistorial(doctor) {
     var c = r.calc;
     var pendBadge = c.pendiente ? '<span class="hist-period-badge">estimado</span>' : '';
 
-    var cpsmHtml = c.esLab
-      ? '<div class="hist-dline"><span class="hist-dline-lbl">CPSM (5%)</span><span class="hist-dline-val exento">EXENTO ✓</span></div>'
-      : '<div class="hist-dline"><span class="hist-dline-lbl">CPSM (5%)</span><span class="hist-dline-val neg">−' + fmt(c.cpsm) + '</span></div>';
-
-    var gaHtml = c.ga
-      ? '<div class="hist-dline"><span class="hist-dline-lbl">Gastos A</span><span class="hist-dline-val neg">−' + fmt(c.ga) + '</span></div>'
-      : '<div class="hist-dline"><span class="hist-dline-lbl">Gastos A</span><span class="hist-dline-val" style="color:rgba(32,36,31,.35)">pendiente</span></div>';
-
-    var prestamoHtml = c.prestamoCasa > 0
-      ? '<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val neg">−' + fmt(c.prestamoCasa) + '</span></div>'
-      : c.prestamoCasa < 0
-      ? '<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val" style="color:#16a34a">+' + fmt(-c.prestamoCasa) + '</span></div>'
-      : '';
-
-    var aporteHtml = '';
+    // Descuentos reales (con monto) van todos juntos, colapsados, en un solo
+    // renglón "Descuentos" — antes eran 3 a 5 líneas rojas sueltas (IIBB,
+    // CPSM, Gastos A, Retención, Préstamo) que pesaban visualmente mucho más
+    // de lo que representan en plata frente al bruto. Pedido de Marcelo,
+    // 04/09/2026: "salía casi todo en rojo" mirando el historial de Bruni.
+    var descLineas = [];
+    var totalDesc = 0;
+    descLineas.push('<div class="hist-dline"><span class="hist-dline-lbl">IIBB (3,5%)</span><span class="hist-dline-val neg">−' + fmt(c.iibb) + '</span></div>');
+    totalDesc += c.iibb;
+    if (c.esLab) {
+      descLineas.push('<div class="hist-dline"><span class="hist-dline-lbl">CPSM (5%)</span><span class="hist-dline-val exento">EXENTO ✓</span></div>');
+    } else {
+      descLineas.push('<div class="hist-dline"><span class="hist-dline-lbl">CPSM (5%)</span><span class="hist-dline-val neg">−' + fmt(c.cpsm) + '</span></div>');
+      totalDesc += c.cpsm;
+    }
+    if (c.ga) {
+      descLineas.push('<div class="hist-dline"><span class="hist-dline-lbl">Gastos A</span><span class="hist-dline-val neg">−' + fmt(c.ga) + '</span></div>');
+      totalDesc += c.ga;
+    }
+    if (c.prestamoCasa > 0) {
+      descLineas.push('<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val neg">−' + fmt(c.prestamoCasa) + '</span></div>');
+      totalDesc += c.prestamoCasa;
+    }
     if (c.aporteCeot > 0) {
-      aporteHtml = '<div class="hist-dline"><span class="hist-dline-lbl">Retención Ganancias (' + (c.pctAporte*100) + '%)</span><span class="hist-dline-val neg">−' + fmt(c.aporteCeot) + '</span></div>';
+      descLineas.push('<div class="hist-dline"><span class="hist-dline-lbl">Retención Ganancias (' + (c.pctAporte*100) + '%)</span><span class="hist-dline-val neg">−' + fmt(c.aporteCeot) + '</span></div>');
+      totalDesc += c.aporteCeot;
       var retItems = retencionPorAcreditacion(c);
       if (retItems.length > 1) {
-        aporteHtml += retItems.map(function(it) {
-          return '<div class="hist-dline" style="padding-left:14px;font-size:.72rem;opacity:.7"><span class="hist-dline-lbl">· ' + it.label + '</span><span class="hist-dline-val neg">−' + fmt(it.retencion) + '</span></div>';
-        }).join('');
+        retItems.forEach(function(it) {
+          descLineas.push('<div class="hist-dline" style="padding-left:14px;font-size:.72rem;opacity:.7"><span class="hist-dline-lbl">· ' + it.label + '</span><span class="hist-dline-val neg">−' + fmt(it.retencion) + '</span></div>');
+        });
       }
-    } else if (APORTE_CEOT_DESDE.indexOf(r.pid) !== -1 && c.pctAporte === null) {
-      aporteHtml = '<div class="hist-dline"><span class="hist-dline-lbl">Retención Ganancias</span><span class="hist-dline-val" style="color:rgba(32,36,31,.35)">pendiente</span></div>';
+    }
+    var histDescId = 'histDesc_' + r.pid + '_' + (doctor.user || doctor.apellido);
+    var descBloqueHtml = '<div class="hist-dline hist-desc-toggle" onclick="histToggleDesc(\'' + histDescId + '\')">'
+      +   '<span class="hist-dline-lbl"><span class="hist-desc-arrow" id="' + histDescId + '_arrow">▸</span> Descuentos</span>'
+      +   '<span class="hist-dline-val neg">−' + fmt(totalDesc) + '</span>'
+      + '</div>'
+      + '<div class="hist-desc-detalle" id="' + histDescId + '">' + descLineas.join('') + '</div>';
+
+    // Avisos "todavía no confirmado" (no son descuentos con monto real, no
+    // suman a totalDesc) y créditos (CM, reintegro de préstamo) quedan
+    // siempre visibles, fuera del acordeón — son buenas noticias o avisos
+    // importantes, no ruido.
+    var pendientesHtml = '';
+    if (!c.ga) {
+      pendientesHtml += '<div class="hist-dline"><span class="hist-dline-lbl">Gastos A</span><span class="hist-dline-val" style="color:rgba(32,36,31,.35)">pendiente</span></div>';
+    }
+    if (c.aporteCeot === 0 && APORTE_CEOT_DESDE.indexOf(r.pid) !== -1 && c.pctAporte === null) {
+      pendientesHtml += '<div class="hist-dline"><span class="hist-dline-lbl">Retención Ganancias</span><span class="hist-dline-val" style="color:rgba(32,36,31,.35)">pendiente</span></div>';
     }
 
-    var cmHtml = c.cm > 0
-      ? '<div class="hist-dline"><span class="hist-dline-lbl">Centro Médico</span><span class="hist-dline-val cm">+' + fmt(c.cm) + '</span></div>'
-      : '';
+    var creditosHtml = '';
+    if (c.prestamoCasa < 0) {
+      creditosHtml += '<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val" style="color:#16a34a">+' + fmt(-c.prestamoCasa) + '</span></div>';
+    }
+    if (c.cm > 0) {
+      creditosHtml += '<div class="hist-dline"><span class="hist-dline-lbl">Centro Médico</span><span class="hist-dline-val cm">+' + fmt(c.cm) + '</span></div>';
+    }
 
     var totalCeotVal = (liquidacionData.totalCeot && liquidacionData.totalCeot[r.pid] && liquidacionData.totalCeot[r.pid][doctor.apellido]) || null;
     var totalCeotHtml = totalCeotVal
@@ -822,8 +862,7 @@ function renderHistorial(doctor) {
       + '<div class="hist-period-headline"><span>' + c.label.toUpperCase() + '</span>'
       + '<span style="display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:normal">' + pendBadge + pdfBtn + '</span></div>'
       + '<div class="hist-dline"><span class="hist-dline-lbl">Bruto</span><span class="hist-dline-val">' + fmt(c.bruto) + '</span></div>'
-      + '<div class="hist-dline"><span class="hist-dline-lbl">IIBB (3,5%)</span><span class="hist-dline-val neg">−' + fmt(c.iibb) + '</span></div>'
-      + cpsmHtml + gaHtml + prestamoHtml + aporteHtml + cmHtml
+      + creditosHtml + descBloqueHtml + pendientesHtml
       + '<hr class="hist-rule">'
       + '<div class="hist-neto-line"><span>NETO</span><span>' + fmt(c.neto) + '</span></div>'
       + totalCeotHtml
