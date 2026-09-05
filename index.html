@@ -1915,12 +1915,16 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
         <option value="">— elegir o cargar manual —</option>
       </select>
     </div>
+    <label>Cheque(s) que se transfieren juntos</label>
+    <div id="transfFamChequesWrap" style="margin-bottom:2px"></div>
+    <div id="transfFamTotalCheques" style="font-size:.68rem;color:rgba(32,36,31,.5);margin:-2px 0 12px 0"></div>
     <label>Nombre(s) del destinatario</label>
     <input id="transfFamFormNombre" type="text" placeholder="Ej: María Bruni">
     <label>Alias o CBU</label>
     <input id="transfFamFormAlias" type="text" placeholder="alias.mp o CBU">
-    <label>Importe</label>
+    <label>Importe transferido al familiar</label>
     <input id="transfFamFormImporte" type="text" inputmode="decimal" placeholder="0">
+    <div style="font-size:.62rem;color:rgba(32,36,31,.45);margin:-8px 0 12px 0">Si tildaste más de un cheque y este importe es menor a la suma, la diferencia queda para el profesional — se muestra sola en la tabla, no hace falta cargarla aparte.</div>
     <label>Concepto</label>
     <input id="transfFamFormConcepto" type="text" placeholder="Ej: adelanto honorarios">
     <div class="acc-modal-btns">
@@ -3025,6 +3029,7 @@ async function handleLogin() {
     transfFamCargar();
     transfFamDefaultCargar();
     transfFamHechoCargar();
+    transfFamMigrarSiHaceFalta();
     netoOverrideCargar();
     sbTarifaCargar();
     sueldoDirectorHechoCargar();
@@ -4165,6 +4170,47 @@ function transfFamKey(periodo, apellido, fecha) {
   return periodo + "|" + apellido + "|" + fecha;
 }
 
+// Clave de TRANSF_FAM por profesional (sin fecha) — cada entry dice ella
+// misma qué cheque(s) cubre (entry.cheques, un array de fechas). Antes la
+// clave incluía la fecha y una transferencia solo podía cubrir un cheque;
+// ver transfFamMigrarSiHaceFalta() para el paso de un formato al otro.
+function transfFamProfKey(periodo, apellido) {
+  return periodo + "|" + apellido;
+}
+
+// Migración de una sola vez: TRANSF_FAM vivía indexado por periodo|apellido|fecha
+// (una transferencia = un cheque). Para poder combinar varios cheques en una
+// sola transferencia (juntar 2 cheques y transferir un importe que no es la
+// suma exacta, el resto queda para el profesional) la clave pasa a ser
+// periodo|apellido y cada entry lleva su propia lista de fechas cubiertas.
+// Idempotente — si ya está todo en el formato nuevo, no hace nada.
+function transfFamMigrarSiHaceFalta() {
+  var huboMigracion = false;
+  var famNuevo = {}, hechoNuevo = {};
+  Object.keys(TRANSF_FAM).forEach(function(key) {
+    var parts = key.split("|");
+    var entries = TRANSF_FAM[key] || [];
+    var esFormatoViejo = parts.length >= 3;
+    var pKey = esFormatoViejo ? transfFamProfKey(parts[0], parts.slice(1, -1).join("|")) : key;
+    var fechaVieja = esFormatoViejo ? parts[parts.length - 1] : null;
+    if (esFormatoViejo) huboMigracion = true;
+    if (!famNuevo[pKey]) famNuevo[pKey] = [];
+    entries.forEach(function(e, oldIdx) {
+      var newIdx = famNuevo[pKey].length;
+      famNuevo[pKey].push(esFormatoViejo ? Object.assign({}, e, { cheques: e.cheques || [fechaVieja] }) : e);
+      var oldHechoKey = key + "#" + oldIdx;
+      if (TRANSF_FAM_HECHO.hasOwnProperty(oldHechoKey)) {
+        hechoNuevo[pKey + "#" + newIdx] = TRANSF_FAM_HECHO[oldHechoKey];
+      }
+    });
+  });
+  if (!huboMigracion) return;
+  TRANSF_FAM = famNuevo;
+  TRANSF_FAM_HECHO = hechoNuevo;
+  transfFamGuardarTodo();
+  transfFamHechoGuardarTodo();
+}
+
 // Override manual del "Neto cheque" (Sueldo Director / Resto de
 // profesionales): para cuando lo que Marcelo termina transfiriendo por un
 // cheque puntual no es exactamente el neto calculado del Sheet (ej. lo
@@ -4373,10 +4419,14 @@ function transfFamDefGuardar() {
 
 var transfFamEditKey = null, transfFamEditIdx = null;
 
-function transfFamAbrirModal(key, idx) {
-  transfFamEditKey = key;
+// fechaSugerida: la fecha del cheque desde cuya fila se abrió el modal —
+// arranca tildada para el flujo normal (un cheque, un click). Marce puede
+// tildar más fechas del mismo profesional para combinarlas en una sola
+// transferencia (ver transfFamActualizarTotalCheques).
+function transfFamAbrirModal(profKey, idx, fechaSugerida) {
+  transfFamEditKey = profKey;
   transfFamEditIdx = (idx === undefined) ? null : idx;
-  var item = (transfFamEditIdx !== null) ? (TRANSF_FAM[key] || [])[transfFamEditIdx] : null;
+  var item = (transfFamEditIdx !== null) ? (TRANSF_FAM[profKey] || [])[transfFamEditIdx] : null;
   document.getElementById("transfFamFormNombre").value   = item ? item.nombre   : "";
   document.getElementById("transfFamFormAlias").value    = item ? item.aliasCbu : "";
   document.getElementById("transfFamFormImporte").value  = item ? item.importe  : "";
@@ -4384,7 +4434,20 @@ function transfFamAbrirModal(key, idx) {
   var tit = document.getElementById("transfFamModalTitulo");
   if (tit) tit.textContent = item ? "Editar transferencia" : "Nueva transferencia a familiar";
 
-  var apellido = key.split("|")[1] || "";
+  var netosPorFecha = (window._transfFamChequesCache && window._transfFamChequesCache[profKey]) || {};
+  var fechasTildadas = item ? item.cheques : (fechaSugerida ? [fechaSugerida] : []);
+  var wrap = document.getElementById("transfFamChequesWrap");
+  var fechas = Object.keys(netosPorFecha);
+  wrap.innerHTML = fechas.length ? fechas.map(function(f) {
+    var checked = fechasTildadas.indexOf(f) !== -1;
+    return '<label style="display:flex;align-items:center;gap:6px;font-size:.78rem;padding:3px 0;font-weight:400">'
+      +   '<input type="checkbox" value="' + f + '" data-neto="' + (netosPorFecha[f] || 0) + '"' + (checked ? ' checked' : '') + ' onchange="transfFamActualizarTotalCheques()">'
+      +   f + ' — ' + fmt(netosPorFecha[f])
+      + '</label>';
+  }).join('') : '<div style="font-size:.72rem;color:rgba(32,36,31,.45);font-style:italic">No hay cheques cargados este mes.</div>';
+  transfFamActualizarTotalCheques();
+
+  var apellido = profKey.split("|")[1] || "";
   var defs = TRANSF_FAM_DEFAULT[apellido] || [];
   var selWrap = document.getElementById("transfFamSelectDefaultWrap");
   var sel = document.getElementById("transfFamSelectDefault");
@@ -4417,14 +4480,33 @@ function transfFamCerrarModal() {
   transfFamEditKey = null; transfFamEditIdx = null;
 }
 
+// Suma los netos de los cheques tildados y la muestra al lado del importe a
+// transferir — así Marce ve de un vistazo si lo que va a cargar coincide
+// con lo combinado o (como en su caso real) queda un resto para el
+// profesional, sin tener que sumar los cheques a mano.
+function transfFamActualizarTotalCheques() {
+  var wrap = document.getElementById("transfFamChequesWrap");
+  var lbl = document.getElementById("transfFamTotalCheques");
+  if (!wrap || !lbl) return;
+  var boxes = wrap.querySelectorAll("input[type=checkbox]:checked");
+  var total = 0;
+  boxes.forEach(function(cb) { total += parseFloat(cb.getAttribute("data-neto")) || 0; });
+  lbl.textContent = boxes.length ? (boxes.length + " cheque" + (boxes.length === 1 ? "" : "s") + " elegido" + (boxes.length === 1 ? "" : "s") + " — " + fmt(total) + " en total") : "Elegí al menos un cheque";
+}
+
 function transfFamGuardar() {
   var nombre  = document.getElementById("transfFamFormNombre").value.trim();
   var alias   = document.getElementById("transfFamFormAlias").value.trim();
   var importe = parseFloat((document.getElementById("transfFamFormImporte").value + "").replace(/\./g, "").replace(",", "."));
   var concepto = document.getElementById("transfFamFormConcepto").value.trim();
+  var cheques = Array.prototype.map.call(
+    document.querySelectorAll("#transfFamChequesWrap input[type=checkbox]:checked"),
+    function(cb) { return cb.value; }
+  );
   if (!nombre || !importe) { alert("Nombre e importe son obligatorios."); return; }
+  if (!cheques.length) { alert("Elegí al menos un cheque para esta transferencia."); return; }
   if (!TRANSF_FAM[transfFamEditKey]) TRANSF_FAM[transfFamEditKey] = [];
-  var entry = { nombre: nombre, aliasCbu: alias, importe: importe, concepto: concepto };
+  var entry = { nombre: nombre, aliasCbu: alias, importe: importe, concepto: concepto, cheques: cheques };
   if (transfFamEditIdx !== null) TRANSF_FAM[transfFamEditKey][transfFamEditIdx] = entry;
   else TRANSF_FAM[transfFamEditKey].push(entry);
   transfFamGuardarTodo();
@@ -4448,8 +4530,7 @@ function transfFamIdSafe(key) {
   return key.replace(/[^a-zA-Z0-9]/g, "_");
 }
 
-function transfFamMoverImporte(key) {
-  var idS = transfFamIdSafe(key);
+function transfFamMoverImporte(key, idS) {
   var entries = TRANSF_FAM[key] || [];
   var fromIdx = parseInt(document.getElementById("tfMoverDe_" + idS).value, 10);
   var toIdx   = parseInt(document.getElementById("tfMoverA_" + idS).value, 10);
@@ -4476,7 +4557,7 @@ function transfFamResumenMesHtml(periodo) {
     var parts = key.split("|");
     if (parts[0] !== periodo) return;
     (TRANSF_FAM[key] || []).forEach(function(e, i) {
-      filas.push({ key: key, idx: i, apellido: parts[1], fecha: parts[2], e: e, hecho: transfFamEstaTransferido(key, i) });
+      filas.push({ key: key, idx: i, apellido: parts[1], fecha: (e.cheques || []).join(' + '), e: e, hecho: transfFamEstaTransferido(key, i) });
     });
   });
   if (!filas.length) return '';
@@ -4534,6 +4615,7 @@ function transfFamHechoCargar() {
   } catch (e) { TRANSF_FAM_HECHO = {}; }
   syncPull("ceot_transf_familiares_hecho", function() {
     transfFamHechoCargar();
+    transfFamMigrarSiHaceFalta();
     if (document.getElementById('sueldoDirectorScreenRoot')) renderSueldoDirector();
   });
 }
@@ -4559,18 +4641,72 @@ function transfFamToggleTransferido(key, idx) {
   renderSueldoDirector();
 }
 
-function transfFamCeldaHtml(key, netoCheque) {
-  var kEsc = key.replace(/'/g, "\\'");
-  var entries = TRANSF_FAM[key] || [];
-  var filas = entries.map(function(e, i) {
+// Dos arrays de fechas representan el mismo grupo combinado si tienen
+// exactamente los mismos elementos (no importa el orden).
+function transfFamMismoGrupo(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  var bOrdenado = b.slice().sort();
+  return a.slice().sort().every(function(f, i) { return f === bOrdenado[i]; });
+}
+
+// periodo/apellido/fecha: el cheque de esta fila de la tabla. netoCheque: su
+// neto efectivo. netosPorFecha: mapa {fecha: netoEfectivo} de TODOS los
+// cheques del profesional en el período — hace falta para calcular el total
+// de un grupo combinado y cuánto le queda al profesional (ver "resto").
+function transfFamCeldaHtml(periodo, apellido, fecha, netoCheque, netosPorFecha) {
+  var profKey = transfFamProfKey(periodo, apellido);
+  window._transfFamChequesCache = window._transfFamChequesCache || {};
+  window._transfFamChequesCache[profKey] = netosPorFecha || {};
+
+  var kEsc = profKey.replace(/'/g, "\\'");
+  var todasEntries = TRANSF_FAM[profKey] || [];
+  var relevantes = [];
+  todasEntries.forEach(function(e, i) {
+    if ((e.cheques || []).indexOf(fecha) !== -1) relevantes.push({ e: e, idx: i });
+  });
+
+  var filas = relevantes.map(function(r) {
+    var e = r.e, i = r.idx;
+    var combinada = e.cheques.length > 1;
     var linea2 = [e.aliasCbu, e.concepto].filter(Boolean).join(' · ');
     var btnCopiarCbu = e.aliasCbu
       ? '<button type="button" title="Copiar alias/CBU" onclick="copiarTexto(\'' + escAttr(e.aliasCbu).replace(/'/g, "\\'") + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.6rem;padding:1px 4px;vertical-align:middle;margin-left:4px">📋</button>'
       : '';
-    var hecho = transfFamEstaTransferido(key, i);
+    var hecho = transfFamEstaTransferido(profKey, i);
+
+    var tagCombinada = combinada
+      ? '<div style="font-size:.58rem;color:#8a6423;font-weight:700">🔗 combinado con ' + e.cheques.filter(function(f) { return f !== fecha; }).join(' + ') + '</div>'
+      : '';
+
+    // "excede el neto" — contra el neto del cheque solo, o la suma del
+    // grupo si esta transferencia combina varios cheques.
+    var netoRef = combinada
+      ? e.cheques.reduce(function(s, f) { return s + ((netosPorFecha || {})[f] || 0); }, 0)
+      : netoCheque;
+    var avisoExcede = (netoRef != null && e.importe > netoRef + 0.5)
+      ? '<div style="font-size:.58rem;color:#b13a2c;font-weight:700">⚠ supera el neto' + (combinada ? ' combinado' : '') + ' (' + fmt(netoRef) + ')</div>'
+      : '';
+
+    // "resto a su cuenta" del grupo — se muestra una sola vez, en la última
+    // fecha del grupo, sumando lo que dejaron todas las transferencias que
+    // combinan exactamente ese mismo conjunto de cheques.
+    var restoHtml = '';
+    if (combinada && fecha === e.cheques[e.cheques.length - 1]) {
+      var netoGrupo = e.cheques.reduce(function(s, f) { return s + ((netosPorFecha || {})[f] || 0); }, 0);
+      var transferidoGrupo = todasEntries.reduce(function(s, e2) {
+        return s + (transfFamMismoGrupo(e2.cheques, e.cheques) ? (e2.importe || 0) : 0);
+      }, 0);
+      var resto = netoGrupo - transferidoGrupo;
+      restoHtml = '<div style="font-size:.62rem;margin-top:3px;' + (resto < 0 ? 'color:#b13a2c;font-weight:700' : 'color:#1f3a2e') + '">'
+        + (resto < 0 ? '⚠ transferiste ' + fmt(-resto) + ' de más' : '↳ resto a su cuenta: <b>' + fmt(resto) + '</b>') + '</div>';
+    }
+
     return '<div style="margin-bottom:4px;padding:3px 5px;background:rgba(31,58,46,.07);border-radius:5px;white-space:normal' + (hecho ? ';opacity:.55' : '') + '">'
+      +   tagCombinada
       +   '<div style="font-weight:600">' + escAttr(e.nombre) + ' — ' + fmt(e.importe) + '</div>'
       +   (linea2 ? '<div style="font-size:.6rem;color:rgba(32,36,31,.55)">' + escAttr(linea2) + btnCopiarCbu + '</div>' : '')
+      +   avisoExcede
+      +   restoHtml
       +   '<div style="margin-top:2px">'
       +     '<a href="javascript:void(0)" onclick="transfFamToggleTransferido(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;text-decoration:underline;margin-right:8px;' + (hecho ? 'color:#16a34a;font-weight:700' : 'color:#1f3a2e') + '">' + (hecho ? '✓ transferido' : 'marcar transferido') + '</a>'
       +     '<a href="javascript:void(0)" onclick="transfFamAbrirModal(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;color:#1f3a2e;text-decoration:underline;margin-right:8px">editar</a>'
@@ -4578,16 +4714,12 @@ function transfFamCeldaHtml(key, netoCheque) {
       +   '</div>'
       + '</div>';
   }).join('');
-  var totalFam = entries.reduce(function(s, e) { return s + (e.importe || 0); }, 0);
-  var aviso = (netoCheque != null && totalFam > netoCheque + 0.5)
-    ? '<div style="font-size:.6rem;color:#b13a2c;font-weight:700;margin-bottom:4px">⚠ ' + fmt(totalFam) + ' supera el neto del cheque (' + fmt(netoCheque) + ')</div>'
-    : '';
 
   var moverHtml = '';
-  if (entries.length >= 2) {
-    var idS = transfFamIdSafe(key);
-    var opts = entries.map(function(e, i) {
-      return '<option value="' + i + '">' + escAttr(e.nombre) + ' (' + fmt(e.importe) + ')</option>';
+  if (relevantes.length >= 2) {
+    var idS = transfFamIdSafe(profKey + "_" + fecha);
+    var opts = relevantes.map(function(r) {
+      return '<option value="' + r.idx + '">' + escAttr(r.e.nombre) + ' (' + fmt(r.e.importe) + ')</option>';
     }).join('');
     moverHtml = '<div style="margin-top:4px;padding:4px 5px;border:1px dashed rgba(32,36,31,.25);border-radius:5px">'
       +   '<div style="font-size:.58rem;color:rgba(32,36,31,.5);margin-bottom:3px">⇄ mover importe entre transferencias</div>'
@@ -4596,13 +4728,13 @@ function transfFamCeldaHtml(key, netoCheque) {
       +     '<span style="font-size:.58rem;color:rgba(32,36,31,.5)">→</span>'
       +     '<select id="tfMoverA_' + idS + '" style="font-size:.58rem;max-width:110px">' + opts + '</select>'
       +     '<input id="tfMoverMonto_' + idS + '" type="text" inputmode="decimal" placeholder="importe" style="width:64px;font-size:.58rem;padding:1px 3px">'
-      +     '<button type="button" onclick="transfFamMoverImporte(\'' + kEsc + '\')" style="font-size:.58rem;padding:2px 6px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">mover</button>'
+      +     '<button type="button" onclick="transfFamMoverImporte(\'' + kEsc + '\',\'' + idS + '\')" style="font-size:.58rem;padding:2px 6px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">mover</button>'
       +   '</div>'
       + '</div>';
   }
 
-  return '<td style="min-width:150px;white-space:normal">' + aviso + filas + moverHtml
-    + '<button type="button" onclick="transfFamAbrirModal(\'' + kEsc + '\')" style="border:1px dashed rgba(32,36,31,.3);background:none;border-radius:5px;cursor:pointer;font-size:.62rem;padding:2px 6px;color:rgba(32,36,31,.55);margin-top:4px">+ transferencia</button>'
+  return '<td style="min-width:150px;white-space:normal">' + filas + moverHtml
+    + '<button type="button" onclick="transfFamAbrirModal(\'' + kEsc + '\', undefined, \'' + fecha + '\')" style="border:1px dashed rgba(32,36,31,.3);background:none;border-radius:5px;cursor:pointer;font-size:.62rem;padding:2px 6px;color:rgba(32,36,31,.55);margin-top:4px">+ transferencia</button>'
     + '</td>';
 }
 
@@ -4766,6 +4898,10 @@ function sueldoDirectorTabHtml(periodo) {
       'no-alcanza': { borde: '#b13a2c', fondo: 'rgba(177,58,44,.07)',  chipBg: 'rgba(177,58,44,.15)', chipFg: '#b13a2c', txt: 'No alcanza este mes' }
     }[estado];
 
+    var netosPorFecha = {};
+    s.detalle.forEach(function(d) {
+      if (!d.pendiente) netosPorFecha[d.fecha] = netoEfectivo(transfFamKey(periodo, doc.apellido, d.fecha), d.neto);
+    });
     var detRows = s.detalle.map(function(d, i, arr) {
       if (d.pendiente) {
         return '<tr style="opacity:.65"><td style="font-style:italic">' + d.fecha + '</td>'
@@ -4787,7 +4923,7 @@ function sueldoDirectorTabHtml(periodo) {
         + '<td>−' + fmt(d.retencion) + ' <span style="font-size:.6rem;color:rgba(32,36,31,.4)">' + Math.round((s.pctAporte || 0) * 100) + '%</span></td>'
         + '<td style="font-size:.62rem;color:rgba(32,36,31,.5)">' + (extra.join('<br>') || '—') + '</td>'
         + netoChequeCeldaHtml(keyFam, d.neto, nextKey, nextNetoOriginal)
-        + transfFamCeldaHtml(keyFam, netoEfectivo(keyFam, d.neto))
+        + transfFamCeldaHtml(periodo, doc.apellido, d.fecha, netoEfectivo(keyFam, d.neto), netosPorFecha)
         + '<td style="' + (esCorte ? 'font-weight:700;color:#8a6423' : (d.acumulado < 0 ? 'color:#b13a2c' : '')) + '">' + fmt(d.acumulado) + (esCorte ? ' ✓ $4M' : '') + '</td>'
         + '</tr>';
     }).join('');
@@ -4855,6 +4991,10 @@ function restoProfesionalesTabHtml(periodo) {
       : { borde: '#c9933a', fondo: 'rgba(201,147,58,.08)', chipBg: 'rgba(201,147,58,.18)', chipFg: '#8a6423', txt: 'Todavía suma hasta el ' + (base.ultimaFecha || '—') };
     var pendTxt = f.pendiente ? ' <span class="adm-pend" style="font-size:.62rem">falta OSDE/CEM</span>' : '';
 
+    var netosPorFecha = {};
+    base.detalle.forEach(function(d) {
+      if (!d.pendiente) netosPorFecha[d.fecha] = netoEfectivo(transfFamKey(periodo, doc.apellido, d.fecha), d.neto);
+    });
     var detRows = base.detalle.map(function(d, i, arr) {
       if (d.pendiente) {
         return '<tr style="opacity:.65"><td style="font-style:italic">' + d.fecha + '</td>'
@@ -4875,7 +5015,7 @@ function restoProfesionalesTabHtml(periodo) {
         + '<td>−' + fmt(d.retencion) + ' <span style="font-size:.6rem;color:rgba(32,36,31,.4)">' + Math.round((base.pctAporte || 0) * 100) + '%</span></td>'
         + '<td style="font-size:.62rem;color:rgba(32,36,31,.5)">' + (extra.join('<br>') || '—') + '</td>'
         + netoChequeCeldaHtml(keyFam, d.neto, nextKey, nextNetoOriginal)
-        + transfFamCeldaHtml(keyFam, netoEfectivo(keyFam, d.neto))
+        + transfFamCeldaHtml(periodo, doc.apellido, d.fecha, netoEfectivo(keyFam, d.neto), netosPorFecha)
         + '<td' + (d.acumulado < 0 ? ' style="color:#b13a2c"' : '') + '>' + fmt(d.acumulado) + '</td>'
         + '</tr>';
     }).join('');
