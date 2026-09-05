@@ -584,6 +584,14 @@ function calcularDetalleChequesProfesional(periodo, doc) {
   var c = calcularNetoLocal(periodo, doc);
   if (!c) return null;
 
+  // La Retención Ganancias arranca en Agosto 2026 (ver APORTE_CEOT_DESDE,
+  // datos.js) — c.pctAporte es el % vigente del profesional sin importar el
+  // período (calcularNetoLocal ya lo filtra para el total del mes, c.aporteCeot,
+  // pero no lo expone filtrado). Sin este chequeo, un mes anterior a Agosto
+  // termina restando esta retención cheque por cheque igual, aunque el total
+  // del mes (c.aporteCeot) sí la haya excluido correctamente.
+  var pctAporteDesdeCorresponde = APORTE_CEOT_DESDE.indexOf(periodo) !== -1 ? (c.pctAporte || 0) : 0;
+
   // OJO: IIBB/CPSM van atados al 4to y 5to cheque REALES del mes (así lo maneja
   // el contador — son los más caudalosos), no al 4to/5to que sobreviva el
   // filtro de "cheques con monto cargado". Antes se armaba `cheques` con
@@ -614,7 +622,7 @@ function calcularDetalleChequesProfesional(periodo, doc) {
     var infoPendCem = cemInfo.concat(c.cmFecha ? [c.cmFecha] : []);
     detalle.push({ fecha: "Acreditación CEM" + (infoPendCem.length ? " (" + infoPendCem.join(" · ") + ")" : ""), bruto: null, retencion: null, prestamo: 0, iibb: 0, cpsm: 0, neto: null, acumulado: cum, pendiente: true });
   } else if (c.cm > 0) {
-    var retencionCem = Math.round(c.cm * (c.pctAporte || 0));
+    var retencionCem = Math.round(c.cm * pctAporteDesdeCorresponde);
     var netoCem = c.cm - retencionCem;
     cum += netoCem;
     detalle.push({ fecha: "Acreditación CEM" + (cemInfo.length ? " (" + cemInfo.join(" · ") + ")" : ""), bruto: c.cm, retencion: retencionCem, prestamo: 0, iibb: 0, cpsm: 0, neto: netoCem, acumulado: cum });
@@ -629,7 +637,7 @@ function calcularDetalleChequesProfesional(periodo, doc) {
       var infoPendOsde = c.osdeFecha ? [c.osdeFecha] : [];
       detalle.push({ fecha: "Cheque OSDE" + (infoPendOsde.length ? " (" + infoPendOsde.join(" · ") + ")" : ""), bruto: null, retencion: null, prestamo: 0, iibb: 0, cpsm: 0, neto: null, acumulado: cum, pendiente: true });
     } else if (c.osde > 0) {
-      var retencionOsde = Math.round(c.osde * (c.pctAporte || 0));
+      var retencionOsde = Math.round(c.osde * pctAporteDesdeCorresponde);
       var netoOsde = c.osde - retencionOsde;
       cum += netoOsde;
       detalle.push({ fecha: "Cheque OSDE", bruto: c.osde, retencion: retencionOsde, prestamo: 0, iibb: 0, cpsm: 0, neto: netoOsde, acumulado: cum });
@@ -639,7 +647,7 @@ function calcularDetalleChequesProfesional(periodo, doc) {
   var osdeInsertado = false;
   var iibbAplicado = false, cpsmAplicado = false;
   cheques.forEach(function(chq, i) {
-    var retencion = Math.round(chq.monto * (c.pctAporte || 0));
+    var retencion = Math.round(chq.monto * pctAporteDesdeCorresponde);
     var neto = chq.monto - retencion;
     var prestamoAqui = 0, iibbAqui = 0, cpsmAqui = 0;
     if (i === 0) { prestamoAqui = c.prestamoCasa || 0; neto -= prestamoAqui; } // prestamoAqui > 0 = descuento, < 0 = crédito (mismo signo que c.prestamoCasa) — sale del primer cheque que llegue, no ata a un índice real
@@ -672,7 +680,7 @@ function calcularDetalleChequesProfesional(periodo, doc) {
     }
   }
 
-  return { doc: doc, periodo: periodo, detalle: detalle, totalNetoMes: cum, pctAporte: c.pctAporte, ultimaFecha: ultimaFecha };
+  return { doc: doc, periodo: periodo, detalle: detalle, totalNetoMes: cum, pctAporte: pctAporteDesdeCorresponde, ultimaFecha: ultimaFecha };
 }
 
 // Sueldo Director: toma el detalle cheque por cheque y encuentra la fecha en
