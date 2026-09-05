@@ -177,6 +177,25 @@ function transfFamPortalDetalleHtml(periodo, apellido, fecha, netoCheque, netosP
   return filas;
 }
 
+// Resumen del mes: cuánto de tu neto fue a tu cuenta y cuánto a un familiar
+// (puede ser más de una transferencia, algunas combinando varios cheques —
+// no importa el detalle acá, solo el total). No se muestra si el profesional
+// no tiene ninguna transferencia a familiar cargada este mes.
+function transfFamResumenMesPortalHtml(periodo, apellido, netoFinal) {
+  if (typeof TRANSF_FAM === "undefined") return '';
+  var profKey = transfFamProfKey(periodo, apellido);
+  var entries = TRANSF_FAM[profKey] || [];
+  if (!entries.length) return '';
+
+  var totalFamiliar = entries.reduce(function(s, e) { return s + (e.importe || 0); }, 0);
+  var totalATuCuenta = netoFinal - totalFamiliar;
+
+  return '<div class="resumen-fam">'
+    +   '<div class="resumen-fam-row"><span>👤 A tu cuenta</span><span>' + fmt(totalATuCuenta) + '</span></div>'
+    +   '<div class="resumen-fam-row"><span>🏠 A tu familiar' + (entries.length > 1 ? 'es' : '') + '</span><span>' + fmt(totalFamiliar) + '</span></div>'
+    + '</div>';
+}
+
 // ══════ RENDER INDIVIDUAL (Junio / Julio) ════════════════════
 
 var DISCLAIMER = '<div class="disclaimer">'
@@ -461,6 +480,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     + '<span style="font-weight:700;color:' + netoFinalColor + ';letter-spacing:.05em">NETO ESTIMADO</span>'
     + '<span style="font-weight:700;font-size:1.1rem;color:' + netoFinalColor + '">' + fmt(netoFinal) + '</span>'
     + '</div>';
+  html += transfFamResumenMesPortalHtml(periodo, doctor.apellido, netoFinal);
 
   // Aviso "ya transferido" — aparece cuando Marcelo tildó la transferencia del
   // mes en el panel admin (Sueldo Director / Resto de profesionales).

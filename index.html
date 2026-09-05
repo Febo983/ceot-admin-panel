@@ -734,6 +734,16 @@ body {
 .cl-sub-amt  { color: var(--ink); }
 .cl-sub      { border-bottom-color: rgba(32,36,31,0.08); }
 
+/* ── RESUMEN DEL MES: a tu cuenta vs. a tu familiar ── */
+.resumen-fam {
+  margin: 4px 0 8px; border-left: 2px solid #c9933a; padding-left: 12px;
+}
+.resumen-fam-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 3px 0; font-size: 0.78rem; color: var(--ink);
+}
+.resumen-fam-row span:last-child { font-weight: 700; font-variant-numeric: tabular-nums; }
+
 /* ── NETO EN TAB ── */
 .period-tab { flex-direction: column; align-items: flex-start; }
 .tab-top    { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
