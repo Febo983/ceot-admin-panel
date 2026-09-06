@@ -113,6 +113,115 @@ function parsearTXTColon(text) {
   return rows;
 }
 
+// ── Débitos del reporte "Liquidación a Profesionales" de Colón (.txt ancho fijo) ──
+// Levanta SOLO las filas DEB. HONORARIOS / DEB. GASTOS, saltea consultas y
+// débitos <= $50.000, y agrupa por (talón-factura, nprest) colapsando roles
+// (ESP/AY1/AY2). Devuelve ítems con el shape que consume la pestaña Débitos
+// (renderDebitos modo import) y el auditor NUN.
+var DEB_TXT_MIN_IMPORTE = 50000;
+var DEB_TXT_OS_LABEL = {
+  'U.PERSON': 'Unión Personal', 'PROV.ART': 'Provincia ART', 'MEDIFEAS': 'Medifé',
+  'PREVENCI': 'Prevención Salud', 'SWISS ME': 'Swiss Medical', 'SANCORME': 'Sancor Salud'
+};
+var DEB_TXT_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+function parsearDebitosTXTColon(text) {
+  var lineas = String(text || '').split(/\r?\n/);
+  var reDato    = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/;                    // TMOV CUEN S NRO-F.MOV
+  var reImporte = /(-?[\d.]+,\d{2})\s+[A-Z-]\s+[A-Z]\s+(\d{6})\s+(\d{6})/; // IMPORTE .. F.PERIO P.PERIO
+  var reConsulta = /CONSULTA|ATENCION\s+MEDICA/i;
+  var grupos = {};
+
+  lineas.forEach(function(l) {
+    if (l.length < 250) return;
+    var obs = l.slice(246).trim().toUpperCase();
+    if (obs.indexOf('DEB') === -1) return;                 // solo DEB. HONORARIOS / DEB. GASTOS
+    var md = reDato.exec(l);
+    if (!md || md[1] !== '34') return;                     // TMOV 34 = movimiento de débito/ajuste
+    var mi = reImporte.exec(l);
+    if (!mi) return;
+    var imp = parseFloat(mi[1].replace(/\./g, '').replace(',', '.'));
+    if (!imp) return;
+
+    var practicaRaw = l.slice(83, 134).trim();
+    var pracDesc = practicaRaw.replace(/^\d+\s*/, '').trim();
+    if (reConsulta.test(pracDesc)) return;                 // sin consultas
+
+    var factura = md[3] + '-' + md[4];                     // talón-nro (el nro solo no es único)
+    var nprest  = l.slice(67, 74).trim();
+    var rol     = l.slice(134, 138).trim();
+    var profRaw = l.slice(138, 185).trim();
+    var pacRaw  = l.slice(185, 246).trim();
+    var pacM    = pacRaw.match(/^(\d+)\s+(.*)$/);
+    var k = factura + '|' + nprest;
+
+    if (!grupos[k]) {
+      var cplx = (pracDesc.match(/NUN[- ]*COMPLEJIDAD\s*(\d+)/i) || [])[1];
+      grupos[k] = {
+        fact: factura, nprest: nprest,
+        periodo: debFmtPeriodo(mi[3]), periodoFact: debFmtPeriodo(mi[2]), pperioRaw: mi[3],
+        os: DEB_TXT_OS_LABEL[l.slice(74, 83).trim()] || l.slice(74, 83).trim(),
+        prac: pracDesc, practicaCod: (practicaRaw.match(/^\d+/) || [''])[0],
+        complejidadNUN: cplx ? parseInt(cplx, 10) : null,
+        dni: pacM ? pacM[1] : '', paciente: pacM ? pacM[2].trim() : pacRaw,
+        prof: '', roles: {}, tipo: 'GAS', fuente: 'colon-txt'
+      };
+    }
+    var g = grupos[k];
+    g.roles[rol || '—'] = (g.roles[rol || '—'] || 0) + imp;
+    if (obs.indexOf('HONORARIOS') !== -1) g.tipo = 'HON';
+    if (rol === 'ESP' || !g.prof) g.prof = profRaw.replace(/^\d+\s*/, '').trim();
+  });
+
+  var out = [];
+  Object.keys(grupos).forEach(function(k) {
+    var g = grupos[k];
+    g.imp = Object.keys(g.roles).reduce(function(s, r) { return s + g.roles[r]; }, 0);
+    if (g.imp <= DEB_TXT_MIN_IMPORTE) return;
+    g.rol = Object.keys(g.roles).join('+');
+    g.rolesDetalle = g.roles;
+    delete g.roles;
+    out.push(g);
+  });
+  out.sort(function(a, b) { return b.imp - a.imp; });
+  return out;
+}
+
+// Guarda los débitos importados como un período de la pestaña Débitos
+// (mismo mecanismo que debGuardarImport: deb_imp_<key> + deb_guardados).
+// periodoHint (ej. "julio-2026") ancla la key al mes de liquidación que eligió
+// el usuario; si no viene, se infiere del P.PERIO más frecuente.
+function guardarDebitosImportados(items, periodoHint) {
+  if (!items || !items.length) return { n: 0 };
+  var periodoKey = (periodoHint || '').trim().toLowerCase();
+  if (!/^[a-zñ]+-\d{4}$/.test(periodoKey)) {
+    var cuenta = {};
+    items.forEach(function(it) {
+      var m = String(it.pperioRaw || '').match(/^(\d{4})(\d{2})$/);
+      var key = m ? (DEB_TXT_MESES[parseInt(m[2], 10) - 1] + '-' + m[1]) : 'sin-periodo';
+      cuenta[key] = (cuenta[key] || 0) + 1;
+    });
+    periodoKey = Object.keys(cuenta).sort(function(a, b) { return cuenta[b] - cuenta[a]; })[0];
+  }
+  try {
+    localStorage.setItem('deb_imp_' + periodoKey, JSON.stringify(items));
+    var guard = [];
+    try { guard = JSON.parse(localStorage.getItem('deb_guardados') || '[]'); } catch (e) {}
+    if (guard.indexOf(periodoKey) === -1) { guard.unshift(periodoKey); localStorage.setItem('deb_guardados', JSON.stringify(guard)); }
+  } catch (e) { return { n: 0, error: e.message }; }
+  var total = items.reduce(function(s, it) { return s + (it.imp || 0); }, 0);
+  return { n: items.length, periodoKey: periodoKey, total: total };
+}
+
+async function leerTextoArchivo(file) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function(ev) { resolve(ev.target.result); };
+    reader.onerror = function() { reject(new Error('No se pudo leer el archivo')); };
+    reader.readAsText(file, 'ISO-8859-1');
+  });
+}
+
 async function leerXLSX(file) {
   return new Promise(function(resolve, reject) {
     var esCSV = /\.csv$/i.test(file.name);
@@ -247,6 +356,32 @@ async function procesarArchivosImport() {
     impOsdeBilling = osdeBill;
     impDifBilling  = difBill;
     impArtTotal    = artTotal;
+
+    // ── Débitos > $50k (excl. consultas) → pestaña Débitos.
+    // Va aislado: si algo falla acá, no rompe el cálculo de cheques.
+    var debMsgEl = document.getElementById('impDebitosMsg');
+    if (debMsgEl) { debMsgEl.style.display = 'none'; debMsgEl.textContent = ''; }
+    if (esTXTCeot) {
+      try {
+        var txtRaw = await leerTextoArchivo(fileCEOT);
+        var debs   = parsearDebitosTXTColon(txtRaw);
+        var mesSel = document.getElementById('impMes');
+        var yr = (txtRaw.match(/\b(\d{4})(\d{2})\s+\d{6}\b/) || [])[1] ||
+                 String(new Date().getFullYear());
+        var periodoHint = mesSel && mesSel.value ? (mesSel.value + '-' + yr) : '';
+        var resDeb = guardarDebitosImportados(debs, periodoHint);
+        if (debMsgEl && resDeb.n) {
+          debMsgEl.style.display = 'block';
+          debMsgEl.textContent = '🩺 ' + resDeb.n + ' débito(s) > $50.000 (' + fmtImp(resDeb.total) +
+            ') cargados a la pestaña Débitos — período «' + resDeb.periodoKey + '». Abrilos ahí para analizarlos con el NUN.';
+        } else if (debMsgEl) {
+          debMsgEl.style.display = 'block';
+          debMsgEl.textContent = '🩺 Sin débitos > $50.000 fuera de consultas en este archivo.';
+        }
+      } catch (e) {
+        if (debMsgEl) { debMsgEl.style.display = 'block'; debMsgEl.textContent = '🩺 No se pudieron extraer los débitos: ' + e.message; }
+      }
+    }
 
     // ── Preview table
     var totOSDE = SOCIOS_IMP.reduce(function(s,k){ return s+(osdeBill[k]||0); }, 0);

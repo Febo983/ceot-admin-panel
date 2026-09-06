@@ -545,7 +545,6 @@ function renderDebitos(mes) {
         ? '<button class="deb-btn" style="font-size:0.72rem;padding:4px 8px;background:rgba(220,80,60,.15);color:#c44" onclick="debEliminarGuardado(\'' + debMesActual.replace('__g__','') + '\')">🗑 Eliminar período</button>'
         : '')
     + '<label class="deb-btn" style="cursor:pointer;position:relative">📂 Importar CEOT.xlsx<input type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer" onchange="debCargarXLSX(this.files[0]);this.value=\'\'"></label>'
-    + '<label class="deb-btn" style="cursor:pointer;position:relative">📂 Importar débitos ART (crudo)<input type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer" onchange="debCargarXLSXCrudo(this.files[0]);this.value=\'\'"></label>'
     + '<button class="deb-btn deb-btn-pri" onclick="actionFeedback(this); imprimirDebitos()" style="margin-left:4px">🖨 Imprimir</button>'
     + '<span class="deb-saved-msg" id="debSavedMsg">Guardado ✓</span>'
     + '</div>';
@@ -584,6 +583,7 @@ function renderDebitos(mes) {
       var stKey = 'deb_est_' + d.fact + '_' + d.nprest;
       var estado = localStorage.getItem(stKey) || '';
       var bg = DEB_ESTADOS[estado] ? DEB_ESTADOS[estado].bg : '';
+      var tieneAnalisis = !!localStorage.getItem(debAnalisisKey(d.fact, d.nprest));
       var tipoStyle = d.tipo === 'GAS' ? 'color:#c2410c;font-weight:700' : 'color:#b13a2c;font-weight:700';
       var rowBg = bg ? 'background:' + bg + ';' : '';
       html += '<tr style="' + rowBg + '">'
@@ -598,7 +598,9 @@ function renderDebitos(mes) {
         + '<td style="font-size:0.65rem;color:rgba(32,36,31,.5)">' + (d.prac||'') + '</td>'
         + '<td style="' + tipoStyle + ';white-space:nowrap">' + d.tipo + '</td>'
         + '<td style="color:#b13a2c;font-weight:600;text-align:right;white-space:nowrap">' + fmtDeb(Math.round(d.imp)) + '</td>'
-        + '<td><select class="deb-est-sel" data-stkey="' + stKey + '" onchange="debSetEstado(this)" style="font-size:0.72rem;padding:2px 4px;border-radius:5px;border:1px solid rgba(32,36,31,.15);background:rgba(32,36,31,.06);color:#20241f;cursor:pointer;width:100%">'
+        + '<td>'
+        + '<button type="button" class="deb-btn" style="font-size:0.66rem;padding:2px 6px;margin-bottom:3px;width:100%;background:' + (tieneAnalisis?'rgba(31,58,46,.14)':'rgba(32,36,31,.06)') + ';color:#1f3a2e" onclick="debAbrirAuditor(' + i + ')">🩺 ' + (tieneAnalisis?'Ver análisis':'Analizar') + '</button>'
+        + '<select class="deb-est-sel" data-stkey="' + stKey + '" onchange="debSetEstado(this)" style="font-size:0.72rem;padding:2px 4px;border-radius:5px;border:1px solid rgba(32,36,31,.15);background:rgba(32,36,31,.06);color:#20241f;cursor:pointer;width:100%">'
         + Object.keys(DEB_ESTADOS).map(function(k){
             return '<option value="' + k + '"' + (estado===k?' selected':'') + '>' + DEB_ESTADOS[k].label + '</option>';
           }).join('')
@@ -735,6 +737,366 @@ function debSetEstado(sel) {
 
 function imprimirDebitos() {
   window.print();
+}
+
+/* ── AUDITOR DE DÉBITOS (NUN) ──────────────────────────────────
+   Analiza un débito de auditoría médica contra el Nomenclador Único
+   Nacional (6ª ed.) y dictamina: procedente / refacturar / auditoría.
+   Backend: worker ceot-debitos-auditor (Claude API). Ver README de ese repo.
+   No reemplaza el criterio de un médico matriculado.                */
+
+// Completar tras deployar el worker (wrangler deploy):
+var DEBITOS_AUDITOR_ENDPOINT = "https://ceot-debitos-auditor.marcelo-aime74.workers.dev/analizar";
+var DEBITOS_AUDITOR_TOKEN    = "";  // igual al secret AUDITOR_TOKEN del worker (si se configuró)
+
+function debAnalisisKey(fact, nprest) { return "deb_analisis_" + fact + "_" + nprest; }
+function debAuditorFormKey(fact, nprest) { return "deb_auditor_form_" + fact + "_" + nprest; }
+
+var debAuditorActual = null; // índice en debImportData de la fila abierta
+var debAudImagenes = [];     // [{media_type, data}] — páginas del protocolo escaneado a enviar como imagen
+
+function debAuditorInject() {
+  if (document.getElementById("debAuditorBg")) return;
+  var bg = document.createElement("div");
+  bg.id = "debAuditorBg";
+  bg.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:var(--z-modal-top,4000);align-items:flex-start;justify-content:center;padding:18px 10px;overflow-y:auto";
+  bg.onclick = function(e){ if (e.target === bg) debCerrarAuditor(); };
+  bg.innerHTML =
+      '<div style="background:#fdf8f0;border-radius:12px;width:100%;max-width:720px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.3)">'
+    +   '<div style="background:#1f3a2e;padding:13px 16px;display:flex;align-items:center;justify-content:space-between">'
+    +     '<div><div style="color:#fff;font-size:0.9rem;font-weight:700">🩺 Auditor de débitos — NUN 6ª ed.</div>'
+    +     '<div id="debAudSub" style="color:rgba(255,255,255,.45);font-size:0.66rem;margin-top:2px"></div></div>'
+    +     '<button onclick="debCerrarAuditor()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:4px 11px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:0.8rem">✕</button>'
+    +   '</div>'
+    +   '<div style="padding:14px 16px;max-height:78vh;overflow-y:auto">'
+    +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px 12px">'
+    +       debAudField("Obra social / ART", '<input id="debAudOS" type="text" style="'+debAudInp()+'">')
+    +       debAudField("Fecha cirugía", '<input id="debAudFecha" type="text" placeholder="mm/aaaa o dd/mm/aaaa" style="'+debAudInp()+'">')
+    +       debAudField("Código NUN facturado por CEOT", '<input id="debAudCodFact" type="text" placeholder="MS.06.02" oninput="debAudDesc(\'Fact\')" style="'+debAudInp()+'"><div id="debAudDescFact" style="font-size:0.63rem;color:#6b5f4d;margin-top:2px;min-height:12px"></div>')
+    +       debAudField("Código NUN que pretende el auditor", '<input id="debAudCodAud" type="text" placeholder="MS.04.02" oninput="debAudDesc(\'Aud\')" style="'+debAudInp()+'"><div id="debAudDescAud" style="font-size:0.63rem;color:#6b5f4d;margin-top:2px;min-height:12px"></div>')
+    +       debAudField("Importe facturado ($)", '<input id="debAudImpFact" type="text" inputmode="decimal" style="'+debAudInp()+'">')
+    +       debAudField("Importe debitado ($)", '<input id="debAudImpDeb" type="text" inputmode="decimal" style="'+debAudInp()+'">')
+    +       debAudField("Edad del paciente", '<input id="debAudEdad" type="text" inputmode="numeric" placeholder="opcional — habilita Norma Sec. 1" style="'+debAudInp()+'">')
+    +       '<div></div>'
+    +     '</div>'
+    +     debAudFieldWide("Motivo / fundamento del auditor para el débito", '<textarea id="debAudMotivo" rows="2" style="'+debAudInp()+';resize:vertical"></textarea>')
+    +     debAudFieldWide("Diagnóstico (opcional)", '<input id="debAudDx" type="text" style="'+debAudInp()+'">')
+    +     debAudFieldWide("Protocolo operatorio — subí el PDF o la foto (opcional)", '<input id="debAudFile" type="file" accept=".pdf,image/*" multiple onchange="debAudCargarArchivoParte(this)" style="font-size:0.74rem;color:#20241f"><div id="debAudFileMsg" style="font-size:0.66rem;color:#6b5f4d;margin-top:3px;min-height:12px"></div><div style="font-size:0.6rem;color:#9a8c78;margin-top:2px">PDF digital &rarr; extrae el texto al campo de abajo. PDF escaneado o foto &rarr; se manda como imagen para que el modelo lo lea.</div>')
+    +     debAudFieldWide("Parte quirúrgico / protocolo operatorio <span style=\'color:#b13a2c\'>*</span>", '<textarea id="debAudParte" rows="7" placeholder="Pegá el protocolo, o subí el PDF/foto arriba. Es lo más importante: sin esto el análisis es de baja confianza." style="'+debAudInp()+';resize:vertical;font-size:0.78rem"></textarea>')
+    +     '<div style="display:flex;gap:8px;margin-top:12px">'
+    +       '<button id="debAudBtn" class="deb-btn deb-btn-pri" style="flex:1;padding:9px" onclick="debAuditorAnalizar()">Analizar débito</button>'
+    +       '<button class="deb-btn" style="padding:9px 14px" onclick="debCerrarAuditor()">Cerrar</button>'
+    +     '</div>'
+    +     '<div id="debAudMsg" style="font-size:0.72rem;color:#b13a2c;margin-top:8px;min-height:14px"></div>'
+    +     '<div id="debAudResultado" style="margin-top:12px"></div>'
+    +     '<div style="font-size:0.6rem;color:#9a8c78;margin-top:14px;border-top:1px solid rgba(32,36,31,.1);padding-top:8px">Análisis asistido por IA anclado al NUN 6ª edición. No sustituye el criterio de un médico matriculado — un profesional de CEOT debe validar antes de responder al auditor.</div>'
+    +   '</div>'
+    + '</div>';
+  document.body.appendChild(bg);
+}
+function debAudInp() { return "width:100%;padding:6px 9px;border:1px solid rgba(32,36,31,.18);border-radius:6px;font-size:0.8rem;font-family:inherit;background:rgba(32,36,31,.05);color:#20241f"; }
+function debAudField(lbl, inner) { return '<div><label style="display:block;font-size:0.63rem;font-weight:700;color:rgba(32,36,31,.5);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">'+lbl+'</label>'+inner+'</div>'; }
+function debAudFieldWide(lbl, inner) { return '<div style="margin-top:9px"><label style="display:block;font-size:0.63rem;font-weight:700;color:rgba(32,36,31,.5);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">'+lbl+'</label>'+inner+'</div>'; }
+
+function debAudDesc(which) {
+  var inp = document.getElementById("debAudCod" + (which === "Fact" ? "Fact" : "Aud"));
+  var out = document.getElementById("debAudDesc" + which);
+  if (!inp || !out) return;
+  var d = (typeof nunDescribir === "function") ? nunDescribir(inp.value) : null;
+  out.textContent = d || (inp.value.trim() ? "código NUN no reconocido" : "");
+  out.style.color = d ? "#1a7a52" : "#b45309";
+}
+
+// ── Carga del protocolo operatorio: PDF (texto o escaneado) o foto ──
+// PDF con capa de texto → vuelca el texto al textarea.
+// PDF escaneado o imagen → guarda las páginas como JPEG en debAudImagenes,
+// que debAuditorAnalizar() manda al worker para que Claude las lea (visión).
+var DEB_AUD_MAX_PAG = 12;
+var DEB_AUD_MAX_DIM = 1600;
+
+async function debAudCargarArchivoParte(input) {
+  var files = Array.prototype.slice.call(input.files || []);
+  if (!files.length) return;
+  var msg = document.getElementById("debAudFileMsg");
+  msg.style.color = "#6b5f4d";
+  msg.textContent = "Procesando archivo…";
+  debAudImagenes = [];
+  try {
+    var textos = [];
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      if (/^image\//.test(f.type)) {
+        debAudImagenes.push(await debImagenAJpeg(f));
+      } else if (/\.pdf$/i.test(f.name) || f.type === "application/pdf") {
+        var r = await debPDFExtraer(f);
+        if (r.texto && r.texto.replace(/\s/g, "").length >= 200) textos.push(r.texto);
+        else r.imagenes.forEach(function(im) { debAudImagenes.push(im); });
+      }
+    }
+    if (debAudImagenes.length > DEB_AUD_MAX_PAG) debAudImagenes = debAudImagenes.slice(0, DEB_AUD_MAX_PAG);
+
+    var ta = document.getElementById("debAudParte");
+    if (textos.length) ta.value = (ta.value ? ta.value + "\n\n" : "") + textos.join("\n\n");
+
+    var n = debAudImagenes.length;
+    if (n && textos.length) { msg.style.color = "#1a7a52"; msg.textContent = "✓ Texto extraído + " + n + " pág(s) escaneada(s) como imagen."; }
+    else if (n)             { msg.style.color = "#1a7a52"; msg.textContent = "✓ " + n + " imagen(es) — se envían al análisis (protocolo escaneado)."; }
+    else if (textos.length) { msg.style.color = "#1a7a52"; msg.textContent = "✓ Texto del PDF extraído al campo de abajo — revisalo."; }
+    else                    { msg.style.color = "#b45309"; msg.textContent = "No pude extraer texto ni imágenes del archivo."; }
+  } catch (e) {
+    debAudImagenes = [];
+    msg.style.color = "#b13a2c";
+    msg.textContent = "Error leyendo el archivo: " + e.message;
+  }
+}
+
+function debCanvasAJpeg(canvas) {
+  var out = canvas;
+  var sc = Math.min(1, DEB_AUD_MAX_DIM / Math.max(canvas.width, canvas.height));
+  if (sc < 1) {
+    out = document.createElement("canvas");
+    out.width = Math.round(canvas.width * sc);
+    out.height = Math.round(canvas.height * sc);
+    out.getContext("2d").drawImage(canvas, 0, 0, out.width, out.height);
+  }
+  return { media_type: "image/jpeg", data: out.toDataURL("image/jpeg", 0.82).split(",")[1] };
+}
+
+function debImagenAJpeg(file) {
+  return new Promise(function(resolve, reject) {
+    var rd = new FileReader();
+    rd.onload = function() {
+      var im = new Image();
+      im.onload = function() {
+        var c = document.createElement("canvas");
+        c.width = im.width; c.height = im.height;
+        c.getContext("2d").drawImage(im, 0, 0);
+        resolve(debCanvasAJpeg(c));
+      };
+      im.onerror = function() { reject(new Error("imagen inválida")); };
+      im.src = rd.result;
+    };
+    rd.onerror = function() { reject(new Error("no se pudo leer la imagen")); };
+    rd.readAsDataURL(file);
+  });
+}
+
+async function debPDFExtraer(file) {
+  if (!window.pdfjsLib) throw new Error("pdf.js no está disponible");
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  var maxP = Math.min(pdf.numPages, DEB_AUD_MAX_PAG);
+  var texto = "";
+  for (var p = 1; p <= maxP; p++) {
+    var page = await pdf.getPage(p);
+    var tc = await page.getTextContent();
+    texto += tc.items.map(function(it) { return it.str; }).join(" ") + "\n";
+  }
+  if (texto.replace(/\s/g, "").length >= 200) return { texto: texto.trim(), imagenes: [] };
+
+  var imagenes = [];
+  for (var q = 1; q <= maxP; q++) {
+    var pg = await pdf.getPage(q);
+    var vp = pg.getViewport({ scale: 2 });
+    var cv = document.createElement("canvas");
+    cv.width = vp.width; cv.height = vp.height;
+    await pg.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
+    imagenes.push(debCanvasAJpeg(cv));
+  }
+  return { texto: "", imagenes: imagenes };
+}
+
+function debAbrirAuditor(i) {
+  debAuditorInject();
+  debAuditorActual = i;
+  var d = (debImportData || [])[i];
+  if (!d) return;
+  var bg = document.getElementById("debAuditorBg");
+  document.getElementById("debAudSub").textContent =
+    (d.fact || "") + "  ·  " + (d.os || "") + "  ·  " + fmtDeb(Math.round(d.imp)) + "  ·  " + (d.prof || "");
+
+  // prefill: primero lo guardado en el form, luego los datos de la fila
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(debAuditorFormKey(d.fact, d.nprest)) || "{}"); } catch (e) {}
+  var val = function(id, v) { var el = document.getElementById(id); if (el) el.value = (v == null ? "" : v); };
+  val("debAudOS",      saved.obraSocial      || d.os || "");
+  val("debAudFecha",   saved.fecha           || d.periodo || "");
+  val("debAudCodFact", saved.codigoFacturado || "");
+  val("debAudCodAud",  saved.codigoAuditor   || "");
+  val("debAudImpFact", saved.importeFacturado || "");
+  val("debAudImpDeb",  saved.importeDebitado != null && saved.importeDebitado !== "" ? saved.importeDebitado : Math.round(d.imp || 0));
+  val("debAudEdad",    saved.edadPaciente    || "");
+  val("debAudMotivo",  saved.motivoAuditor   || "");
+  val("debAudDx",      saved.diagnostico     || d.prac || "");
+  val("debAudParte",   saved.parteQuirurgico || "");
+  debAudDesc("Fact"); debAudDesc("Aud");
+
+  debAudImagenes = [];
+  var fileInp = document.getElementById("debAudFile"); if (fileInp) fileInp.value = "";
+  var fileMsg = document.getElementById("debAudFileMsg"); if (fileMsg) fileMsg.textContent = "";
+
+  document.getElementById("debAudMsg").textContent = "";
+  var cached = null;
+  try { cached = JSON.parse(localStorage.getItem(debAnalisisKey(d.fact, d.nprest)) || "null"); } catch (e) {}
+  document.getElementById("debAudResultado").innerHTML = cached ? debAuditorResultadoHtml(cached) : "";
+
+  bg.style.display = "flex";
+}
+
+function debCerrarAuditor() {
+  var bg = document.getElementById("debAuditorBg");
+  if (bg) bg.style.display = "none";
+  debAuditorActual = null;
+}
+
+function debAuditorLeerForm() {
+  var g = function(id) { var el = document.getElementById(id); return el ? el.value.trim() : ""; };
+  return {
+    obraSocial: g("debAudOS"),
+    fecha: g("debAudFecha"),
+    codigoFacturado: g("debAudCodFact"),
+    codigoAuditor: g("debAudCodAud"),
+    importeFacturado: g("debAudImpFact"),
+    importeDebitado: g("debAudImpDeb"),
+    edadPaciente: g("debAudEdad"),
+    motivoAuditor: g("debAudMotivo"),
+    diagnostico: g("debAudDx"),
+    parteQuirurgico: g("debAudParte")
+  };
+}
+
+function debAuditorAnalizar() {
+  var d = (debImportData || [])[debAuditorActual];
+  if (!d) return;
+  var msg = document.getElementById("debAudMsg");
+  var btn = document.getElementById("debAudBtn");
+  var form = debAuditorLeerForm();
+
+  if (!form.parteQuirurgico && !form.motivoAuditor && !debAudImagenes.length) {
+    msg.textContent = "Cargá el parte quirúrgico (texto o PDF/foto) o al menos el motivo del auditor.";
+    return;
+  }
+  if (!/^https?:\/\//.test(DEBITOS_AUDITOR_ENDPOINT)) {
+    msg.textContent = "Falta configurar DEBITOS_AUDITOR_ENDPOINT en js/accesos-debitos.js (deployá el worker primero).";
+    return;
+  }
+
+  // el form cacheado NO lleva imágenes (pesan y no valen para reintentar)
+  try { localStorage.setItem(debAuditorFormKey(d.fact, d.nprest), JSON.stringify(form)); } catch (e) {}
+
+  if (debAudImagenes.length) {
+    var b64 = debAudImagenes.reduce(function(s, im) { return s + im.data.length; }, 0);
+    if (b64 > 22 * 1024 * 1024) {
+      msg.style.color = "#b13a2c";
+      msg.textContent = "Las imágenes pesan demasiado (" + Math.round(b64 / 1048576) + " MB). Subí menos páginas o un PDF más liviano.";
+      return;
+    }
+    form.imagenesParte = debAudImagenes;
+  }
+
+  msg.style.color = "#6b5f4d";
+  msg.textContent = debAudImagenes.length ? "Leyendo el protocolo y analizando… (20–45 s)" : "Analizando con el NUN… (10–30 s)";
+  btn.disabled = true; btn.textContent = "Analizando…";
+
+  var headers = { "Content-Type": "application/json" };
+  if (DEBITOS_AUDITOR_TOKEN) headers["X-Auditor-Token"] = DEBITOS_AUDITOR_TOKEN;
+
+  fetch(DEBITOS_AUDITOR_ENDPOINT, { method: "POST", headers: headers, body: JSON.stringify(form) })
+    .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+    .then(function(res){
+      btn.disabled = false; btn.textContent = "Analizar débito";
+      if (!res.ok || !res.j || res.j.ok === false) {
+        msg.style.color = "#b13a2c";
+        msg.textContent = "Error: " + ((res.j && (res.j.error || res.j.detalle)) || "respuesta inválida del servidor");
+        return;
+      }
+      msg.textContent = "";
+      try { localStorage.setItem(debAnalisisKey(d.fact, d.nprest), JSON.stringify(res.j)); } catch (e) {}
+      document.getElementById("debAudResultado").innerHTML = debAuditorResultadoHtml(res.j);
+    })
+    .catch(function(err){
+      btn.disabled = false; btn.textContent = "Analizar débito";
+      msg.style.color = "#b13a2c";
+      msg.textContent = "No se pudo contactar el auditor: " + err.message;
+    });
+}
+
+var DEB_VEREDICTO = {
+  procedente:    { lbl: "🔴 Débito PROCEDENTE", bg: "#fde8e8", bd: "#dc2626", est: "P", estLbl: "🔴 Procedente" },
+  refacturar:    { lbl: "🟢 Hay que REFACTURAR", bg: "#e6f9ec", bd: "#16a34a", est: "R", estLbl: "🟢 Se refactura" },
+  auditoria:     { lbl: "🟡 Requiere AUDITORÍA médica", bg: "#fffbe6", bd: "#ca8a04", est: "A", estLbl: "🟡 Auditoría médica" },
+  indeterminado: { lbl: "⚪ Indeterminado", bg: "#f1f0ec", bd: "#9a8c78", est: "", estLbl: "" }
+};
+
+function debAuditorResultadoHtml(res) {
+  var v = DEB_VEREDICTO[res.veredicto] || DEB_VEREDICTO.indeterminado;
+  var d = (debImportData || [])[debAuditorActual] || {};
+  var li = function(arr) {
+    if (!arr || !arr.length) return "";
+    return '<ul style="margin:4px 0 0 16px;padding:0;font-size:0.74rem;color:#3a352c;line-height:1.5">'
+      + arr.map(function(x){ return '<li style="margin-bottom:3px">' + debEsc(x) + '</li>'; }).join("") + '</ul>';
+  };
+  var anal = function(a, titulo) {
+    if (!a) return "";
+    return '<div style="font-size:0.72rem;color:#3a352c;margin-top:5px"><strong>' + titulo + ':</strong> '
+      + debEsc(a.codigo || "—") + (a.corresponde ? ' <span style="color:#16a34a">✓ corresponde</span>' : ' <span style="color:#b13a2c">✗ no corresponde</span>')
+      + (a.descripcionNUN ? '<br><span style="color:#6b5f4d">' + debEsc(a.descripcionNUN) + '</span>' : "")
+      + (a.comentario ? '<br>' + debEsc(a.comentario) : "") + '</div>';
+  };
+  var h = '<div style="border:1px solid ' + v.bd + ';border-left:4px solid ' + v.bd + ';background:' + v.bg + ';border-radius:8px;padding:11px 13px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">'
+    +   '<div style="font-weight:800;font-size:0.86rem;color:#20241f">' + v.lbl + '</div>'
+    +   '<div style="font-size:0.66rem;color:#6b5f4d">confianza: <strong>' + debEsc(res.confianza || "—") + '</strong></div>'
+    + '</div>'
+    + (res.imagenesRecibidas ? '<div style="font-size:0.63rem;color:#6b5f4d;margin-top:4px">📄 protocolo leído de ' + res.imagenesRecibidas + ' imagen(es)</div>' : "")
+    + (res.resumen ? '<div style="font-size:0.8rem;color:#20241f;margin-top:6px">' + debEsc(res.resumen) + '</div>' : "")
+    + (res.codigoCorrecto ? '<div style="font-size:0.74rem;color:#20241f;margin-top:6px">Código que correspondería: <strong>' + debEsc(res.codigoCorrecto) + '</strong>'
+        + (typeof nunDescribir === "function" && nunDescribir(res.codigoCorrecto) ? ' <span style="color:#6b5f4d">— ' + debEsc(nunDescribir(res.codigoCorrecto).split(" — ").slice(2).join(" — ")) + '</span>' : "") + '</div>' : "")
+    + (res.esDiferenciaDeValor ? '<div style="font-size:0.72rem;color:#b45309;margin-top:6px">⚠ Parece un débito por diferencia de <em>valor</em>, no de código/complejidad: se resuelve contra la grilla del convenio, no con este análisis.</div>' : "")
+    + anal(res.analisisFacturado, "Código facturado")
+    + anal(res.analisisAuditor, "Código del auditor")
+    + (res.modificadoresNorma && res.modificadoresNorma.length ? '<div style="font-size:0.72rem;color:#3a352c;margin-top:6px"><strong>Modificadores de norma:</strong>' + li(res.modificadoresNorma) + '</div>' : "")
+    + (res.fundamentos && res.fundamentos.length ? '<div style="margin-top:7px"><strong style="font-size:0.72rem;color:#3a352c">Fundamentos</strong>' + li(res.fundamentos) + '</div>' : "")
+    + (res.faltaInfo && res.faltaInfo.length ? '<div style="margin-top:7px"><strong style="font-size:0.72rem;color:#b45309">Falta para ser concluyente</strong>' + li(res.faltaInfo) + '</div>' : "")
+    + (res.textoSugeridoDescargo ? '<div style="margin-top:8px"><strong style="font-size:0.72rem;color:#3a352c">Borrador de descargo al auditor</strong>'
+        + '<div style="font-size:0.74rem;color:#20241f;background:rgba(255,255,255,.6);border:1px solid rgba(32,36,31,.12);border-radius:6px;padding:8px;margin-top:3px;white-space:pre-wrap">' + debEsc(res.textoSugeridoDescargo) + '</div>'
+        + '<button class="deb-btn" style="font-size:0.66rem;padding:3px 8px;margin-top:4px" onclick="debAudCopiar(this)">Copiar</button></div>' : "")
+    + '<div style="display:flex;gap:6px;margin-top:11px;flex-wrap:wrap">'
+    +   (v.est ? '<button class="deb-btn deb-btn-pri" style="font-size:0.7rem;padding:5px 10px" onclick="debAuditorAplicar(\'' + v.est + '\')">Aplicar estado &laquo;' + v.estLbl + '&raquo; a la fila</button>' : "")
+    +   '<button class="deb-btn" style="font-size:0.7rem;padding:5px 10px" onclick="debAuditorBorrar()">Borrar análisis</button>'
+    + '</div>'
+    + '</div>';
+  return h;
+}
+
+function debEsc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]; });
+}
+
+function debAudCopiar(btn) {
+  var box = btn.parentNode.querySelector("div");
+  if (!box) return;
+  var t = box.textContent || "";
+  if (navigator.clipboard) navigator.clipboard.writeText(t);
+  var o = btn.textContent; btn.textContent = "Copiado ✓";
+  setTimeout(function(){ btn.textContent = o; }, 1400);
+}
+
+function debAuditorAplicar(estado) {
+  var d = (debImportData || [])[debAuditorActual];
+  if (!d || !estado) return;
+  var stKey = "deb_est_" + d.fact + "_" + d.nprest;
+  localStorage.setItem(stKey, estado);
+  debCerrarAuditor();
+  renderDebitos();
+}
+
+function debAuditorBorrar() {
+  var d = (debImportData || [])[debAuditorActual];
+  if (!d) return;
+  localStorage.removeItem(debAnalisisKey(d.fact, d.nprest));
+  document.getElementById("debAudResultado").innerHTML = "";
+  renderDebitos();
 }
 
 /* ── CPSM ── */
