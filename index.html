@@ -729,28 +729,6 @@ body {
 .cl-status-icon { font-size: 0.62rem; color: #16a34a; margin-left: 3px; }
 .cl-row.cl-pendiente  .cl-date { color: #9ca3af; }
 
-/* ── CALENDARIO DE COBRO ── */
-.cco-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 7px; margin-bottom: 7px; overflow: hidden; }
-.cco-head { display: flex; align-items: baseline; justify-content: space-between; padding: 9px 12px; border-bottom: 1px solid #f3f4f6; }
-.cco-title { font-size: 0.74rem; font-weight: 700; color: #374151; }
-.cco-sub { font-size: 0.64rem; color: #9ca3af; }
-.cco-timeline { padding: 2px 0; }
-.cco-item { display: flex; align-items: center; gap: 8px; padding: 7px 12px; font-size: 0.78rem; }
-.cco-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 700; }
-.cco-lbl { font-weight: 600; color: #374151; white-space: nowrap; }
-.cco-mid { flex: 1; font-size: 0.67rem; color: #9ca3af; }
-.cco-amt { font-weight: 700; color: #1a1a1a; text-align: right; }
-.cco-ok     .cco-dot { background: #dcfce7; color: #16a34a; }
-.cco-ceot   .cco-dot { background: #fef3c7; color: #92610f; }
-.cco-camino .cco-dot { background: #e5e7eb; color: #6b7280; }
-.cco-pend   .cco-dot { background: #f3f4f6; color: #9ca3af; }
-.cco-ok   .cco-mid { color: #16a34a; }
-.cco-ceot .cco-mid { color: #92610f; }
-.cco-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border-top: 1px solid #e5e7eb; background: #fafafa; font-size: 0.7rem; color: #6b7280; }
-.cco-foot-val { font-weight: 700; color: #374151; }
-.cco-foot-ok { color: #16a34a; }
-.cco-foot-2 { padding: 0 12px 9px; font-size: 0.67rem; color: #9ca3af; background: #fafafa; }
-
 /* ── TRANSFERENCIA A FAMILIAR (debajo del cheque que corresponda) ── */
 .cl-sub {
   display: flex; align-items: flex-start; gap: 8px;
@@ -1684,22 +1662,6 @@ body { background: var(--iv0); color: var(--ink); }
 [data-theme="dark"] .cl-row.cl-acreditado .cl-date { color: #4ade80 !important; }
 [data-theme="dark"] .cl-status-icon { color: #4ade80 !important; }
 [data-theme="dark"] .cl-row.cl-pendiente .cl-date { color: #8f8873 !important; }
-[data-theme="dark"] .cco-card { background: #26221a !important; border: 1px solid #3a362c !important; }
-[data-theme="dark"] .cco-head { border-bottom: 1px solid #332f24 !important; }
-[data-theme="dark"] .cco-title { color: #c9c3b0 !important; }
-[data-theme="dark"] .cco-sub { color: #8f8873 !important; }
-[data-theme="dark"] .cco-lbl { color: #c9c3b0 !important; }
-[data-theme="dark"] .cco-mid { color: #8f8873 !important; }
-[data-theme="dark"] .cco-amt { color: #f1ede2 !important; }
-[data-theme="dark"] .cco-ok .cco-dot { background: #1f6b3d !important; color: #e6f9ee !important; }
-[data-theme="dark"] .cco-ceot .cco-dot { background: #5c4a1f !important; color: #fceec0 !important; }
-[data-theme="dark"] .cco-camino .cco-dot, [data-theme="dark"] .cco-pend .cco-dot { background: #3a362c !important; color: #8f8873 !important; }
-[data-theme="dark"] .cco-ok .cco-mid { color: #4ade80 !important; }
-[data-theme="dark"] .cco-ceot .cco-mid { color: #e0b44e !important; }
-[data-theme="dark"] .cco-foot { background: #241f18 !important; border-top: 1px solid #3a362c !important; color: #a39c88 !important; }
-[data-theme="dark"] .cco-foot-val { color: #f1ede2 !important; }
-[data-theme="dark"] .cco-foot-ok { color: #4ade80 !important; }
-[data-theme="dark"] .cco-foot-2 { background: #241f18 !important; color: #8f8873 !important; }
 [data-theme="dark"] .tab-neto { color: #a39c88 !important; }
 [data-theme="dark"] .period-tab.act-mayo .tab-neto, .period-tab.act-junio .tab-neto, .period-tab.act-julio .tab-neto, .period-tab.act-agosto .tab-neto, .period-tab.act-septiembre .tab-neto, .period-tab.act-octubre .tab-neto, .period-tab.act-noviembre .tab-neto, .period-tab.act-diciembre .tab-neto { color: #f1ede2 !important; }
 [data-theme="dark"] .field input::placeholder { color: rgba(241,237,226,0.3) !important; }
@@ -2090,19 +2052,19 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-07-portal-tabs-sync-1"></script>
-<script src="js/portal-render.js?v=2026-09-07-portal-tabs-sync-1"></script>
-<script src="js/admin-home.js?v=2026-09-07-portal-tabs-sync-1"></script>
-<script src="js/gastos-obra.js?v=2026-09-07-portal-tabs-sync-1"></script>
-<script src="js/presentacion.js?v=2026-09-07-portal-tabs-sync-1"></script>
-<script src="js/sueldo-b.js?v=2026-09-07-portal-tabs-sync-1"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-07-portal-tabs-sync-1"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-07-portal-tabs-sync-1"></script>
-<script src="js/nun-data.js?v=2026-09-07-portal-tabs-sync-1"></script>
-<script src="js/accesos-debitos.js?v=2026-09-07-portal-tabs-sync-1"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-07-portal-tabs-sync-1"></script>
-<script src="js/estadisticas.js?v=2026-09-07-portal-tabs-sync-1"></script>
-<script src="js/gastos-casa.js?v=2026-09-07-portal-tabs-sync-1"></script>
+<script src="js/datos.js?v=2026-09-07-portal-tabs-sync-2"></script>
+<script src="js/portal-render.js?v=2026-09-07-portal-tabs-sync-2"></script>
+<script src="js/admin-home.js?v=2026-09-07-portal-tabs-sync-2"></script>
+<script src="js/gastos-obra.js?v=2026-09-07-portal-tabs-sync-2"></script>
+<script src="js/presentacion.js?v=2026-09-07-portal-tabs-sync-2"></script>
+<script src="js/sueldo-b.js?v=2026-09-07-portal-tabs-sync-2"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-07-portal-tabs-sync-2"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-07-portal-tabs-sync-2"></script>
+<script src="js/nun-data.js?v=2026-09-07-portal-tabs-sync-2"></script>
+<script src="js/accesos-debitos.js?v=2026-09-07-portal-tabs-sync-2"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-07-portal-tabs-sync-2"></script>
+<script src="js/estadisticas.js?v=2026-09-07-portal-tabs-sync-2"></script>
+<script src="js/gastos-casa.js?v=2026-09-07-portal-tabs-sync-2"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -6208,7 +6170,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-07-portal-tabs-sync-1';
+  var CURRENT_BUILD = '2026-09-07-portal-tabs-sync-2';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');

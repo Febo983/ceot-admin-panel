@@ -196,97 +196,6 @@ function transfFamResumenMesPortalHtml(periodo, apellido, netoFinal) {
     + '</div>';
 }
 
-// ══════ CALENDARIO DE COBRO ══════════════════════════════════
-// Resumen de una mirada, arriba del detalle: cada acreditación del mes
-// (cheques Colón + CEM + OSDE) con su estado —
-//   · pendiente    → todavía no venció / dato sin cargar
-//   · en el CEOT   → ya acreditado en la cuenta de la clínica, falta pasártelo
-//   · transferido  → ya está en tu cuenta
-// El estado "transferido" es a nivel mes: sale del mismo tilde que Marcelo
-// pone en "Transferencias del Mes" (transferenciaMesHecha). Sin ese tilde,
-// las acreditaciones ya vencidas se muestran como "en el CEOT".
-function calCobroFechaAcred(fechaDDMM) {
-  // Acreditación = fecha del cheque + 48 hs (mismo criterio que chequeAcreditado).
-  if (!/^\d{2}\/\d{2}$/.test(fechaDDMM || "")) return null;
-  var p = fechaDDMM.split("/");
-  return new Date(new Date().getFullYear(), parseInt(p[1], 10) - 1, parseInt(p[0], 10) + 2);
-}
-
-function renderCalendarioCobro(periodo, doctor) {
-  if (typeof calcularDetalleChequesProfesional !== "function") return "";
-  var base = calcularDetalleChequesProfesional(periodo, doctor);
-  if (!base || !base.detalle || !base.detalle.length) return "";
-
-  var transferido = (typeof transferenciaMesHecha === "function") && transferenciaMesHecha(periodo, doctor);
-  var hoy = new Date();
-  var ICONO = { ok: "✓", ceot: "●", camino: "→", pend: "·" };
-
-  var chequeNro = 0;
-  var items = [];
-  base.detalle.forEach(function(d) {
-    var f = d.fecha || "";
-    var esColon = /^\d{2}\/\d{2}$/.test(f);
-    var esCem   = f.indexOf("Acreditación CEM") === 0;
-    var esOsde  = f.indexOf("Cheque OSDE") === 0;
-    if (!esColon && !esCem && !esOsde) return; // saltear placeholders IIBB/CPSM
-
-    var etiqueta, fechaTxt = "";
-    if (esColon)      { chequeNro++; etiqueta = "Cheque " + chequeNro; fechaTxt = f; }
-    else if (esCem)   { etiqueta = "Centro Médico"; }
-    else              { etiqueta = "OSDE"; }
-
-    var estado, nota;
-    if (d.pendiente || d.neto == null) {
-      estado = "pend";
-      var mFecha = f.match(/(\d{2}\/\d{2})/);
-      nota = fechaTxt ? ("Se espera para el " + fechaTxt)
-           : (mFecha ? ("Se espera ~" + mFecha[1]) : "A confirmar");
-    } else {
-      var fAcred = calCobroFechaAcred(fechaTxt);
-      var acreditado = esColon ? !!(fAcred && hoy >= fAcred) : true; // CEM/OSDE con monto = ya acreditado
-      if (transferido && acreditado)      { estado = "ok";     nota = "Transferido a tu cuenta"; }
-      else if (acreditado)                { estado = "ceot";   nota = "En la cuenta del CEOT"; }
-      else                                { estado = "camino"; nota = "Acredita el " + fechaTxt; }
-    }
-    items.push({ etiqueta: etiqueta, monto: d.neto, estado: estado, nota: nota });
-  });
-  if (!items.length) return "";
-
-  var enCuenta = 0, enCeot = 0, porAcreditar = 0;
-  items.forEach(function(it) {
-    var m = it.monto || 0;
-    if (it.estado === "ok")        { enCuenta += m; enCeot += m; }
-    else if (it.estado === "ceot") { enCeot += m; }
-    else                           { porAcreditar += m; }
-  });
-
-  var filas = items.map(function(it) {
-    return '<div class="cco-item cco-' + it.estado + '">'
-      + '<span class="cco-dot">' + ICONO[it.estado] + '</span>'
-      + '<span class="cco-lbl">' + it.etiqueta + '</span>'
-      + '<span class="cco-mid">' + it.nota + '</span>'
-      + '<span class="cco-amt">' + (it.monto != null ? fmt(it.monto) : "—") + '</span>'
-      + '</div>';
-  }).join("");
-
-  var pie;
-  if (transferido) {
-    pie = '<div class="cco-foot"><span>✓ Transferido a tu cuenta</span>'
-        + '<span class="cco-foot-val cco-foot-ok">' + fmt(enCuenta) + '</span></div>';
-  } else {
-    pie = '<div class="cco-foot"><span>En la cuenta del CEOT</span>'
-        + '<span class="cco-foot-val">' + fmt(enCeot) + '</span></div>'
-        + (porAcreditar > 0 ? '<div class="cco-foot-2">Por acreditar todavía: ' + fmt(porAcreditar) + '</div>' : '');
-  }
-
-  return '<div class="cco-card">'
-    + '<div class="cco-head"><span class="cco-title">📅 Cuándo cobrás</span>'
-    +   '<span class="cco-sub">' + items.length + ' acreditaciones</span></div>'
-    + '<div class="cco-timeline">' + filas + '</div>'
-    + pie
-    + '</div>';
-}
-
 // ══════ RENDER INDIVIDUAL (Junio / Julio) ════════════════════
 
 var DISCLAIMER = '<div class="disclaimer">'
@@ -382,9 +291,6 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     + '<div class="pt-val">' + fmt(totalBruto) + '</div>'
     + '<div class="pt-sub">' + subPartes.join(" + ") + ' · bruto</div>'
     + '</div><div class="pt-icon">💰</div></div>';
-
-  // Calendario de cobro — cuándo llega cada acreditación y en qué estado está.
-  html += renderCalendarioCobro(periodo, doctor);
 
   // Sueldo Director — solo para los 5 socios que cobran este concepto; les avisa
   // cuánto y en qué fecha se les transfiere, sin exponer el resto del cálculo
