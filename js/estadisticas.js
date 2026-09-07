@@ -97,6 +97,37 @@ function estCxMatriz2026() {
   });
   return out;
 }
+// Cobertura por mes 2026 (art / particular / total): semilla (ene-jul) + lo que
+// venga de cada import mensual (obj._cob = {art, particular, os}, obj._total).
+// "Obras sociales" se deriva como total - art - particular (igual que la semilla).
+function estCxCoberturaPorMes() {
+  var seed = EST_SEED.cirugias.coberturaPorMes2026;
+  var out = { art: [], particular: [], total: [] };
+  for (var m = 0; m < 12; m++) {
+    var ym = "2026-" + String(m + 1).padStart(2, "0");
+    var imp = EST_IMPORT.cirugias && EST_IMPORT.cirugias[ym];
+    if (imp && imp._cob) {
+      out.art[m]        = imp._cob.art || 0;
+      out.particular[m] = imp._cob.particular || 0;
+      out.total[m]      = (imp._total != null) ? imp._total : ((imp._cob.art || 0) + (imp._cob.particular || 0) + (imp._cob.os || 0));
+    } else if (seed.total[m] != null) {
+      out.art[m] = seed.art[m]; out.particular[m] = seed.particular[m]; out.total[m] = seed.total[m];
+    } else {
+      out.art[m] = null; out.particular[m] = null; out.total[m] = null;
+    }
+  }
+  return out;
+}
+// Acumulado 2026 de cobertura, hasta el último mes con dato.
+function estCxYtdCobertura() {
+  var c = estCxCoberturaPorMes();
+  var art = 0, particular = 0, total = 0;
+  for (var m = 0; m < 12; m++) {
+    if (c.total[m] == null) continue;
+    art += c.art[m] || 0; particular += c.particular[m] || 0; total += c.total[m] || 0;
+  }
+  return { art: art, particular: particular, total: total, otras: total - art - particular };
+}
 // Total del servicio por mes (2026): suma de la matriz por columna.
 function estTotalPorMes(mat) {
   var t = new Array(12).fill(null);
@@ -467,8 +498,8 @@ function estAdminCirugias() {
   var mat = estCxMatriz2026();
   var totMes = estTotalPorMes(mat);
   var meses = estMesesConDato(totMes);
-  var cob = EST_SEED.cirugias.coberturaPorMes2026;
-  var ytd = EST_SEED.cirugias.ytd2026;
+  var cob = estCxCoberturaPorMes();
+  var ytd = estCxYtdCobertura();
   var totYtd = meses.reduce(function (s, m) { return s + (totMes[m] || 0); }, 0);
 
   var rank = EST_MEDICOS.map(function (m) {
@@ -639,8 +670,8 @@ function estInitChartsCirugias() {
   var mat = estCxMatriz2026();
   var totMes = estTotalPorMes(mat);
   var apm = EST_SEED.cirugias.anualPorMes;
-  var cob = EST_SEED.cirugias.coberturaPorMes2026;
-  var ytd = EST_SEED.cirugias.ytd2026;
+  var cob = estCxCoberturaPorMes();
+  var ytd = estCxYtdCobertura();
 
   var evo = document.getElementById("estChartCxEvo");
   if (evo) {
@@ -695,8 +726,10 @@ function estInitChartsCirugias() {
   var cobC = document.getElementById("estChartCxCob");
   if (cobC) {
     var n = 7;
-    var art = cob.art.slice(0, n), par = cob.particular.slice(0, n);
-    var resto = cob.total.slice(0, n).map(function (t, i) { return t - art[i] - par[i]; });
+    for (var ci = 0; ci < 12; ci++) if (cob.total[ci] != null) n = Math.max(n, ci + 1);
+    var art = cob.art.slice(0, n).map(function (v) { return v || 0; });
+    var par = cob.particular.slice(0, n).map(function (v) { return v || 0; });
+    var resto = cob.total.slice(0, n).map(function (t, i) { return (t || 0) - art[i] - par[i]; });
     estChartInstances.estChartCxCob = new Chart(cobC, {
       type: "bar",
       data: {
@@ -718,8 +751,8 @@ function estInitChartsCirugias() {
   var dona = document.getElementById("estChartCxDona");
   if (dona) {
     var nMeses = estMesesConDato(totMes).length;
-    var totYtd = estSumHasta(cob.total, nMeses);
-    var restoYtd = totYtd - ytd.art - ytd.particular;
+    var totYtd = ytd.total;
+    var restoYtd = ytd.otras;
     var c25 = EST_SEED.cirugias.coberturaPorMes2025;
     var art25 = estSumHasta(c25.art, nMeses), par25 = estSumHasta(c25.particular, nMeses);
     var resto25 = estSumHasta(c25.total, nMeses) - art25 - par25;
