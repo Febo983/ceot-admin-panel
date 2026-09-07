@@ -593,6 +593,15 @@ body {
 }
 #homeStatMes:hover { animation-play-state: paused; }
 #homeStatMes .home-stat-lbl { color: rgba(22,163,74,0.9); }
+#homeStatMes .home-stat-val { color: #16a34a; }
+.home-stat-cta {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: rgba(22,163,74,0.8);
+  margin-top: 6px;
+}
 @media (prefers-reduced-motion: reduce) {
   #homeStatMes { animation: none; box-shadow: 0 0 0 2px rgba(22,163,74,0.4); }
 }
@@ -1768,9 +1777,10 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
           <div class="home-mes-strip" id="homeMesStrip"></div>
         </div>
         <div class="home-stat-card" id="homeStatMes" style="cursor:pointer;margin-bottom:12px">
-          <div class="home-stat-lbl">Período activo · Liquidaciones</div>
-          <div class="home-stat-val" id="homePeriodoVal" style="font-size:1.15rem">—</div>
+          <div class="home-stat-lbl">Liquidaciones · <span id="homeStatMesLbl">—</span></div>
+          <div class="home-stat-val" id="homeNetoVal" style="font-size:1.5rem">—</div>
           <div class="home-stat-sub" id="homeNetoSub"></div>
+          <div class="home-stat-cta">Ingresá para ver los detalles →</div>
         </div>
         <div class="home-modules-grid">
           <div class="home-mod" onclick="irTab('historial')">
@@ -2087,19 +2097,19 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-07-home-titile"></script>
-<script src="js/portal-render.js?v=2026-09-07-home-titile"></script>
-<script src="js/admin-home.js?v=2026-09-07-home-titile"></script>
-<script src="js/gastos-obra.js?v=2026-09-07-home-titile"></script>
-<script src="js/presentacion.js?v=2026-09-07-home-titile"></script>
-<script src="js/sueldo-b.js?v=2026-09-07-home-titile"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-07-home-titile"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-07-home-titile"></script>
-<script src="js/nun-data.js?v=2026-09-07-home-titile"></script>
-<script src="js/accesos-debitos.js?v=2026-09-07-home-titile"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-07-home-titile"></script>
-<script src="js/estadisticas.js?v=2026-09-07-home-titile"></script>
-<script src="js/gastos-casa.js?v=2026-09-07-home-titile"></script>
+<script src="js/datos.js?v=2026-09-07-home-neto"></script>
+<script src="js/portal-render.js?v=2026-09-07-home-neto"></script>
+<script src="js/admin-home.js?v=2026-09-07-home-neto"></script>
+<script src="js/gastos-obra.js?v=2026-09-07-home-neto"></script>
+<script src="js/presentacion.js?v=2026-09-07-home-neto"></script>
+<script src="js/sueldo-b.js?v=2026-09-07-home-neto"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-07-home-neto"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-07-home-neto"></script>
+<script src="js/nun-data.js?v=2026-09-07-home-neto"></script>
+<script src="js/accesos-debitos.js?v=2026-09-07-home-neto"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-07-home-neto"></script>
+<script src="js/estadisticas.js?v=2026-09-07-home-neto"></script>
+<script src="js/gastos-casa.js?v=2026-09-07-home-neto"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -2584,12 +2594,19 @@ function renderHome(doctor) {
   // Highlight módulo del mes actual
   document.querySelectorAll(".home-mod").forEach(function(el) { el.classList.remove("home-mod-highlighted"); });
 
-  // Tarjeta unificada: período activo + tu neto → lleva al mes actual
+  // Tarjeta unificada: mes + tu neto por fuera → lleva al mes actual
   var mesLabel = mesAct ? (mesAct.charAt(0).toUpperCase() + mesAct.slice(1) + " 2026") : "—";
   var cn = calcularNetoLocal(mesAct, doctor);
-  var netoSub = "Sin datos aún";
-  if (cn && cn.neto) netoSub = "Tu neto estimado: " + fmt(cn.neto) + (cn.pendiente ? " (pendiente)" : "");
-  document.getElementById("homePeriodoVal").textContent = mesLabel;
+  var netoBig, netoSub;
+  if (cn && cn.neto) {
+    netoBig = fmt(cn.neto);
+    netoSub = "Tu neto estimado" + (cn.pendiente ? " (pendiente)" : "");
+  } else {
+    netoBig = "—";
+    netoSub = "Sin datos aún";
+  }
+  document.getElementById("homeStatMesLbl").textContent = mesLabel;
+  document.getElementById("homeNetoVal").textContent = netoBig;
   document.getElementById("homeNetoSub").textContent = netoSub;
   document.getElementById("homeStatMes").onclick = function() { irTab(mesAct); };
 }
@@ -6197,7 +6214,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-07-home-titile';
+  var CURRENT_BUILD = '2026-09-07-home-neto';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
