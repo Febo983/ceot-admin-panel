@@ -21,7 +21,7 @@ var ACCESOS_DATA = [
   { id:1, cat:"Finanzas", title:"Gastos casa y liquidaciones Clínica", desc:"Control de liquidaciones y estado de cheques",               url:"https://docs.google.com/spreadsheets/d/1NjHxZTUy3hVinrhR09Cq22gjcMiHQuSG8P4sSIPJa98/edit?usp=sharing" },
   { id:3, cat:"Finanzas", title:"Gastos y Sueldos",         desc:"Gastos fijos y planillas de sueldos del personal",           url:"https://docs.google.com/spreadsheets/d/1BjKNOWI4TpijG_56XFbSVz1u5QNWVQE53SD5gA1LPAc/edit?usp=sharing" },
   { id:4, cat:"Finanzas", title:"Caja Gerling",             desc:"Seguimiento y control de la caja Gerling",                   url:"https://docs.google.com/spreadsheets/d/13IYGUkv2FjZ8aGUxVuly7uL14b6MyQI4C9YiISXxHUY/edit?usp=drive_link" },
-  { id:6, cat:"Finanzas", title:"Valores Convenios",        desc:"Aranceles y valores por convenio y obra social",             url:"https://valores-convenios-ceot.netlify.app/" },
+  { id:6, cat:"Finanzas", title:"Valores Convenios",        desc:"Honorarios NUN por complejidad, por convenio y obra social",  url:"https://valores-convenios-ceot-2026.netlify.app/" },
   // ── Clínica
   { id:8,  cat:"Clínica", title:"CC Clínica Colón",         desc:"Sistema interno de la Clínica Colón",                        url:"https://coloncc.com.ar/" },
   { id:9,  cat:"Clínica", title:"CC CEM MDP",               desc:"Sistema privado del Centro Médico MDP",                     url:"https://privado.centromedicomdp.org.ar/" },
@@ -37,6 +37,7 @@ var ACCESOS_DATA = [
   { id:28, cat:"Admin", title:"Documentación CEOT",         desc:"Documentos y archivos generales del CEOT",                  url:"https://drive.google.com/drive/folders/1eOUfTKOEkFZTsgsctzwNhq0IJ-Wdp3N7?usp=drive_link" },
   { id:29, cat:"Admin", title:"Archivos Reuniones",         desc:"Minutas y acuerdos de reuniones del equipo",                url:"https://drive.google.com/drive/folders/1jnwuKnJaNdR45_QfGvqOmURQL7yrLdTA?usp=drive_link" },
   { id:35, cat:"Admin", title:"Contable",                   desc:"Datos contables",                                           url:"https://claude.ai/code/artifact/e7c9f19e-d865-4574-9adb-56279cb542df" },
+  { id:37, cat:"Clínica", title:"Normas Convenios OOSS",    desc:"Autorizaciones, coseguros, manuales de prestador y contactos por obra social", url:"https://febo983.github.io/ceot-normas-convenios/" },
   // ── Otros
   { id:30, cat:"Otros", title:"Encuesta Secretarias",       desc:"Evaluación y premios a secretarias",                        url:"https://docs.google.com/spreadsheets/d/19ITME1mzL2eIYX4YIudIGwP7yeGBDP93XM6Y2gfperw/edit?usp=sharing" },
   { id:31, cat:"Otros", title:"Encuesta Satisfacción",      desc:"Encuesta de satisfacción de pacientes CEOT",                url:"https://docs.google.com/spreadsheets/d/1T9Rck2IdVg-aYDnjZo3sQJ_0dZ0MvhDBrlWFE1EVAvs/edit?usp=sharing" },
@@ -44,7 +45,7 @@ var ACCESOS_DATA = [
   { id:33, cat:"Otros", title:"BBVA CEOT",                  desc:"Home banking BBVA — cuenta CEOT",                           url:"https://www.bbva.com.ar/empresas.html" },
 ];
 
-var accNextId = 37;
+var accNextId = 38;
 var accFilterActual = "Todos";
 var accEditLinkMode = false;
 

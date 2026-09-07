@@ -45,6 +45,7 @@ var ADM_HOME_ACC_COLOR = {
 var LUCIDE_ACC_ICON = {
   "Liquidaciones Clínica":"file-spreadsheet","Liquidaciones CEM":"file-spreadsheet","Gastos y Sueldos":"wallet",
   "Caja Gerling":"piggy-bank","Liquidaciones Detalles":"file-text","Valores Convenios":"file-check",
+  "Normas Convenios OOSS":"book-text",
   "Liquidaciones 2026":"bar-chart-3","CC Clínica Colón":"building-2","CC CEM MDP":"building-2",
   "Programación CX (Sheet)":"calendar-days","Estadísticas CX":"line-chart","Órdenes CX":"clipboard-list",
   "Fichas CX":"folder","Programación CX v2":"calendar-days","Evoluciones":"edit-3",
