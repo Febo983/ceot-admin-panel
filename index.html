@@ -1771,6 +1771,22 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
             <div class="home-mod-ico ico-cli"><i data-lucide="book-text" style="width:17px;height:17px" stroke-width="1.75"></i></div>
             <div class="home-mod-lbl">Convenios</div>
           </div>
+          <div class="home-mod" onclick="window.open('https://febo983.github.io/generador-de-ordenes-ceot/','_blank','noopener')">
+            <div class="home-mod-ico ico-cli"><i data-lucide="clipboard-list" style="width:17px;height:17px" stroke-width="1.75"></i></div>
+            <div class="home-mod-lbl">Órdenes CX</div>
+          </div>
+          <div class="home-mod" onclick="window.open('https://cirugias-progamadas.netlify.app/','_blank','noopener')">
+            <div class="home-mod-ico ico-cli"><i data-lucide="calendar-clock" style="width:17px;height:17px" stroke-width="1.75"></i></div>
+            <div class="home-mod-lbl">CX programadas</div>
+          </div>
+          <div class="home-mod" onclick="window.open('https://historial-cx-ceot.netlify.app/','_blank','noopener')">
+            <div class="home-mod-ico ico-fin"><i data-lucide="bar-chart-3" style="width:17px;height:17px" stroke-width="1.75"></i></div>
+            <div class="home-mod-lbl">Historial CX</div>
+          </div>
+          <div class="home-mod" onclick="window.open('https://drive.google.com/drive/folders/1eOUfTKOEkFZTsgsctzwNhq0IJ-Wdp3N7','_blank','noopener')">
+            <div class="home-mod-ico ico-adm"><i data-lucide="folder-open" style="width:17px;height:17px" stroke-width="1.75"></i></div>
+            <div class="home-mod-lbl">Documentación</div>
+          </div>
         </div>
         <div id="homeMiPanel" style="margin-top:14px"></div>
         <div class="home-footer">
@@ -2057,19 +2073,19 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-07-home-mipanel"></script>
-<script src="js/portal-render.js?v=2026-09-07-home-mipanel"></script>
-<script src="js/admin-home.js?v=2026-09-07-home-mipanel"></script>
-<script src="js/gastos-obra.js?v=2026-09-07-home-mipanel"></script>
-<script src="js/presentacion.js?v=2026-09-07-home-mipanel"></script>
-<script src="js/sueldo-b.js?v=2026-09-07-home-mipanel"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-07-home-mipanel"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-07-home-mipanel"></script>
-<script src="js/nun-data.js?v=2026-09-07-home-mipanel"></script>
-<script src="js/accesos-debitos.js?v=2026-09-07-home-mipanel"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-07-home-mipanel"></script>
-<script src="js/estadisticas.js?v=2026-09-07-home-mipanel"></script>
-<script src="js/gastos-casa.js?v=2026-09-07-home-mipanel"></script>
+<script src="js/datos.js?v=2026-09-07-home-tiles"></script>
+<script src="js/portal-render.js?v=2026-09-07-home-tiles"></script>
+<script src="js/admin-home.js?v=2026-09-07-home-tiles"></script>
+<script src="js/gastos-obra.js?v=2026-09-07-home-tiles"></script>
+<script src="js/presentacion.js?v=2026-09-07-home-tiles"></script>
+<script src="js/sueldo-b.js?v=2026-09-07-home-tiles"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-07-home-tiles"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-07-home-tiles"></script>
+<script src="js/nun-data.js?v=2026-09-07-home-tiles"></script>
+<script src="js/accesos-debitos.js?v=2026-09-07-home-tiles"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-07-home-tiles"></script>
+<script src="js/estadisticas.js?v=2026-09-07-home-tiles"></script>
+<script src="js/gastos-casa.js?v=2026-09-07-home-tiles"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -6167,7 +6183,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-07-home-mipanel';
+  var CURRENT_BUILD = '2026-09-07-home-tiles';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');

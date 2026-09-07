@@ -972,22 +972,9 @@ function renderMiPanel(doctor) {
     + '<div style="font-size:1.05rem;font-weight:700;color:#1f3a2e;">' + (honAcum ? fmt(honAcum) : '<span style="font-weight:600;color:rgba(32,36,31,.4);font-size:0.7rem">Sin datos aún</span>') + '</div></div>'
     + '</div></div>';
 
-
-  // Accesos rápidos
-  html += '<div class="mp-link-grid">'
-    + '<a href="https://febo983.github.io/generador-de-ordenes-ceot/" target="_blank" class="mp-link-card">'
-    + '<span class="mp-link-card-icon">📋</span>'
-    + '<div><div class="mp-link-card-title">Órdenes CX</div><div class="mp-link-card-sub">Fuera de horario</div></div></a>'
-    + '<a href="https://cirugias-progamadas.netlify.app/" target="_blank" class="mp-link-card">'
-    + '<span class="mp-link-card-icon">📅</span>'
-    + '<div><div class="mp-link-card-title">CX programadas</div><div class="mp-link-card-sub">Mi calendario</div></div></a>'
-    + '<a href="https://historial-cx-ceot.netlify.app/" target="_blank" class="mp-link-card">'
-    + '<span class="mp-link-card-icon">📊</span>'
-    + '<div><div class="mp-link-card-title">Historial CX</div><div class="mp-link-card-sub">Tu apellido · 1234</div></div></a>'
-    + '<a href="https://drive.google.com/drive/folders/1eOUfTKOEkFZTsgsctzwNhq0IJ-Wdp3N7" target="_blank" class="mp-link-card">'
-    + '<span class="mp-link-card-icon">📁</span>'
-    + '<div><div class="mp-link-card-title">Documentación</div><div class="mp-link-card-sub">Google Drive</div></div></a>'
-    + '</div>';
+  // (Los "Accesos rápidos" — Órdenes CX, CX programadas, Historial CX,
+  //  Documentación — se movieron a los tiles de la home, junto a Historial /
+  //  Estadísticas / Convenios, todos con el mismo formato visual.)
 
   html += '<div class="mp-section-label">Institucional</div>';
 
