@@ -650,6 +650,7 @@ var NUN_CODIGOS = [
   {c:"RO.07.07",r:"RO",x:7,o:7,t:"Artroplastia de superficie (una sola superficie)"},
   {c:"RO.08.01",r:"RO",x:8,o:1,t:"Fractura de ambos platillos tibiales. Reducción y osteosíntesis por doble abordaje, fracturas con compromiso intraarticular o hundimiento. Incluye injerto óseo. Incluye asistencia artroscópica."},
   {c:"RO.08.02",r:"RO",x:8,o:2,t:"Fractura de fémur distal, intraarticular compleja, con artrotomía y reducción abierta."},
+  {c:"RO.08.03",r:"RO",x:8,o:3,t:"Artroplastía total de rodilla. Artroplastía unicondílea de rodilla. Artroplastía de superficie (dos superficies). [Corrige numeración duplicada del PDF NUN 6ª ed.]"},
   {c:"RO.08.04",r:"RO",x:8,o:4,t:"Revisión artroscópica del LCA o del LCP. Incluye utilización de injertos."},
   {c:"RO.08.05",r:"RO",x:8,o:5,t:"Reconstrucción de LCA o LCP más plásticas en ligamentos laterales. Incluye el uso de injertos."},
   {c:"RO.08.06",r:"RO",x:8,o:6,t:"Tratamiento quirúrgico de la luxación grave de la rodilla. Lesión de Harry Platt (lesión de ligamentos laterales, cruzados y menisco)."},

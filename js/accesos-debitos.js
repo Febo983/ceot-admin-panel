@@ -574,8 +574,9 @@ function renderDebitos(mes) {
 
     var DEB_ESTADOS = {
       '':    { bg:'',         label:'—' },
-      'P':   { bg:'rgba(220,38,38,.14)',  label:'🔴 Procedente' },
+      'I':   { bg:'rgba(37,99,235,.12)',  label:'🔵 Improcedente (reclamar)' },
       'R':   { bg:'rgba(34,197,94,.12)',  label:'🟢 Se refactura' },
+      'P':   { bg:'rgba(220,38,38,.14)',  label:'🔴 Procedente' },
       'A':   { bg:'rgba(234,179,8,.14)',  label:'🟡 Auditoría médica' }
     };
 
@@ -730,7 +731,7 @@ function debSetEstado(sel) {
   var key = sel.dataset.stkey;
   var val = sel.value;
   if (val) localStorage.setItem(key, val); else localStorage.removeItem(key);
-  var bgMap = { 'P':'#fde8e8', 'R':'#e6f9ec', 'A':'#fffbe6', '':'' };
+  var bgMap = { 'I':'#e8f1fb', 'P':'#fde8e8', 'R':'#e6f9ec', 'A':'#fffbe6', '':'' };
   var tr = sel.closest('tr');
   if (tr) tr.style.background = bgMap[val] || '';
 }
@@ -1022,8 +1023,9 @@ function debAuditorAnalizar() {
 }
 
 var DEB_VEREDICTO = {
-  procedente:    { lbl: "🔴 Débito PROCEDENTE", bg: "#fde8e8", bd: "#dc2626", est: "P", estLbl: "🔴 Procedente" },
+  improcedente:  { lbl: "🔵 Débito IMPROCEDENTE — reclamar", bg: "#e8f1fb", bd: "#2563eb", est: "I", estLbl: "🔵 Improcedente (reclamar)" },
   refacturar:    { lbl: "🟢 Hay que REFACTURAR", bg: "#e6f9ec", bd: "#16a34a", est: "R", estLbl: "🟢 Se refactura" },
+  procedente:    { lbl: "🔴 Débito PROCEDENTE", bg: "#fde8e8", bd: "#dc2626", est: "P", estLbl: "🔴 Procedente" },
   auditoria:     { lbl: "🟡 Requiere AUDITORÍA médica", bg: "#fffbe6", bd: "#ca8a04", est: "A", estLbl: "🟡 Auditoría médica" },
   indeterminado: { lbl: "⚪ Indeterminado", bg: "#f1f0ec", bd: "#9a8c78", est: "", estLbl: "" }
 };
