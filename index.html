@@ -582,6 +582,20 @@ body {
   color: rgba(29,158,117,0.85);
   margin-top: 3px;
 }
+/* Titileo verde de la tarjeta de Liquidaciones (llama la atención al honorario) */
+@keyframes homeStatMesPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22,163,74,0); }
+  50%      { box-shadow: 0 0 0 4px rgba(22,163,74,0.22), 0 0 13px 2px rgba(22,163,74,0.32); }
+}
+#homeStatMes {
+  animation: homeStatMesPulse 1.9s ease-in-out infinite;
+  border-color: rgba(22,163,74,0.45) !important;
+}
+#homeStatMes:hover { animation-play-state: paused; }
+#homeStatMes .home-stat-lbl { color: rgba(22,163,74,0.9); }
+@media (prefers-reduced-motion: reduce) {
+  #homeStatMes { animation: none; box-shadow: 0 0 0 2px rgba(22,163,74,0.4); }
+}
 .home-footer {
   display: flex;
   justify-content: space-between;
@@ -2073,19 +2087,19 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-07-home-tiles"></script>
-<script src="js/portal-render.js?v=2026-09-07-home-tiles"></script>
-<script src="js/admin-home.js?v=2026-09-07-home-tiles"></script>
-<script src="js/gastos-obra.js?v=2026-09-07-home-tiles"></script>
-<script src="js/presentacion.js?v=2026-09-07-home-tiles"></script>
-<script src="js/sueldo-b.js?v=2026-09-07-home-tiles"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-07-home-tiles"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-07-home-tiles"></script>
-<script src="js/nun-data.js?v=2026-09-07-home-tiles"></script>
-<script src="js/accesos-debitos.js?v=2026-09-07-home-tiles"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-07-home-tiles"></script>
-<script src="js/estadisticas.js?v=2026-09-07-home-tiles"></script>
-<script src="js/gastos-casa.js?v=2026-09-07-home-tiles"></script>
+<script src="js/datos.js?v=2026-09-07-home-titile"></script>
+<script src="js/portal-render.js?v=2026-09-07-home-titile"></script>
+<script src="js/admin-home.js?v=2026-09-07-home-titile"></script>
+<script src="js/gastos-obra.js?v=2026-09-07-home-titile"></script>
+<script src="js/presentacion.js?v=2026-09-07-home-titile"></script>
+<script src="js/sueldo-b.js?v=2026-09-07-home-titile"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-07-home-titile"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-07-home-titile"></script>
+<script src="js/nun-data.js?v=2026-09-07-home-titile"></script>
+<script src="js/accesos-debitos.js?v=2026-09-07-home-titile"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-07-home-titile"></script>
+<script src="js/estadisticas.js?v=2026-09-07-home-titile"></script>
+<script src="js/gastos-casa.js?v=2026-09-07-home-titile"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -6183,7 +6197,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-07-home-tiles';
+  var CURRENT_BUILD = '2026-09-07-home-titile';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
