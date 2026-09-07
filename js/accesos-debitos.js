@@ -747,7 +747,7 @@ function imprimirDebitos() {
 
 // Completar tras deployar el worker (wrangler deploy):
 var DEBITOS_AUDITOR_ENDPOINT = "https://ceot-debitos-auditor.marcelo-aime74.workers.dev/analizar";
-var DEBITOS_AUDITOR_TOKEN    = "";  // igual al secret AUDITOR_TOKEN del worker (si se configuró)
+var DEBITOS_AUDITOR_TOKEN    = "ceot-e6e347f65a8bfad548b64e2b8f7269d240391b59";  // igual al secret AUDITOR_TOKEN del worker (si se configuró)
 
 function debAnalisisKey(fact, nprest) { return "deb_analisis_" + fact + "_" + nprest; }
 function debAuditorFormKey(fact, nprest) { return "deb_auditor_form_" + fact + "_" + nprest; }
