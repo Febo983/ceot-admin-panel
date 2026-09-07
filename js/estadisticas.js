@@ -212,16 +212,19 @@ function estBloqueImport() {
         + '<td style="padding:3px 8px;text-align:right">' + estN(f.n) + '</td></tr>';
     }).join("");
     var noRec = p.filas.filter(function (f) { return !f.ok; }).length;
-    h += '<div style="font-weight:700;font-size:0.82rem;margin-bottom:8px">Previsualización del archivo — ' + p.tipo + '</div>';
+    var esCx = p.tipo === "cirugias";
+    h += '<div style="font-weight:700;font-size:0.82rem;margin-bottom:8px">Previsualización del archivo — ' + (esCx ? "cirugías" : "consultas") + '</div>';
     h += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
       + '<label style="font-size:0.75rem;color:var(--co-ink-dim,#6b6a5a)">Mes a cargar:</label>'
       + '<select id="estImpYm" style="padding:5px 8px;border-radius:7px;border:1px solid var(--co-line,#d9d0b8);font-size:0.78rem">' + opts + '</select>'
-      + '<span style="font-size:0.75rem;color:var(--co-ink-dim,#6b6a5a)">· ' + p.filas.length + ' médicos · total ' + estN(p.total) + '</span>'
+      + '<span style="font-size:0.75rem;color:var(--co-ink-dim,#6b6a5a)">· ' + p.filas.length + (esCx ? ' cirujanos' : ' médicos') + ' · total ' + estN(p.total)
+        + (esCx && p.sinAsignar ? ' · ' + p.sinAsignar + ' sin asignar' : '')
+        + (esCx && p.grupos != null && p.grupos !== p.total ? ' · ' + p.grupos + ' grupos en el archivo' : '') + '</span>'
       + '</div>';
     if (noRec) h += '<div style="font-size:0.72rem;color:#dc2626;margin-bottom:8px">⚠ ' + noRec + ' nombre(s) sin reconocer (fila roja). Revisá el mapeo antes de confirmar.</div>';
     h += '<div style="max-height:230px;overflow:auto;border:1px solid var(--co-line,#d9d0b8);border-radius:7px;margin-bottom:10px">'
       + '<table style="width:100%;border-collapse:collapse;font-size:0.76rem"><thead><tr style="background:rgba(32,36,31,.05)">'
-      + '<th style="padding:4px 8px;text-align:left">Nombre en el Excel</th><th style="padding:4px 8px;text-align:left">Médico</th><th style="padding:4px 8px;text-align:right">Consultas</th>'
+      + '<th style="padding:4px 8px;text-align:left">Nombre en el Excel</th><th style="padding:4px 8px;text-align:left">' + (esCx ? "Cirujano" : "Médico") + '</th><th style="padding:4px 8px;text-align:right">' + (esCx ? "Cirugías" : "Consultas") + '</th>'
       + '</tr></thead><tbody>' + filasHtml + '</tbody></table></div>';
     h += '<div style="display:flex;gap:8px">'
       + '<button onclick="estConfirmarImport()" style="padding:7px 16px;border-radius:8px;border:none;background:#16a34a;color:#fff;font-size:0.78rem;font-weight:700;cursor:pointer">✓ Confirmar y guardar</button>'
@@ -231,19 +234,21 @@ function estBloqueImport() {
     return h;
   }
 
+  var esCxImp = estVista === "cirugias";
   h += '<div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">'
     + '<div style="flex:1;min-width:220px">'
-    + '<div style="font-weight:700;font-size:0.82rem;margin-bottom:3px">⬆ Importar mes (Excel)</div>'
-    + '<div style="font-size:0.73rem;color:var(--co-ink-dim,#6b6a5a)">Subí el Excel mensual de <b>consultas por médico</b> (formato del sistema de la clínica). El mes se detecta solo y podés corregirlo antes de guardar.</div>'
-    + '<div style="font-size:0.7rem;color:var(--co-ink-dim,#6b6a5a);margin-top:4px">Cirugías: el importador mensual queda pendiente hasta definir el formato del archivo.</div>'
+    + '<div style="font-weight:700;font-size:0.82rem;margin-bottom:3px">⬆ Importar mes de ' + (esCxImp ? 'cirugías' : 'consultas') + ' (Excel)</div>'
+    + '<div style="font-size:0.73rem;color:var(--co-ink-dim,#6b6a5a)">' + (esCxImp
+        ? 'Subí el Excel mensual de <b>cirugías</b> (reporte "TRAUMATO ..." del sistema, hoja de prestaciones). Se cuenta una cirugía por paciente, el mes se detecta solo y podés revisar el conteo por cirujano antes de guardar.'
+        : 'Subí el Excel mensual de <b>consultas por médico</b> (formato del sistema de la clínica). El mes se detecta solo y podés corregirlo antes de guardar.') + '</div>'
     + '</div>'
-    + '<input type="file" accept=".xls,.xlsx" onchange="estImportarExcel(this.files[0])" style="font-size:0.75rem">'
+    + '<input type="file" accept=".xls,.xlsx" onchange="' + (esCxImp ? 'estImportarCirugias' : 'estImportarExcel') + '(this.files[0])" style="font-size:0.75rem">'
     + '</div>';
 
   // Meses cargados
   var chips = [];
   for (var m = 0; m < 12; m++) {
-    var o = estOrigenMes("consultas", m);
+    var o = estOrigenMes(estVista, m);
     if (!o) continue;
     var ym = "2026-" + String(m + 1).padStart(2, "0");
     var imp = o === "importado";
@@ -296,24 +301,121 @@ function estImportarExcel(file) {
   };
   rd.readAsArrayBuffer(file);
 }
+
+// Importador del Excel MENSUAL DE CIRUGÍAS (reporte "TRAUMATO <mes> <año>.xls"
+// del sistema de la clínica — "Colón S.A.A. · Prestaciones"). Formato: hoja
+// única, 6 columnas [PACIENTE | PROFESIONAL QUE REALIZA | INSTITUCION PRIMARIA |
+// PRESTACION | FECHA | CANT]. Una fila = una prestación; las filas de un mismo
+// paciente van juntas y sólo la PRIMERA trae PACIENTE/PROFESIONAL/INSTITUCION
+// (el resto en blanco) → NO se cuentan filas, se cuentan GRUPOS de paciente.
+// Pie del reporte: "Cantidad de Resultados: N" = cirugías del mes.
+// Decisiones (Marcelo): total del mes = ese N del pie; no contar a FERNANDEZ;
+// grupos sin PROFESIONAL → fila "SIN ASIGNAR"; un archivo = un mes.
+function estImportarCirugias(file) {
+  if (!file) return;
+  if (!window.XLSX) { alert("No se pudo cargar el lector de Excel (XLSX). Revisá la conexión."); return; }
+  var rd = new FileReader();
+  rd.onload = function (e) {
+    try {
+      var wb = XLSX.read(new Uint8Array(e.target.result), { type: "array", cellDates: false });
+      // hoja con más filas
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      wb.SheetNames.forEach(function (nm) {
+        var s = wb.Sheets[nm];
+        if (XLSX.utils.sheet_to_json(s, { header: 1 }).length > XLSX.utils.sheet_to_json(ws, { header: 1 }).length) ws = s;
+      });
+      var rows = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, raw: false });
+      var grupos = [], cur = null, detYm = null, totFooter = null;
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i] || [];
+        var c0 = String(r[0] == null ? "" : r[0]).trim();
+        var c1 = String(r[1] == null ? "" : r[1]).trim();
+        var c2 = String(r[2] == null ? "" : r[2]).trim();
+        var c4 = String(r[4] == null ? "" : r[4]).trim();
+        var mFoot = /cantidad de resultados:\s*(\d+)/i.exec(c0);
+        if (mFoot) { totFooter = parseInt(mFoot[1], 10); break; }
+        if (/^-{3,}/.test(c0) || /^col[oó]n s\.?a\.?a\.?/i.test(c0) || /^prestaciones$/i.test(c0)) break;
+        if (i === 0 && /paciente/i.test(c0)) continue;               // encabezado
+        if (!c0 && !c1 && !c2 && !c4) continue;                       // fila vacía
+        if (c0) { cur = { prof: c1, inst: c2, fecha: c4 }; grupos.push(cur); }
+        if (!detYm) {
+          var mF = /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/.exec(c4);
+          if (mF) detYm = mF[3] + "-" + String(mF[2]).padStart(2, "0");
+        }
+      }
+      if (!grupos.length) { alert('No encontré cirugías en el archivo. ¿Es el Excel de cirugías del sistema (reporte "TRAUMATO ...")?'); return; }
+
+      var porCir = {}, sinAsignar = 0, excluidos = 0;
+      var cob = { art: 0, particular: 0, os: 0 }, porOS = {};
+      grupos.forEach(function (g) {
+        if (!g.prof) { sinAsignar++; }
+        else {
+          var key = estKeyDeMedico(g.prof);
+          if (key === "FERNANDEZ") { excluidos++; }
+          else { porCir[key] = (porCir[key] || 0) + 1; }
+        }
+        var instU = g.inst.toUpperCase();
+        var mSig = /^\(([^)]+)\)/.exec(g.inst);
+        var sig = mSig ? mSig[1].trim() : (instU.indexOf("PARTICULAR") >= 0 ? "PARTICULAR" : "");
+        if (sig) porOS[sig] = (porOS[sig] || 0) + 1;
+        if (instU.indexOf("PARTICULAR") >= 0) cob.particular++;
+        else if (/\bART\b|ART[\).\s]|ASOCIART/.test(instU)) cob.art++;
+        else if (sig) cob.os++;
+      });
+
+      var filas = Object.keys(porCir).map(function (k) {
+        return { raw: k, key: k, n: porCir[k], ok: EST_MEDICOS.some(function (m) { return m.key === k; }) };
+      }).sort(function (a, b) { return b.n - a.n; });
+      if (sinAsignar) filas.push({ raw: "(sin profesional en el reporte)", key: "SIN ASIGNAR", n: sinAsignar, ok: true });
+
+      var mm = (new Date()).getMonth();
+      estImpPreview = {
+        tipo: "cirugias",
+        ym: detYm || ("2026-" + String(mm + 1).padStart(2, "0")),
+        filas: filas,
+        total: (totFooter != null) ? totFooter : (grupos.length - excluidos),
+        grupos: grupos.length,
+        sinAsignar: sinAsignar,
+        cob: cob,
+        porOS: porOS
+      };
+      estPintarAdmin();
+    } catch (err) {
+      alert("No pude leer el archivo: " + err.message);
+    }
+  };
+  rd.readAsArrayBuffer(file);
+}
 function estCancelarImport() { estImpPreview = null; estPintarAdmin(); }
 function estConfirmarImport() {
   if (!estImpPreview) return;
   var sel = document.getElementById("estImpYm");
   var ym = sel ? sel.value : estImpPreview.ym;
+  var p = estImpPreview;
   var obj = { _ts: new Date().toISOString() };
   var tot = 0;
-  estImpPreview.filas.forEach(function (f) { obj[f.key] = f.n; tot += f.n; });
-  obj._total = tot;
-  EST_IMPORT.consultas[ym] = obj;
+  p.filas.forEach(function (f) { obj[f.key] = f.n; tot += f.n; });
+  if (p.tipo === "cirugias") {
+    // El total del mes es el "Cantidad de Resultados" del pie del reporte
+    // (excluye Fernández); la suma por cirujano + "SIN ASIGNAR" (ya viene como
+    // fila) lo iguala.
+    obj._total = (p.total != null) ? p.total : tot;
+    if (p.grupos != null) obj._grupos = p.grupos;
+    if (p.cob) obj._cob = p.cob;
+    if (p.porOS) obj._porOS = p.porOS;
+    EST_IMPORT.cirugias[ym] = obj;
+  } else {
+    obj._total = tot;
+    EST_IMPORT.consultas[ym] = obj;
+  }
   estGuardar();
   estImpPreview = null;
   estPintarAdmin();
 }
 function estQuitarMes(ym) {
-  if (!confirm("¿Quitar el mes importado " + ym + "? (no afecta la semilla)")) return;
-  if (EST_IMPORT.consultas) delete EST_IMPORT.consultas[ym];
-  if (EST_IMPORT.cirugias)  delete EST_IMPORT.cirugias[ym];
+  var tipo = (estVista === "cirugias") ? "cirugias" : "consultas";
+  if (!confirm("¿Quitar el mes de " + tipo + " importado " + ym + "? (no afecta la semilla)")) return;
+  if (EST_IMPORT[tipo]) delete EST_IMPORT[tipo][ym];
   estGuardar();
   estPintarAdmin();
 }
@@ -418,6 +520,12 @@ function estTablaMatriz(mat, totMes, meses, cmp2025, nComp) {
     var prev = cmp && cmp[m.key] ? estSumHasta(cmp[m.key], n) : null;
     return { label: m.label, row: row, tot: tot, prev: prev };
   }).filter(Boolean).sort(function (a, b) { return b.tot - a.tot; });
+  // Cirugías sin profesional asignado en el reporte — va al final (no es del roster).
+  if (mat["SIN ASIGNAR"]) {
+    var srow = mat["SIN ASIGNAR"];
+    var stot = srow.reduce(function (a, v) { return a + (v || 0); }, 0);
+    if (stot) filas.push({ label: "Sin asignar", row: srow, tot: stot, prev: null });
+  }
 
   var th = '<th style="padding:5px 8px;text-align:left;position:sticky;left:0;background:var(--co-card,#fbf8f0)">Médico</th>';
   meses.forEach(function (m) { th += '<th style="padding:5px 8px;text-align:right">' + EST_MESES_CORTO[m] + '</th>'; });
