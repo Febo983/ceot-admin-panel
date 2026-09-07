@@ -900,7 +900,9 @@ function nunParte(cod) {
 }
 
 function renderMiPanel(doctor) {
-  var pane = document.getElementById('pane-mipanel');
+  // Antes vivía en su propia solapa (#pane-mipanel); ahora se muestra directo
+  // en la home del portal, debajo de los tiles (contenedor #homeMiPanel).
+  var pane = document.getElementById('homeMiPanel') || document.getElementById('pane-mipanel');
   if (!pane) return;
 
   var mesActual = tabMesActual();

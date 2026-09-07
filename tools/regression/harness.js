@@ -31,7 +31,7 @@
       try { const e = document.createElement('div'); e.id = 'sm_' + d.user; host.appendChild(e); renderMayo(e.id, d); out['mayo|' + d.apellido] = e.innerHTML; } catch (err) { out['mayo|' + d.apellido] = 'ERR ' + err; }
       for (const m of meses) { try { const e = document.createElement('div'); e.id = 'si_' + d.user + '_' + m; host.appendChild(e); renderIndividual(rawMap[m], fecMap[m], m, e.id, d); out['ind|' + d.apellido + '|' + m] = e.innerHTML; } catch (err) { out['ind|' + d.apellido + '|' + m] = 'ERR ' + err; } }
       try { renderHistorial(d); out['hist|' + d.apellido] = document.getElementById('pane-historial').innerHTML; } catch (err) { out['hist|' + d.apellido] = 'ERR ' + err; }
-      try { renderMiPanel(d); out['mipanel|' + d.apellido] = document.getElementById('pane-mipanel').innerHTML; } catch (err) { out['mipanel|' + d.apellido] = 'ERR ' + err; }
+      try { renderMiPanel(d); out['mipanel|' + d.apellido] = document.getElementById('homeMiPanel').innerHTML; } catch (err) { out['mipanel|' + d.apellido] = 'ERR ' + err; }
     }
     host.remove();
     for (const p of ['junio', 'julio', 'agosto', 'septiembre']) {
