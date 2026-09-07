@@ -694,6 +694,9 @@ async function cargarLiquidacionRemota() {
 
     // Guardar datos completos para Historial
     liquidacionData = data;
+    // Sello de tiempo de la última sincronización exitosa con la planilla
+    // (lo muestra el "indicador de sync" del portal profesional).
+    window.__syncLiquidacionTs = Date.now();
 
     // ── Extraer OSDE y CM para cada período ────────────────
     // "diciembre" excluido a propósito: el endpoint devuelve datos de Dic-2025
