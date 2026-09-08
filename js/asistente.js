@@ -64,7 +64,7 @@ function asistMontar(doctor) {
   panel.hidden = true;
   panel.innerHTML = ''
     + '<div class="asist-head">'
-    +   '<div class="asist-head-t"><b>Asistente CEOT</b><span>responde sobre tu liquidación y las normas</span></div>'
+    +   '<div class="asist-head-t"><b>Asistente AI (licencia de Marce)</b><span>responde sobre tu liquidación y las normas</span></div>'
     +   '<span class="asist-ro">solo lectura</span>'
     +   '<button class="asist-x" type="button" aria-label="Cerrar" onclick="asistToggle()">✕</button>'
     + '</div>'
