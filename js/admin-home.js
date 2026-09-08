@@ -26,6 +26,7 @@ var ADM_HOME_MODULOS = [
   { key:"premios",          ico:"award",           lbl:"Premios",       cat:"cat-adm", fn:"renderPremios()" },
   { key:"estadisticas",     ico:"line-chart",      lbl:"Estadísticas CEOT", cat:"cat-inf", fn:"renderEstadisticasCeot()" },
   { key:"gastoscasa",       ico:"home",            lbl:"Gastos Casa",   cat:"cat-gst", fn:"renderGastosCasa()" },
+  { key:"faqasistente",     ico:"bot",             lbl:"FAQ del asistente", cat:"cat-adm", fn:"renderFaqAsistente()" },
 ];
 var ADM_HOME_MOD_COLOR = {
   "cat-fin":"rgba(29,158,117,0.22)","cat-cli":"rgba(55,138,221,0.22)",
@@ -35,7 +36,7 @@ var ADM_HOME_MOD_COLOR = {
 // Cualquier key que no figure acá cae automáticamente en un grupo "Más".
 var ADM_HOME_MOD_GRUPOS = [
   { t:"Honorarios", c:"rgba(29,158,117,0.9)",  keys:["liquidaciones","totalceot","sueldodirector","licenciashon","cpsm","aporteceot","debitos","facturas","presentacion"] },
-  { t:"Gestión", c:"rgba(127,119,221,0.9)", keys:["sueldob","licencias","premios","estadisticas","gastoscasa"] }
+  { t:"Gestión", c:"rgba(127,119,221,0.9)", keys:["sueldob","licencias","premios","estadisticas","gastoscasa","faqasistente"] }
 ];
 var ADM_HOME_ACC_COLOR = {
   "Finanzas":"rgba(29,158,117,0.22)","Clínica":"rgba(55,138,221,0.22)",
