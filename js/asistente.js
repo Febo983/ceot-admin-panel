@@ -53,8 +53,8 @@ function asistMontar(doctor) {
   fab.id = "asistFab";
   fab.className = "asist-fab";
   fab.type = "button";
-  fab.setAttribute("aria-label", "Abrir asistente");
-  fab.textContent = "💬";
+  fab.setAttribute("aria-label", "Abrir el asistente");
+  fab.innerHTML = '<span class="asist-fab-ico" aria-hidden="true">🤖</span><span class="asist-fab-txt">¿Tenés una consulta?</span>';
   fab.onclick = asistToggle;
   document.body.appendChild(fab);
 

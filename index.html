@@ -168,13 +168,16 @@ body {
 /* ── ASISTENTE (widget del portal profesional) ── */
 .asist-fab {
   position: fixed; right: 16px; bottom: 16px; z-index: 1200;
-  width: 52px; height: 52px; border-radius: 50%;
+  display: flex; align-items: center; gap: 8px;
+  height: 46px; padding: 0 16px 0 13px; border-radius: 999px;
   background: #1f3a2e; color: #fff; border: none; cursor: pointer;
-  font-size: 1.35rem; line-height: 52px; text-align: center;
+  font-family: inherit; font-size: 0.84rem; font-weight: 600;
   box-shadow: 0 4px 14px rgba(15,28,40,.28); transition: transform .15s;
 }
-.asist-fab:hover { transform: scale(1.06); }
-.asist-fab.open { background: #12241b; }
+.asist-fab:hover { transform: translateY(-1px); }
+.asist-fab-ico { font-size: 1.2rem; line-height: 1; }
+.asist-fab.open { display: none; }
+@media (max-width: 360px) { .asist-fab-txt { display: none; } .asist-fab { padding: 0 13px; } }
 .asist-panel {
   position: fixed; right: 16px; bottom: 78px; z-index: 1200;
   width: min(372px, calc(100vw - 24px));
@@ -2160,21 +2163,21 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-08-asistente-4"></script>
-<script src="js/portal-render.js?v=2026-09-08-asistente-4"></script>
-<script src="js/admin-home.js?v=2026-09-08-asistente-4"></script>
-<script src="js/gastos-obra.js?v=2026-09-08-asistente-4"></script>
-<script src="js/presentacion.js?v=2026-09-08-asistente-4"></script>
-<script src="js/sueldo-b.js?v=2026-09-08-asistente-4"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-08-asistente-4"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-08-asistente-4"></script>
-<script src="js/nun-data.js?v=2026-09-08-asistente-4"></script>
-<script src="js/accesos-debitos.js?v=2026-09-08-asistente-4"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-08-asistente-4"></script>
-<script src="js/estadisticas.js?v=2026-09-08-asistente-4"></script>
-<script src="js/gastos-casa.js?v=2026-09-08-asistente-4"></script>
-<script src="js/faq-asistente.js?v=2026-09-08-asistente-4"></script>
-<script src="js/asistente.js?v=2026-09-08-asistente-4"></script>
+<script src="js/datos.js?v=2026-09-08-asistente-5"></script>
+<script src="js/portal-render.js?v=2026-09-08-asistente-5"></script>
+<script src="js/admin-home.js?v=2026-09-08-asistente-5"></script>
+<script src="js/gastos-obra.js?v=2026-09-08-asistente-5"></script>
+<script src="js/presentacion.js?v=2026-09-08-asistente-5"></script>
+<script src="js/sueldo-b.js?v=2026-09-08-asistente-5"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-08-asistente-5"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-08-asistente-5"></script>
+<script src="js/nun-data.js?v=2026-09-08-asistente-5"></script>
+<script src="js/accesos-debitos.js?v=2026-09-08-asistente-5"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-08-asistente-5"></script>
+<script src="js/estadisticas.js?v=2026-09-08-asistente-5"></script>
+<script src="js/gastos-casa.js?v=2026-09-08-asistente-5"></script>
+<script src="js/faq-asistente.js?v=2026-09-08-asistente-5"></script>
+<script src="js/asistente.js?v=2026-09-08-asistente-5"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -6281,7 +6284,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-08-asistente-4';
+  var CURRENT_BUILD = '2026-09-08-asistente-5';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
