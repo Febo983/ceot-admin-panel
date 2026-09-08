@@ -4,9 +4,11 @@
 // SOLO LECTURA: no ejecuta acciones, no marca nada. La FAQ vive en
 // ASISTENTE_FAQ_FALLBACK / localStorage["ceot_faq_asistente"] (ver faq-asistente.js).
 
-// ⚠ Completar tras el deploy del worker:
+// Worker ceot-asistente (deployado 2026-09-08). Falta que el worker tenga el
+// secret ANTHROPIC_API_KEY para que responda; hasta entonces devuelve error y el
+// widget muestra "No pude responder ahora".
 var ASISTENTE_ENDPOINT = "https://ceot-asistente.marcelo-aime74.workers.dev/preguntar";
-var ASISTENTE_TOKEN    = "";  // el mismo string que el secret ASISTENTE_TOKEN del worker
+var ASISTENTE_TOKEN    = "24329406395628a29005a882d6eb07a3c71f96cb8a95f9c5";  // mismo secret que el worker (queda público en el cliente: es un freno menor, no auth real)
 
 var _asistDoctor   = null;
 var _asistHist     = [];      // [{role:"user"|"assistant", text, err?}]
