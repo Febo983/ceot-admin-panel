@@ -32,7 +32,7 @@ var ASISTENTE_FAQ_FALLBACK = {
       titulo: "Cheques y fechas de cobro",
       items: [
         { q: "¿Cuántos cheques cobro por mes y en qué orden?", a: "5 cheques Colón, más la acreditación de Centro Médico (CEM) y el cheque de OSDE. Orden real: primero CEM (liquidación del mes anterior), después los cheques Colón 1 a 4, el de OSDE se intercala entre el 4º y el 5º, y por último el cheque 5." },
-        { q: "¿Cuándo se acredita cada cheque?", a: "Aproximadamente 48 horas después de la fecha indicada en tu liquidación. El cheque de OSDE es al día (del mes que se cobra). Los de ART y los diferidos van al mes de vencimiento (60 días)." },
+        { q: "¿Cuándo se acredita cada cheque?", a: "Los 5 cheques Colón, el de CEM y el de OSDE se acreditan aproximadamente 48 horas después de la fecha indicada en tu liquidación. El cheque de OSDE es al día (del mes que se cobra). Los diferidos van al mes de vencimiento (60 días)." },
         { q: "¿Qué significa 'en la cuenta del CEOT' vs 'transferido'?", a: "En la cuenta del CEOT: el cheque ya se acreditó en la cuenta de la clínica y está listo para transferirte. Transferido: la plata ya está en tu cuenta. El estado por mes lo marca administración." },
         { q: "¿Por qué mi cobro de octubre está demorado?", a: "Por la licencia de Marcelo (9 al 27 de octubre). El procesamiento de la liquidación mensual solo lo puede hacer él y se corre al regreso, así que el circuito completo (OSDE, diferidos, CPSM, retenciones) se atrasa unos 5 días hábiles y cae a principios de noviembre. Es una demora prevista." }
       ]
