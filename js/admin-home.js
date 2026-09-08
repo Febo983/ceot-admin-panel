@@ -489,7 +489,7 @@ function renderAdmHome() {
   if (retro) initAdmHomeBg(); else stopAdmHomeBg();
 }
 
-// ══════ FONDO ANIMADO — VISTA RETRO (constelación de nodos + bestiario 8-bit) ═════
+// ══════ FONDO ANIMADO — VISTA RETRO (constelación de nodos + emojis que cruzan) ═════
 // El home admin se re-renderiza seguido (cambio de mes, editar nombres,
 // toggle clásico/retro), asi que el canvas se recrea cada vez — hay que
 // cortar el rAF previo antes de arrancar uno nuevo o se acumulan loops.
@@ -511,58 +511,34 @@ function initAdmHomeBg() {
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var width = 0, height = 0, nodes = [], walkers = [], groundY = 110;
 
-  // Bestiario 8-bit propio (inspirado en los plataformeros de los 80, sin usar
-  // arte de Nintendo). Cada sprite: cuadros de pixeles ("#" color principal,
-  // "o" secundario, "." vacío), sus colores rgb y el tipo de movimiento:
-  //   walk  → camina por el piso, ciclo de patas
+  // Personajes que cruzan el fondo del Home retro — emojis dibujados con
+  // ctx.fillText a baja opacidad. Cada uno: el glifo y su tipo de movimiento:
+  //   walk  → camina por el piso con un balanceo mínimo
   //   hop   → avanza dando saltitos (rebote sinusoidal)
-  //   float → flota un poco por encima del piso, con vaivén suave
-  var SPRITES = {
-    hongo: {
-      move: "walk",
-      colors: { "#": "239,111,162", "o": "255,250,241" },
-      frames: [
-        [".#####.", "#######", "#o###o#", "#######", "##ooo##", "..ooo..", "..o.o..", ".o...o."],
-        [".#####.", "#######", "#o###o#", "#######", "##ooo##", "..ooo..", "..o.o..", "..o.o.."]
-      ]
-    },
-    tortuga: {
-      move: "walk",
-      colors: { "#": "47,125,74", "o": "15,28,40" },
-      frames: [
-        ["..oo....", ".####oo.", "o######.", "o######o", "o######o", ".o.oo.o.", ".o....o."],
-        ["..oo....", ".####oo.", "o######.", "o######o", "o######o", ".o.oo.o.", "..o..o.."]
-      ]
-    },
-    fuego: {
-      move: "hop",
-      colors: { "#": "201,147,58", "o": "255,250,241" },
-      frames: [
-        [".###.", "##o##", "#o#o#", "##o##", ".###."],
-        [".#.#.", "##o##", "#ooo#", "##o##", ".#.#."]
-      ]
-    },
-    estrella: {
-      move: "float",
-      colors: { "#": "201,147,58", "o": "201,147,58" },
-      frames: [
-        ["...#...", "..###..", "#######", ".#####.", "..###..", ".##.##.", "##...##"],
-        [".......", "...#...", "..###..", "#######", "..###..", "...#...", "......."]
-      ]
-    }
-  };
-  var SPRITE_KINDS = ["hongo", "tortuga", "fuego", "estrella"];
+  //   float → flota por encima del piso, con vaivén suave
+  var SPRITES = [
+    { e: "🍄", move: "walk" },
+    { e: "🐢", move: "walk" },
+    { e: "🐌", move: "walk" },
+    { e: "👾", move: "walk" },
+    { e: "🔥", move: "hop" },
+    { e: "🌱", move: "hop" },
+    { e: "⭐", move: "float" },
+    { e: "🪙", move: "float" },
+    { e: "☁️", move: "float" }
+  ];
+  var EMOJI_FONT = "23px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif";
 
   function makeWalkers() {
     var n = width < 420 ? 2 : (width < 620 ? 3 : 4);
     walkers = [];
-    var pool = SPRITE_KINDS.slice();
+    var pool = SPRITES.slice();
     for (var i = 0; i < n; i++) {
-      var kind = pool.length
+      var pick = pool.length
         ? pool.splice(Math.floor(Math.random() * pool.length), 1)[0]
-        : SPRITE_KINDS[Math.floor(Math.random() * SPRITE_KINDS.length)];
+        : SPRITES[Math.floor(Math.random() * SPRITES.length)];
       walkers.push({
-        kind: kind,
+        e: pick.e, move: pick.move,
         x: Math.random() * Math.max(width, 1),
         dir: Math.random() < 0.5 ? 1 : -1,
         speed: 0.11 + Math.random() * 0.14,
@@ -575,30 +551,26 @@ function initAdmHomeBg() {
     if (!card) { groundY = Math.min(120, height - 14); return; }
     var cy = card.getBoundingClientRect().bottom - canvas.getBoundingClientRect().top;
     // Cruzan el hueco entre la tarjeta hero y el título "DASH BOARD".
-    groundY = Math.max(18, Math.min(cy + 22, height - 14));
+    groundY = Math.max(20, Math.min(cy + 16, height - 14));
   }
   function drawWalker(w) {
-    var s = 3;
-    var spr = SPRITES[w.kind] || SPRITES.hongo;
-    var frame = spr.frames[Math.floor(w.phase / 7) % spr.frames.length];
-    var baseY = groundY - frame.length * s;
     var px = Math.round(w.x);
+    var yOff;
+    if (w.move === "hop")        yOff = -Math.abs(Math.sin(w.phase * 0.13)) * 8;
+    else if (w.move === "float") yOff = -16 - Math.sin(w.phase * 0.06) * 4;
+    else                         yOff = -Math.abs(Math.sin(w.phase * 0.10)) * 2; // balanceo mínimo al caminar
+    var y = groundY + yOff;
 
-    var yOff = 0;
-    if (spr.move === "hop")   yOff = -Math.abs(Math.sin(w.phase * 0.13)) * 7;
-    if (spr.move === "float") yOff = -14 - Math.sin(w.phase * 0.06) * 4;
-
-    var mirror = spr.move !== "float" && w.dir < 0;
-    for (var r = 0; r < frame.length; r++) {
-      var row = frame[r];
-      for (var c = 0; c < row.length; c++) {
-        var ch = row.charAt(c);
-        if (ch === ".") continue;
-        ctx.fillStyle = "rgba(" + (spr.colors[ch] || spr.colors["#"]) + ",0.82)";
-        var cx = mirror ? (row.length - 1 - c) : c;
-        ctx.fillRect(px + cx * s, Math.round(baseY + r * s + yOff), s, s);
-      }
+    ctx.save();
+    ctx.globalAlpha = 0.78;
+    ctx.font = EMOJI_FONT;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    if (w.move !== "float" && w.dir < 0) {   // mira hacia donde camina
+      ctx.translate(px, 0); ctx.scale(-1, 1); ctx.translate(-px, 0);
     }
+    ctx.fillText(w.e, px, y);
+    ctx.restore();
   }
 
   function makeNodes() {
