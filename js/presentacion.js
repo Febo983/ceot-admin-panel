@@ -847,6 +847,119 @@ function premPdfAplicar() {
 }
 
 
+// ══════ PERFIL QUIRÚRGICO — snapshot del reporte de Estadísticas CX ══════
+// Rankings de complejidad NUN, material/ortopedias y obra social sobre el
+// acumulado del año. Fuente: "CEOT · Estadísticas Quirúrgicas.pdf" (la app
+// ceot-estadisticas-cx-26). El parser de cirugías de Presentación (presCxParseTab)
+// solo levanta médico/paciente/fecha, así que estos números son un snapshot
+// manual — para actualizar, reemplazar los valores de PRES_PERFIL con los del
+// reporte nuevo y cambiar `rango`.
+var PRES_PERFIL = {
+  rango:      "Enero – Septiembre 2026",
+  rangoCorto: "Ene–Sep 2026",
+  fuente:     "reporte Estadísticas Quirúrgicas · 108/110 planillas",
+  totalCx:        1030,
+  cirujanos:      14,
+  obrasSociales:  47,
+  nunCodificadas: 851,   // 179 cirugías sin complejidad NUN cargada
+  // Complejidad NUN agrupada en bandas (colores válidos en claro y oscuro)
+  nunBandas: [
+    { l: "Baja · 1–3",      v: 73,  c: "#cddfce" },
+    { l: "Media · 4–5",     v: 192, c: "#8fbf9a" },
+    { l: "Alta · 6–7",      v: 477, c: "#4f9d74" },
+    { l: "Muy alta · 8–10", v: 109, c: "#1f6b4a" }
+  ],
+  // Material / ortopedias — consolidado aprox. (la planilla trae ~40 grafías
+  // distintas para ~10 proveedores reales: TECNOPROT/TECNOP/TECNPROT/TECN0PROT…)
+  material: [
+    { l: "Sin ortopedia",   v: 341, c: "#b3ab97" },
+    { l: "SANTHEO ~",       v: 175, c: "#1c78b0" },
+    { l: "TECNOPROT ~",     v: 161, c: "#d85a30" },
+    { l: "IGUALAR ~",       v: 157, c: "#1d9e75" },
+    { l: "Sin especificar", v: 76,  c: "#c9933a" },
+    { l: "Otros (10+)",     v: 120, c: "#7f77dd" }
+  ],
+  // Obra social — el reporte solo trae el número agregado de ART; el resto
+  // aparece ordenado pero sin cifras.
+  obraSocial: {
+    art:   203,
+    resto: 827,
+    ordenNoArt: ["OSDE", "Sancor", "Federada", "Medifé", "Swiss Medical", "Particular",
+      "Unión Personal", "Galeno", "Avalian", "Prevención Salud", "Omint", "Medicus"],
+    artTop: "PCIA ART 68 · PROV ART 47 · ASOCIART 35 · ANDINA ART 16"
+  }
+};
+
+function presPerfilCard(titulo, canvasId, footHtml, h) {
+  return '<div style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:14px">'
+    + '<div style="font-size:0.72rem;font-weight:700;color:var(--co-ink-dim,#6b6a5a);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">' + titulo + '</div>'
+    + '<div style="position:relative;height:' + (h || 210) + 'px"><canvas id="' + canvasId + '"></canvas></div>'
+    + (footHtml ? '<div style="margin-top:10px;font-size:0.7rem;color:var(--co-ink-dim,#6b6a5a);line-height:1.55">' + footHtml + '</div>' : '')
+    + '</div>';
+}
+
+function presPerfilHtml() {
+  var P = PRES_PERFIL;
+  var html = '<div style="margin-top:26px">';
+  html += '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-top:2px solid var(--co-line,#d9d0b8);padding-top:16px;margin-bottom:4px">'
+    + '<div class="adm-sec-title" style="margin:0;border:none;padding:0">🦴 Perfil quirúrgico</div>'
+    + '<div style="font-size:0.78rem;font-weight:700;color:#1f3a2e">acumulado ' + P.rango + '</div>'
+    + '</div>';
+  html += '<div style="font-size:0.7rem;color:var(--co-ink-dim,#6b6a5a);margin-bottom:14px">'
+    + P.totalCx.toLocaleString('es-AR') + ' cirugías definitivas · ' + P.cirujanos + ' cirujanos · '
+    + P.obrasSociales + ' obras sociales · fuente: ' + P.fuente + '</div>';
+
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">';
+  html += presPerfilCard('Complejidad NUN · ' + P.nunCodificadas + ' codificadas', 'presPerfilNun',
+    '<b>56% son NUN 6–7</b> y otro 13% son 8–10. ' + (P.totalCx - P.nunCodificadas)
+    + ' cirugías (17%) todavía sin complejidad NUN cargada — los % son sobre las ' + P.nunCodificadas + '.');
+  html += presPerfilCard('Material · ortopedias (consolidado)', 'presPerfilMat',
+    '<b>1 de cada 3 cirugías no lleva material.</b> De las que sí, SANTHEO + TECNOPROT + IGUALAR cubren ~90%. '
+    + 'La planilla trae ~40 grafías para ~10 proveedores reales: falta normalizar antes de tomarlo renglón por renglón.');
+  html += presPerfilCard('Obra social · ART vs. resto', 'presPerfilOs',
+    '<b>ART = 1 de cada 5 cirugías</b> (' + P.obraSocial.artTop + '). El reporte trae el <b>orden</b> del resto pero no las cifras: '
+    + P.obraSocial.ordenNoArt.slice(0, 6).join(', ') + '… Para el ranking completo con números hace falta la planilla con la columna de obra social.');
+  html += '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+function presInitPerfilCharts() {
+  ['presPerfilNun', 'presPerfilMat', 'presPerfilOs'].forEach(function (id) {
+    if (presChartInstances[id]) { presChartInstances[id].destroy(); delete presChartInstances[id]; }
+  });
+  if (!window.Chart) return;
+  var P = PRES_PERFIL;
+  function dona(id, items) {
+    var cv = document.getElementById(id);
+    if (!cv) return;
+    presChartInstances[id] = new Chart(cv, {
+      type: 'doughnut',
+      data: {
+        labels: items.map(function (x) { return x.l; }),
+        datasets: [{ data: items.map(function (x) { return x.v; }), backgroundColor: items.map(function (x) { return x.c; }), borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '62%',
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9.5 } } },
+          tooltip: { callbacks: { label: function (ctx) {
+            var t = ctx.dataset.data.reduce(function (s, v) { return s + v; }, 0);
+            return ctx.label + ': ' + ctx.parsed.toLocaleString('es-AR') + ' (' + Math.round(ctx.parsed / t * 100) + '%)';
+          } } }
+        }
+      }
+    });
+  }
+  dona('presPerfilNun', P.nunBandas);
+  dona('presPerfilMat', P.material);
+  dona('presPerfilOs', [
+    { l: 'ART', v: P.obraSocial.art, c: '#d85a30' },
+    { l: 'Obras sociales + particular', v: P.obraSocial.resto, c: '#1c78b0' }
+  ]);
+}
+
 function renderPresentacion(mes) {
   cerrarAdmSidenav();
   admDesactivarSidebar();
@@ -922,6 +1035,8 @@ function renderPresentacion(mes) {
     + presChartCard('Gastos A — evolución mensual', 'presChartGastosA')
     + presChartCardCx()
     + '</div>';
+
+  html += presPerfilHtml();
 
   container.innerHTML = html;
   presInitCharts(mes, rows, tt, disponibles);
@@ -1020,5 +1135,7 @@ function presInitCharts(mes, rows, tt, disponibles) {
       });
     }
   }
+
+  presInitPerfilCharts();
 }
 
