@@ -394,7 +394,7 @@ function renderAdmHome() {
 
   if (retro) {
     html = '<div class="adm-home-retro adm-home-retro-wrap"><canvas id="admHomeBg" aria-hidden="true"></canvas><div class="adm-home-retro-inner">'
-      + '<div id="admHeroCard" style="position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fffaf1;border:3px solid #0f1c28;border-radius:18px;padding:12px 18px;box-shadow:0 5px 0 #0f1c28,0 10px 18px rgba(15,28,40,.18);margin-bottom:24px">'
+      + '<div id="admHeroCard" style="position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fffaf1;border:3px solid #0f1c28;border-radius:18px;padding:12px 18px;box-shadow:0 5px 0 #0f1c28,0 10px 18px rgba(15,28,40,.18);margin-bottom:46px">'
       +   '<div style="display:flex;align-items:center;gap:12px">'
       +     '<div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(160deg,#2f7de0 0%,#1f5cab 100%);border:3px solid #0f1c28;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -4px 0 rgba(0,0,0,.18);flex-shrink:0">'
       +       '<svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M12 3v18M3 12h18" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>'
@@ -550,14 +550,15 @@ function initAdmHomeBg() {
     var card = document.getElementById("admHeroCard");
     if (!card) { groundY = Math.min(120, height - 14); return; }
     var cy = card.getBoundingClientRect().bottom - canvas.getBoundingClientRect().top;
-    // Cruzan el hueco entre la tarjeta hero y el título "DASH BOARD".
-    groundY = Math.max(20, Math.min(cy + 16, height - 14));
+    // Línea de piso en el hueco (46px) entre la tarjeta hero y "DASH BOARD",
+    // bien despegada del borde de la tarjeta para que no los tape.
+    groundY = Math.max(24, Math.min(cy + 32, height - 14));
   }
   function drawWalker(w) {
     var px = Math.round(w.x);
     var yOff;
     if (w.move === "hop")        yOff = -Math.abs(Math.sin(w.phase * 0.13)) * 8;
-    else if (w.move === "float") yOff = -16 - Math.sin(w.phase * 0.06) * 4;
+    else if (w.move === "float") yOff = -12 - Math.sin(w.phase * 0.06) * 3;
     else                         yOff = -Math.abs(Math.sin(w.phase * 0.10)) * 2; // balanceo mínimo al caminar
     var y = groundY + yOff;
 
