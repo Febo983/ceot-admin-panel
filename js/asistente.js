@@ -60,8 +60,7 @@ function asistMontar(doctor) {
 
   var panel = document.createElement("div");
   panel.id = "asistPanel";
-  panel.className = "asist-panel";
-  panel.hidden = true;
+  panel.className = "asist-panel";   // oculto por CSS hasta que se toca el robot (.asist-open)
   panel.innerHTML = ''
     + '<div class="asist-head">'
     +   '<div class="asist-head-t"><b>Asistente AI (licencia de Marce)</b><span>responde sobre tu liquidación y las normas</span></div>'
@@ -87,8 +86,8 @@ function asistDesmontar() {
 function asistToggle() {
   var p = document.getElementById("asistPanel"), fab = document.getElementById("asistFab");
   if (!p) return;
-  _asistAbierto = p.hidden;
-  p.hidden = !p.hidden;
+  _asistAbierto = !p.classList.contains("asist-open");
+  p.classList.toggle("asist-open", _asistAbierto);
   if (fab) fab.classList.toggle("open", _asistAbierto);
   if (_asistAbierto) {
     asistRender();

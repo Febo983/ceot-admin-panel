@@ -182,11 +182,12 @@ body {
   position: fixed; right: 16px; bottom: 78px; z-index: 1200;
   width: min(372px, calc(100vw - 24px));
   height: min(560px, calc(100vh - 120px));
-  display: flex; flex-direction: column; overflow: hidden;
+  display: none; flex-direction: column; overflow: hidden;
   background: var(--co-card, #fffaf1); color: var(--co-ink, #20241f);
   border: 1px solid var(--co-line, #d9d0b8); border-radius: 14px;
   box-shadow: 0 12px 40px rgba(15,28,40,.24);
 }
+.asist-panel.asist-open { display: flex; }
 .asist-head {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 12px; border-bottom: 1px solid var(--co-line, #d9d0b8);
@@ -2163,21 +2164,21 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-08-asistente-5"></script>
-<script src="js/portal-render.js?v=2026-09-08-asistente-5"></script>
-<script src="js/admin-home.js?v=2026-09-08-asistente-5"></script>
-<script src="js/gastos-obra.js?v=2026-09-08-asistente-5"></script>
-<script src="js/presentacion.js?v=2026-09-08-asistente-5"></script>
-<script src="js/sueldo-b.js?v=2026-09-08-asistente-5"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-08-asistente-5"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-08-asistente-5"></script>
-<script src="js/nun-data.js?v=2026-09-08-asistente-5"></script>
-<script src="js/accesos-debitos.js?v=2026-09-08-asistente-5"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-08-asistente-5"></script>
-<script src="js/estadisticas.js?v=2026-09-08-asistente-5"></script>
-<script src="js/gastos-casa.js?v=2026-09-08-asistente-5"></script>
-<script src="js/faq-asistente.js?v=2026-09-08-asistente-5"></script>
-<script src="js/asistente.js?v=2026-09-08-asistente-5"></script>
+<script src="js/datos.js?v=2026-09-08-asistente-6"></script>
+<script src="js/portal-render.js?v=2026-09-08-asistente-6"></script>
+<script src="js/admin-home.js?v=2026-09-08-asistente-6"></script>
+<script src="js/gastos-obra.js?v=2026-09-08-asistente-6"></script>
+<script src="js/presentacion.js?v=2026-09-08-asistente-6"></script>
+<script src="js/sueldo-b.js?v=2026-09-08-asistente-6"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-08-asistente-6"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-08-asistente-6"></script>
+<script src="js/nun-data.js?v=2026-09-08-asistente-6"></script>
+<script src="js/accesos-debitos.js?v=2026-09-08-asistente-6"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-08-asistente-6"></script>
+<script src="js/estadisticas.js?v=2026-09-08-asistente-6"></script>
+<script src="js/gastos-casa.js?v=2026-09-08-asistente-6"></script>
+<script src="js/faq-asistente.js?v=2026-09-08-asistente-6"></script>
+<script src="js/asistente.js?v=2026-09-08-asistente-6"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -6284,7 +6285,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-08-asistente-5';
+  var CURRENT_BUILD = '2026-09-08-asistente-6';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
