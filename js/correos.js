@@ -2,9 +2,9 @@
 // correos.js — módulo "Correos" del panel admin.
 // Espejo de solo lectura de los correos que analiza el Apps Script
 // "correo" (traumatologiaccolon@gmail.com): trae las últimas ~60 filas
-// de la hoja "CEOT — Correos analizados" vía un doGet JSONP. La hoja
-// queda PRIVADA; el endpoint devuelve solo lo que muestra el panel.
-// Ver project_ceot_analizador_correos en la memoria.
+// de la hoja "CEOT — Correos analizados" con un fetch() al doGet del Web
+// App (responde JSON + CORS). La hoja queda PRIVADA; el endpoint devuelve
+// solo lo que muestra el panel. Ver project_ceot_analizador_correos.
 // ═══════════════════════════════════════════════════════════════════
 
 // URL /exec del Web App del proyecto "correo" (Implementar → Aplicación web,
@@ -12,7 +12,6 @@
 var CORREOS_ENDPOINT = "https://script.google.com/macros/s/AKfycby_yXzYg7nOgoFTrrF8eMO9mdbkK2yaeXUwVbxPgSF5WA_yo6PZ5QzYGSK0JorfEq4c/exec";
 
 var CORREOS_DATA = null;
-var _corrCbSeq = 0;
 var corrFiltro = "todos"; // "todos" | "urgentes" | "cat:<categoria>"
 
 function corrEsc(s) {
@@ -22,25 +21,16 @@ function corrEsc(s) {
 }
 
 function corrFetch(cb) {
-  var cbName = "__corrCb" + (_corrCbSeq++);
   var done = false;
-  var limpiar = function () {
-    window[cbName] = function () {};
-    var s = document.getElementById(cbName);
-    if (s) s.remove();
-  };
-  var to = setTimeout(function () { if (!done) { done = true; limpiar(); cb(null, "timeout"); } }, 15000);
-  window[cbName] = function (resp) {
-    if (done) return;
-    done = true; clearTimeout(to); limpiar();
-    if (resp && resp.ok && resp.items) { CORREOS_DATA = resp; cb(resp); }
-    else cb(null, (resp && resp.error) || "respuesta inválida");
-  };
-  var s = document.createElement("script");
-  s.id = cbName;
-  s.onerror = function () { if (!done) { done = true; clearTimeout(to); limpiar(); cb(null, "error de red"); } };
-  s.src = CORREOS_ENDPOINT + (CORREOS_ENDPOINT.indexOf("?") === -1 ? "?" : "&") + "callback=" + cbName + "&_=" + Date.now();
-  document.head.appendChild(s);
+  var fin = function (data, err) { if (done) return; done = true; clearTimeout(to); cb(data, err); };
+  var to = setTimeout(function () { fin(null, "tardó demasiado — reintentá"); }, 20000);
+  fetch(CORREOS_ENDPOINT, { method: "GET" })
+    .then(function (r) { return r.json(); })
+    .then(function (resp) {
+      if (resp && resp.ok && resp.items) { CORREOS_DATA = resp; fin(resp); }
+      else fin(null, (resp && resp.error) || "respuesta inválida");
+    })
+    .catch(function (e) { fin(null, (e && e.message) ? e.message : "error de red"); });
 }
 
 function renderCorreos() {
