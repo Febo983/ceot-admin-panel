@@ -37,6 +37,7 @@ var ACCESOS_DATA = [
   { id:28, cat:"Admin", title:"Documentación CEOT",         desc:"Documentos y archivos generales del CEOT",                  url:"https://drive.google.com/drive/folders/1eOUfTKOEkFZTsgsctzwNhq0IJ-Wdp3N7?usp=drive_link" },
   { id:29, cat:"Admin", title:"Archivos Reuniones",         desc:"Minutas y acuerdos de reuniones del equipo",                url:"https://drive.google.com/drive/folders/1jnwuKnJaNdR45_QfGvqOmURQL7yrLdTA?usp=drive_link" },
   { id:35, cat:"Admin", title:"Contable",                   desc:"Datos contables",                                           url:"https://claude.ai/code/artifact/e7c9f19e-d865-4574-9adb-56279cb542df" },
+  { id:38, cat:"Admin", title:"Mi Google Calendar",        desc:"Calendario de Google de Marce (marcelo.aime74@gmail.com)", url:"https://calendar.google.com/calendar/u/0/r?authuser=marcelo.aime74@gmail.com" },
   { id:37, cat:"Clínica", title:"Normas Convenios OOSS",    desc:"Autorizaciones, coseguros, manuales de prestador y contactos por obra social", url:"https://febo983.github.io/ceot-normas-convenios/" },
   // ── Otros
   { id:30, cat:"Otros", title:"Encuesta Secretarias",       desc:"Evaluación y premios a secretarias",                        url:"https://docs.google.com/spreadsheets/d/19ITME1mzL2eIYX4YIudIGwP7yeGBDP93XM6Y2gfperw/edit?usp=sharing" },

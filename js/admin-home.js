@@ -56,7 +56,7 @@ var LUCIDE_ACC_ICON = {
   "Permisos ART":"shield-check","Panel Adm. Marce":"user-cog","Horarios y Asistencias":"clock",
   "Documentación CEOT":"folder-open","Archivos Reuniones":"file-text","Encuesta Secretarias":"star",
   "Encuesta Satisfacción":"smile","Caja de Médicos":"landmark","Banco Francés CEOT":"landmark",
-  "WhatsApp Web":"message-circle"
+  "WhatsApp Web":"message-circle","Mi Google Calendar":"calendar-days"
 };
 
 var homeEditMode = false;
