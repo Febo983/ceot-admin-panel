@@ -1509,13 +1509,12 @@ function incidenciaTotalGuardar(v) {
 function getAporteCeotAcumuladoPorApellido(apellidos) {
   var acumulado = {};
   apellidos.forEach(function(ap) { acumulado[ap] = 0; });
-  var hoy = new Date();
   APORTE_CEOT_DESDE.forEach(function(p) {
     apellidos.forEach(function(ap) {
       var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
       if (!doc) return;
       var c = calcularNetoLocal(p, doc);
-      if (c) acumulado[ap] += aporteCeotAcreditadoHoy(c, hoy);
+      if (c) acumulado[ap] += aporteCeotAcreditadoHoy(c);
     });
   });
   return acumulado;
