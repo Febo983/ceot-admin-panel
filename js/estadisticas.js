@@ -250,7 +250,8 @@ function estBloqueImport() {
       + '<select id="estImpYm" style="padding:5px 8px;border-radius:7px;border:1px solid var(--co-line,#d9d0b8);font-size:0.78rem">' + opts + '</select>'
       + '<span style="font-size:0.75rem;color:var(--co-ink-dim,#6b6a5a)">· ' + p.filas.length + (esCx ? ' cirujanos' : ' médicos') + ' · total ' + estN(p.total)
         + (esCx && p.sinAsignar ? ' · ' + p.sinAsignar + ' sin asignar' : '')
-        + (esCx && p.grupos != null && p.grupos !== p.total ? ' · ' + p.grupos + ' grupos en el archivo' : '') + '</span>'
+        + (esCx && p.grupos != null && p.grupos !== p.total ? ' · ' + p.grupos + ' grupos en el archivo' : '')
+        + (esCx && p.nunCodificadas != null ? ' · ' + p.nunCodificadas + ' con NUN cargada' : '') + '</span>'
       + '</div>';
     if (noRec) h += '<div style="font-size:0.72rem;color:#dc2626;margin-bottom:8px">⚠ ' + noRec + ' nombre(s) sin reconocer (fila roja). Revisá el mapeo antes de confirmar.</div>';
     h += '<div style="max-height:230px;overflow:auto;border:1px solid var(--co-line,#d9d0b8);border-radius:7px;margin-bottom:10px">'
@@ -362,13 +363,22 @@ function estImportarCirugias(file) {
         var c0 = String(r[0] == null ? "" : r[0]).trim();
         var c1 = String(r[1] == null ? "" : r[1]).trim();
         var c2 = String(r[2] == null ? "" : r[2]).trim();
+        var c3 = String(r[3] == null ? "" : r[3]).trim();
         var c4 = String(r[4] == null ? "" : r[4]).trim();
         var mFoot = /cantidad de resultados:\s*(\d+)/i.exec(c0);
         if (mFoot) { totFooter = parseInt(mFoot[1], 10); break; }
         if (/^-{3,}/.test(c0) || /^col[oó]n s\.?a\.?a\.?/i.test(c0) || /^prestaciones$/i.test(c0)) break;
         if (i === 0 && /paciente/i.test(c0)) continue;               // encabezado
         if (!c0 && !c1 && !c2 && !c4) continue;                       // fila vacía
-        if (c0) { cur = { prof: c1, inst: c2, fecha: c4 }; grupos.push(cur); }
+        if (c0) { cur = { prof: c1, inst: c2, fecha: c4, nun: null }; grupos.push(cur); }
+        // Complejidad NUN: viene como una fila de "prestación" propia dentro del
+        // mismo grupo, ej. "(1-125056) NUN-COMPLEJIDAD 7". Si el grupo trae más de
+        // una (varias prácticas facturadas), se toma la de mayor complejidad.
+        var mNun = /NUN-COMPLEJIDAD\s+(\d+)/i.exec(c3);
+        if (mNun && cur) {
+          var nv = parseInt(mNun[1], 10);
+          if (cur.nun == null || nv > cur.nun) cur.nun = nv;
+        }
         if (!detYm) {
           var mF = /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/.exec(c4);
           if (mF) detYm = mF[3] + "-" + String(mF[2]).padStart(2, "0");
@@ -378,6 +388,7 @@ function estImportarCirugias(file) {
 
       var porCir = {}, sinAsignar = 0, excluidos = 0;
       var cob = { art: 0, particular: 0, os: 0 }, porOS = {};
+      var nunBandas = { baja: 0, media: 0, alta: 0, muyAlta: 0 }, nunCodificadas = 0;
       grupos.forEach(function (g) {
         if (!g.prof) { sinAsignar++; }
         else {
@@ -392,6 +403,13 @@ function estImportarCirugias(file) {
         if (instU.indexOf("PARTICULAR") >= 0) cob.particular++;
         else if (/\bART\b|ART[\).\s]|ASOCIART/.test(instU)) cob.art++;
         else if (sig) cob.os++;
+        if (g.nun != null) {
+          nunCodificadas++;
+          if (g.nun <= 3) nunBandas.baja++;
+          else if (g.nun <= 5) nunBandas.media++;
+          else if (g.nun <= 7) nunBandas.alta++;
+          else nunBandas.muyAlta++;
+        }
       });
 
       var filas = Object.keys(porCir).map(function (k) {
@@ -408,7 +426,9 @@ function estImportarCirugias(file) {
         grupos: grupos.length,
         sinAsignar: sinAsignar,
         cob: cob,
-        porOS: porOS
+        porOS: porOS,
+        nunBandas: nunBandas,
+        nunCodificadas: nunCodificadas
       };
       estPintarAdmin();
     } catch (err) {
@@ -434,6 +454,8 @@ function estConfirmarImport() {
     if (p.grupos != null) obj._grupos = p.grupos;
     if (p.cob) obj._cob = p.cob;
     if (p.porOS) obj._porOS = p.porOS;
+    if (p.nunBandas) obj._nunBandas = p.nunBandas;
+    if (p.nunCodificadas != null) obj._nunCodificadas = p.nunCodificadas;
     EST_IMPORT.cirugias[ym] = obj;
   } else {
     obj._total = tot;
@@ -897,4 +919,53 @@ function estProfActivarCharts() {
       }
     });
   }
+}
+
+// ══════ Perfil quirúrgico — consolidado en vivo para Presentación ═════
+// A diferencia del resto del módulo (que blenderea semilla + import), esto
+// SOLO usa EST_IMPORT.cirugias: la semilla vieja no trae NUN/obra social
+// individual, así que mezclarla daría números falsos. Cada mes que Marcelo
+// (re)importe por acá con esImportarCirugias() sube automáticamente la
+// cobertura de presPerfilHtml() en presentacion.js — ver esa función para el
+// fallback cuando todavía no hay ningún mes con NUN cargado.
+function estCxPerfilQuirurgicoLive() {
+  var meses = Object.keys(EST_IMPORT.cirugias || {}).sort();
+  var out = {
+    totalCx: 0,
+    nunCodificadas: 0,
+    nunBandas: { baja: 0, media: 0, alta: 0, muyAlta: 0 },
+    cob: { art: 0, particular: 0, os: 0 },
+    porOS: {},
+    cirujanos: {},
+    mesesConDato: meses,
+    mesesConNun: []
+  };
+  meses.forEach(function (ym) {
+    var o = EST_IMPORT.cirugias[ym];
+    if (!o) return;
+    out.totalCx += o._total || 0;
+    if (o._cob) {
+      out.cob.art += o._cob.art || 0;
+      out.cob.particular += o._cob.particular || 0;
+      out.cob.os += o._cob.os || 0;
+    }
+    if (o._porOS) {
+      Object.keys(o._porOS).forEach(function (sig) {
+        out.porOS[sig] = (out.porOS[sig] || 0) + o._porOS[sig];
+      });
+    }
+    Object.keys(o).forEach(function (k) {
+      if (k.charAt(0) === "_") return;
+      out.cirujanos[k] = (out.cirujanos[k] || 0) + o[k];
+    });
+    if (o._nunBandas) {
+      out.mesesConNun.push(ym);
+      out.nunCodificadas += o._nunCodificadas || 0;
+      out.nunBandas.baja += o._nunBandas.baja || 0;
+      out.nunBandas.media += o._nunBandas.media || 0;
+      out.nunBandas.alta += o._nunBandas.alta || 0;
+      out.nunBandas.muyAlta += o._nunBandas.muyAlta || 0;
+    }
+  });
+  return out;
 }
