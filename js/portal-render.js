@@ -591,6 +591,44 @@ function retencionPorAcreditacion(c) {
   return items;
 }
 
+// ¿Ya se acreditó en el banco un cheque Colón con esta fecha (DD/MM)? Mismo
+// criterio que el aviso del portal ("Los cheques se acreditan 48 hs.
+// posteriores a la fecha indicada") — fecha + 2 días, comparado contra hoy a
+// las 00:00. Asume año en curso: los períodos con Retención Ganancias
+// (APORTE_CEOT_DESDE) son todos del mismo año calendario.
+function chequeYaAcreditado(ddmm, hoyCorte) {
+  if (!ddmm || !/^\d{2}\/\d{2}$/.test(ddmm)) return false;
+  var partes = ddmm.split("/");
+  var dia = parseInt(partes[0], 10), mes = parseInt(partes[1], 10);
+  var fechaAcred = new Date(hoyCorte.getFullYear(), mes - 1, dia + 2);
+  return fechaAcred <= hoyCorte;
+}
+
+// Retención Ganancias YA acreditada (plata que Marcelo realmente tiene
+// guardada hoy) — a diferencia de c.aporteCeot, que se calcula sobre el mes
+// completo apenas se cargan los 5 cheques agendados de Colón (con sus fechas,
+// muchas veces futuras) sin importar si el banco ya los acreditó. Acá se
+// suma cheque por cheque, solo los que ya pasaron su fecha de acreditación.
+// OSDE/CEM no necesitan este filtro: ya vienen gateados por "pendiente" en
+// calcularNetoLocal (c.osde/c.cm son 0 hasta que el dato es real, nunca se
+// cargan por adelantado como los cheques Colón).
+// Pedido de Marcelo, 11/09/2026: el acumulado de Retención Ganancias mostraba
+// septiembre/octubre completos aunque la última acreditación real fue 08/09.
+function aporteCeotAcreditadoHoy(c, hoy) {
+  if (!c || !c.pctAporte) return 0;
+  hoy = hoy || new Date();
+  var hoyCorte = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  var total = 0;
+  (c.colonCheques || []).forEach(function(chq) {
+    if (chq.monto > 0 && chequeYaAcreditado(chq.fecha, hoyCorte)) {
+      total += Math.round(chq.monto * c.pctAporte);
+    }
+  });
+  if (!c.osdePendiente && c.osde > 0) total += Math.round(c.osde * c.pctAporte);
+  if (!c.cmPendiente && c.cm > 0)     total += Math.round(c.cm * c.pctAporte);
+  return total;
+}
+
 // Detalle cheque por cheque de CUALQUIER profesional (director o no): la
 // Retención Ganancias sale de cada cheque Colón a medida que entra (no se
 // puede reservar el bruto de un cheque para nada, ya sale descontado desde

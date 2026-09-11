@@ -1498,18 +1498,23 @@ function incidenciaTotalGuardar(v) {
   syncPush(INCIDENCIA_TOTAL_KEY);
 }
 
-// Suma, por apellido, el aporteCeot ya cargado en cada período de APORTE_CEOT_DESDE
-// — misma lógica que la fila ACUMULADO de "Registro mensual" en renderAporteCeot(),
-// factorizada acá para reusarla también en la tabla de Reparto del fondo.
+// Suma, por apellido, la Retención Ganancias YA acreditada en el banco a hoy
+// en cada período de APORTE_CEOT_DESDE (ver aporteCeotAcreditadoHoy en
+// portal-render.js) — misma lógica que la fila ACUMULADO de "Registro
+// mensual" en renderAporteCeot(), factorizada acá para reusarla también en
+// la tabla de Reparto del fondo. Ya NO suma el mes completo apenas se carga
+// (eso incluía cheques Colón agendados a futuro que el banco todavía no
+// acreditó) — pedido de Marcelo, 11/09/2026.
 function getAporteCeotAcumuladoPorApellido(apellidos) {
   var acumulado = {};
   apellidos.forEach(function(ap) { acumulado[ap] = 0; });
+  var hoy = new Date();
   APORTE_CEOT_DESDE.forEach(function(p) {
     apellidos.forEach(function(ap) {
       var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
       if (!doc) return;
       var c = calcularNetoLocal(p, doc);
-      if (c) acumulado[ap] += (c.aporteCeot || 0);
+      if (c) acumulado[ap] += aporteCeotAcreditadoHoy(c, hoy);
     });
   });
   return acumulado;
