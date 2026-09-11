@@ -1008,8 +1008,8 @@ function renderMiPanel(doctor) {
     + '<div class="mp-label" style="margin:0;">Gastos del mes</div>'
     + '<div style="font-size:0.63rem;color:rgba(32,36,31,.35);">' + (new Date().toLocaleString('es-AR',{month:'long',year:'numeric'})) + '</div>'
     + '</div>'
-    + '<div id="mp-gastos-total" style="font-size:1.1rem;font-weight:800;color:#20241f;">' + (gastosTotal ? fmt(gastosTotal) : 'Actualizá para ver') + '</div>'
-    + (gastosTotal ? '<div id="mp-gastos-porcabeza" class="mp-sub">/' + DOCTORES.length + ' = ' + fmt(gastosTotal / DOCTORES.length) + ' por profesional</div>' : '')
+    + '<div id="mp-gastos-porcabeza" style="font-size:1.1rem;font-weight:800;color:#20241f;">' + (gastosTotal ? fmt(gastosTotal / DOCTORES.length) + ' por profesional' : 'Actualizá para ver') + '</div>'
+    + (gastosTotal ? '<div id="mp-gastos-total" class="mp-sub">Total ' + fmt(gastosTotal) + ' / ' + DOCTORES.length + '</div>' : '')
     + '</div>';
 
   // Cajas con skeleton mientras carga
