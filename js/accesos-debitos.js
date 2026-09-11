@@ -31,7 +31,7 @@ var ACCESOS_DATA = [
   { id:16, cat:"Clínica", title:"Cirugías Programadas",     desc:"Agenda de cirugías programadas",                            url:"https://cirugias-progamadas.netlify.app/" },
   { id:19, cat:"Clínica", title:"Estadísticas CX 26 v2",    desc:"Estadísticas de cirugías CEOT 2026 — versión actualizada", url:"https://ceot-estadisticas-cx-26.netlify.app/" },
   // ── Administración
-  { id:24, cat:"Admin", title:"App para caja GACI",         desc:"Agendas y calendario de actividades CEOT",                  url:"https://ceot-agendas.netlify.app/" },
+  { id:24, cat:"Admin", title:"App para caja GACI",         desc:"Registro de consultas: caja diaria por secretaria, cola de turnos y cierre",  url:"https://ceot-agenda.netlify.app/" },
   { id:25, cat:"Admin", title:"Permisos ART",               desc:"Gestión de permisos de ART para cirugías",                  url:"https://permiso-art-ceot.netlify.app/" },
   { id:27, cat:"Admin", title:"Horarios y Asistencias",     desc:"Registro de horarios, asistencias y licencias",             url:"https://docs.google.com/spreadsheets/d/1M-l1KHAoRRFL7MLpmQY4tXCtY0SLj14Dm0ucQWsR5fA/edit?usp=sharing" },
   { id:28, cat:"Admin", title:"Documentación CEOT",         desc:"Documentos y archivos generales del CEOT",                  url:"https://drive.google.com/drive/folders/1eOUfTKOEkFZTsgsctzwNhq0IJ-Wdp3N7?usp=drive_link" },
@@ -39,6 +39,7 @@ var ACCESOS_DATA = [
   { id:35, cat:"Admin", title:"Contable",                   desc:"Datos contables",                                           url:"https://claude.ai/code/artifact/e7c9f19e-d865-4574-9adb-56279cb542df" },
   { id:38, cat:"Admin", title:"Mi Google Calendar",        desc:"Calendario de Google de Marce (marcelo.aime74@gmail.com)", url:"https://calendar.google.com/calendar/u/0/r?authuser=marcelo.aime74@gmail.com" },
   { id:37, cat:"Clínica", title:"Normas Convenios OOSS",    desc:"Autorizaciones, coseguros, manuales de prestador y contactos por obra social", url:"https://febo983.github.io/ceot-normas-convenios/" },
+  { id:39, cat:"Clínica", title:"Portal del Profesional",   desc:"Agenda del día en vivo (sala de espera, atendidos) y estadísticas — para los médicos", url:"https://ceot-agenda.netlify.app/profesional" },
   // ── Otros
   { id:30, cat:"Otros", title:"Encuesta Secretarias",       desc:"Evaluación y premios a secretarias",                        url:"https://docs.google.com/spreadsheets/d/19ITME1mzL2eIYX4YIudIGwP7yeGBDP93XM6Y2gfperw/edit?usp=sharing" },
   { id:31, cat:"Otros", title:"Encuesta Satisfacción",      desc:"Encuesta de satisfacción de pacientes CEOT",                url:"https://docs.google.com/spreadsheets/d/1T9Rck2IdVg-aYDnjZo3sQJ_0dZ0MvhDBrlWFE1EVAvs/edit?usp=sharing" },
@@ -46,7 +47,7 @@ var ACCESOS_DATA = [
   { id:33, cat:"Otros", title:"BBVA CEOT",                  desc:"Home banking BBVA — cuenta CEOT",                           url:"https://www.bbva.com.ar/empresas.html" },
 ];
 
-var accNextId = 38;
+var accNextId = 40;
 var accFilterActual = "Todos";
 var accEditLinkMode = false;
 
