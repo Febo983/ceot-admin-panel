@@ -1524,11 +1524,18 @@ function getAporteCeotAcumuladoPorApellido(apellidos) {
 function incidenciaFondoWrapHtml(total) {
   var apellidos = Object.keys(INCIDENCIA_FONDO_PCT);
   var acumulado = getAporteCeotAcumuladoPorApellido(apellidos);
+  // Suma los intereses ya generados por los plazos fijos de "Inversiones"
+  // (invAcumuladoProfesionalData, en index.html) — así "Acumulado"/"Falta" acá
+  // reflejan el total real guardado por profesional, no solo la retención
+  // cruda. Pedido de Marcelo, 11/09/2026: "que se vea reflejado en el
+  // acumulado". El reparto de interés por profesional ya viene bien calculado
+  // desde ese módulo (proporcional a lo que cada uno aportó al PF).
+  var invData = (typeof invAcumuladoProfesionalData === "function") ? invAcumuladoProfesionalData() : { acum: {}, totInt: 0 };
   var filas = apellidos.map(function(ap) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
     var pct = INCIDENCIA_FONDO_PCT[ap];
     var monto = Math.round(total * pct);
-    var acum = acumulado[ap] || 0;
+    var acum = (acumulado[ap] || 0) + ((invData.acum[ap] || {}).interes || 0);
     var falta = monto - acum;
     var cuota = Math.round(falta / 3);
     return '<tr><td>' + (doc ? doc.nombre : ap) + '</td>'
@@ -1544,7 +1551,7 @@ function incidenciaFondoWrapHtml(total) {
       + '</tr>';
   }).join("");
   var totalCalc = apellidos.reduce(function(s, ap) { return s + Math.round(total * INCIDENCIA_FONDO_PCT[ap]); }, 0);
-  var totalAcum = apellidos.reduce(function(s, ap) { return s + (acumulado[ap] || 0); }, 0);
+  var totalAcum = apellidos.reduce(function(s, ap) { return s + (acumulado[ap] || 0) + ((invData.acum[ap] || {}).interes || 0); }, 0);
   window._incidenciaTexto = apellidos.map(function(ap) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
     return (doc ? doc.nombre : ap) + '\t' + numParaPegar(Math.round(total * INCIDENCIA_FONDO_PCT[ap]));
@@ -1574,7 +1581,7 @@ function renderIncidenciaFondo() {
 function incidenciaFondoHtml() {
   var total = incidenciaTotalCargar();
   return '<div class="adm-sec-title" style="margin-top:20px">Reparto del fondo — importe final por profesional</div>'
-    + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">% de incidencia fija de cada socio (no cambia con el % de Retención Ganancias de arriba) — solo el total es editable, los importes se acomodan solos. Las columnas Nov · Dic · Ene son la Falta dividida en 3 cuotas iguales (Falta ÷ 3), a pagar de noviembre 2026 a enero 2027.</div>'
+    + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">% de incidencia fija de cada socio (no cambia con el % de Retención Ganancias de arriba) — solo el total es editable, los importes se acomodan solos. "Acumulado" incluye los intereses ya generados por los plazos fijos de Inversiones. Las columnas Nov · Dic · Ene son la Falta dividida en 3 cuotas iguales (Falta ÷ 3), a pagar de noviembre 2026 a enero 2027.</div>'
     + '<div style="margin-bottom:10px;display:flex;align-items:center;gap:8px">'
     +   '<label for="incidencia-total-input" style="font-size:0.82rem;font-weight:600;color:#20241f">Total a repartir</label>'
     +   '<input type="text" id="incidencia-total-input" value="' + (total || "") + '" '
