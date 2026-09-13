@@ -363,6 +363,7 @@ function renderAdmHome() {
   admHomeCargarUsage();
   admHomeCargarTema();
   checklistActualizarBadge();
+  waHorariosCheck();
   var retro = admHomeTheme === "retro";
 
   var h = new Date().getHours();
@@ -651,6 +652,56 @@ function initAdmHomeBg() {
     _admHomeBgRaf = requestAnimationFrame(tick);
   }
   _admHomeBgRaf = requestAnimationFrame(tick);
+}
+
+// ══════ RECORDATORIO WHATSAPP — HORARIOS Y ASISTENCIA ═══════════
+// Del 24 al fin de mes, Marce le pasa por WhatsApp al estudio (2236796006) el
+// Sheet de horarios y asistencia (r3-1 del checklist). Esto no manda nada solo
+// —WhatsApp Web no deja adjuntar un archivo por link—, pero deja todo servido:
+// un botón abre el Sheet ya exportado como .xlsx, otro abre el chat de
+// WhatsApp con el mensaje escrito. Se descarta solo al mes siguiente.
+var WA_HORARIOS_NUMERO = "5492236796006"; // 54 + 9 (celular AR) + 223 (Mar del Plata) + 6796006
+var WA_HORARIOS_SHEET_ID = "1M-l1KHAoRRFL7MLpmQY4tXCtY0SLj14Dm0ucQWsR5fA";
+
+function waHorariosDismissKey(d) {
+  d = d || new Date();
+  return "wa_horarios_dismiss_" + d.getFullYear() + "-" + (d.getMonth() + 1);
+}
+function waHorariosDismiss() {
+  try { localStorage.setItem(waHorariosDismissKey(), "1"); } catch (e) {}
+  var el = document.getElementById("waHorariosBanner");
+  if (el) el.remove();
+}
+function waHorariosCheck() {
+  var existing = document.getElementById("waHorariosBanner");
+  if (existing) existing.remove();
+
+  var d = new Date();
+  if (d.getDate() < 24) return;
+  try { if (localStorage.getItem(waHorariosDismissKey(d)) === "1") return; } catch (e) {}
+
+  var MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var mensaje = "Hola! Te paso el Sheet de horarios y asistencia de " + MESES[d.getMonth()] + ".";
+  var waUrl = "https://wa.me/" + WA_HORARIOS_NUMERO + "?text=" + encodeURIComponent(mensaje);
+  var sheetUrl = "https://docs.google.com/spreadsheets/d/" + WA_HORARIOS_SHEET_ID + "/export?format=xlsx";
+
+  var div = document.createElement("div");
+  div.id = "waHorariosBanner";
+  div.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:5000;max-width:300px;"
+    + "background:#fbf8f0;border:1.5px solid #92610f;border-radius:10px;padding:13px 15px;"
+    + "box-shadow:0 4px 14px rgba(32,36,31,.18);font-family:system-ui,-apple-system,sans-serif";
+  div.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">'
+    +   '<div style="font-weight:700;font-size:.85rem;color:#92610f">📋 Horarios y asistencia</div>'
+    +   '<button onclick="waHorariosDismiss()" title="No mostrar este mes" style="border:none;background:none;cursor:pointer;font-size:.9rem;color:rgba(32,36,31,.4);line-height:1;padding:0">✕</button>'
+    + '</div>'
+    + '<div style="font-size:.76rem;color:rgba(32,36,31,.65);line-height:1.4;margin-bottom:10px">Toca mandarle al estudio el Sheet de este mes.</div>'
+    + '<div style="display:flex;flex-direction:column;gap:6px">'
+    +   '<a href="' + sheetUrl + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:7px 10px;border-radius:6px;border:1px solid rgba(32,36,31,.2);background:#fff;color:#20241f;font-size:.78rem;font-weight:600;text-decoration:none">⬇ Descargar Sheet (.xlsx)</a>'
+    +   '<a href="' + waUrl + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:7px 10px;border-radius:6px;border:none;background:#1f3a2e;color:#fff;font-size:.78rem;font-weight:600;text-decoration:none">💬 Abrir WhatsApp</a>'
+    + '</div>'
+    + '<div style="font-size:.65rem;color:rgba(32,36,31,.4);margin-top:8px">Descargá el archivo primero y arrastralo al chat — WhatsApp Web no deja adjuntarlo solo.</div>';
+  document.body.appendChild(div);
 }
 
 // ══════ CHECKLIST MENSUAL ═══════════════════════════════════════
