@@ -847,13 +847,16 @@ function premPdfAplicar() {
 }
 
 
-// ══════ PERFIL QUIRÚRGICO — snapshot del reporte de Estadísticas CX ══════
-// Rankings de complejidad NUN, material/ortopedias y obra social sobre el
-// acumulado del año. Fuente: "CEOT · Estadísticas Quirúrgicas.pdf" (la app
-// ceot-estadisticas-cx-26). El parser de cirugías de Presentación (presCxParseTab)
-// solo levanta médico/paciente/fecha, así que estos números son un snapshot
-// manual — para actualizar, reemplazar los valores de PRES_PERFIL con los del
-// reporte nuevo y cambiar `rango`.
+// ══════ PERFIL QUIRÚRGICO ═════════════════════════════════════════════
+// Complejidad NUN, cirujanos, obra social y ART/resto ahora salen EN VIVO
+// del importador de Cirugías (estImportarCirugias/estCxPerfilQuirurgicoLive
+// en estadisticas.js) apenas Marcelo carga ahí el Excel "TRAUMATO <mes>" de
+// cada mes — ver presPerfilDatos() más abajo. Material/ortopedias NO tiene
+// fuente automática (esa columna no existe en el Excel de TRAUMATO, viene de
+// un reporte aparte) y sigue siendo un dato manual, tomado de PRES_PERFIL.
+// PRES_PERFIL además queda como fallback: mientras no haya NINGÚN mes
+// importado con NUN cargada (p.ej. recién deployado esto, o backend vacío),
+// se sigue mostrando este snapshot viejo para no dejar la sección en blanco.
 var PRES_PERFIL = {
   rango:      "Enero – Septiembre 2026",
   rangoCorto: "Ene–Sep 2026",
@@ -898,31 +901,115 @@ function presPerfilCard(titulo, canvasId, footHtml, h) {
     + '</div>';
 }
 
+// Cuántos meses del año ya deberían tener Excel de cirugías cargado (para
+// mostrar "cobertura parcial: faltan N meses" en vez de un número pelado).
+function presPerfilMesesEsperados() {
+  var d = new Date();
+  return (d.getFullYear() === 2026) ? (d.getMonth() + 1) : 12;
+}
+
+// Arma los datos del bloque: en vivo si ya hay al menos un mes importado con
+// NUN cargada (estCxPerfilQuirurgicoLive, en estadisticas.js), si no cae al
+// snapshot manual PRES_PERFIL. El material siempre sale de PRES_PERFIL — no
+// tiene fuente en el import.
+function presPerfilDatos() {
+  var live = (typeof estCxPerfilQuirurgicoLive === "function") ? estCxPerfilQuirurgicoLive() : null;
+  if (!live || !live.mesesConNun.length) return { live: false, cobertura: 0, P: PRES_PERFIL };
+
+  var mesesTxt = live.mesesConNun.map(function (ym) {
+    return estCap(EST_MESES_CORTO[parseInt(ym.split("-")[1], 10) - 1]);
+  }).join(", ");
+  var b = live.nunBandas;
+  var cirujanosNom = Object.keys(live.cirujanos).filter(function (k) { return k !== "SIN ASIGNAR" && live.cirujanos[k] > 0; });
+  var siglas = Object.keys(live.porOS);
+  var porSiglaDesc = function (s, c) { return live.porOS[c] - live.porOS[s]; };
+  // ART termina siempre la sigla ("ANDINA ART", "PROV.ART", "ASOCIART"...);
+  // ojo con /ART/ sin ancla, matchea "PARTICULAR" (contiene "art" en el medio).
+  var esArt = function (s) { return /ART$/i.test(s); };
+  var artSig = siglas.filter(esArt).sort(porSiglaDesc);
+  var noArtSig = siglas.filter(function (s) { return !esArt(s); }).sort(porSiglaDesc);
+
+  var P = {
+    rango: mesesTxt + " 2026",
+    fuente: "importador de Cirugías del panel · " + live.mesesConNun.length + " de " + presPerfilMesesEsperados() + " meses cargados",
+    totalCx: live.totalCx,
+    cirujanos: cirujanosNom.length,
+    obrasSociales: siglas.length,
+    nunCodificadas: b.baja + b.media + b.alta + b.muyAlta,
+    nunBandas: [
+      { l: "Baja · 1–3",      v: b.baja,    c: "#cddfce" },
+      { l: "Media · 4–5",     v: b.media,   c: "#8fbf9a" },
+      { l: "Alta · 6–7",      v: b.alta,    c: "#4f9d74" },
+      { l: "Muy alta · 8–10", v: b.muyAlta, c: "#1f6b4a" }
+    ],
+    material: PRES_PERFIL.material,
+    obraSocial: {
+      art: live.cob.art,
+      resto: live.totalCx - live.cob.art,
+      tieneCifras: true,
+      ordenNoArt: noArtSig.map(function (s) { return { sigla: s, n: live.porOS[s] }; }),
+      artTop: artSig.slice(0, 4).map(function (s) { return s + " " + live.porOS[s]; }).join(" · ") || "—"
+    }
+  };
+  return { live: true, cobertura: live.mesesConNun.length, P: P };
+}
+
+function presPerfilCaptionNun(P) {
+  var tot = P.nunBandas.reduce(function (s, x) { return s + x.v; }, 0);
+  var pctAlta    = tot ? Math.round(P.nunBandas[2].v / tot * 100) : 0;
+  var pctMuyAlta = tot ? Math.round(P.nunBandas[3].v / tot * 100) : 0;
+  var sinNun = P.totalCx - P.nunCodificadas;
+  var pctSinNun = P.totalCx ? Math.round(sinNun / P.totalCx * 100) : 0;
+  return '<b>' + pctAlta + '% son NUN 6–7</b> y otro ' + pctMuyAlta + '% son 8–10. ' + sinNun
+    + ' cirugías (' + pctSinNun + '%) todavía sin complejidad NUN cargada — los % son sobre las ' + P.nunCodificadas + '.';
+}
+function presPerfilCaptionOs(P) {
+  var pctArt = P.totalCx ? Math.round(P.obraSocial.art / P.totalCx * 100) : 0;
+  if (P.obraSocial.tieneCifras) {
+    var resto = P.obraSocial.ordenNoArt.slice(0, 6).map(function (x) { return x.sigla + ' ' + x.n; }).join(' · ');
+    return '<b>ART = ' + pctArt + '% de las cirugías</b> (' + P.obraSocial.artTop + '). Resto por obra social: ' + resto + (P.obraSocial.ordenNoArt.length > 6 ? '…' : '.');
+  }
+  return '<b>ART = ' + pctArt + '% de las cirugías</b> (' + P.obraSocial.artTop + '). El reporte trae el <b>orden</b> del resto pero no las cifras: '
+    + P.obraSocial.ordenNoArt.slice(0, 6).join(', ') + '… Para el ranking completo con números hace falta la planilla con la columna de obra social.';
+}
+
 function presPerfilHtml() {
-  var P = PRES_PERFIL;
-  var html = '<div style="margin-top:26px">';
+  var pd = presPerfilDatos();
+  var P = pd.P;
+  var html = '<div id="presPerfilRoot" style="margin-top:26px">';
   html += '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-top:2px solid var(--co-line,#d9d0b8);padding-top:16px;margin-bottom:4px">'
     + '<div class="adm-sec-title" style="margin:0;border:none;padding:0">🦴 Perfil quirúrgico</div>'
-    + '<div style="font-size:0.78rem;font-weight:700;color:#1f3a2e">acumulado ' + P.rango + '</div>'
+    + '<div style="font-size:0.78rem;font-weight:700;color:#1f3a2e">' + (pd.live ? 'en vivo · ' : 'acumulado · snapshot manual · ') + P.rango + '</div>'
     + '</div>';
   html += '<div style="font-size:0.7rem;color:var(--co-ink-dim,#6b6a5a);margin-bottom:14px">'
     + P.totalCx.toLocaleString('es-AR') + ' cirugías definitivas · ' + P.cirujanos + ' cirujanos · '
     + P.obrasSociales + ' obras sociales · fuente: ' + P.fuente + '</div>';
 
+  if (pd.live && pd.cobertura < presPerfilMesesEsperados()) {
+    html += '<div style="font-size:0.7rem;color:#b45309;background:rgba(217,119,6,.1);border-radius:8px;padding:6px 10px;margin-bottom:10px">'
+      + '⚠ Cobertura parcial: faltan ' + (presPerfilMesesEsperados() - pd.cobertura) + ' mes(es) por (re)importar en Estadísticas CEOT → Cirugías para que estos números cubran el año completo.</div>';
+  }
+
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">';
-  html += presPerfilCard('Complejidad NUN · ' + P.nunCodificadas + ' codificadas', 'presPerfilNun',
-    '<b>56% son NUN 6–7</b> y otro 13% son 8–10. ' + (P.totalCx - P.nunCodificadas)
-    + ' cirugías (17%) todavía sin complejidad NUN cargada — los % son sobre las ' + P.nunCodificadas + '.');
-  html += presPerfilCard('Material · ortopedias (consolidado)', 'presPerfilMat',
+  html += presPerfilCard('Complejidad NUN · ' + P.nunCodificadas + ' codificadas', 'presPerfilNun', presPerfilCaptionNun(P));
+  html += presPerfilCard('Material · ortopedias (consolidado, carga manual)', 'presPerfilMat',
     '<b>1 de cada 3 cirugías no lleva material.</b> De las que sí, SANTHEO + TECNOPROT + IGUALAR cubren ~90%. '
-    + 'La planilla trae ~40 grafías para ~10 proveedores reales: falta normalizar antes de tomarlo renglón por renglón.');
-  html += presPerfilCard('Obra social · ART vs. resto', 'presPerfilOs',
-    '<b>ART = 1 de cada 5 cirugías</b> (' + P.obraSocial.artTop + '). El reporte trae el <b>orden</b> del resto pero no las cifras: '
-    + P.obraSocial.ordenNoArt.slice(0, 6).join(', ') + '… Para el ranking completo con números hace falta la planilla con la columna de obra social.');
+    + 'Este dato no está en el Excel de cirugías del sistema — no se automatiza, sigue actualizándose a mano acá.');
+  html += presPerfilCard('Obra social · ART vs. resto', 'presPerfilOs', presPerfilCaptionOs(P));
   html += '</div>';
 
   html += '</div>';
   return html;
+}
+
+// Si el bloque ya está pintado (tab Presentación abierto) lo vuelve a armar
+// con los datos más frescos — se usa como callback de estCargar() para que
+// el syncPull en segundo plano actualice esto sin refrescar toda la pestaña.
+function presPerfilRepintar() {
+  var el = document.getElementById("presPerfilRoot");
+  if (!el) return;
+  el.outerHTML = presPerfilHtml();
+  presInitPerfilCharts();
 }
 
 function presInitPerfilCharts() {
@@ -930,7 +1017,7 @@ function presInitPerfilCharts() {
     if (presChartInstances[id]) { presChartInstances[id].destroy(); delete presChartInstances[id]; }
   });
   if (!window.Chart) return;
-  var P = PRES_PERFIL;
+  var P = presPerfilDatos().P;
   function dona(id, items) {
     var cv = document.getElementById(id);
     if (!cv) return;
@@ -963,6 +1050,10 @@ function presInitPerfilCharts() {
 function renderPresentacion(mes) {
   cerrarAdmSidenav();
   admDesactivarSidebar();
+  // EST_IMPORT (cirugías, para el Perfil Quirúrgico en vivo) puede no estar
+  // cargado todavía si nunca se visitó la pestaña Estadísticas CEOT en esta
+  // sesión — lo trae acá y repinta solo ese bloque cuando llegue.
+  if (typeof estCargar === "function") estCargar(presPerfilRepintar);
   var MESES_ORD = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
   MESES_ORD.forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
