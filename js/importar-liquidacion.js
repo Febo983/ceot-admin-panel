@@ -274,10 +274,11 @@ async function detectarTotalART() {
 
 async function procesarArchivosImport() {
   var fileCEOT = document.getElementById('fileCEOT').files[0];
-  if (!fileCEOT) { mostrarImpError('Seleccioná el archivo CEOT.xlsx'); return; }
+  if (!fileCEOT) { mostrarImpError('Seleccioná el archivo CEOT.xlsx'); return false; }
   var btn = document.getElementById('btnProcesarArchivos');
   btn.textContent = 'Procesando…'; btn.disabled = true;
   document.getElementById('impError').style.display = 'none';
+  var ok = false;
 
   try {
     // ── CEOT.xlsx: formato "crudo" ART, columnas detectadas por nombre de header
@@ -440,12 +441,24 @@ async function procesarArchivosImport() {
 
     document.getElementById('impStep2').style.display = 'block';
     document.getElementById('impResultados').style.display = 'none';
+    ok = true;
 
   } catch(err) {
     mostrarImpError('Error procesando archivos: ' + err.message);
   }
 
   btn.textContent = 'Reprocesar ▸'; btn.disabled = false;
+  return ok;
+}
+
+// Dispara solo con subir el Excel (onchange de fileCEOT/fileART): procesa y,
+// si Diferidos quedó calculado, lo carga al Sheet sin pedir click. OSDE y
+// Cheques Colón siguen manuales — necesitan el importe real del cheque
+// bancario, que no está en el Excel (ver cargarEnSheet).
+async function autoProcesarYCargarDiferidos() {
+  if (!document.getElementById('fileCEOT').files.length) return;
+  var ok = await procesarArchivosImport();
+  if (ok) await cargarEnSheet('diferidos');
 }
 
 // ── Importador PDF "FAC" (Factura Clínica Colón — Gastos Generales) ──────

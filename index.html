@@ -6053,11 +6053,11 @@ async function restaurarAporteCeotPct() {
       <!-- Archivos -->
       <div class="imp-field">
         <label class="imp-label">Archivo CEOT (.xlsx o .txt)</label>
-        <input type="file" id="fileCEOT" accept=".xlsx,.xls,.txt" class="imp-file-input">
+        <input type="file" id="fileCEOT" accept=".xlsx,.xls,.txt" class="imp-file-input" onchange="autoProcesarYCargarDiferidos()">
       </div>
       <div class="imp-field">
         <label class="imp-label">Archivo ART.xlsx <span style="color:rgba(32,36,31,.35);font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
-        <input type="file" id="fileART" accept=".xlsx,.xls,.csv" class="imp-file-input" onchange="detectarTotalART()">
+        <input type="file" id="fileART" accept=".xlsx,.xls,.csv" class="imp-file-input" onchange="detectarTotalART().then(autoProcesarYCargarDiferidos)">
       </div>
       <div class="imp-field" id="impArtTotalRow" style="display:none">
         <label class="imp-label" style="font-size:0.65rem;color:rgba(32,36,31,.45);font-weight:500">Total ART — verificar y corregir si es necesario</label>
