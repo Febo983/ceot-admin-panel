@@ -40,6 +40,124 @@ function sbTarifaEfectiva(p) {
 
 var SB_STATE = {}; // { legajo: { horas, usaMensualidad } }
 
+// ══════ HORAS EXTRA — auto-carga desde "2026 Horarios secretarias" ═══════
+// Sheet público (Cualquiera con el enlace → Solo ver), una fila por persona,
+// una columna por día del mes. Confirmado por Marcelo (13/09/2026): el
+// número cargado en la celda de un día YA ES la hora extra de ese día — no
+// hay que restarle "HORAS FIJAS DIARIAS" a nada, se suman tal cual. El Sheet
+// además trae su propia columna de total por fila (verificado que coincide
+// con sumar las celdas a mano), así que se lee esa columna directamente.
+var SB_HORAS_SHEET_ID = "1M-l1KHAoRRFL7MLpmQY4tXCtY0SLj14Dm0ucQWsR5fA";
+var SB_MES_TAB = ["", "ENERO","FEB","MAR","ABR","MAY","JUN","JUL","AGOST","SEPT","OCT","NOV","DIC"];
+var SB_HORAS_SHEET_ANIO = 2026; // el Sheet es de un año puntual, no rueda solo
+
+// Nombre de pila (tal cual aparece en la columna A del Sheet) -> legajo de SB_PERSONAL.
+var SB_NOMBRE_A_LEGAJO = {
+  "julieta": "001", "laura": "002", "paula": "003", "elizabeth": "004",
+  "josefina": "005", "victoria": "006", "tobias": "007", "evelina": "008",
+  "jimena": "009", "marcela": "010"
+};
+
+var SB_HORAS_SHEET_CACHE = {}; // { "mes-anio": {legajo: horas} | null (si falló) }
+
+// Parser mínimo de una línea CSV con todos los campos entre comillas (formato
+// fijo que exporta Google Sheets vía gviz) — no hace falta una librería para esto.
+function sbParsearLineaCSV(linea) {
+  var out = [], i = 0, n = linea.length;
+  while (i < n) {
+    if (linea[i] === '"') {
+      i++;
+      var start = i, val = '';
+      while (i < n) {
+        if (linea[i] === '"') {
+          if (linea[i+1] === '"') { val += '"'; i += 2; continue; }
+          i++; break;
+        }
+        val += linea[i]; i++;
+      }
+      out.push(val);
+      if (linea[i] === ',') i++;
+    } else {
+      var s = i;
+      while (i < n && linea[i] !== ',') i++;
+      out.push(linea.slice(s, i));
+      if (linea[i] === ',') i++;
+    }
+  }
+  return out;
+}
+
+async function sbFetchHorasSheet(mes, anio) {
+  var cacheKey = mes + '-' + anio;
+  if (SB_HORAS_SHEET_CACHE.hasOwnProperty(cacheKey)) return SB_HORAS_SHEET_CACHE[cacheKey];
+  if (anio !== SB_HORAS_SHEET_ANIO || !SB_MES_TAB[mes]) { SB_HORAS_SHEET_CACHE[cacheKey] = null; return null; }
+
+  var url = "https://docs.google.com/spreadsheets/d/" + SB_HORAS_SHEET_ID
+    + "/gviz/tq?tqx=out:csv&sheet=" + SB_MES_TAB[mes];
+  try {
+    var resp = await fetch(url);
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    var texto = await resp.text();
+    var lineas = texto.split(/\r?\n/).filter(function(l) { return l.trim(); });
+
+    var porLegajo = {};
+    for (var i = 3; i < lineas.length; i++) { // fila 0=título, 1=días, 2=día de semana
+      var campos = sbParsearLineaCSV(lineas[i]);
+      var nombre = (campos[0] || "").trim().toLowerCase();
+      if (!nombre) continue;
+      var legajo = SB_NOMBRE_A_LEGAJO[nombre];
+      if (!legajo) continue; // persona del Sheet sin correlato en Sueldo B (ej. no cobra por hora acá)
+      // Columna 32 (índice 0-based, tras 30 días + horas fijas + nombre) = total
+      // de horas ya sumado por el propio Sheet. Verificado (13/09/2026) contra
+      // suma manual de las 30 celdas de días — coincide exacto.
+      var total = parseFloat((campos[32] || "0").replace(",", "."));
+      porLegajo[legajo] = isNaN(total) ? 0 : total;
+    }
+    SB_HORAS_SHEET_CACHE[cacheKey] = porLegajo;
+    return porLegajo;
+  } catch (e) {
+    SB_HORAS_SHEET_CACHE[cacheKey] = null;
+    return null;
+  }
+}
+
+// Dispara la carga para el mes/año seleccionados en el form y completa los
+// inputs de horas ya renderizados. No pisa nada si la persona no tiene fila
+// en el Sheet ese mes (Jimena/Marcela hoy no están, por ejemplo) — para esos
+// casos sigue siendo 100% carga manual, como es hoy.
+async function sbAutoCargarHoras() {
+  var mesEl = document.getElementById("sb-mes"), anioEl = document.getElementById("sb-anio");
+  if (!mesEl || !anioEl) return;
+  var mes = parseInt(mesEl.value), anio = parseInt(anioEl.value);
+  var msgEl = document.getElementById("sb-horas-msg");
+  if (msgEl) msgEl.textContent = "Cargando horas del Sheet…";
+
+  var datos = await sbFetchHorasSheet(mes, anio);
+
+  // El usuario pudo haber cambiado de mes mientras esperaba el fetch.
+  if (mesEl.value != mes || anioEl.value != anio) return;
+
+  if (!datos) {
+    if (msgEl) msgEl.textContent = anio !== SB_HORAS_SHEET_ANIO
+      ? "El Sheet de horarios es de " + SB_HORAS_SHEET_ANIO + " — para este año, cargá las horas a mano."
+      : "⚠ No se pudo conectar con el Sheet de horarios — cargá las horas a mano.";
+    return;
+  }
+  var actualizados = 0;
+  Object.keys(datos).forEach(function(legajo) {
+    var input = document.getElementById("sb-h-" + legajo);
+    if (!input) return;
+    input.value = datos[legajo];
+    sbActualizarCard(legajo);
+    actualizados++;
+  });
+  if (msgEl) {
+    msgEl.textContent = actualizados
+      ? "✓ " + actualizados + " persona(s) con horas auto-cargadas del Sheet — revisá antes de generar."
+      : "El Sheet no tiene horas cargadas para nadie este mes.";
+  }
+}
+
 function sbNumLetras(n) {
   n = Math.floor(n);
   var UN = ["","UNO","DOS","TRES","CUATRO","CINCO","SEIS","SIETE","OCHO","NUEVE",
@@ -228,9 +346,10 @@ function renderSueldoB() {
   var html = '<div class="adm-sec-title" style="margin-top:4px">Sueldo B</div>'
     + '<div style="padding:0 2px 24px">'
     + '<div class="sb-form-grid">'
-    + '<div class="sb-field"><label>Mes</label><select id="sb-mes">'+opsMes+'</select></div>'
-    + '<div class="sb-field"><label>Ano</label><input type="number" id="sb-anio" value="'+anioActual+'" min="2026"></div>'
+    + '<div class="sb-field"><label>Mes</label><select id="sb-mes" onchange="sbAutoCargarHoras()">'+opsMes+'</select></div>'
+    + '<div class="sb-field"><label>Ano</label><input type="number" id="sb-anio" value="'+anioActual+'" min="2026" onchange="sbAutoCargarHoras()"></div>'
     + '</div>'
+    + '<div id="sb-horas-msg" style="font-size:.72rem;color:rgba(32,36,31,.5);margin:-6px 0 10px 2px">Cargando horas del Sheet…</div>'
     + cards
     + '<button class="sb-calcular-btn" onclick="actionFeedback(this); sbGenerarRecibos()">Generar recibos</button>'
     + '</div>'
@@ -241,6 +360,7 @@ function renderSueldoB() {
     + '</div>';
 
   document.getElementById("adm-content").innerHTML = html;
+  sbAutoCargarHoras();
 }
 
 function sbGenerarRecibos() {
