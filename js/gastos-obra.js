@@ -173,7 +173,9 @@ var OBRA_AGENDA_SEED = /*__SEED__*/[
   {n:"GH construcciones",r:"Herrería / hierros / acero",a:"0720067020000001013522",d:"0720067020000001013522",c:""},
   {n:"Silva Franco",r:"Mano de obra / albañilería",a:"20388319705",d:"0720459788000035986786",c:"20-38831970-5"},
   {n:"Raptor Monocomando Bañera C/T CROMO HIDROMET",r:"Sanitarios / grifería / gas",a:"0110350020035000580450",d:"0110350020035000580450",c:""},
-  {n:"Maria Eugenia Matos (arquitecta)",r:"Honorarios arquitecta",a:"",d:"0720722088000036031072",c:"27-35410043-1"}
+  {n:"Maria Eugenia Matos (arquitecta)",r:"Honorarios arquitecta",a:"",d:"0720722088000036031072",c:"27-35410043-1"},
+  {n:"Pintor",r:"Pintura",a:"Marcelo.parrado.04",d:"Marcelo.parrado.04",c:""},
+  {n:"Albañil Franco Silva",r:"Mano de obra / albañilería",a:"construcciones.obras",d:"construcciones.obras",c:""}
 ];
 
 function renderGastosPagos() {

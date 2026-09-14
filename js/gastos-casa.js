@@ -408,6 +408,21 @@ function renderGastosCasa() {
     '<td style="text-align:right;font-weight:800">' + gcFmt(ap.totTotal) + '</td>' +
     '</tr></tfoot></table></div>';
 
+  // —— agenda de proveedores (Proveedor · Alias/CBU, sin método) ——
+  var agendaBase = (typeof OBRA_AGENDA_SEED !== "undefined" ? OBRA_AGENDA_SEED : []);
+  var agendaFilas = agendaBase.slice().sort(function (x, y) { return x.n.localeCompare(y.n, "es"); }).map(function (p) {
+    var alias = p.a || "", cbu = p.d || "", val;
+    if (alias && cbu && gcNorm(alias) !== gcNorm(cbu)) val = alias + " · CBU " + cbu;
+    else val = alias || cbu || "—";
+    return '<tr><td>' + gcEsc(p.n) + '</td><td style="font-family:monospace;font-size:.78rem">' + gcEsc(val) + '</td></tr>';
+  }).join("");
+  var agenda =
+    '<details style="margin-top:20px">' +
+      '<summary style="cursor:pointer;font-size:.8rem;font-weight:700;color:rgba(32,36,31,.65)">📇 Agenda de proveedores (' + agendaBase.length + ')</summary>' +
+      '<div style="font-size:.68rem;color:rgba(32,36,31,.45);margin:6px 0">Alias o CBU de cada proveedor de la obra, para transferir sin buscar en el chat.</div>' +
+      '<div class="adm-table-wrap" style="margin-top:6px"><table class="adm-table"><thead><tr><th>Proveedor</th><th>Alias / CBU</th></tr></thead><tbody>' + agendaFilas + '</tbody></table></div>' +
+    '</details>';
+
   // —— alta de movimiento ——
   var rubroOpts = GC_RUBROS.map(function (r) { return '<option value="' + gcEsc(r) + '">' + gcEsc(r) + '</option>'; }).join("");
   var socioOpts = '<option value="">— socio —</option>' + ap.filas.map(function (s) { return '<option value="' + s.k + '">' + gcEsc(s.n) + '</option>'; }).join("");
@@ -471,7 +486,7 @@ function renderGastosCasa() {
       '<div class="adm-sec-title" style="margin:0">🏠 Gastos Casa — 14 de Julio 2067</div>' +
     '</div>' +
     '<div style="font-size:.68rem;color:rgba(32,36,31,.45);margin:2px 0 14px">Libro de la obra importado del Sheet. Desde acá se edita y se cargan los movimientos nuevos — el Sheet queda como respaldo.</div>' +
-    kpis + graf + tablaAportes + alta + libro +
+    kpis + graf + tablaAportes + agenda + alta + libro +
     '</div>';
 
   gcPintarCharts(c, ap);
