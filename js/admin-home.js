@@ -19,7 +19,7 @@ var ADM_HOME_MODULOS = [
   { key:"sueldob",          ico:"briefcase",       lbl:"Sueldo B",      cat:"cat-adm", fn:"renderSueldoB()" },
   { key:"cpsm",             ico:"landmark",        lbl:"CPSM",          cat:"cat-fin", fn:"renderCpsm()" },
   { key:"aporteceot",       ico:"percent",         lbl:"Retención Ganancias",   cat:"cat-fin", fn:"renderAporteCeot()" },
-  { key:"sueldodirector",   ico:"banknote",        lbl:"Transferencias del Mes", cat:"cat-fin", fn:"renderSueldoDirector()" },
+  { key:"sueldodirector",   ico:"banknote",        lbl:"Transferencias del Mes", cat:"cat-fin", fn:"abrirSueldoDirectorMesActual()" },
   { key:"licenciashon",     ico:"plane-takeoff",   lbl:"Licencias (Honorarios)", cat:"cat-fin", fn:"renderLicenciasHon()" },
   { key:"licencias",        ico:"calendar-heart",  lbl:"Licencias",     cat:"cat-adm", fn:"renderLicencias()" },
   { key:"presentacion",     ico:"presentation",    lbl:"Presentación",  cat:"cat-fin", fn:"renderPresentacion()" },
