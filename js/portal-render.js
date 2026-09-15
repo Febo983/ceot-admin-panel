@@ -127,6 +127,11 @@ function renderMayo(containerId, doctor) {
 // nunca se edita. netosPorFecha: mapa {fecha: netoDeEseCheque} de TODOS los
 // cheques del mes de este profesional, para poder calcular el total de un
 // grupo de cheques combinados y cuánto de ese grupo vuelve a su cuenta.
+// El nombre/importe/alias de cada transferencia ya se muestra UNA sola vez,
+// arriba de la lista de cheques (ver transfFamPortalResumenTransferenciasHtml)
+// — acá solo queda, por cheque, un ícono discreto de "este cheque es parte
+// de esa transferencia" (sin repetir nombre/importe) y, en el último cheque
+// del grupo combinado, cuánto de ese grupo vuelve a la cuenta del profesional.
 function transfFamPortalDetalleHtml(periodo, apellido, fecha, netoCheque, netosPorFecha) {
   if (typeof TRANSF_FAM === "undefined") return '';
   var profKey = transfFamProfKey(periodo, apellido);
@@ -138,22 +143,12 @@ function transfFamPortalDetalleHtml(periodo, apellido, fecha, netoCheque, netosP
   if (!relevantes.length) return '';
 
   var filas = relevantes.map(function(r) {
-    var e = r.e, i = r.idx;
+    var e = r.e;
     var combinada = e.cheques.length > 1;
-    var hecho = transfFamEstaTransferido(profKey, i);
-    var linea2 = [e.aliasCbu, e.concepto].filter(Boolean).join(' · ');
-    var tag = combinada
-      ? 'combinado con ' + e.cheques.filter(function(f) { return f !== fecha; }).join(' + ')
-      : 'a tu familiar';
 
     var html = '<div class="cl-sub">'
       +   '<span class="cl-sub-ico">🏠</span>'
-      +   '<div class="cl-sub-body">'
-      +     '<div class="cl-sub-name">' + escAttr(e.nombre) + ' <span class="tag">' + tag + '</span></div>'
-      +     (linea2 ? '<div class="cl-sub-meta">' + escAttr(linea2) + '</div>' : '')
-      +     (hecho ? '<div class="cl-sub-done">✓ Transferido</div>' : '')
-      +   '</div>'
-      +   '<div class="cl-sub-amt">' + fmt(e.importe) + '</div>'
+      +   '<div class="cl-sub-body"><div class="cl-sub-name">Suma para ' + escAttr(e.nombre) + '</div></div>'
       + '</div>';
 
     // "A tu cuenta" — una sola vez, en la última fecha del grupo combinado,
@@ -175,6 +170,38 @@ function transfFamPortalDetalleHtml(periodo, apellido, fecha, netoCheque, netosP
   }).join('');
 
   return filas;
+}
+
+// Resumen de cada transferencia a familiar del mes — UNA tarjeta por
+// transferencia (nombre, importe, con qué cheques se combina, alias/CBU,
+// estado), mostrada una sola vez arriba de la lista de cheques (mismo lugar
+// y estilo que el box de Sueldo). Pedido de Marcelo, 15/09/2026: no quería
+// ver "Mariana Gonzalez — $3.700.000" repetido en cada cheque del grupo.
+function transfFamPortalResumenTransferenciasHtml(periodo, apellido) {
+  if (typeof TRANSF_FAM === "undefined") return '';
+  var profKey = transfFamProfKey(periodo, apellido);
+  var entries = TRANSF_FAM[profKey] || [];
+  if (!entries.length) return '';
+
+  return entries.map(function(e, i) {
+    var hecho = transfFamEstaTransferido(profKey, i);
+    var linea2 = [e.aliasCbu, e.concepto].filter(Boolean).join(' · ');
+    var combinaTxt = e.cheques && e.cheques.length
+      ? 'Se combina con ' + (e.cheques.length > 1 ? 'los cheques ' + e.cheques.join(' + ') : 'el cheque ' + e.cheques[0])
+      : '';
+    var notaParcial = (e.auto && e.completo === false)
+      ? '<div style="font-size:.62rem;color:#b13a2c;margin-top:2px">No llegó al importe habitual este mes — se abona por lo disponible</div>'
+      : '';
+    return '<div style="background:rgba(201,147,58,.12);border:1px solid rgba(201,147,58,.35);border-radius:10px;padding:10px 12px;margin-bottom:10px">'
+      + '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.04em">🏠 ' + escAttr(e.nombre)
+      +   (hecho ? ' <span style="display:inline-flex;align-items:center;gap:4px;background:#16a34a;color:#fff;border-radius:999px;padding:2px 9px;font-size:.68rem;font-weight:700;white-space:nowrap;vertical-align:2px">✓ Transferido</span>' : '')
+      + '</div>'
+      + '<div style="font-size:.85rem;font-weight:700;color:#20241f;margin-top:2px">' + fmt(e.importe) + '</div>'
+      + (combinaTxt ? '<div style="font-size:.68rem;color:rgba(32,36,31,.55);margin-top:2px">' + combinaTxt + '</div>' : '')
+      + (linea2 ? '<div style="font-size:.65rem;color:rgba(32,36,31,.5);margin-top:2px">' + escAttr(linea2) + '</div>' : '')
+      + notaParcial
+      + '</div>';
+  }).join('');
 }
 
 // Resumen del mes: cuánto de tu neto fue a tu cuenta y cuánto a un familiar
@@ -292,32 +319,39 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     + '<div class="pt-sub">' + subPartes.join(" + ") + ' · bruto</div>'
     + '</div><div class="pt-icon">💰</div></div>';
 
-  // Sueldo Director — solo para los 5 socios que cobran este concepto; les avisa
-  // cuánto y en qué fecha se les transfiere, sin exponer el resto del cálculo
-  // interno (retención/CPSM/IIBB de los demás cheques ya se ve más abajo igual).
-  if (typeof SUELDO_DIRECTOR_LISTA !== "undefined" && SUELDO_DIRECTOR_LISTA.indexOf(doctor.apellido) !== -1 && typeof calcularSueldoDirector === "function") {
-    var sd = calcularSueldoDirector(periodo, doctor, SUELDO_DIRECTOR_MONTO);
-    if (sd) {
-      var sdTxt = fmt(sd.monto);
-      html += '<div style="background:rgba(201,147,58,.12);border:1px solid rgba(201,147,58,.35);border-radius:10px;padding:10px 12px;margin-bottom:10px">'
-        + '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.04em">🏦 Sueldo Director' + avisoTransferidoChipHtml(periodo, doctor) + '</div>'
-        + '<div style="font-size:.85rem;font-weight:700;color:#20241f;margin-top:2px">' + sdTxt + '</div>'
-        + '</div>';
+  // Sueldo (Director o BBVA, según corresponda) + transferencias a
+  // familiares — una sola tarjeta por concepto, con qué cheques se combina
+  // para completarlo. Fuente única: transfFamCascadaCalcular (index.html,
+  // misma cascada que usa el panel admin para armar la cascada
+  // sueldo→familiares→dividendos) — así el profesional ve exactamente lo
+  // mismo que Marcelo, sin recalcular nada distinto acá. Pedido de Marcelo,
+  // 15/09/2026: antes esto mostraba el importe fijo aunque todavía no
+  // estuviera disponible, y no decía con qué cheques se completaba.
+  if (typeof transfFamCascadaCalcular === "function") {
+    var cascadaPortal = transfFamCascadaCalcular(periodo, doctor);
+    if (cascadaPortal && cascadaPortal.sueldo) {
+      var s = cascadaPortal.sueldo;
+      var montoMostrar = s.alcanza ? s.objetivo : s.aPagar;
+      if (montoMostrar != null) {
+        var esBbvaLbl = s.label === "Sueldo BBVA";
+        var chipSueldo = esBbvaLbl ? avisoTransferidoBbvaChipHtml(periodo, doctor) : avisoTransferidoChipHtml(periodo, doctor);
+        var combinaTxtS = s.cheques && s.cheques.length
+          ? 'Se completa con ' + (s.cheques.length > 1 ? 'los cheques ' + s.cheques.join(' + ') : 'el cheque ' + s.cheques[0])
+          : '';
+        var notaParcialS = (!s.alcanza && s.aPagar != null)
+          ? '<div style="font-size:.62rem;color:#b13a2c;margin-top:2px">No llegó a ' + fmt(s.objetivo) + ' este mes — se abona por lo disponible</div>'
+          : '';
+        html += '<div style="background:rgba(201,147,58,.12);border:1px solid rgba(201,147,58,.35);border-radius:10px;padding:10px 12px;margin-bottom:10px">'
+          + '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.04em">🏦 ' + s.label + chipSueldo + '</div>'
+          + '<div style="font-size:.85rem;font-weight:700;color:#20241f;margin-top:2px">' + fmt(montoMostrar) + '</div>'
+          + (combinaTxtS ? '<div style="font-size:.68rem;color:rgba(32,36,31,.55);margin-top:2px">' + combinaTxtS + '</div>' : '')
+          + notaParcialS
+          + '</div>';
+      }
     }
   }
 
-  // Sueldo BBVA — Mazzola y De la Colina: mismo mecanismo, monto menor,
-  // pagado por otro medio. El resto de su neto del mes queda como dividendos.
-  if (typeof SUELDO_BBVA_LISTA !== "undefined" && SUELDO_BBVA_LISTA.indexOf(doctor.apellido) !== -1 && typeof calcularSueldoDirector === "function") {
-    var sb = calcularSueldoDirector(periodo, doctor, SUELDO_BBVA_MONTO);
-    if (sb && sb.alcanza) {
-      html += '<div style="background:rgba(201,147,58,.12);border:1px solid rgba(201,147,58,.35);border-radius:10px;padding:10px 12px;margin-bottom:10px">'
-        + '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.04em">🏦 Sueldo BBVA' + avisoTransferidoBbvaChipHtml(periodo, doctor) + '</div>'
-        + '<div style="font-size:.85rem;font-weight:700;color:#20241f;margin-top:2px">' + fmt(sb.monto) + '</div>'
-        + '<div style="font-size:.68rem;color:rgba(32,36,31,.5);margin-top:2px">Resto del mes (dividendos): ' + fmt(sb.saldoFinal) + '</div>'
-        + '</div>';
-    }
-  }
+  html += transfFamPortalResumenTransferenciasHtml(periodo, doctor.apellido);
 
   // Neto de un cheque puntual (bruto − préstamo del 1ro − retención −
   // IIBB del 4to − CPSM del 5to) — extraído a función para poder calcular

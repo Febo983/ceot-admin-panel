@@ -2165,22 +2165,22 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/portal-render.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/admin-home.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/gastos-obra.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/presentacion.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/sueldo-b.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/nun-data.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/accesos-debitos.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/estadisticas.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/gastos-casa.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/faq-asistente.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/asistente.js?v=2026-09-15-transf-fam-desde-hoy"></script>
-<script src="js/correos.js?v=2026-09-15-transf-fam-desde-hoy"></script>
+<script src="js/datos.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/portal-render.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/admin-home.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/gastos-obra.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/presentacion.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/sueldo-b.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/nun-data.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/accesos-debitos.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/estadisticas.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/gastos-casa.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/faq-asistente.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/asistente.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/correos.js?v=2026-09-15-transf-fam-resumen-unico"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -5019,6 +5019,12 @@ function transfFamMoverImporte(key, idS) {
 function transfFamCascadaCalcular(periodo, doc) {
   var base = calcularDetalleChequesProfesional(periodo, doc);
   if (!base) return null;
+  // "Cerrado" = ya está todo lo del mes cargado (no queda ningún cheque
+  // pendiente) — significa que no va a llegar más plata este período. Si un
+  // objetivo (sueldo o familiar) no se completó y el mes está cerrado, se
+  // paga por lo que efectivamente se juntó (ver aPagar en tomarBucket) en
+  // vez de quedar esperando para siempre. Pedido de Marcelo, 15/09/2026.
+  var cerrado = !base.detalle.some(function(d) { return d.pendiente; });
   var cheques = base.detalle.filter(function(d) { return !d.pendiente; }).map(function(d) {
     var key = transfFamKey(periodo, doc.apellido, d.fecha);
     return { fecha: d.fecha, neto: netoEfectivo(key, d.neto) };
@@ -5039,14 +5045,19 @@ function transfFamCascadaCalcular(periodo, doc) {
       suma += cheques[ptr].neto;
       ptr++;
     }
-    return { cheques: usados.map(function(c) { return c.fecha; }), monto: suma, alcanza: suma >= objetivo };
+    var alcanza = suma >= objetivo;
+    // aPagar: el importe con el que efectivamente se cubre este objetivo —
+    // el fijo si alcanzó, la suma real si el mes ya cerró sin alcanzar, o
+    // null si todavía puede llegar más plata (no hay nada que anunciar aún).
+    var aPagar = alcanza ? objetivo : (cerrado ? suma : null);
+    return { cheques: usados.map(function(c) { return c.fecha; }), monto: suma, alcanza: alcanza, aPagar: aPagar };
   }
 
-  var resultado = { sueldo: null, familiares: [], dividendos: null };
+  var resultado = { sueldo: null, familiares: [], dividendos: null, cerrado: cerrado };
   if (sueldoMonto) {
     var bs = tomarBucket(sueldoMonto);
-    resultado.sueldo = { label: sueldoLabel, objetivo: sueldoMonto, cheques: bs.cheques, monto: bs.monto, alcanza: bs.alcanza };
-    if (!bs.alcanza) return resultado; // no llegó ni al sueldo: no tiene sentido seguir repartiendo
+    resultado.sueldo = { label: sueldoLabel, objetivo: sueldoMonto, cheques: bs.cheques, monto: bs.monto, alcanza: bs.alcanza, aPagar: bs.aPagar };
+    if (!bs.alcanza) return resultado; // no llegó al sueldo completo: no hay excedente para repartir a familiares
   }
 
   // Para los familiares, arrancamos "desde hoy en adelante": un cheque ya
@@ -5060,7 +5071,7 @@ function transfFamCascadaCalcular(periodo, doc) {
   var defaults = TRANSF_FAM_DEFAULT[doc.apellido] || [];
   defaults.forEach(function(d) {
     var bf = tomarBucket(d.importe);
-    resultado.familiares.push({ nombre: d.nombre, aliasCbu: d.aliasCbu, concepto: d.concepto, objetivo: d.importe, cheques: bf.cheques, monto: bf.monto, alcanza: bf.alcanza });
+    resultado.familiares.push({ nombre: d.nombre, aliasCbu: d.aliasCbu, concepto: d.concepto, objetivo: d.importe, cheques: bf.cheques, monto: bf.monto, alcanza: bf.alcanza, aPagar: bf.aPagar });
   });
 
   var restantes = cheques.slice(ptr);
@@ -5069,16 +5080,18 @@ function transfFamCascadaCalcular(periodo, doc) {
 }
 
 // Corre la cascada de arriba para cada profesional con predeterminados
-// cargados y, si un objetivo de familiar "alcanza" (ya hay cheques
-// suficientes) y todavía NO existe una transferencia con ese nombre para
-// este período, la crea sola en TRANSF_FAM (marcada auto:true, para que se
-// distinga de una cargada a mano). Si ya existe una entrada con ese nombre
-// —auto o editada a mano— no la toca: así una edición manual (mover
-// importe, cambiar alias, etc.) nunca se pisa sola en un re-render.
+// cargados y, si un objetivo de familiar ya se puede pagar (f.aPagar !=
+// null — o porque alcanzó el importe habitual, o porque el mes cerró y se
+// abona por lo que se juntó) y todavía NO existe una transferencia con ese
+// nombre para este período, la crea sola en TRANSF_FAM (marcada auto:true,
+// para que se distinga de una cargada a mano). Si ya existe una entrada con
+// ese nombre —auto o editada a mano— no la toca: así una edición manual
+// (mover importe, cambiar alias, etc.) nunca se pisa sola en un re-render.
 // Deliberadamente SIN cachear "ya corrí este período": es barata (unos
 // pocos profesionales, pocos cheques) y así, si los cheques se van cargando
 // de a poco en el mes, cada vez que se repinta la pantalla vuelve a
-// intentar — apenas alcanza, la crea, sin esperar a que Marcelo refresque.
+// intentar — apenas se puede pagar, la crea, sin esperar a que Marcelo
+// refresque.
 function transfFamAutoAplicar(periodo) {
   var huboCambios = false;
   Object.keys(TRANSF_FAM_DEFAULT).forEach(function(apellido) {
@@ -5089,12 +5102,12 @@ function transfFamAutoAplicar(periodo) {
     var profKey = transfFamProfKey(periodo, apellido);
     var existentes = TRANSF_FAM[profKey] || [];
     cascada.familiares.forEach(function(f) {
-      if (!f.alcanza) return;
+      if (f.aPagar == null) return; // sigue habiendo cheques que podrían completarlo: esperar
       var yaExiste = existentes.some(function(e) { return e.nombre === f.nombre; });
       if (yaExiste) return;
       existentes.push({
         nombre: f.nombre, aliasCbu: f.aliasCbu, concepto: f.concepto,
-        importe: f.objetivo, cheques: f.cheques, auto: true
+        importe: f.aPagar, cheques: f.cheques, auto: true, completo: f.alcanza
       });
       huboCambios = true;
     });
@@ -5269,7 +5282,9 @@ function transfFamCeldaHtml(periodo, apellido, fecha, netoCheque, netosPorFecha)
         + (resto < 0 ? '⚠ transferiste ' + fmt(-resto) + ' de más' : '↳ resto a su cuenta: <b>' + fmt(resto) + '</b>') + '</div>';
     }
 
-    var tagAuto = e.auto ? '<div style="font-size:.58rem;color:#1f3a2e;font-weight:700">🤖 asignado automático</div>' : '';
+    var tagAuto = e.auto
+      ? '<div style="font-size:.58rem;color:#1f3a2e;font-weight:700">🤖 asignado automático' + (e.completo === false ? ' · ⚠ no llegó al importe habitual, se hizo por lo disponible' : '') + '</div>'
+      : '';
     return '<div style="margin-bottom:4px;padding:3px 5px;background:rgba(31,58,46,.07);border-radius:5px;white-space:normal' + (hecho ? ';opacity:.55' : '') + '">'
       +   tagCombinada
       +   tagAuto
@@ -6598,7 +6613,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-15-transf-fam-desde-hoy';
+  var CURRENT_BUILD = '2026-09-15-transf-fam-resumen-unico';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
