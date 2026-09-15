@@ -332,11 +332,11 @@ function renderFacturas() {
 // (licencias-secretarias.gs) — clasifica licencias por color de celda.
 var LIC_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwAt8sO7iFOQPUL63rahqErTG1unGLJOqtGq9WmWMvjcZN991arZrak8JR7GoU2mRg0Gw/exec';
 var LIC_TYPE_STYLE = {
-  feriado:    { bg:'rgba(177,58,44,.10)',  fg:'#b13a2c', lbl:'Feriado' },
-  licencia:   { bg:'rgba(146,97,15,.10)',  fg:'#92610f', lbl:'Licencia' },
-  vacaciones: { bg:'rgba(22,163,74,.10)',  fg:'#16a34a', lbl:'Vacaciones' },
-  cumple:     { bg:'rgba(109,40,217,.10)', fg:'#6d28d9', lbl:'Cumpleaños' },
-  mudanza:    { bg:'rgba(29,78,216,.10)',  fg:'#1d4ed8', lbl:'Mudanza' }
+  feriado:    { bg:'rgba(177,58,44,.10)',  fill:'rgba(177,58,44,.16)',  fg:'#b13a2c', lbl:'Feriado' },
+  licencia:   { bg:'rgba(146,97,15,.10)',  fill:'rgba(146,97,15,.16)',  fg:'#92610f', lbl:'Licencia' },
+  vacaciones: { bg:'rgba(22,163,74,.10)',  fill:'rgba(22,163,74,.16)',  fg:'#16a34a', lbl:'Vacaciones' },
+  cumple:     { bg:'rgba(109,40,217,.10)', fill:'rgba(109,40,217,.16)', fg:'#6d28d9', lbl:'Cumpleaños' },
+  mudanza:    { bg:'rgba(29,78,216,.10)',  fill:'rgba(29,78,216,.16)',  fg:'#1d4ed8', lbl:'Mudanza' }
 };
 var licEventsByDate = null;
 var licMes  = new Date().getMonth();
@@ -424,15 +424,39 @@ function renderLicenciasBody() {
     var iso = licISO(licAnio, licMes, d);
     var isToday = iso === hoyISO;
     var leaves = (licEventsByDate && licEventsByDate[iso]) || [];
-    var avatars = leaves.map(function(l) {
-      var s = LIC_TYPE_STYLE[l.type] || { bg: '#eee', fg: '#555' };
-      return '<div title="' + String(l.employee).replace(/"/g, '') + ' — ' + (LIC_TYPE_STYLE[l.type] ? LIC_TYPE_STYLE[l.type].lbl : l.type) +
-        '" style="width:20px;height:20px;border-radius:50%;background:' + s.bg + ';color:' + s.fg +
-        ';display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;flex-shrink:0">' + l.initials + '</div>';
+
+    // Agrupa por tipo — un día puede tener gente de tipos distintos (ej.
+    // alguien de licencia y alguien de mudanza el mismo día). Cada tipo
+    // presente pinta una banda propia dentro de la celda, así el color
+    // sigue significando lo mismo aunque el día sea mixto.
+    var porTipo = {};
+    var ordenTipos = [];
+    leaves.forEach(function(l) {
+      if (!porTipo[l.type]) { porTipo[l.type] = []; ordenTipos.push(l.type); }
+      porTipo[l.type].push(String(l.employee || l.initials || '').trim());
+    });
+
+    var bandas = ordenTipos.map(function(t) {
+      var s = LIC_TYPE_STYLE[t] || { fill: 'rgba(107,106,90,.14)', fg: '#6b6a5a' };
+      var lista = porTipo[t];
+      // Un feriado (u otro tipo que aplique a mucha gente el mismo día) no
+      // necesita repetir cada nombre — alcanza con ver algunos y cuántos más,
+      // si no la celda se estira sin aportar nada nuevo a simple vista.
+      var mostrar = lista.length > 3 ? lista.slice(0, 2) : lista;
+      var nombres = mostrar.map(function(n) {
+        return '<div style="line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + n + '</div>';
+      }).join('');
+      if (lista.length > 3) {
+        nombres += '<div style="line-height:1.3;opacity:.75">+' + (lista.length - 2) + ' más</div>';
+      }
+      return '<div style="flex:1;min-height:0;background:' + s.fill + ';color:' + s.fg +
+        ';padding:3px 6px;font-size:.68rem;font-weight:600" title="' + lista.join(', ').replace(/"/g, '') + '">' + nombres + '</div>';
     }).join('');
-    grid += '<div style="min-height:64px;padding:5px;background:var(--co-card,#fbf8f0);' + (isToday ? 'outline:2px solid #1f3a2e;outline-offset:-2px;' : '') + '">'
-      + '<div style="font-size:.68rem;font-weight:600;color:' + (isToday ? '#1f3a2e' : 'var(--co-ink-dim,#6b6a5a)') + ';margin-bottom:3px">' + d + '</div>'
-      + (avatars ? '<div style="display:flex;flex-wrap:wrap;gap:2px">' + avatars + '</div>' : '')
+
+    grid += '<div style="min-height:76px;display:flex;flex-direction:column;background:var(--co-card,#fbf8f0);' +
+        (isToday ? 'outline:2px solid #1f3a2e;outline-offset:-2px;' : '') + '">'
+      + '<div style="font-size:.68rem;font-weight:600;color:' + (isToday ? '#1f3a2e' : 'var(--co-ink-dim,#6b6a5a)') + ';padding:5px 6px 3px">' + d + '</div>'
+      + '<div style="flex:1;display:flex;flex-direction:column;gap:1px">' + bandas + '</div>'
       + '</div>';
   }
 
