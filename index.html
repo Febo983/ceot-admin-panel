@@ -4079,6 +4079,20 @@ function licHonExportHtml(id) {
     ? '<div class="excepciones"><b>NOTAS / EXCEPCIONES</b>' + escAttr(lic.notas).replace(/\n/g, '<br>') + '</div>'
     : '';
 
+  var avisoHtml = '';
+  if (/marcelo/i.test(lic.titular || '')) {
+    avisoHtml = '<div class="aviso">'
+      + '<b>🟢 Depósito de cheques → Acreditaciones</b>'
+      + '<table class="aviso-table"><thead><tr><th>Depósito de cheques</th><th>Acreditaciones</th></tr></thead><tbody>'
+      + '<tr><td>09/10 viernes</td><td>14/10 miércoles (10 transferencias)</td></tr>'
+      + '<tr><td>16/10 viernes</td><td>20/10 martes (10 transferencias)</td></tr>'
+      + '<tr><td>23/10 viernes</td><td>27/10 martes (10 transferencias)</td></tr>'
+      + '</tbody></table>'
+      + '<b style="margin-top:10px">Transferencias para gastos casa 2067</b>'
+      + '<div>Jueves 15/10 (6 o 7 transferencias)<br>Jueves 22/10 (6 o 7 transferencias)</div>'
+      + '</div>';
+  }
+
   var agendaHtml = '';
   if (/marcelo/i.test(lic.titular || '') && typeof OBRA_AGENDA_SEED !== 'undefined') {
     var filasAgenda = OBRA_AGENDA_SEED.slice().sort(function (x, y) { return x.n.localeCompare(y.n, "es"); }).map(function (p) {
@@ -4112,6 +4126,12 @@ function licHonExportHtml(id) {
     + '.nota-chica{color:#6b7280;font-size:.82rem;margin-top:10px}'
     + '.excepciones{margin-top:20px;background:#fdf6e3;border:1px solid #e9d9a0;border-radius:8px;padding:14px 16px;font-size:.9rem;line-height:1.55}'
     + '.excepciones b{display:block;margin-bottom:6px;font-size:.82rem;letter-spacing:.03em;color:#92400e}'
+    + '@keyframes avisoBlink{0%,100%{opacity:1}50%{opacity:.55}}'
+    + '.aviso{margin-top:20px;border:2px solid #16a34a;border-radius:8px;background:#f0fdf4;padding:14px 16px;font-size:.88rem;line-height:1.5;animation:avisoBlink 1.6s ease-in-out infinite}'
+    + '.aviso b{display:block;margin-bottom:6px;font-size:.82rem;letter-spacing:.02em;color:#15803d}'
+    + '.aviso-table{width:100%;border-collapse:collapse;margin:4px 0 2px;font-size:.86rem}'
+    + '.aviso-table th,.aviso-table td{padding:4px 8px;text-align:left;border-bottom:1px solid #dcf3e2;white-space:normal}'
+    + '.aviso-table th{color:#166534;font-weight:600;font-size:.76rem;text-transform:none}'
     + '.agenda{margin-top:20px}.agenda summary{cursor:pointer;font-size:.86rem;font-weight:700;color:#4b5563}'
     + '.agenda-note{font-size:.76rem;color:#9ca3af;margin:6px 0}'
     + '.agenda-table{font-size:.82rem;width:100%;border-collapse:collapse;margin-top:6px}'
@@ -4127,6 +4147,7 @@ function licHonExportHtml(id) {
     + '<tfoot><tr><td>Total</td>' + totalesHtml + '<td>' + fmt(res.granTotal) + '</td></tr></tfoot></table></div>'
     + '<div class="nota-chica">No incluye CEM ni OSDE — se controlan aparte, cuando se carguen en el Sheet.</div>'
     + notasHtml
+    + avisoHtml
     + agendaHtml
     + '</div><div class="footer">CEOT · Informe administrativo interno — generado el ' + hoyStr + '. Los montos son de los cheques ya cargados a esa fecha; si se agregan cheques nuevos del período, esta copia no se actualiza sola.</div>'
     + '</div></body></html>';
@@ -4163,6 +4184,28 @@ function licHonEliminar(id) {
   renderLicenciasHon();
 }
 
+// Recuadro fijo con el cronograma de depósito de cheques → acreditaciones y
+// las transferencias de Gastos Casa 2067 durante la licencia de octubre —
+// pedido de Marcelo, para que quien lo reemplace lo vea resaltado sin buscarlo
+// entre las notas libres. Verde y titilante a propósito, para que salte a la
+// vista apenas se abre la tarjeta.
+function licHonAvisoMarceloHtml() {
+  return '<style>@keyframes licHonBlink{0%,100%{opacity:1}50%{opacity:.55}}</style>'
+    + '<div style="margin-top:12px;border:2px solid #16a34a;border-radius:10px;padding:14px 16px;'
+    + 'background:#f0fdf4;animation:licHonBlink 1.6s ease-in-out infinite">'
+    + '<div style="font-weight:700;color:#15803d;font-size:.86rem;margin-bottom:8px">🟢 Depósito de cheques → Acreditaciones</div>'
+    + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem;margin-bottom:12px">'
+    + '<thead><tr style="color:#166534"><th style="text-align:left;padding:2px 8px 4px 0">Depósito de cheques</th><th style="text-align:left;padding:2px 8px 4px 0">Acreditaciones</th></tr></thead>'
+    + '<tbody>'
+    + '<tr><td style="padding:2px 8px 2px 0">09/10 viernes</td><td style="padding:2px 8px 2px 0">14/10 miércoles (10 transferencias)</td></tr>'
+    + '<tr><td style="padding:2px 8px 2px 0">16/10 viernes</td><td style="padding:2px 8px 2px 0">20/10 martes (10 transferencias)</td></tr>'
+    + '<tr><td style="padding:2px 8px 2px 0">23/10 viernes</td><td style="padding:2px 8px 2px 0">27/10 martes (10 transferencias)</td></tr>'
+    + '</tbody></table></div>'
+    + '<div style="font-weight:700;color:#15803d;font-size:.86rem;margin-bottom:6px">Transferencias para gastos casa 2067</div>'
+    + '<div style="font-size:.78rem;color:#166534;line-height:1.6">Jueves 15/10 (6 o 7 transferencias)<br>Jueves 22/10 (6 o 7 transferencias)</div>'
+    + '</div>';
+}
+
 function licHonCardHtml(lic) {
   var color = lic.color || LIC_HON_PALETTE[0];
   var estado = licHonEstado(lic);
@@ -4182,6 +4225,7 @@ function licHonCardHtml(lic) {
     + '</div>'
     + '<div style="margin-top:10px">' + licHonTablaHtml(lic) + '</div>'
     + '<div style="margin-top:10px"><div style="font-size:.66rem;font-weight:600;color:rgba(32,36,31,.55);margin-bottom:4px;letter-spacing:.02em">NOTAS / EXCEPCIONES</div>' + licHonNotasHtml(lic) + '</div>'
+    + (/marcelo/i.test(lic.titular || '') ? licHonAvisoMarceloHtml() : '')
     + (/marcelo/i.test(lic.titular || '') && typeof gcAgendaProveedoresHtml === 'function' ? gcAgendaProveedoresHtml() : '')
     + '</div>';
 }
@@ -6664,7 +6708,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-15-aporte-pct-resync';
+  var CURRENT_BUILD = '2026-09-15-lic-marcelo-cronograma';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
