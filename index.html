@@ -2165,22 +2165,22 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/portal-render.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/admin-home.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/gastos-obra.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/presentacion.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/sueldo-b.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/nun-data.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/accesos-debitos.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/estadisticas.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/gastos-casa.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/faq-asistente.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/asistente.js?v=2026-09-15-portal-banner-autorefresh"></script>
-<script src="js/correos.js?v=2026-09-15-portal-banner-autorefresh"></script>
+<script src="js/datos.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/portal-render.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/admin-home.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/gastos-obra.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/presentacion.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/sueldo-b.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/nun-data.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/accesos-debitos.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/estadisticas.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/gastos-casa.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/faq-asistente.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/asistente.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/correos.js?v=2026-09-15-aporte-pct-resync"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3488,11 +3488,20 @@ new MutationObserver(function(muts) {
 }).observe(document.body, { childList: true, subtree: true });
 
 // ══════ APORTE CEOT — edición de porcentajes por profesional ═════
-function renderAporteCeot() {
+// Siempre re-sincroniza APORTE_PCT_REMOTO/APORTE_CERRADOS_REMOTO contra el
+// Script antes de pintar los inputs — si no, una pestaña abierta hace rato
+// (o con Guardar tocado desde otro dispositivo mientras tanto) muestra el %
+// viejo en pantalla, y si ahí se aprieta "Guardar" ese valor viejo pisa el
+// nuevo para TODOS (guardarAporteCeotPct manda el snapshot completo de los
+// inputs, no un merge). Bug real: Bruni/De la Colina "se destildaban" a 15%
+// cada tanto por este motivo. Reportado por Marcelo, 15/09/2026.
+async function renderAporteCeot() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
   var btn = document.getElementById("adm-sidenav-aporteceot");
   if (btn) btn.className = "adm-sidenav-btn active";
+
+  await Promise.all([cargarAportePctRemoto(), cargarAporteCerradosRemoto()]);
 
   var socios = DOCTORES.filter(function(d) { return APORTE_CEOT_PCT[d.apellido] !== null; });
 
@@ -6333,7 +6342,7 @@ async function guardarAporteCeotPct() {
     var data = await (await fetch(authURL(url))).json();
     if (!data.ok) throw new Error(data.error || 'error desconocido');
     APORTE_PCT_REMOTO = override;
-    renderAporteCeot();
+    await renderAporteCeot();
     var stPost = document.getElementById("aporte-ceot-status");
     if (stPost) stPost.textContent = "✓ Porcentajes guardados — ya se aplican para todos, en cualquier dispositivo.";
   } catch (e) {
@@ -6349,7 +6358,7 @@ async function restaurarAporteCeotPct() {
     var data = await (await fetch(authURL(url))).json();
     if (!data.ok) throw new Error(data.error || 'error desconocido');
     APORTE_PCT_REMOTO = {};
-    renderAporteCeot();
+    await renderAporteCeot();
     var stPost = document.getElementById("aporte-ceot-status");
     if (stPost) stPost.textContent = "✓ Restaurado al default parejo de 15%.";
   } catch (e) {
@@ -6655,7 +6664,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-15-portal-banner-autorefresh';
+  var CURRENT_BUILD = '2026-09-15-aporte-pct-resync';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
