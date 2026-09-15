@@ -2165,22 +2165,22 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/portal-render.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/admin-home.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/gastos-obra.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/presentacion.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/sueldo-b.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/nun-data.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/accesos-debitos.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/estadisticas.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/gastos-casa.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/faq-asistente.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/asistente.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
-<script src="js/correos.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/datos.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/portal-render.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/admin-home.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/gastos-obra.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/presentacion.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/sueldo-b.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/nun-data.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/accesos-debitos.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/estadisticas.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/gastos-casa.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/faq-asistente.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/asistente.js?v=2026-09-15-transf-fam-cascada"></script>
+<script src="js/correos.js?v=2026-09-15-transf-fam-cascada"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3642,6 +3642,7 @@ function renderSueldoDirector() {
   if (btn) btn.className = "adm-sidenav-btn active";
 
   var periodo = adminPeriodoAct || tabMesActual();
+  transfFamAutoAplicar(periodo);
 
   var html = '<div id="sueldoDirectorScreenRoot" style="padding:16px">'
     + licHonBannerHtml()
@@ -5002,6 +5003,99 @@ function transfFamMoverImporte(key, idS) {
   renderSueldoDirector();
 }
 
+// ── Cascada automática: sueldo → familiares → dividendos ────────────────
+// Marcelo pidió (15/09/2026) no tener que ir cheque por cheque marcando a
+// mano quién cobra el sueldo y quién la transferencia a un familiar — quiere
+// que la app calcule y muestre (a él y al profesional) con qué cheques se
+// cubre cada cosa. Recorre los cheques del mes en orden cronológico y va
+// "llenando" objetivos en cascada (mismo criterio que la calculadora de
+// Gastos A: cada cheque aporta entero al objetivo que se esté llenando, sin
+// partirlo entre dos objetivos): primero el sueldo (Director o BBVA, según
+// corresponda), después cada transferencia predeterminada de
+// TRANSF_FAM_DEFAULT en el orden en que están cargadas, y lo que sobra son
+// dividendos (a la cuenta del profesional). El objetivo de cada bucket
+// transferible sigue siendo el importe redondo fijo (ej. $4.000.000, no la
+// suma real de los cheques que lo cubrieron, que puede excederlo un poco).
+function transfFamCascadaCalcular(periodo, doc) {
+  var base = calcularDetalleChequesProfesional(periodo, doc);
+  if (!base) return null;
+  var cheques = base.detalle.filter(function(d) { return !d.pendiente; }).map(function(d) {
+    var key = transfFamKey(periodo, doc.apellido, d.fecha);
+    return { fecha: d.fecha, neto: netoEfectivo(key, d.neto) };
+  });
+
+  var sueldoMonto = null, sueldoLabel = null;
+  if (typeof SUELDO_DIRECTOR_LISTA !== "undefined" && SUELDO_DIRECTOR_LISTA.indexOf(doc.apellido) !== -1) {
+    sueldoMonto = SUELDO_DIRECTOR_MONTO; sueldoLabel = "Sueldo Director";
+  } else if (typeof SUELDO_BBVA_LISTA !== "undefined" && SUELDO_BBVA_LISTA.indexOf(doc.apellido) !== -1) {
+    sueldoMonto = SUELDO_BBVA_MONTO; sueldoLabel = "Sueldo BBVA";
+  }
+
+  var ptr = 0;
+  function tomarBucket(objetivo) {
+    var usados = [], suma = 0;
+    while (ptr < cheques.length && suma < objetivo) {
+      usados.push(cheques[ptr]);
+      suma += cheques[ptr].neto;
+      ptr++;
+    }
+    return { cheques: usados.map(function(c) { return c.fecha; }), monto: suma, alcanza: suma >= objetivo };
+  }
+
+  var resultado = { sueldo: null, familiares: [], dividendos: null };
+  if (sueldoMonto) {
+    var bs = tomarBucket(sueldoMonto);
+    resultado.sueldo = { label: sueldoLabel, objetivo: sueldoMonto, cheques: bs.cheques, monto: bs.monto, alcanza: bs.alcanza };
+    if (!bs.alcanza) return resultado; // no llegó ni al sueldo: no tiene sentido seguir repartiendo
+  }
+
+  var defaults = TRANSF_FAM_DEFAULT[doc.apellido] || [];
+  defaults.forEach(function(d) {
+    var bf = tomarBucket(d.importe);
+    resultado.familiares.push({ nombre: d.nombre, aliasCbu: d.aliasCbu, concepto: d.concepto, objetivo: d.importe, cheques: bf.cheques, monto: bf.monto, alcanza: bf.alcanza });
+  });
+
+  var restantes = cheques.slice(ptr);
+  resultado.dividendos = { cheques: restantes.map(function(c) { return c.fecha; }), monto: restantes.reduce(function(s, c) { return s + c.neto; }, 0) };
+  return resultado;
+}
+
+// Corre la cascada de arriba para cada profesional con predeterminados
+// cargados y, si un objetivo de familiar "alcanza" (ya hay cheques
+// suficientes) y todavía NO existe una transferencia con ese nombre para
+// este período, la crea sola en TRANSF_FAM (marcada auto:true, para que se
+// distinga de una cargada a mano). Si ya existe una entrada con ese nombre
+// —auto o editada a mano— no la toca: así una edición manual (mover
+// importe, cambiar alias, etc.) nunca se pisa sola en un re-render.
+// Deliberadamente SIN cachear "ya corrí este período": es barata (unos
+// pocos profesionales, pocos cheques) y así, si los cheques se van cargando
+// de a poco en el mes, cada vez que se repinta la pantalla vuelve a
+// intentar — apenas alcanza, la crea, sin esperar a que Marcelo refresque.
+function transfFamAutoAplicar(periodo) {
+  var huboCambios = false;
+  Object.keys(TRANSF_FAM_DEFAULT).forEach(function(apellido) {
+    var doc = DOCTORES.filter(function(d) { return d.apellido === apellido; })[0];
+    if (!doc) return;
+    var cascada = transfFamCascadaCalcular(periodo, doc);
+    if (!cascada) return;
+    var profKey = transfFamProfKey(periodo, apellido);
+    var existentes = TRANSF_FAM[profKey] || [];
+    cascada.familiares.forEach(function(f) {
+      if (!f.alcanza) return;
+      var yaExiste = existentes.some(function(e) { return e.nombre === f.nombre; });
+      if (yaExiste) return;
+      existentes.push({
+        nombre: f.nombre, aliasCbu: f.aliasCbu, concepto: f.concepto,
+        importe: f.objetivo, cheques: f.cheques, auto: true
+      });
+      huboCambios = true;
+    });
+    if (existentes.length) TRANSF_FAM[profKey] = existentes;
+  });
+  if (huboCambios) transfFamGuardarTodo();
+  return huboCambios;
+}
+
 // Resumen consolidado de todas las transferencias a familiares del período
 // (de todos los profesionales juntos), separadas en pendientes/hechas, con
 // un botón para copiar de una sola vez el texto de las que faltan.
@@ -5027,7 +5121,7 @@ function transfFamResumenMesHtml(periodo) {
     return '<tr' + (f.hecho ? ' style="opacity:.5"' : '') + '>'
       + '<td>' + escAttr(f.apellido) + '</td>'
       + '<td>' + f.fecha + '</td>'
-      + '<td>' + escAttr(f.e.nombre) + (linea2 ? ' <span style="font-size:.62rem;color:rgba(32,36,31,.5)">(' + escAttr(linea2) + ')</span>' : '') + '</td>'
+      + '<td>' + escAttr(f.e.nombre) + (f.e.auto ? ' <span title="asignado automático" style="font-size:.62rem">🤖</span>' : '') + (linea2 ? ' <span style="font-size:.62rem;color:rgba(32,36,31,.5)">(' + escAttr(linea2) + ')</span>' : '') + '</td>'
       + '<td style="font-weight:600">' + fmt(f.e.importe) + '</td>'
       + '<td>' + (f.hecho
           ? '✓ transferido <a href="javascript:void(0)" onclick="transfFamToggleTransferido(\'' + f.key.replace(/'/g, "\\'") + '\',' + f.idx + ')" style="font-size:.6rem;color:rgba(32,36,31,.4);text-decoration:underline;margin-left:6px">deshacer</a>'
@@ -5155,8 +5249,10 @@ function transfFamCeldaHtml(periodo, apellido, fecha, netoCheque, netosPorFecha)
         + (resto < 0 ? '⚠ transferiste ' + fmt(-resto) + ' de más' : '↳ resto a su cuenta: <b>' + fmt(resto) + '</b>') + '</div>';
     }
 
+    var tagAuto = e.auto ? '<div style="font-size:.58rem;color:#1f3a2e;font-weight:700">🤖 asignado automático</div>' : '';
     return '<div style="margin-bottom:4px;padding:3px 5px;background:rgba(31,58,46,.07);border-radius:5px;white-space:normal' + (hecho ? ';opacity:.55' : '') + '">'
       +   tagCombinada
+      +   tagAuto
       +   '<div style="font-weight:600">' + escAttr(e.nombre) + ' — ' + fmt(e.importe) + '</div>'
       +   (linea2 ? '<div style="font-size:.6rem;color:rgba(32,36,31,.55)">' + escAttr(linea2) + btnCopiarCbu + '</div>' : '')
       +   avisoExcede
@@ -6482,7 +6578,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-15-sueldo-bbva-transf-fam';
+  var CURRENT_BUILD = '2026-09-15-transf-fam-cascada';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
