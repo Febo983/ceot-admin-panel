@@ -627,8 +627,12 @@ function marcarEndpointStatus(key, ok, errMsg) {
   renderEndpointStatusBanner();
 }
 function renderEndpointStatusBanner() {
-  var fallidos = Object.keys(ENDPOINT_STATUS).filter(function(k) { return !ENDPOINT_STATUS[k].ok; });
   var el = document.getElementById("endpointStatusBanner");
+  // Solo para Marcelo (admin) — a un profesional este aviso le suena a que
+  // su plata está mal calculada, cuando en realidad es un módulo (Gastos A,
+  // Cajas, etc.) que ni le compete. Pedido de Marcelo, 15/09/2026.
+  if (AUTH_ROLE !== "admin") { if (el) el.remove(); return; }
+  var fallidos = Object.keys(ENDPOINT_STATUS).filter(function(k) { return !ENDPOINT_STATUS[k].ok; });
   if (!fallidos.length) { if (el) el.remove(); return; }
   if (!el) {
     el = document.createElement("div");
