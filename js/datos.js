@@ -528,6 +528,15 @@ const PRESTAMO_CASA_CUOTA = { agosto: 1, septiembre: 2, octubre: 3, noviembre: 4
 const SUELDO_DIRECTOR_LISTA = PRESTAMO_CASA_SOCIOS_A;
 var SUELDO_DIRECTOR_MONTO = 4000000;
 
+// ── Sueldo BBVA — Mazzola y De la Colina, mismo mecanismo que Sueldo
+// Director (calcularSueldoDirector con otro monto), pero un importe menor
+// pagado por otro medio (BBVA). Sale de la misma plata de los cheques Colón
+// (confirmado con Marcelo, 15/09/2026) — se resta igual, el resto queda
+// como dividendos. El resto de PRESTAMO_CASA_SOCIOS (Garmendia, Soulé,
+// León, Perlasco) no tiene sueldo: todo su neto es dividendos.
+const SUELDO_BBVA_LISTA = ["MAZZOLA", "DE LA COLINA"];
+var SUELDO_BBVA_MONTO = 300000;
+
 // ── Todos los socios con cheques (Director + Resto) — usado por Inversiones ──
 const TODOS_SOCIOS_INVERSION = PRESTAMO_CASA_SOCIOS_A.concat(PRESTAMO_CASA_SOCIOS);
 

@@ -306,6 +306,19 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     }
   }
 
+  // Sueldo BBVA — Mazzola y De la Colina: mismo mecanismo, monto menor,
+  // pagado por otro medio. El resto de su neto del mes queda como dividendos.
+  if (typeof SUELDO_BBVA_LISTA !== "undefined" && SUELDO_BBVA_LISTA.indexOf(doctor.apellido) !== -1 && typeof calcularSueldoDirector === "function") {
+    var sb = calcularSueldoDirector(periodo, doctor, SUELDO_BBVA_MONTO);
+    if (sb && sb.alcanza) {
+      html += '<div style="background:rgba(201,147,58,.12);border:1px solid rgba(201,147,58,.35);border-radius:10px;padding:10px 12px;margin-bottom:10px">'
+        + '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.04em">🏦 Sueldo BBVA' + avisoTransferidoBbvaChipHtml(periodo, doctor) + '</div>'
+        + '<div style="font-size:.85rem;font-weight:700;color:#20241f;margin-top:2px">' + fmt(sb.monto) + '</div>'
+        + '<div style="font-size:.68rem;color:rgba(32,36,31,.5);margin-top:2px">Resto del mes (dividendos): ' + fmt(sb.saldoFinal) + '</div>'
+        + '</div>';
+    }
+  }
+
   // Neto de un cheque puntual (bruto − préstamo del 1ro − retención −
   // IIBB del 4to − CPSM del 5to) — extraído a función para poder calcular
   // de antemano el neto de TODOS los cheques del mes (netosPorFecha), que

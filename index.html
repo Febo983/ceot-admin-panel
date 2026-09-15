@@ -2165,22 +2165,22 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/portal-render.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/admin-home.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/gastos-obra.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/presentacion.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/sueldo-b.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/nun-data.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/accesos-debitos.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/estadisticas.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/gastos-casa.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/faq-asistente.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/asistente.js?v=2026-09-14-lic-export-html"></script>
-<script src="js/correos.js?v=2026-09-14-lic-export-html"></script>
+<script src="js/datos.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/portal-render.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/admin-home.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/gastos-obra.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/presentacion.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/sueldo-b.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/nun-data.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/accesos-debitos.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/estadisticas.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/gastos-casa.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/faq-asistente.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/asistente.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
+<script src="js/correos.js?v=2026-09-15-sueldo-bbva-transf-fam"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3308,6 +3308,7 @@ async function handleLogin() {
     netoOverrideCargar();
     sbTarifaCargar();
     sueldoDirectorHechoCargar();
+    sueldoBbvaHechoCargar();
     restoProfHechoCargar();
     transfNotasCargar();
     renderSidenavLinks();
@@ -3333,6 +3334,7 @@ async function handleLogin() {
   // Estado "ya transferido" que tilda Marcelo en el panel admin — se lee acá
   // para pintar el chip verde en el detalle de cada mes del portal.
   sueldoDirectorHechoCargar();
+  sueldoBbvaHechoCargar();
   restoProfHechoCargar();
   // Transferencias a familiares — para mostrar, cheque por cheque, a quién y
   // por cuánto se transfirió en su lugar (ver transfFamPortalDetalleHtml en
@@ -3413,6 +3415,7 @@ document.getElementById("refreshBtn").addEventListener("click", async function()
   // Re-traer el estado "ya transferido" que tilda Marcelo desde el panel admin
   // (el syncPull inicial es 1 sola vez; acá se fuerza de nuevo).
   _sueldoDirHechoPulled = false; sueldoDirectorHechoCargar();
+  _sueldoBbvaHechoPulled = false; sueldoBbvaHechoCargar();
   _restoProfHechoPulled = false; restoProfHechoCargar();
   if (doctorActual) {
     renderMayo("pane-mayo", doctorActual);
@@ -3708,6 +3711,41 @@ function sueldoDirectorToggleHecho(periodo, apellido) {
   if (SUELDO_DIRECTOR_HECHO[k]) delete SUELDO_DIRECTOR_HECHO[k];
   else SUELDO_DIRECTOR_HECHO[k] = true;
   sueldoDirectorHechoGuardarTodo();
+  renderSueldoDirector();
+}
+
+// Igual que SUELDO_DIRECTOR_HECHO pero para el sueldo BBVA ($300.000) de
+// Mazzola y De la Colina — tracking propio, separado de "Transferencia ya
+// hecha" (RESTO_PROF_HECHO), que sigue representando el neto completo del
+// mes de los 6 de Resto de profesionales.
+var SUELDO_BBVA_HECHO = {};
+var _sueldoBbvaHechoPulled = false;
+function sueldoBbvaHechoCargar() {
+  try {
+    var raw = localStorage.getItem("ceot_sueldo_bbva_hecho");
+    SUELDO_BBVA_HECHO = raw ? (JSON.parse(raw) || {}) : {};
+  } catch (e) { SUELDO_BBVA_HECHO = {}; }
+  if (!_sueldoBbvaHechoPulled) {
+    _sueldoBbvaHechoPulled = true;
+    syncPull("ceot_sueldo_bbva_hecho", function () {
+      sueldoBbvaHechoCargar();
+      avisoTransferidoRerender();
+    });
+  }
+}
+function sueldoBbvaHechoGuardarTodo() {
+  try { localStorage.setItem("ceot_sueldo_bbva_hecho", JSON.stringify(SUELDO_BBVA_HECHO)); } catch (e) {}
+  syncPush("ceot_sueldo_bbva_hecho");
+}
+function sueldoBbvaHechoKey(periodo, apellido) { return periodo + "|" + apellido; }
+function sueldoBbvaEstaHecho(periodo, apellido) {
+  return !!SUELDO_BBVA_HECHO[sueldoBbvaHechoKey(periodo, apellido)];
+}
+function sueldoBbvaToggleHecho(periodo, apellido) {
+  var k = sueldoBbvaHechoKey(periodo, apellido);
+  if (SUELDO_BBVA_HECHO[k]) delete SUELDO_BBVA_HECHO[k];
+  else SUELDO_BBVA_HECHO[k] = true;
+  sueldoBbvaHechoGuardarTodo();
   renderSueldoDirector();
 }
 
@@ -4254,6 +4292,16 @@ function transferenciaMesHecha(periodo, doctor) {
 // Chip verde "✓ Transferido" para el portal del profesional.
 function avisoTransferidoChipHtml(periodo, doctor) {
   if (!transferenciaMesHecha(periodo, doctor)) return '';
+  return ' <span style="display:inline-flex;align-items:center;gap:4px;background:#16a34a;color:#fff;'
+    + 'border-radius:999px;padding:2px 9px;font-size:.68rem;font-weight:700;white-space:nowrap;vertical-align:2px">'
+    + '✓ Transferido</span>';
+}
+
+// Igual que avisoTransferidoChipHtml pero para el sueldo BBVA (Mazzola/De la
+// Colina) — estado propio (SUELDO_BBVA_HECHO), separado del "Transferencia
+// ya hecha" general de Resto de profesionales.
+function avisoTransferidoBbvaChipHtml(periodo, doctor) {
+  if (!sueldoBbvaEstaHecho(periodo, doctor.apellido)) return '';
   return ' <span style="display:inline-flex;align-items:center;gap:4px;background:#16a34a;color:#fff;'
     + 'border-radius:999px;padding:2px 9px;font-size:.68rem;font-weight:700;white-space:nowrap;vertical-align:2px">'
     + '✓ Transferido</span>';
@@ -5397,6 +5445,14 @@ function restoProfesionalesTabHtml(periodo) {
       : { borde: '#c9933a', fondo: 'rgba(201,147,58,.08)', chipBg: 'rgba(201,147,58,.18)', chipFg: '#8a6423', txt: 'Todavía suma hasta el ' + (base.ultimaFecha || '—') };
     var pendTxt = f.pendiente ? ' <span class="adm-pend" style="font-size:.62rem">falta OSDE/CEM</span>' : '';
 
+    // Sueldo BBVA — solo Mazzola y De la Colina: mismo mecanismo que Sueldo
+    // Director (calcularSueldoDirector con SUELDO_BBVA_MONTO), sale de la
+    // misma plata de estos cheques. El resto (base.totalNetoMes) sigue
+    // siendo la fuente de verdad del total del mes — esto solo anota qué
+    // parte es sueldo y resalta el cheque donde se completa.
+    var esBbva = SUELDO_BBVA_LISTA.indexOf(doc.apellido) !== -1;
+    var sBbva = esBbva ? calcularSueldoDirector(periodo, doc, SUELDO_BBVA_MONTO) : null;
+
     var netosPorFecha = {};
     base.detalle.forEach(function(d) {
       if (!d.pendiente) netosPorFecha[d.fecha] = netoEfectivo(transfFamKey(periodo, doc.apellido, d.fecha), d.neto);
@@ -5415,18 +5471,39 @@ function restoProfesionalesTabHtml(periodo) {
       var next = arr[i + 1];
       var nextKey = (next && !next.pendiente) ? transfFamKey(periodo, doc.apellido, next.fecha) : null;
       var nextNetoOriginal = (next && !next.pendiente) ? next.neto : null;
-      return '<tr>'
+      var esCorteBbva = sBbva && sBbva.alcanza && d.fecha === sBbva.fechaCompleta;
+      return '<tr' + (esCorteBbva ? ' style="background:rgba(201,147,58,.15)"' : '') + '>'
         + '<td>' + d.fecha + '</td>'
         + '<td>' + fmt(d.bruto) + '</td>'
         + '<td>−' + fmt(d.retencion) + ' <span style="font-size:.6rem;color:rgba(32,36,31,.4)">' + Math.round((base.pctAporte || 0) * 100) + '%</span></td>'
         + '<td style="font-size:.62rem;color:rgba(32,36,31,.5)">' + (extra.join('<br>') || '—') + '</td>'
         + netoChequeCeldaHtml(keyFam, d.neto, nextKey, nextNetoOriginal)
         + transfFamCeldaHtml(periodo, doc.apellido, d.fecha, netoEfectivo(keyFam, d.neto), netosPorFecha)
-        + '<td' + (d.acumulado < 0 ? ' style="color:#b13a2c"' : '') + '>' + fmt(d.acumulado) + '</td>'
+        + '<td' + (d.acumulado < 0 ? ' style="color:#b13a2c"' : (esCorteBbva ? ' style="font-weight:700;color:#8a6423"' : '')) + '>' + fmt(d.acumulado) + (esCorteBbva ? ' ✓ $300k BBVA' : '') + '</td>'
         + '</tr>';
     }).join('');
 
     var totalNetoMesChipStyle = base.totalNetoMes < 0 ? '#b13a2c' : colores.chipFg;
+    var bbvaLineaHtml = '';
+    if (sBbva) {
+      var bbvaTxt = !sBbva.alcanza
+        ? 'no alcanza este mes (falta ' + fmt(sBbva.faltante) + ')'
+        : (sueldoDirectorFechaPaso(sBbva.fechaCompleta)
+            ? '✓ listo desde el ' + sBbva.fechaCompleta
+            : 'disponible el ' + sBbva.fechaCompleta);
+      bbvaLineaHtml = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.7rem;color:#8a6423;margin-top:4px">'
+        + '<span>🏦 Sueldo BBVA ' + fmt(sBbva.monto) + ' · ' + bbvaTxt
+        +   (sBbva.alcanza ? ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(sBbva.monto) + '\', this)" style="border:none;background:rgba(201,147,58,.18);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle">📋</button>' : '')
+        + '</span>'
+        + (sBbva.alcanza
+            ? '<span>· Dividendos ' + fmt(sBbva.saldoFinal) + '</span>'
+              + '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap">'
+              +   '<input type="checkbox"' + (sueldoBbvaEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="sueldoBbvaToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">'
+              +   'Sueldo BBVA transferido</label>'
+            : '')
+        + '</div>';
+    }
+
     return '<div style="margin-bottom:16px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:8px;padding:10px 12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
       +   '<div><b>' + doc.apellido + '</b>' + pendTxt + transfFamDefBadgeHtml(doc.apellido) + '</div>'
@@ -5438,6 +5515,7 @@ function restoProfesionalesTabHtml(periodo) {
       +     '<input type="checkbox"' + (restoProfEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="restoProfToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">'
       +     'Transferencia ya hecha</label>'
       + '</div>'
+      + bbvaLineaHtml
       + transfNotasHtml(periodo, doc.apellido)
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
       +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a familiar</th><th>Acumulado</th>'
@@ -5453,7 +5531,7 @@ function restoProfesionalesTabHtml(periodo) {
     +   '<div><div class="cpsm-title">💳 Resto de profesionales</div>'
     +   '<div class="cpsm-subtitle">' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' · Garmendia, De la Colina, Soulé, León, Perlasco y Mazzola · transferencia normal del mes</div></div>'
     + '</div>'
-    + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:0 2px 10px 2px">⚑ Mismo criterio que Sueldo Director: retención por cheque, préstamo en el 1ro, IIBB en el 4to, CPSM en el 5to. Acá el préstamo es descuento (no crédito). "Neto final del mes" en verde = ya pasó la fecha del último cheque; en ámbar todavía puede sumar más. OSDE/CEM aparte, se ajustan cuando dejen de estar pendientes.</div>'
+    + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:0 2px 10px 2px">⚑ Mismo criterio que Sueldo Director: retención por cheque, préstamo en el 1ro, IIBB en el 4to, CPSM en el 5to. Acá el préstamo es descuento (no crédito). "Neto final del mes" en verde = ya pasó la fecha del último cheque; en ámbar todavía puede sumar más. OSDE/CEM aparte, se ajustan cuando dejen de estar pendientes. De la Colina y Mazzola además tienen sueldo BBVA ' + fmt(SUELDO_BBVA_MONTO) + ' aparte (sale de la misma plata) — el resto es dividendos, marcado abajo de cada uno.</div>'
     + bloques
     + '<div class="cpsm-btn-row" style="margin-top:6px">'
     +   '<button class="cpsm-calc-btn" onclick="copiarTexto(window._restoProfTexto || \'\', this)">📋 Copiar los 6 importes (apellido + monto)</button>'
@@ -6404,7 +6482,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-14-lic-export-html';
+  var CURRENT_BUILD = '2026-09-15-sueldo-bbva-transf-fam';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
