@@ -69,9 +69,6 @@ function renderMayo(containerId, doctor) {
       + '<div class="pt-sub">' + subPartes.join(" + ") + ' · bruto</div>'
       + '</div><div class="pt-icon">💰</div></div>';
 
-    var netosPorFechaMayo = {};
-    vals.forEach(function(monto, idx) { netosPorFechaMayo[MAYO_FECHAS[idx]] = monto; });
-
     html += '<div class="cheque-list">';
     vals.forEach(function(monto, idx) {
       var fecha = MAYO_FECHAS[idx];
@@ -80,8 +77,7 @@ function renderMayo(containerId, doctor) {
         + '<span class="cl-date">' + fecha + '</span>'
         + '<span class="cl-lbl">Cheque ' + (idx+1) + (acred ? ' <span class="cl-status-icon">✓</span>' : '') + '</span>'
         + '<span class="cl-amt">' + fmt(monto) + '</span>'
-        + '</div>'
-        + transfFamPortalDetalleHtml("mayo", doctor.apellido, fecha, monto, netosPorFechaMayo);
+        + '</div>';
     });
     // OSDE — siempre presente
     html += extraRow("OSDE", osdeExt);
@@ -120,58 +116,6 @@ function renderMayo(containerId, doctor) {
 }
 
 // ══════ TRANSFERENCIAS A FAMILIARES (detalle en el portal) ═══
-// Debajo de la fila de un cheque que Marcelo cargó como transferido (total o
-// parcialmente) a un familiar, en vez de a la cuenta del profesional, muestra
-// a quién y por cuánto. Reusa el mismo TRANSF_FAM que carga el panel admin
-// (ver index.html, sección "Transferencias a familiares") — acá solo se lee,
-// nunca se edita. netosPorFecha: mapa {fecha: netoDeEseCheque} de TODOS los
-// cheques del mes de este profesional, para poder calcular el total de un
-// grupo de cheques combinados y cuánto de ese grupo vuelve a su cuenta.
-// El nombre/importe/alias de cada transferencia ya se muestra UNA sola vez,
-// arriba de la lista de cheques (ver transfFamPortalResumenTransferenciasHtml)
-// — acá solo queda, por cheque, un ícono discreto de "este cheque es parte
-// de esa transferencia" (sin repetir nombre/importe) y, en el último cheque
-// del grupo combinado, cuánto de ese grupo vuelve a la cuenta del profesional.
-function transfFamPortalDetalleHtml(periodo, apellido, fecha, netoCheque, netosPorFecha) {
-  if (typeof TRANSF_FAM === "undefined") return '';
-  var profKey = transfFamProfKey(periodo, apellido);
-  var todasEntries = TRANSF_FAM[profKey] || [];
-  var relevantes = [];
-  todasEntries.forEach(function(e, i) {
-    if ((e.cheques || []).indexOf(fecha) !== -1) relevantes.push({ e: e, idx: i });
-  });
-  if (!relevantes.length) return '';
-
-  var filas = relevantes.map(function(r) {
-    var e = r.e;
-    var combinada = e.cheques.length > 1;
-
-    var html = '<div class="cl-sub">'
-      +   '<span class="cl-sub-ico">🏠</span>'
-      +   '<div class="cl-sub-body"><div class="cl-sub-name">Suma para ' + escAttr(e.nombre) + '</div></div>'
-      + '</div>';
-
-    // "A tu cuenta" — una sola vez, en la última fecha del grupo combinado,
-    // con lo que queda tras todas las transferencias que cubren ese mismo
-    // conjunto exacto de cheques.
-    if (combinada && fecha === e.cheques[e.cheques.length - 1]) {
-      var netoGrupo = e.cheques.reduce(function(s, f) { return s + ((netosPorFecha || {})[f] || 0); }, 0);
-      var transferidoGrupo = todasEntries.reduce(function(s, e2) {
-        return s + (transfFamMismoGrupo(e2.cheques, e.cheques) ? (e2.importe || 0) : 0);
-      }, 0);
-      var resto = netoGrupo - transferidoGrupo;
-      html += '<div class="cl-sub">'
-        +   '<span class="cl-sub-ico">👤</span>'
-        +   '<div class="cl-sub-body"><div class="cl-sub-name">A tu cuenta</div></div>'
-        +   '<div class="cl-sub-amt">' + fmt(resto) + '</div>'
-        + '</div>';
-    }
-    return html;
-  }).join('');
-
-  return filas;
-}
-
 // Resumen de cada transferencia a familiar del mes — UNA tarjeta por
 // transferencia (nombre, importe, con qué cheques se combina, alias/CBU,
 // estado), mostrada una sola vez arriba de la lista de cheques (mismo lugar
@@ -356,8 +300,8 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   // Neto de un cheque puntual (bruto − préstamo del 1ro − retención −
   // IIBB del 4to − CPSM del 5to) — extraído a función para poder calcular
   // de antemano el neto de TODOS los cheques del mes (netosPorFecha), que
-  // hace falta para mostrar transferencias a familiares combinadas (ver
-  // transfFamPortalDetalleHtml más abajo).
+  // usa transfFamResumenMesPortalHtml más abajo para el resumen "a tu
+  // cuenta / a tu familiar" del mes completo.
   function netoDeCheque(monto, idx) {
     var retCheq = pctApCheq ? Math.round(monto * pctApCheq) : 0;
     var iibbLineAmt = (idx === 3 && iibbAmt) ? iibbAmt : 0;
@@ -405,8 +349,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
       + '<span class="cl-date">' + fecha + '</span>'
       + '<span class="cl-lbl">Cheque ' + (idx+1) + (acred ? ' <span class="cl-status-icon">✓</span>' : '') + gaChipFor(fecha) + '</span>'
       + '<span class="cl-amt">' + amtHtml + '</span>'
-      + '</div>'
-      + transfFamPortalDetalleHtml(periodo, doctor.apellido, fecha, netosPorFecha[fecha], netosPorFecha);
+      + '</div>';
   });
   // OSDE — siempre presente
   var osdeValAnot = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
