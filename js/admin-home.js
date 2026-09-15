@@ -522,8 +522,8 @@ function initAdmHomeBg() {
   var SPRITES = [
     { e: "🍄", move: "walk" },
     { e: "🐢", move: "walk" },
-    { e: "🐌", move: "walk" },
-    { e: "👾", move: "walk" },
+    { e: "🐿️", move: "walk" },
+    { e: "🦔", move: "walk" },
     { e: "🔥", move: "hop" },
     { e: "🌱", move: "hop" },
     { e: "⭐", move: "float" },
