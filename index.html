@@ -2165,22 +2165,22 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/portal-render.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/admin-home.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/gastos-obra.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/presentacion.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/sueldo-b.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/nun-data.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/accesos-debitos.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/estadisticas.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/gastos-casa.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/faq-asistente.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/asistente.js?v=2026-09-15-transf-fam-resumen-unico"></script>
-<script src="js/correos.js?v=2026-09-15-transf-fam-resumen-unico"></script>
+<script src="js/datos.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/portal-render.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/admin-home.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/gastos-obra.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/presentacion.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/sueldo-b.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/nun-data.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/accesos-debitos.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/estadisticas.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/gastos-casa.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/faq-asistente.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/asistente.js?v=2026-09-15-transf-fam-progreso"></script>
+<script src="js/correos.js?v=2026-09-15-transf-fam-progreso"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -5117,6 +5117,30 @@ function transfFamAutoAplicar(periodo) {
   return huboCambios;
 }
 
+// Mientras un familiar predeterminado TODAVÍA no se pudo crear solo (sigue
+// esperando más cheques este mes, transfFamAutoAplicar no lo tocó), mostrar
+// igual el progreso — para no dejar a Marcelo sin ninguna pista de "cuánto
+// llevo, con qué cheques, cuánto falta". Pedido de Marcelo, 15/09/2026: vio
+// el sueldo BBVA de Mazzola pero no encontraba nada sobre la transferencia a
+// Silvina Gomez, que todavía no había alcanzado el importe.
+function transfFamCascadaProgresoHtml(periodo, doc) {
+  var cascada = transfFamCascadaCalcular(periodo, doc);
+  if (!cascada) return '';
+  var profKey = transfFamProfKey(periodo, doc.apellido);
+  var existentes = TRANSF_FAM[profKey] || [];
+  var pendientes = cascada.familiares.filter(function(f) {
+    return f.aPagar == null && !existentes.some(function(e) { return e.nombre === f.nombre; });
+  });
+  if (!pendientes.length) return '';
+  return pendientes.map(function(f) {
+    var faltante = f.objetivo - f.monto;
+    var chequesTxt = f.cheques.length
+      ? ' (con ' + (f.cheques.length > 1 ? 'los cheques ' : 'el cheque ') + f.cheques.join(' + ') + ')'
+      : ' (todavía sin ningún cheque disponible)';
+    return '<div style="font-size:.68rem;color:#8a6423;margin-top:4px">⏳ <b>' + escAttr(f.nombre) + '</b>: lleva ' + fmt(f.monto) + ' de ' + fmt(f.objetivo) + chequesTxt + ' — faltan ' + fmt(faltante) + ', todavía puede sumar más cheques este mes.</div>';
+  }).join('');
+}
+
 // Resumen consolidado de todas las transferencias a familiares del período
 // (de todos los profesionales juntos), separadas en pendientes/hechas, con
 // un botón para copiar de una sola vez el texto de las que faltan.
@@ -5531,6 +5555,7 @@ function sueldoDirectorTabHtml(periodo) {
       +     '<span>Saldo tras sueldo <b style="' + saldoStyle + '">' + fmt(s.saldoFinal) + '</b> <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.saldoFinal) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></span>'
       +   '</div>'
       + '</div>'
+      + transfFamCascadaProgresoHtml(periodo, doc)
       + transfNotasHtml(periodo, doc.apellido)
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
       +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a familiar</th><th>Acumulado</th>'
@@ -5647,6 +5672,7 @@ function restoProfesionalesTabHtml(periodo) {
       +     'Transferencia ya hecha</label>'
       + '</div>'
       + bbvaLineaHtml
+      + transfFamCascadaProgresoHtml(periodo, doc)
       + transfNotasHtml(periodo, doc.apellido)
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
       +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a familiar</th><th>Acumulado</th>'
@@ -6613,7 +6639,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-15-transf-fam-resumen-unico';
+  var CURRENT_BUILD = '2026-09-15-transf-fam-progreso';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
