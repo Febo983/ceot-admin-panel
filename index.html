@@ -926,6 +926,12 @@ body {
   color: rgba(255,255,255,.8); font-size: 1.3rem;
   cursor: pointer; padding: 2px 6px; line-height: 1;
 }
+/* Toggle de tema — visible siempre, a diferencia del hamburger de arriba */
+.adm-theme-btn {
+  display: block; background: none; border: none;
+  color: rgba(255,255,255,.8); font-size: 1.3rem;
+  cursor: pointer; padding: 2px 6px; line-height: 1;
+}
 .adm-sidenav-overlay {
   display: none; position: fixed; inset: 0;
   background: rgba(0,0,0,.5); z-index: var(--z-dropdown);
@@ -2017,7 +2023,7 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
-      <button class="adm-hamburger" id="admThemeBtn" onclick="toggleAdmTheme()" title="Cambiar a modo oscuro">🌙</button>
+      <button class="adm-theme-btn" id="admThemeBtn" onclick="toggleAdmTheme()" title="Cambiar a modo oscuro">🌙</button>
       <button class="adm-hamburger" id="admHamburgerBtn" onclick="toggleAdmSidenav()" title="Menú">☰</button>
       <button class="btn-logout" id="admHomeBtn" onclick="renderAdmHome()" style="display:none">← Inicio</button>
       <button class="btn-importar" id="btnImportar" onclick="abrirImportModal()"><i data-lucide="upload" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px" stroke-width="2"></i>Importar</button>
