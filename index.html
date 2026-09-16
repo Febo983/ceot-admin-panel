@@ -1635,8 +1635,19 @@ body { background: var(--iv0); color: var(--ink); }
    Independiente del [data-theme] que usan Login/Portal Profesionales
    más abajo — no se pisan porque login/portal quedan display:none
    mientras el admin está visible.
+   El .adm-header queda afuera a propósito: ya es oscuro por diseño
+   propio, no por el filtro. Invertirlo y volver a invertirlo (doble
+   filtro) se probó y desatura todo el resto de la página por el
+   redondeo del hue-rotate encadenado — así que directamente no se lo
+   incluye en la lista de abajo, en vez de cancelarlo.
    ═══════════════════════════════════════════ */
-body.adm-dark-invert { filter: invert(1) hue-rotate(180deg); }
+body.adm-dark-invert .adm-layout,
+body.adm-dark-invert #voiceFab,
+body.adm-dark-invert #voiceHandsFreeBtn,
+body.adm-dark-invert #voiceStatus,
+body.adm-dark-invert #importModal {
+  filter: invert(1) hue-rotate(180deg);
+}
 
 /* ═══════════════════════════════════════════
    MODO OSCURO — Portal Profesionales
