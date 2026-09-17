@@ -308,12 +308,23 @@ function registrosDesdeXLSXCrudo(rows) {
 var GASEQ_SOCIOS_CEOT = ['TRIVELLINI', 'CORELICH', 'DEGANUTTI'];
 
 // Ayudantía cruzada: si el AY2 de una práctica es uno de estos 4 y el ESP de
-// esa MISMA práctica (mismo factura+nprest) es del "equipo" contrario, ese
-// importe no se le paga al AY2 — queda acreditado al fondo de CEOT en vez de
-// a su propia cuenta. Si ESP y AY2 son del mismo equipo (ej. BRUNI/DE LA
-// COLINA), o el ESP no es ninguno de los 4, el importe sigue siendo normal.
+// esa MISMA práctica (misma factura + paciente — NPREST es el código de la
+// prestación, no un ID único de la cirugía, así que 2 pacientes distintos con
+// la misma práctica en la misma facturación podrían compartirlo) es del
+// "equipo" contrario, ese importe no se le paga al AY2 — queda acreditado al
+// fondo de CEOT en vez de a su propia cuenta. Si ESP y AY2 son del mismo
+// equipo (ej. BRUNI/DE LA COLINA), o el ESP no es ninguno de los 4, el
+// importe sigue siendo normal.
 var AYUD_CRUZADA_A = ['BRUNI', 'DE LA COLINA'];
 var AYUD_CRUZADA_B = ['GARMENDIA', 'PERLASCO'];
+
+// factura + DNI (o nombre si no hay DNI) del paciente — misma práctica que se
+// usa para emparejar ESP/AY2, evita depender de NPREST.
+function ayudPacienteKey(reg) {
+  var dni = String(reg.pacienteDni || '').trim();
+  if (dni) return reg.factura + '|dni:' + dni;
+  return reg.factura + '|nom:' + String(reg.pacienteNombre || '').trim().toUpperCase();
+}
 
 function billingDesdeRegistros(registros) {
   var osdeBill = {}, difBill = {};
@@ -321,14 +332,14 @@ function billingDesdeRegistros(registros) {
   var gasEqAjenoOsde = 0, gasEqAjenoDif = 0;
   var ceotAyudantiaOsde = 0, ceotAyudantiaDif = 0, ceotAyudantiaDetalle = [];
 
-  // Mapa factura|nprest → apellido normalizado del ESP de esa práctica,
-  // para poder cruzarlo contra cada renglón AY2 de la misma práctica.
+  // Mapa factura|paciente → apellido normalizado del ESP de esa práctica,
+  // para poder cruzarlo contra cada renglón AY2 del mismo paciente/factura.
   var espPorPractica = {};
   registros.forEach(function(reg) {
     if (String(reg.rol || '').trim().toUpperCase() !== 'ESP') return;
-    if (!reg.factura || !reg.nprest) return;
+    if (!reg.factura || (!reg.pacienteDni && !reg.pacienteNombre)) return;
     var espKey = normDocImp(reg.profNombre);
-    if (espKey) espPorPractica[reg.factura + '|' + reg.nprest] = espKey;
+    if (espKey) espPorPractica[ayudPacienteKey(reg)] = espKey;
   });
 
   registros.forEach(function(reg) {
@@ -342,13 +353,13 @@ function billingDesdeRegistros(registros) {
 
     var esAy2 = String(reg.rol || '').trim().toUpperCase() === 'AY2';
     if (esAy2 && (AYUD_CRUZADA_A.indexOf(key) !== -1 || AYUD_CRUZADA_B.indexOf(key) !== -1)) {
-      var espKey = (reg.factura && reg.nprest) ? espPorPractica[reg.factura + '|' + reg.nprest] : null;
+      var espKey = (reg.factura && (reg.pacienteDni || reg.pacienteNombre)) ? espPorPractica[ayudPacienteKey(reg)] : null;
       var esCruce = (AYUD_CRUZADA_A.indexOf(key) !== -1 && AYUD_CRUZADA_B.indexOf(espKey) !== -1) ||
                     (AYUD_CRUZADA_B.indexOf(key) !== -1 && AYUD_CRUZADA_A.indexOf(espKey) !== -1);
       if (esCruce) {
         if (inst === 'OSDE') ceotAyudantiaOsde += imp * sgn;
         else                 ceotAyudantiaDif  += imp * sgn;
-        ceotAyudantiaDetalle.push({ esp: espKey, ay2: key, importe: imp * sgn, os: inst, factura: reg.factura, nprest: reg.nprest, paciente: reg.pacienteNombre || reg.pacienteDni || '' });
+        ceotAyudantiaDetalle.push({ esp: espKey, ay2: key, importe: imp * sgn, os: inst, factura: reg.factura, paciente: reg.pacienteNombre || reg.pacienteDni || '' });
         return;
       }
     }
