@@ -4,8 +4,10 @@
 
 // ══════ IMPORTAR LIQUIDACIÓN ════════════════════════════════════
 
+// GARMENDIA se suma como socia desde agosto 2026 (ver [[project_ceot_garmendia]]) —
+// mismo tratamiento que el resto para OSDE/Diferidos y reparto de cheques Colón.
 const SOCIOS_IMP = ['BRUNI','CORELICH','DE LA COLINA','DEGANUTTI','LABAYEN',
-                    'LEON','MAZZOLA','PERLASCO','SOULE','TRIVELLINI'];
+                    'LEON','MAZZOLA','PERLASCO','SOULE','TRIVELLINI','GARMENDIA'];
 
 const MAPE_MAP = {
   '40796362':'BRUNI',      '41796362':'CORELICH',    '42796362':'DEGANUTTI',
@@ -39,6 +41,120 @@ function abrirImportModal() {
   document.getElementById('importModal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   actualizarMesColonAuto();
+  gastosExtraDefaultCargar();
+}
+
+// ══════ OTROS GASTOS DEL MES (plantillas de reparto, persistentes) ══════
+// Reemplaza los campos sueltos que había antes (Equipo laparoscopia
+// hardcodeado a 3 socios en el código) por una lista editable de "gastos"
+// — cada uno con su concepto y a qué profesional(es) le corresponde — que
+// se guarda una sola vez y se reusa todos los meses. Solo el IMPORTE de
+// cada uno se tipea de nuevo cada mes (como el cheque OSDE o los de Colón);
+// el reparto en sí queda resuelto sin tener que acordarse de nada.
+// Persistencia: mismo mecanismo que TRANSF_FAM_DEFAULT (localStorage +
+// syncPull/syncPush contra el Sheet compartido, no algo por-navegador).
+var GASTOS_EXTRA_DEFAULT = [
+  { id: 'storz-compra', concepto: 'Storz — compra equipo de laparoscopia', socios: ['CORELICH','TRIVELLINI','DEGANUTTI'] },
+  { id: 'storz-torre',  concepto: 'Storz — gasto torre laparoscópica',      socios: ['CORELICH','TRIVELLINI','DEGANUTTI'] }
+];
+var _gastosExtraCargado = false; // false = todavía no se confirmó si hay algo guardado (local o remoto); mientras tanto se muestra la plantilla de arranque de arriba, sin persistirla
+
+function gastosExtraDefaultCargar() {
+  try {
+    var raw = localStorage.getItem('ceot_gastos_extra_default');
+    if (raw) { GASTOS_EXTRA_DEFAULT = JSON.parse(raw) || []; _gastosExtraCargado = true; }
+  } catch (e) {}
+  gastosExtraRenderLista();
+  syncPull('ceot_gastos_extra_default', function() {
+    gastosExtraDefaultCargar();
+  });
+}
+
+function gastosExtraDefaultGuardarTodo() {
+  _gastosExtraCargado = true;
+  localStorage.setItem('ceot_gastos_extra_default', JSON.stringify(GASTOS_EXTRA_DEFAULT));
+  syncPush('ceot_gastos_extra_default');
+}
+
+function gastosExtraRenderLista() {
+  var wrap = document.getElementById('impGastosExtraList');
+  if (!wrap) return;
+  if (!GASTOS_EXTRA_DEFAULT.length) {
+    wrap.innerHTML = '<div style="font-size:.72rem;color:rgba(32,36,31,.45);font-style:italic;padding:4px 0">Todavía no hay ningún gasto configurado — agregá el primero abajo.</div>';
+    return;
+  }
+  wrap.innerHTML = GASTOS_EXTRA_DEFAULT.map(function(g) {
+    return '<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px">'
+      + '<div style="flex:1;min-width:0">'
+      +   '<div style="font-weight:600;font-size:.82rem">' + escAttr(g.concepto) + '</div>'
+      +   '<div style="font-size:.65rem;color:rgba(32,36,31,.5)">' + (g.socios || []).join(' / ') + '</div>'
+      +   '<a href="javascript:void(0)" onclick="gastosExtraAbrirFormEditar(\'' + g.id + '\')" style="font-size:.62rem;color:#1f3a2e;text-decoration:underline;margin-right:8px">editar</a>'
+      +   '<a href="javascript:void(0)" onclick="gastosExtraQuitar(\'' + g.id + '\')" style="font-size:.62rem;color:#b13a2c;text-decoration:underline">borrar</a>'
+      + '</div>'
+      + '<input type="text" id="impGastoExtra_' + g.id + '" class="imp-colon-input" placeholder="Importe $ este mes" style="max-width:140px;flex-shrink:0">'
+      + '</div>';
+  }).join('');
+}
+
+var _gastosExtraEditId = null;
+
+function gastosExtraAbrirFormNuevo() {
+  _gastosExtraEditId = null;
+  document.getElementById('gexForm_concepto').value = '';
+  gastosExtraRenderChecksSocios([]);
+  document.getElementById('impGastosExtraForm').style.display = 'block';
+}
+
+function gastosExtraAbrirFormEditar(id) {
+  var g = GASTOS_EXTRA_DEFAULT.filter(function(x){ return x.id === id; })[0];
+  if (!g) return;
+  _gastosExtraEditId = id;
+  document.getElementById('gexForm_concepto').value = g.concepto;
+  gastosExtraRenderChecksSocios(g.socios || []);
+  document.getElementById('impGastosExtraForm').style.display = 'block';
+}
+
+function gastosExtraCerrarForm() {
+  document.getElementById('impGastosExtraForm').style.display = 'none';
+  _gastosExtraEditId = null;
+}
+
+function gastosExtraRenderChecksSocios(marcados) {
+  var wrap = document.getElementById('gexForm_socios');
+  wrap.innerHTML = SOCIOS_IMP.map(function(k) {
+    var checked = marcados.indexOf(k) !== -1;
+    return '<label style="display:inline-flex;align-items:center;gap:4px;background:rgba(32,36,31,.05);border:1px solid rgba(32,36,31,.15);border-radius:6px;padding:4px 8px;font-size:.72rem;cursor:pointer">'
+      + '<input type="checkbox" value="' + k + '"' + (checked ? ' checked' : '') + '> ' + k
+      + '</label>';
+  }).join('');
+}
+
+function gastosExtraGuardarForm() {
+  var concepto = document.getElementById('gexForm_concepto').value.trim();
+  if (!concepto) { alert('Ponele un concepto a este gasto.'); return; }
+  var socios = [];
+  document.querySelectorAll('#gexForm_socios input[type=checkbox]:checked').forEach(function(chk) { socios.push(chk.value); });
+  if (!socios.length) { alert('Elegí a qué profesional(es) le corresponde.'); return; }
+
+  if (_gastosExtraEditId) {
+    var g = GASTOS_EXTRA_DEFAULT.filter(function(x){ return x.id === _gastosExtraEditId; })[0];
+    if (g) { g.concepto = concepto; g.socios = socios; }
+  } else {
+    var id = 'gex-' + Date.now();
+    GASTOS_EXTRA_DEFAULT.push({ id: id, concepto: concepto, socios: socios });
+  }
+  gastosExtraDefaultGuardarTodo();
+  gastosExtraRenderLista();
+  gastosExtraCerrarForm();
+}
+
+function gastosExtraQuitar(id) {
+  var g = GASTOS_EXTRA_DEFAULT.filter(function(x){ return x.id === id; })[0];
+  if (!g) return;
+  if (!confirm('¿Borrar "' + g.concepto + '" de la lista de gastos? (no afecta meses ya cargados al Sheet)')) return;
+  GASTOS_EXTRA_DEFAULT = GASTOS_EXTRA_DEFAULT.filter(function(x){ return x.id !== id; });
+  gastosExtraDefaultGuardarTodo();
+  gastosExtraRenderLista();
 }
 
 // Los cheques Colón se depositan ~2 meses después del mes facturado (CEOT.xlsx).
@@ -69,7 +185,8 @@ function normDocImp(nombre) {
   var MAPA = {
     'DE LA COLINA':'DE LA COLINA','BRUNI':'BRUNI','CORELICH':'CORELICH',
     'DEGANUTTI':'DEGANUTTI','LABAYEN':'LABAYEN','LEON':'LEON',
-    'MAZZOLA':'MAZZOLA','PERLASCO':'PERLASCO','SOULE':'SOULE','TRIVELLINI':'TRIVELLINI'
+    'MAZZOLA':'MAZZOLA','PERLASCO':'PERLASCO','SOULE':'SOULE','TRIVELLINI':'TRIVELLINI',
+    'GARMENDIA':'GARMENDIA'
   };
   if (MAPA[ap]) return MAPA[ap];
   for (var k in MAPA) {
@@ -88,96 +205,184 @@ function parsearMontoImp(str) {
   return parseFloat(s) || 0;
 }
 
-// Reporte "Liquidación a Profesionales" de Colón exportado como .txt de ancho fijo.
-// Columnas usadas (offsets estables, verificados contra el reporte real):
-// IMPORTE vía regex (evita depender de columnas GE/A/T que a veces vienen vacías),
-// INST. en [74,83), PROF.Q.REALIZA en [138,185), OBSERVACIONES desde 246.
-function parsearTXTColon(text) {
-  var lineas = text.split(/\r?\n/);
-  var reDato    = /^\s*\d+\s+\d+\s+\d+\s+\d+/;
-  var reImporte = /(-?[\d.]+,\d{2})\s+[A-Z-]\s+[A-Z]\s+(\d{6})\s+(\d{6})/;
-  var rows = [];
-  lineas.forEach(function(linea) {
-    if (!reDato.test(linea)) return;
-    var m = reImporte.exec(linea);
-    if (!m) return;
-    var importe = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
-    if (!importe) return;
-    var row = [];
-    row[3]  = importe;
-    row[7]  = linea.slice(74, 83).trim();
-    row[12] = linea.slice(138, 185).trim();
-    row[15] = linea.slice(246).trim();
-    rows.push(row);
-  });
-  return rows;
+// ── CEOT (crudo ART .xlsx, o .txt de Colón "Liquidación a Profesionales") ──
+// Las dos fuentes son el MISMO reporte de la ART: el .xlsx trae columnas
+// separadas, el .txt es la versión impresa de ancho fijo (offsets verificados
+// contra el reporte real). `leerRegistrosCeot` normaliza cualquiera de las dos
+// a la misma forma de "registro" — así el cálculo de OSDE/Diferidos y la
+// extracción de Débitos corren con un solo código, sin importar el formato.
+async function leerRegistrosCeot(file) {
+  if (/\.txt$/i.test(file.name)) {
+    var texto = await leerTextoArchivo(file);
+    return registrosDesdeTXT(texto);
+  }
+  var rows = await leerXLSX(file);
+  return registrosDesdeXLSXCrudo(rows);
 }
 
-// ── Débitos del reporte "Liquidación a Profesionales" de Colón (.txt ancho fijo) ──
-// Levanta SOLO las filas DEB. HONORARIOS / DEB. GASTOS, saltea consultas y
-// débitos <= $50.000, y agrupa por (talón-factura, nprest) colapsando roles
-// (ESP/AY1/AY2). Devuelve ítems con el shape que consume la pestaña Débitos
-// (renderDebitos modo import) y el auditor NUN.
-var DEB_TXT_MIN_IMPORTE = 50000;
-var DEB_TXT_OS_LABEL = {
+var reDatoTXTCeot    = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/;                    // TMOV CUEN S NRO-F.MOV
+var reImporteTXTCeot = /(-?[\d.]+,\d{2})\s+[A-Z-]\s+[A-Z]\s+(\d{6})\s+(\d{6})/; // IMPORTE .. F.PERIO P.PERIO
+
+function registroDesdeLineaTXTCeot(l) {
+  var md = reDatoTXTCeot.exec(l);
+  if (!md) return null;
+  var mi = reImporteTXTCeot.exec(l);
+  if (!mi) return null;
+  var importe = parseFloat(mi[1].replace(/\./g, '').replace(',', '.'));
+  if (!importe) return null;
+  var practicaRaw = l.length >= 134 ? l.slice(83, 134).trim() : '';
+  var profRaw     = l.length >= 185 ? l.slice(138, 185).trim() : '';
+  var pacRaw      = l.length >= 246 ? l.slice(185, 246).trim() : '';
+  var pacM        = pacRaw.match(/^(\d+)\s+(.*)$/);
+  return {
+    tmov: md[1], factura: md[3] + '-' + md[4],       // talón-nro (el nro solo no es único)
+    fPerio: mi[2], pPerio: mi[3],
+    nprest: l.length >= 74  ? l.slice(67, 74).trim()  : '',
+    os:     l.length >= 83  ? l.slice(74, 83).trim()  : '',
+    practicaCod: (practicaRaw.match(/^\d+/) || [''])[0],
+    practicaDesc: practicaRaw.replace(/^\d+\s*/, '').trim(),
+    rol: l.length >= 138 ? l.slice(134, 138).trim() : '',
+    profNombre: profRaw.replace(/^\d+\s*/, '').trim(),
+    pacienteDni: pacM ? pacM[1] : '', pacienteNombre: pacM ? pacM[2].trim() : pacRaw,
+    obs: l.length >= 246 ? l.slice(246).trim().toUpperCase() : '',
+    importe: importe
+  };
+}
+
+function registrosDesdeTXT(text) {
+  var out = [];
+  String(text || '').split(/\r?\n/).forEach(function(l) {
+    var reg = registroDesdeLineaTXTCeot(l);
+    if (reg) out.push(reg);
+  });
+  return out;
+}
+
+// XLSX crudo ART: mismas columnas que el .txt, pero separadas y con headers —
+// se detectan por NOMBRE (no posición fija), robusto a que la ART reordene columnas.
+function registrosDesdeXLSXCrudo(rows) {
+  if (!rows.length) throw new Error('Archivo vacío.');
+  var headers = rows[0].map(function(h){ return String(h || '').replace(/\s+/g,'').toUpperCase(); });
+  var idxOf = function(needle) {
+    for (var i = 0; i < headers.length; i++) if (headers[i] && headers[i].indexOf(needle) !== -1) return i;
+    return -1;
+  };
+  var iImp = idxOf('IMPORTE'), iInst = idxOf('INST.'), iProfNom = idxOf('.Q.REALIZA'), iObs = idxOf('OBSERVACIONES');
+  if (iImp === -1 || iInst === -1 || iProfNom === -1 || iObs === -1) {
+    throw new Error('No reconozco las columnas de este archivo (falta IMPORTE, INST., PROF/.Q.REALIZA u OBSERVACIONES). ¿Es el formato crudo de la ART?');
+  }
+  var iTmov = idxOf('TMOV'), iFactura = idxOf('NROF.MOV'), iFPerio = idxOf('F.PERIO'), iPPerio = idxOf('P.PERIO'),
+      iNprest = idxOf('NPREST'), iPracti = idxOf('PRACTI'), iCA = idxOf('CA'), iRol = idxOf('ROL'),
+      iPac = idxOf('PACIENTE'), iPacNom = idxOf('NOMBREYAPELLIDO');
+
+  var out = [];
+  for (var r = 1; r < rows.length; r++) {
+    var row = rows[r];
+    if (!row || !row.length) continue;
+    var imp = typeof row[iImp] === 'number' ? row[iImp] : parsearMontoImp(row[iImp]);
+    if (!imp) continue;
+    var facturaRaw = iFactura !== -1 ? String(row[iFactura] || '').trim().split(/\s+/) : [];
+    out.push({
+      tmov: iTmov !== -1 ? String(row[iTmov] || '').trim() : '',
+      factura: facturaRaw.length === 2 ? facturaRaw.join('-') : '',
+      fPerio: iFPerio !== -1 ? String(row[iFPerio] || '').trim() : '',
+      pPerio: iPPerio !== -1 ? String(row[iPPerio] || '').trim() : '',
+      nprest: iNprest !== -1 ? String(row[iNprest] || '').trim() : '',
+      os: String(row[iInst] || '').trim(),
+      practicaCod: iPracti !== -1 ? String(row[iPracti] || '').trim() : '',
+      practicaDesc: iCA !== -1 ? String(row[iCA] || '').trim() : '',
+      rol: iRol !== -1 ? String(row[iRol] || '').trim() : '',
+      profNombre: String(row[iProfNom] || '').trim(),
+      pacienteDni: iPac !== -1 ? String(row[iPac] || '').trim() : '',
+      pacienteNombre: iPacNom !== -1 ? String(row[iPacNom] || '').trim() : '',
+      obs: String(row[iObs] || '').trim().toUpperCase(),
+      importe: imp
+    });
+  }
+  return out;
+}
+
+// ── OSDE/Diferidos por profesional, a partir de "registros" (xlsx o txt, mismo código) ──
+// GAS.EQUIPO cargado a alguien fuera de Trivellini/Corelich/Deganutti se reparte
+// en 3 partes iguales entre esos 3.
+var GASEQ_SOCIOS_CEOT = ['TRIVELLINI', 'CORELICH', 'DEGANUTTI'];
+function billingDesdeRegistros(registros) {
+  var osdeBill = {}, difBill = {};
+  SOCIOS_IMP.forEach(function(k){ osdeBill[k] = 0; difBill[k] = 0; });
+  var gasEqAjenoOsde = 0, gasEqAjenoDif = 0;
+
+  registros.forEach(function(reg) {
+    var imp = reg.importe;
+    if (!imp) return;
+    var inst = reg.os.toUpperCase();
+    var obs  = reg.obs;
+    var key  = normDocImp(reg.profNombre);
+    if (!key) return;
+    var sgn  = (obs.indexOf('DEB') !== -1 && obs.indexOf('HONORARIOS') !== -1) ? -1 : 1;
+    var esGasEquipoAjeno = obs.replace(/\s+/g, '').indexOf('GAS.EQUIPO') !== -1 && GASEQ_SOCIOS_CEOT.indexOf(key) === -1;
+    if (esGasEquipoAjeno) {
+      if (inst === 'OSDE') gasEqAjenoOsde += imp * sgn;
+      else                 gasEqAjenoDif  += imp * sgn;
+      return;
+    }
+    if (inst === 'OSDE') osdeBill[key] += imp * sgn;
+    else                 difBill[key]  += imp * sgn;
+  });
+  if (gasEqAjenoOsde || gasEqAjenoDif) {
+    GASEQ_SOCIOS_CEOT.forEach(function(k) {
+      osdeBill[k] += gasEqAjenoOsde / 3;
+      difBill[k]  += gasEqAjenoDif  / 3;
+    });
+  }
+  return { osdeBill: osdeBill, difBill: difBill, gasEqAjenoOsde: gasEqAjenoOsde, gasEqAjenoDif: gasEqAjenoDif };
+}
+
+// ── Débitos, a partir de "registros" (xlsx o txt, mismo código) ──
+// Levanta SOLO las filas DEB. HONORARIOS / DEB. GASTOS (TMOV 34), saltea
+// consultas y débitos <= $50.000, y agrupa por (talón-factura, nprest)
+// colapsando roles (ESP/AY1/AY2). Devuelve ítems con el shape que consume la
+// pestaña Débitos (renderDebitos modo import) y el auditor NUN.
+var DEB_MIN_IMPORTE = 50000;
+var DEB_OS_LABEL = {
   'U.PERSON': 'Unión Personal', 'PROV.ART': 'Provincia ART', 'MEDIFEAS': 'Medifé',
   'PREVENCI': 'Prevención Salud', 'SWISS ME': 'Swiss Medical', 'SANCORME': 'Sancor Salud'
 };
-var DEB_TXT_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+var DEB_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+var reConsultaDeb = /CONSULTA|ATENCION\s+MEDICA/i;
 
-function parsearDebitosTXTColon(text) {
-  var lineas = String(text || '').split(/\r?\n/);
-  var reDato    = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/;                    // TMOV CUEN S NRO-F.MOV
-  var reImporte = /(-?[\d.]+,\d{2})\s+[A-Z-]\s+[A-Z]\s+(\d{6})\s+(\d{6})/; // IMPORTE .. F.PERIO P.PERIO
-  var reConsulta = /CONSULTA|ATENCION\s+MEDICA/i;
+function extraerDebitosDeRegistros(registros) {
   var grupos = {};
+  registros.forEach(function(reg) {
+    if (reg.obs.indexOf('DEB') === -1) return;      // solo DEB. HONORARIOS / DEB. GASTOS
+    if (reg.tmov !== '34') return;                  // TMOV 34 = movimiento de débito/ajuste
+    if (!reg.importe) return;
+    if (reConsultaDeb.test(reg.practicaDesc)) return; // sin consultas
+    if (!reg.factura || !reg.nprest) return;         // sin clave de agrupación, no se puede armar el grupo
 
-  lineas.forEach(function(l) {
-    if (l.length < 250) return;
-    var obs = l.slice(246).trim().toUpperCase();
-    if (obs.indexOf('DEB') === -1) return;                 // solo DEB. HONORARIOS / DEB. GASTOS
-    var md = reDato.exec(l);
-    if (!md || md[1] !== '34') return;                     // TMOV 34 = movimiento de débito/ajuste
-    var mi = reImporte.exec(l);
-    if (!mi) return;
-    var imp = parseFloat(mi[1].replace(/\./g, '').replace(',', '.'));
-    if (!imp) return;
-
-    var practicaRaw = l.slice(83, 134).trim();
-    var pracDesc = practicaRaw.replace(/^\d+\s*/, '').trim();
-    if (reConsulta.test(pracDesc)) return;                 // sin consultas
-
-    var factura = md[3] + '-' + md[4];                     // talón-nro (el nro solo no es único)
-    var nprest  = l.slice(67, 74).trim();
-    var rol     = l.slice(134, 138).trim();
-    var profRaw = l.slice(138, 185).trim();
-    var pacRaw  = l.slice(185, 246).trim();
-    var pacM    = pacRaw.match(/^(\d+)\s+(.*)$/);
-    var k = factura + '|' + nprest;
-
+    var k = reg.factura + '|' + reg.nprest;
     if (!grupos[k]) {
-      var cplx = (pracDesc.match(/NUN[- ]*COMPLEJIDAD\s*(\d+)/i) || [])[1];
+      var cplx = (reg.practicaDesc.match(/NUN[- ]*COMPLEJIDAD\s*(\d+)/i) || [])[1];
       grupos[k] = {
-        fact: factura, nprest: nprest,
-        periodo: debFmtPeriodo(mi[3]), periodoFact: debFmtPeriodo(mi[2]), pperioRaw: mi[3],
-        os: DEB_TXT_OS_LABEL[l.slice(74, 83).trim()] || l.slice(74, 83).trim(),
-        prac: pracDesc, practicaCod: (practicaRaw.match(/^\d+/) || [''])[0],
+        fact: reg.factura, nprest: reg.nprest,
+        periodo: debFmtPeriodo(reg.pPerio), periodoFact: debFmtPeriodo(reg.fPerio), pperioRaw: reg.pPerio,
+        os: DEB_OS_LABEL[reg.os] || reg.os,
+        prac: reg.practicaDesc, practicaCod: reg.practicaCod,
         complejidadNUN: cplx ? parseInt(cplx, 10) : null,
-        dni: pacM ? pacM[1] : '', paciente: pacM ? pacM[2].trim() : pacRaw,
-        prof: '', roles: {}, tipo: 'GAS', fuente: 'colon-txt'
+        dni: reg.pacienteDni, paciente: reg.pacienteNombre,
+        prof: '', roles: {}, tipo: 'GAS', fuente: 'colon'
       };
     }
     var g = grupos[k];
-    g.roles[rol || '—'] = (g.roles[rol || '—'] || 0) + imp;
-    if (obs.indexOf('HONORARIOS') !== -1) g.tipo = 'HON';
-    if (rol === 'ESP' || !g.prof) g.prof = profRaw.replace(/^\d+\s*/, '').trim();
+    g.roles[reg.rol || '—'] = (g.roles[reg.rol || '—'] || 0) + reg.importe;
+    if (reg.obs.indexOf('HONORARIOS') !== -1) g.tipo = 'HON';
+    if (reg.rol === 'ESP' || !g.prof) g.prof = reg.profNombre;
   });
 
   var out = [];
   Object.keys(grupos).forEach(function(k) {
     var g = grupos[k];
     g.imp = Object.keys(g.roles).reduce(function(s, r) { return s + g.roles[r]; }, 0);
-    if (g.imp <= DEB_TXT_MIN_IMPORTE) return;
+    if (g.imp <= DEB_MIN_IMPORTE) return;
     g.rol = Object.keys(g.roles).join('+');
     g.rolesDetalle = g.roles;
     delete g.roles;
@@ -198,7 +403,7 @@ function guardarDebitosImportados(items, periodoHint) {
     var cuenta = {};
     items.forEach(function(it) {
       var m = String(it.pperioRaw || '').match(/^(\d{4})(\d{2})$/);
-      var key = m ? (DEB_TXT_MESES[parseInt(m[2], 10) - 1] + '-' + m[1]) : 'sin-periodo';
+      var key = m ? (DEB_MESES[parseInt(m[2], 10) - 1] + '-' + m[1]) : 'sin-periodo';
       cuenta[key] = (cuenta[key] || 0) + 1;
     });
     periodoKey = Object.keys(cuenta).sort(function(a, b) { return cuenta[b] - cuenta[a]; })[0];
@@ -225,11 +430,9 @@ async function leerTextoArchivo(file) {
 async function leerXLSX(file) {
   return new Promise(function(resolve, reject) {
     var esCSV = /\.csv$/i.test(file.name);
-    var esTXT = /\.txt$/i.test(file.name);
     var reader = new FileReader();
     reader.onload = function(ev) {
       try {
-        if (esTXT) { resolve(parsearTXTColon(ev.target.result)); return; }
         var wb = esCSV
           ? XLSX.read(ev.target.result, { type: 'string' })
           : XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
@@ -237,9 +440,8 @@ async function leerXLSX(file) {
       } catch(e) { reject(e); }
     };
     reader.onerror = function() { reject(new Error('No se pudo leer el archivo')); };
-    if (esTXT)      reader.readAsText(file, 'ISO-8859-1'); // el export viene en Latin-1
-    else if (esCSV) reader.readAsText(file, 'UTF-8');
-    else            reader.readAsArrayBuffer(file);
+    if (esCSV) reader.readAsText(file, 'UTF-8');
+    else       reader.readAsArrayBuffer(file);
   });
 }
 
@@ -281,66 +483,16 @@ async function procesarArchivosImport() {
   var ok = false;
 
   try {
-    // ── CEOT.xlsx: formato "crudo" ART, columnas detectadas por nombre de header
-    // (mismo patrón que debCargarXLSXCrudo — más robusto si la ART reordena columnas)
-    var osdeBill = {}, difBill = {};
-    SOCIOS_IMP.forEach(function(k){ osdeBill[k] = 0; difBill[k] = 0; });
+    // ── CEOT: crudo ART (.xlsx) o .txt de Colón — se normalizan los dos a
+    // "registros" con el mismo shape, así el cálculo de OSDE/Diferidos y la
+    // extracción de Débitos corren igual sin importar qué formato subió Marcelo.
+    var registros = await leerRegistrosCeot(fileCEOT);
+    if (!registros.length) throw new Error('Archivo vacío o sin filas reconocibles.');
 
-    // GAS.EQUIPO solo corresponde a estos 3 — si el xlsx lo carga a otro profesional,
-    // se acumula aparte y se reparte en partes iguales entre los 3 (ver abajo)
-    var GASEQ_SOCIOS = ['TRIVELLINI', 'CORELICH', 'DEGANUTTI'];
-    var gasEqAjenoOsde = 0, gasEqAjenoDif = 0;
-
-    var rows = await leerXLSX(fileCEOT);
-    if (!rows.length) throw new Error('Archivo vacío.');
-
-    // El .txt de Colón (parsearTXTColon) ya devuelve filas en posiciones fijas
-    // y sin fila de encabezado — no corresponde detectar columnas por nombre.
-    var esTXTCeot = /\.txt$/i.test(fileCEOT.name);
-    var iImp, iInst, iProf, iObs;
-    if (esTXTCeot) {
-      iImp = 3; iInst = 7; iProf = 12; iObs = 15;
-    } else {
-      var ceotHeaders = rows[0].map(function(h){ return String(h || '').replace(/\s+/g,'').toUpperCase(); });
-      var idxOfCeot = function(needle) {
-        for (var i = 0; i < ceotHeaders.length; i++) if (ceotHeaders[i] && ceotHeaders[i].indexOf(needle) !== -1) return i;
-        return -1;
-      };
-      iImp  = idxOfCeot('IMPORTE');
-      iInst = idxOfCeot('INST.');
-      iProf = idxOfCeot('.Q.REALIZA'); // nombre del profesional que realizó (no la col "PROF", que es el código)
-      iObs  = idxOfCeot('OBSERVACIONES');
-      if (iImp === -1 || iInst === -1 || iProf === -1 || iObs === -1) {
-        throw new Error('No reconozco las columnas de este archivo (falta IMPORTE, INST., PROF/.Q.REALIZA u OBSERVACIONES). ¿Es el formato crudo de la ART?');
-      }
-    }
-
-    for (var r = esTXTCeot ? 0 : 1; r < rows.length; r++) {
-      var row = rows[r];
-      if (!row || !row.length) continue;
-      var imp  = typeof row[iImp] === 'number' ? row[iImp] : parsearMontoImp(row[iImp]);
-      if (!imp) continue;
-      var inst = String(row[iInst] || '').trim().toUpperCase();
-      var prof = String(row[iProf] || '').trim();
-      var obs  = String(row[iObs]  || '').trim().toUpperCase();
-      var key  = normDocImp(prof);
-      if (!key) continue;
-      var sgn  = (obs.indexOf('DEB') !== -1 && obs.indexOf('HONORARIOS') !== -1) ? -1 : 1;
-      var esGasEquipoAjeno = obs.replace(/\s+/g, '').indexOf('GAS.EQUIPO') !== -1 && GASEQ_SOCIOS.indexOf(key) === -1;
-      if (esGasEquipoAjeno) {
-        if (inst === 'OSDE') gasEqAjenoOsde += imp * sgn;
-        else                 gasEqAjenoDif  += imp * sgn;
-        continue;
-      }
-      if (inst === 'OSDE') osdeBill[key] += imp * sgn;
-      else                 difBill[key]  += imp * sgn;
-    }
-    if (gasEqAjenoOsde || gasEqAjenoDif) {
-      GASEQ_SOCIOS.forEach(function(k) {
-        osdeBill[k] += gasEqAjenoOsde / 3;
-        difBill[k]  += gasEqAjenoDif  / 3;
-      });
-    }
+    var bill = billingDesdeRegistros(registros);
+    var osdeBill = bill.osdeBill, difBill = bill.difBill;
+    var gasEqAjenoOsde = bill.gasEqAjenoOsde, gasEqAjenoDif = bill.gasEqAjenoDif;
+    var GASEQ_SOCIOS = GASEQ_SOCIOS_CEOT;
 
     // ── ART: usar el total del campo editable (detectado o ingresado manualmente)
     var artTotal = 0;
@@ -359,29 +511,28 @@ async function procesarArchivosImport() {
     impArtTotal    = artTotal;
 
     // ── Débitos > $50k (excl. consultas) → pestaña Débitos.
+    // Corre para cualquiera de los 2 formatos (antes solo para .txt) — el
+    // xlsx crudo ART tiene las mismas columnas, solo separadas en vez de en texto.
     // Va aislado: si algo falla acá, no rompe el cálculo de cheques.
     var debMsgEl = document.getElementById('impDebitosMsg');
     if (debMsgEl) { debMsgEl.style.display = 'none'; debMsgEl.textContent = ''; }
-    if (esTXTCeot) {
-      try {
-        var txtRaw = await leerTextoArchivo(fileCEOT);
-        var debs   = parsearDebitosTXTColon(txtRaw);
-        var mesSel = document.getElementById('impMes');
-        var yr = (txtRaw.match(/\b(\d{4})(\d{2})\s+\d{6}\b/) || [])[1] ||
-                 String(new Date().getFullYear());
-        var periodoHint = mesSel && mesSel.value ? (mesSel.value + '-' + yr) : '';
-        var resDeb = guardarDebitosImportados(debs, periodoHint);
-        if (debMsgEl && resDeb.n) {
-          debMsgEl.style.display = 'block';
-          debMsgEl.textContent = '🩺 ' + resDeb.n + ' débito(s) > $50.000 (' + fmtImp(resDeb.total) +
-            ') cargados a la pestaña Débitos — período «' + resDeb.periodoKey + '». Abrilos ahí para analizarlos con el NUN.';
-        } else if (debMsgEl) {
-          debMsgEl.style.display = 'block';
-          debMsgEl.textContent = '🩺 Sin débitos > $50.000 fuera de consultas en este archivo.';
-        }
-      } catch (e) {
-        if (debMsgEl) { debMsgEl.style.display = 'block'; debMsgEl.textContent = '🩺 No se pudieron extraer los débitos: ' + e.message; }
+    try {
+      var debs   = extraerDebitosDeRegistros(registros);
+      var mesSel = document.getElementById('impMes');
+      var regConPeriodo = registros.find(function(r) { return /^\d{6}$/.test(r.pPerio); });
+      var yr = regConPeriodo ? regConPeriodo.pPerio.slice(0, 4) : String(new Date().getFullYear());
+      var periodoHint = mesSel && mesSel.value ? (mesSel.value + '-' + yr) : '';
+      var resDeb = guardarDebitosImportados(debs, periodoHint);
+      if (debMsgEl && resDeb.n) {
+        debMsgEl.style.display = 'block';
+        debMsgEl.textContent = '🩺 ' + resDeb.n + ' débito(s) > $50.000 (' + fmtImp(resDeb.total) +
+          ') cargados a la pestaña Débitos — período «' + resDeb.periodoKey + '». Abrilos ahí para analizarlos con el NUN.';
+      } else if (debMsgEl) {
+        debMsgEl.style.display = 'block';
+        debMsgEl.textContent = '🩺 Sin débitos > $50.000 fuera de consultas en este archivo.';
       }
+    } catch (e) {
+      if (debMsgEl) { debMsgEl.style.display = 'block'; debMsgEl.textContent = '🩺 No se pudieron extraer los débitos: ' + e.message; }
     }
 
     // ── Preview table
@@ -745,28 +896,28 @@ function calcularDistribucionFinal() {
       fmtImp(swissTotal) + ' detectado en la factura pero no se eligió a qué profesional descontarlo — no se aplicó ningún descuento.</div>';
   }
 
-  // Equipo laparoscopia (carga manual) — descuento solo a Corelich/Trivellini/Deganutti,
-  // repartido equitativo entre ellos y luego entre sus cheques Colón del mes
-  // (mismo criterio que la compra de equipo de artroscopia ya documentada).
-  var EQUIPO_LAP_SOCIOS = ['CORELICH', 'TRIVELLINI', 'DEGANUTTI'];
-  var compraEquipoLap = parsearMontoImp(document.getElementById('impCompraEquipoLap').value);
-  var gastoTorreLap   = parsearMontoImp(document.getElementById('impGastoTorreLap').value);
-  var totalEquipoLap  = Math.abs(compraEquipoLap) + Math.abs(gastoTorreLap);
-  var equipoLapFootnote = '';
-  if (totalEquipoLap > 0 && impColonCheques.length > 0) {
-    var eqPerSocio  = totalEquipoLap / 3;
-    var eqPerCheque = eqPerSocio / impColonCheques.length;
-    impColonCheques.forEach(function(c) {
-      EQUIPO_LAP_SOCIOS.forEach(function(k) {
-        if (c.d[k] !== undefined) c.d[k] -= eqPerCheque;
+  // Otros gastos del mes (plantillas de GASTOS_EXTRA_DEFAULT) — mismo criterio
+  // que Derechos Adscriptos/Swiss arriba: se reparte en partes iguales entre
+  // los profesionales de la plantilla, y esa parte se reparte a su vez entre
+  // sus cheques Colón del mes. Reemplaza el "Equipo laparoscopia" que antes
+  // estaba hardcodeado a 3 socios fijos en el código.
+  var gastosExtraFootnote = '';
+  if (impColonCheques.length > 0) {
+    GASTOS_EXTRA_DEFAULT.forEach(function(g) {
+      var inputEl = document.getElementById('impGastoExtra_' + g.id);
+      var importe = inputEl ? Math.abs(parsearMontoImp(inputEl.value)) : 0;
+      if (!importe || !g.socios || !g.socios.length) return;
+      var perSocio  = importe / g.socios.length;
+      var perCheque = perSocio / impColonCheques.length;
+      impColonCheques.forEach(function(c) {
+        g.socios.forEach(function(k) {
+          if (c.d[k] !== undefined) c.d[k] -= perCheque;
+        });
       });
+      gastosExtraFootnote += '<div style="font-size:.65rem;color:#92610f;padding:2px 0 6px 8px">⚑ ' + escAttr(g.concepto) + ' ' +
+        fmtImp(importe) + ' ÷ ' + g.socios.length + ' socio(s) (' + g.socios.join('/') + ') = ' + fmtImp(perSocio) +
+        ' c/u, repartido en ' + impColonCheques.length + ' cheque(s) (' + fmtImp(perCheque) + ' c/u).</div>';
     });
-    equipoLapFootnote = '<div style="font-size:.65rem;color:#92610f;padding:2px 0 6px 8px">⚑ Equipo laparoscopia ' +
-      (compraEquipoLap ? 'Compra ' + fmtImp(Math.abs(compraEquipoLap)) : '') +
-      (compraEquipoLap && gastoTorreLap ? ' + ' : '') +
-      (gastoTorreLap ? 'Torre ' + fmtImp(Math.abs(gastoTorreLap)) : '') +
-      ' = ' + fmtImp(totalEquipoLap) + ' ÷ 3 socios (' + EQUIPO_LAP_SOCIOS.join('/') + ') = ' + fmtImp(eqPerSocio) +
-      ' c/u, repartido en ' + impColonCheques.length + ' cheque(s) (' + fmtImp(eqPerCheque) + ' c/u).</div>';
   }
 
   // Render resultado
@@ -793,7 +944,7 @@ function calcularDistribucionFinal() {
     '<td class="ipt-num" style="font-weight:700">' + fmtImp(sumDIF) + '</td>' +
     '<td class="ipt-num" style="font-weight:800;color:#20241f">' + fmtImp(sumOSDE+sumDIF) + '</td></tr>';
   html += '</tbody></table></div>';
-  document.getElementById('impResultBody').innerHTML = html + facDerechosFootnote + facSwissFootnote + equipoLapFootnote;
+  document.getElementById('impResultBody').innerHTML = html + facDerechosFootnote + facSwissFootnote + gastosExtraFootnote;
   document.getElementById('impResultados').style.display = 'block';
 }
 
