@@ -1016,6 +1016,14 @@ function renderMiPanel(doctor) {
     + '</div>'
     + '</div>';
 
+  // Fondo CEOT — Ayudantía cruzada: total acumulado, sin desglose por
+  // profesional/práctica (ese detalle queda solo en el panel admin).
+  html += '<div class="mp-card" style="margin-top:7px;">'
+    + '<div class="mp-label">Fondo CEOT — Ayudantía cruzada</div>'
+    + '<div id="mp-fondo-ceot" style="font-size:1.1rem;font-weight:800;color:rgba(32,36,31,.35);">...</div>'
+    + '<div class="mp-sub">Acumulado histórico</div>'
+    + '</div>';
+
   pane.innerHTML = html;
 
   // ── 3. Fetch con timeout ────────────────────────────────────
@@ -1045,6 +1053,20 @@ function renderMiPanel(doctor) {
       syncPull(GC_K, repintarCasa2067);
       syncPull(GC_K_APORTES, function(){});
     }
+  }
+
+  // Fondo CEOT — Ayudantía cruzada: mismo total que ve el admin en "Sueldo
+  // Director" (ceotAyudCruzadaTotal, js/importar-liquidacion.js), sin el
+  // detalle por profesional/práctica.
+  var elFondoCeot = document.getElementById('mp-fondo-ceot');
+  if (elFondoCeot && typeof ceotAyudCruzadaCargar === 'function') {
+    var repintarFondoCeot = function() {
+      var elLive = document.getElementById('mp-fondo-ceot');
+      if (!elLive) return;
+      elLive.textContent = fmt(ceotAyudCruzadaTotal());
+      elLive.style.color = '#1c78b0';
+    };
+    ceotAyudCruzadaCargar(repintarFondoCeot);
   }
 
   // Caja Gerling

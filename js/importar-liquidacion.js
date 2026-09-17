@@ -446,13 +446,26 @@ function ayudantiaCruzadaFootnoteDivHtml(osde, dif, detalle, sinEspDetalle) {
 // cualquier dispositivo). Reimportar el mismo período reemplaza su entrada
 // entera (idempotente), no la suma dos veces.
 var CEOT_AYUD_CRUZADA = {};
+var _ceotAyudPulled = false;
 function ceotAyudCruzadaCargar(onDone) {
   try {
     var raw = localStorage.getItem('ceot_ayud_cruzada');
     if (raw) CEOT_AYUD_CRUZADA = JSON.parse(raw) || {};
   } catch (e) {}
   if (onDone) onDone();
-  syncPull('ceot_ayud_cruzada', function() { ceotAyudCruzadaCargar(onDone); });
+  if (!_ceotAyudPulled) {
+    _ceotAyudPulled = true;
+    syncPull('ceot_ayud_cruzada', function() { ceotAyudCruzadaCargar(onDone); });
+  }
+}
+// Total acumulado histórico de todos los períodos — usado tanto en el panel
+// admin (detalle completo) como en la home del portal profesional (solo el
+// número, sin desglose por profesional/práctica).
+function ceotAyudCruzadaTotal() {
+  return Object.keys(CEOT_AYUD_CRUZADA).reduce(function(s, p) {
+    var e = CEOT_AYUD_CRUZADA[p] || {};
+    return s + (e.osde || 0) + (e.dif || 0);
+  }, 0);
 }
 function ceotAyudCruzadaGuardarPeriodo(periodoKey, entry) {
   if (!periodoKey) return;

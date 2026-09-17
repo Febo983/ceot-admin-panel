@@ -2195,13 +2195,13 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
 </div>
 
 <script src="js/datos.js?v=2026-09-15-aporte-pct-resync"></script>
-<script src="js/portal-render.js?v=2026-09-17-casa2067-recalculado"></script>
+<script src="js/portal-render.js?v=2026-09-17-fondo-ceot-en-portal"></script>
 <script src="js/admin-home.js?v=2026-09-15-aporte-pct-resync"></script>
 <script src="js/gastos-obra.js?v=2026-09-15-lic-nombres-completos"></script>
 <script src="js/presentacion.js?v=2026-09-15-aporte-pct-resync"></script>
 <script src="js/sueldo-b.js?v=2026-09-15-aporte-pct-resync"></script>
 <script src="js/comprobantes-pdf.js?v=2026-09-15-aporte-pct-resync"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-17-fondo-ceot-ayudantia"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-17-fondo-ceot-en-portal"></script>
 <script src="js/nun-data.js?v=2026-09-15-aporte-pct-resync"></script>
 <script src="js/accesos-debitos.js?v=2026-09-15-aporte-pct-resync"></script>
 <script src="js/estadisticas-datos.js?v=2026-09-15-aporte-pct-resync"></script>
@@ -5840,7 +5840,7 @@ function fondoCeotAyudantiaSectionHtml() {
   if (!periodos.length) {
     return '<div style="font-size:.75rem;color:rgba(32,36,31,.5);font-style:italic">Todavía no se detectó ninguna ayudantía cruzada al importar una liquidación (ni casos sin ESP/AY1 identificable).</div>';
   }
-  var granTotal = periodos.reduce(function(s,p){ var e = CEOT_AYUD_CRUZADA[p] || {}; return s + (e.osde||0) + (e.dif||0); }, 0);
+  var granTotal = ceotAyudCruzadaTotal();
   var filas = periodos.map(function(p) {
     var e = CEOT_AYUD_CRUZADA[p] || {};
     var tot = (e.osde||0) + (e.dif||0);
@@ -6813,7 +6813,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-17-casa2067-recalculado';
+  var CURRENT_BUILD = '2026-09-17-fondo-ceot-en-portal';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
