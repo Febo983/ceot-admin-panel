@@ -439,7 +439,7 @@ function renderPremios(pk) {
 
   html += '<div style="font-size:0.72rem;color:var(--co-ink-dim,#6b6a5a);margin-bottom:12px">'
     + 'Liquidación de <b>' + premPeriodoLabel(pk) + '</b> — puntajes = promedio de los 6 meses previos. '
-    + 'El sueldo bruto de referencia es el del mes de liquidación (o el promedio, a tu criterio).</div>';
+    + 'El sueldo neto de referencia es el del mes de liquidación (o el promedio, a tu criterio).</div>';
 
   html += premConfigPanelHtml(c.cfg);
   html += '<div id="premKpis">' + premKpisHtml(c) + '</div>';
@@ -493,7 +493,7 @@ function premKpisHtml(c) {
     + presKpi("Fondo disponible", fmt(c.fondo), c.cfg.fondoModo === "monto" ? "monto fijo" : c.cfg.fondoPct + "% de la nómina", "#1f3a2e")
     + presKpi("Total teórico", fmt(c.totalTeorico), "", "#c9933a")
     + presKpi("Total a pagar", fmt(c.totalPagar), "redondeo $" + c.cfg.redondeo, "#16a34a")
-    + presKpi("Sueldos brutos", fmt(c.totalSueldos), c.res.filter(function (r) { return r.sueldo > 0; }).length + " con sueldo", "#1c78b0")
+    + presKpi("Sueldos netos", fmt(c.totalSueldos), c.res.filter(function (r) { return r.sueldo > 0; }).length + " con sueldo", "#1c78b0")
     + presKpi("Factor prorrateo", factorPct.toFixed(1) + "%", c.factor < 1 ? "el teórico supera el fondo" : "se paga sin ajuste", c.factor < 1 ? "#dc2626" : "#16a34a")
     + '</div>';
 }
@@ -563,7 +563,7 @@ function premCardHtml(pk, emp, i, r) {
     +   premBadgeHtml(emp.id, r)
     + '</div>';
 
-  h += '<label style="font-size:0.64rem;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--co-ink-dim,#6b6a5a);display:block;margin-bottom:3px">Sueldo bruto (AR$)</label>'
+  h += '<label style="font-size:0.64rem;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--co-ink-dim,#6b6a5a);display:block;margin-bottom:3px">Sueldo neto (AR$)</label>'
     + '<input type="number" min="0" step="1000" value="' + (st.sueldo || "") + '" placeholder="0" style="' + PREM_INP + ';width:100%;margin-bottom:8px" '
     + 'oninput="premSetSueldo(\'' + emp.id + '\', this.value)">';
 
@@ -722,7 +722,7 @@ function premInitCharts(c) {
 function premExportarCSV() {
   var pk = premPeriodoActual;
   var c = premCalc(pk);
-  var rows = [["Empleada", "Sueldo bruto", "Detalle criterios", "Puntaje", "Nivel", "Tope %", "Teorico", "Premio final", "% s/sueldo"]];
+  var rows = [["Empleada", "Sueldo neto", "Detalle criterios", "Puntaje", "Nivel", "Tope %", "Teorico", "Premio final", "% s/sueldo"]];
   c.res.forEach(function (r) {
     var detalle = premVars(r.emp).map(function (v) {
       return v.label + " (" + v.pct + "%): " + premCritVal(r.st, v.campo).toFixed(0);
@@ -764,11 +764,7 @@ function premImprimirRecibos() {
       + '<div class="sub">Clínica de Traumatología Colón — ' + premPeriodoLabel(pk) + '</div>'
       + '<table>'
       + '<tr><td>Empleada</td><td>' + r.emp.nombre + '</td></tr>'
-      + '<tr><td>Sueldo bruto de referencia</td><td>' + fmt(r.sueldo) + '</td></tr>'
-      + '<tr><td>Puntaje (promedio 6 meses)</td><td>' + r.score.toFixed(1) + '%</td></tr>'
-      + '<tr><td>Nivel alcanzado</td><td>' + (r.asistOk ? "Nivel " + r.level + " (tope " + Math.round(r.topePct * 100) + "%)" : "Sin premio — asistencia/sanción") + '</td></tr>'
-      + '<tr><td>Premio teórico</td><td>' + fmt(r.teorico) + '</td></tr>'
-      + '<tr><td>Factor de prorrateo</td><td>' + (c.factor * 100).toFixed(1) + '%</td></tr>'
+      + '<tr><td>Sueldo neto de referencia</td><td>' + fmt(r.sueldo) + '</td></tr>'
       + '<tr class="tot"><td>PREMIO A COBRAR</td><td>' + fmt(r.final) + '</td></tr>'
       + '</table>'
       + '<div class="firma"><div>_______________________<br>Firma empleada</div><div>_______________________<br>Firma CEOT</div></div>'
@@ -824,7 +820,7 @@ async function premPdfImportar(file) {
   ov.innerHTML = '<div style="background:var(--co-bg,#f2ecda);border:1px solid var(--co-line,#d9d0b8);border-radius:12px;padding:18px;max-width:640px;width:100%;max-height:85vh;overflow:auto;color:var(--co-ink,#20241f)">'
     + '<div style="font-weight:700;font-size:0.95rem;margin-bottom:4px">Sueldos detectados en el PDF</div>'
     + '<div style="font-size:0.72rem;color:var(--co-ink-dim,#6b6a5a);margin-bottom:12px">Revisá y corregí lo que haga falta. Se aplican al período <b>' + premPeriodoLabel(premPeriodoActual) + '</b>. Las filas amarillas no se encontraron.</div>'
-    + '<table style="width:100%;border-collapse:collapse;font-size:0.8rem"><tr><th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--co-line,#d9d0b8);font-size:0.62rem;text-transform:uppercase;color:var(--co-ink-dim,#6b6a5a)">Empleada</th><th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--co-line,#d9d0b8);font-size:0.62rem;text-transform:uppercase;color:var(--co-ink-dim,#6b6a5a)">Línea del PDF</th><th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--co-line,#d9d0b8);font-size:0.62rem;text-transform:uppercase;color:var(--co-ink-dim,#6b6a5a)">Sueldo bruto</th></tr>' + rowsHtml + '</table>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:0.8rem"><tr><th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--co-line,#d9d0b8);font-size:0.62rem;text-transform:uppercase;color:var(--co-ink-dim,#6b6a5a)">Empleada</th><th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--co-line,#d9d0b8);font-size:0.62rem;text-transform:uppercase;color:var(--co-ink-dim,#6b6a5a)">Línea del PDF</th><th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--co-line,#d9d0b8);font-size:0.62rem;text-transform:uppercase;color:var(--co-ink-dim,#6b6a5a)">Sueldo neto</th></tr>' + rowsHtml + '</table>'
     + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">'
     +   '<button style="' + PREM_BTN + '" onclick="document.getElementById(\'premPdfOverlay\').remove()">Cancelar</button>'
     +   '<button style="' + PREM_BTN + ';background:#16a34a;color:#fff;border-color:#16a34a" onclick="premPdfAplicar()">Aplicar</button>'
