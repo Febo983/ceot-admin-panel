@@ -1025,18 +1025,34 @@ function renderMiPanel(doctor) {
     return fetch(url, { signal: ctrl.signal }).finally(function(){ clearTimeout(t); });
   }
 
-  // Cajas
+  // Casa 2067 — recalculado en el cliente igual que la pantalla "Gastos Casa"
+  // (js/gastos-casa.js, gcCalcular): apertura + libro de movimientos. El
+  // endpoint CAJAS_ENDPOINT quedó desactualizado para este dato (devuelve
+  // "casa2067":"CEM", texto en vez de número — de ahí el "$NaN" que se veía)
+  // desde que ese módulo pasó a recalcularse solo del libro, sin tocar el Sheet.
+  var el2067 = document.getElementById('mp-saldo-2067');
+  if (el2067 && typeof gcCalcular === 'function') {
+    var repintarCasa2067 = function() {
+      var elLive = document.getElementById('mp-saldo-2067');
+      if (!elLive) return;
+      var c = gcCalcular();
+      elLive.textContent = fmt(c.saldo);
+      elLive.style.color = c.saldo >= 0 ? '#16a34a' : '#dc2626';
+    };
+    repintarCasa2067();
+    if (!_gcPulled && typeof syncPull === 'function') {
+      _gcPulled = true;
+      syncPull(GC_K, repintarCasa2067);
+      syncPull(GC_K_APORTES, function(){});
+    }
+  }
+
+  // Caja Gerling
   fetchT(CAJAS_ENDPOINT, 30000)
     .then(function(r){ return r.json(); })
     .then(function(d) {
       if (d.status !== 'ok') { console.warn('Cajas error:', d); marcarEndpointStatus("cajas", false, "respuesta sin status ok"); return; }
-      var el2067    = document.getElementById('mp-saldo-2067');
       var elGerling = document.getElementById('mp-saldo-gerling');
-      if (el2067) {
-        var v2067 = typeof d.casa2067 === 'number' ? d.casa2067 : parseFloat(String(d.casa2067).replace(/[$\.]/g,'').replace(',','.'));
-        el2067.textContent = fmt(v2067);
-        el2067.style.color = v2067 >= 0 ? '#16a34a' : '#dc2626';
-      }
       if (elGerling) {
         elGerling.textContent = fmt(d.gerling);
         elGerling.style.color = d.gerling >= 0 ? '#16a34a' : '#dc2626';
@@ -1046,11 +1062,8 @@ function renderMiPanel(doctor) {
     .catch(function(e) {
       console.warn('Cajas fetch error:', e.message);
       marcarEndpointStatus("cajas", false, e.message);
-      var msg = '<span style="font-size:0.72rem;color:rgba(32,36,31,.35);">Sin conexión</span>';
-      var el2067 = document.getElementById('mp-saldo-2067');
-      var elG    = document.getElementById('mp-saldo-gerling');
-      if (el2067) el2067.innerHTML = msg;
-      if (elG)    elG.innerHTML    = msg;
+      var elG = document.getElementById('mp-saldo-gerling');
+      if (elG) elG.innerHTML = '<span style="font-size:0.72rem;color:rgba(32,36,31,.35);">Sin conexión</span>';
     });
 
 }
