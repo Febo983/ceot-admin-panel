@@ -306,10 +306,30 @@ function registrosDesdeXLSXCrudo(rows) {
 // GAS.EQUIPO cargado a alguien fuera de Trivellini/Corelich/Deganutti se reparte
 // en 3 partes iguales entre esos 3.
 var GASEQ_SOCIOS_CEOT = ['TRIVELLINI', 'CORELICH', 'DEGANUTTI'];
+
+// Ayudantía cruzada: si el AY2 de una práctica es uno de estos 4 y el ESP de
+// esa MISMA práctica (mismo factura+nprest) es del "equipo" contrario, ese
+// importe no se le paga al AY2 — queda acreditado al fondo de CEOT en vez de
+// a su propia cuenta. Si ESP y AY2 son del mismo equipo (ej. BRUNI/DE LA
+// COLINA), o el ESP no es ninguno de los 4, el importe sigue siendo normal.
+var AYUD_CRUZADA_A = ['BRUNI', 'DE LA COLINA'];
+var AYUD_CRUZADA_B = ['GARMENDIA', 'PERLASCO'];
+
 function billingDesdeRegistros(registros) {
   var osdeBill = {}, difBill = {};
   SOCIOS_IMP.forEach(function(k){ osdeBill[k] = 0; difBill[k] = 0; });
   var gasEqAjenoOsde = 0, gasEqAjenoDif = 0;
+  var ceotAyudantiaOsde = 0, ceotAyudantiaDif = 0, ceotAyudantiaDetalle = [];
+
+  // Mapa factura|nprest → apellido normalizado del ESP de esa práctica,
+  // para poder cruzarlo contra cada renglón AY2 de la misma práctica.
+  var espPorPractica = {};
+  registros.forEach(function(reg) {
+    if (String(reg.rol || '').trim().toUpperCase() !== 'ESP') return;
+    if (!reg.factura || !reg.nprest) return;
+    var espKey = normDocImp(reg.profNombre);
+    if (espKey) espPorPractica[reg.factura + '|' + reg.nprest] = espKey;
+  });
 
   registros.forEach(function(reg) {
     var imp = reg.importe;
@@ -319,6 +339,20 @@ function billingDesdeRegistros(registros) {
     var key  = normDocImp(reg.profNombre);
     if (!key) return;
     var sgn  = (obs.indexOf('DEB') !== -1 && obs.indexOf('HONORARIOS') !== -1) ? -1 : 1;
+
+    var esAy2 = String(reg.rol || '').trim().toUpperCase() === 'AY2';
+    if (esAy2 && (AYUD_CRUZADA_A.indexOf(key) !== -1 || AYUD_CRUZADA_B.indexOf(key) !== -1)) {
+      var espKey = (reg.factura && reg.nprest) ? espPorPractica[reg.factura + '|' + reg.nprest] : null;
+      var esCruce = (AYUD_CRUZADA_A.indexOf(key) !== -1 && AYUD_CRUZADA_B.indexOf(espKey) !== -1) ||
+                    (AYUD_CRUZADA_B.indexOf(key) !== -1 && AYUD_CRUZADA_A.indexOf(espKey) !== -1);
+      if (esCruce) {
+        if (inst === 'OSDE') ceotAyudantiaOsde += imp * sgn;
+        else                 ceotAyudantiaDif  += imp * sgn;
+        ceotAyudantiaDetalle.push({ esp: espKey, ay2: key, importe: imp * sgn, os: inst, factura: reg.factura, nprest: reg.nprest, paciente: reg.pacienteNombre || reg.pacienteDni || '' });
+        return;
+      }
+    }
+
     var esGasEquipoAjeno = obs.replace(/\s+/g, '').indexOf('GAS.EQUIPO') !== -1 && GASEQ_SOCIOS_CEOT.indexOf(key) === -1;
     if (esGasEquipoAjeno) {
       if (inst === 'OSDE') gasEqAjenoOsde += imp * sgn;
@@ -334,7 +368,8 @@ function billingDesdeRegistros(registros) {
       difBill[k]  += gasEqAjenoDif  / 3;
     });
   }
-  return { osdeBill: osdeBill, difBill: difBill, gasEqAjenoOsde: gasEqAjenoOsde, gasEqAjenoDif: gasEqAjenoDif };
+  return { osdeBill: osdeBill, difBill: difBill, gasEqAjenoOsde: gasEqAjenoOsde, gasEqAjenoDif: gasEqAjenoDif,
+           ceotAyudantiaOsde: ceotAyudantiaOsde, ceotAyudantiaDif: ceotAyudantiaDif, ceotAyudantiaDetalle: ceotAyudantiaDetalle };
 }
 
 // ── Débitos, a partir de "registros" (xlsx o txt, mismo código) ──
@@ -492,6 +527,7 @@ async function procesarArchivosImport() {
     var bill = billingDesdeRegistros(registros);
     var osdeBill = bill.osdeBill, difBill = bill.difBill;
     var gasEqAjenoOsde = bill.gasEqAjenoOsde, gasEqAjenoDif = bill.gasEqAjenoDif;
+    var ceotAyudantiaOsde = bill.ceotAyudantiaOsde, ceotAyudantiaDif = bill.ceotAyudantiaDif, ceotAyudantiaDetalle = bill.ceotAyudantiaDetalle;
     var GASEQ_SOCIOS = GASEQ_SOCIOS_CEOT;
 
     // ── ART: usar el total del campo editable (detectado o ingresado manualmente)
@@ -572,6 +608,15 @@ async function procesarArchivosImport() {
       tfootRows += '<tr style="background:#fef9c3"><td colspan="4" style="padding:6px 10px;font-size:0.7rem;color:#92610f;font-weight:600;">' +
         'GAS.EQUIPO redistribuido (cargado a otro profesional en el xlsx): ' + fmtImp(gasEqTotal) +
         ' → 33.33% c/u a TRI/COR/DEG.<br>' + gasEqDetalle + '</td></tr>';
+    }
+    if (ceotAyudantiaOsde || ceotAyudantiaDif) {
+      var ceotAyudTotal = ceotAyudantiaOsde + ceotAyudantiaDif;
+      var ceotAyudDetalle = ceotAyudantiaDetalle.map(function(d) {
+        return 'ESP ' + d.esp + ' / AY2 ' + d.ay2 + ': ' + fmtImp(d.importe) + ' (' + d.os + (d.paciente ? ', ' + d.paciente : '') + ')';
+      }).join('<br>');
+      tfootRows += '<tr style="background:#fee2e2"><td colspan="4" style="padding:6px 10px;font-size:0.7rem;color:#991b1b;font-weight:600;">' +
+        '🏛 Ayudantía cruzada acreditada a CEOT (no se paga al AY2): ' + fmtImp(ceotAyudTotal) +
+        ' — OSDE ' + fmtImp(ceotAyudantiaOsde) + ' + Diferidos ' + fmtImp(ceotAyudantiaDif) + '.<br>' + ceotAyudDetalle + '</td></tr>';
     }
     if (tfootRows) {
       var tfoot = document.getElementById('impPreviewTable').createTFoot();
