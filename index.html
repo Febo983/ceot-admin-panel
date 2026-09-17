@@ -926,6 +926,12 @@ body {
   color: rgba(255,255,255,.8); font-size: 1.3rem;
   cursor: pointer; padding: 2px 6px; line-height: 1;
 }
+/* Toggle de tema — visible siempre, a diferencia del hamburger de arriba */
+.adm-theme-btn {
+  display: block; background: none; border: none;
+  color: rgba(255,255,255,.8); font-size: 1.3rem;
+  cursor: pointer; padding: 2px 6px; line-height: 1;
+}
 .adm-sidenav-overlay {
   display: none; position: fixed; inset: 0;
   background: rgba(0,0,0,.5); z-index: var(--z-dropdown);
@@ -1628,6 +1634,28 @@ body { background: var(--iv0); color: var(--ink); }
 .adm-home-retro-inner { max-width:1600px; margin:0 auto; position:relative; }
 #admHomeBg { position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; }
 /* ═══════════════════════════════════════════
+   MODO OSCURO — Panel Admin (filtro, no paleta real)
+   El admin tiene ~17 módulos sin dark CSS propio. En vez de escribir
+   una regla por componente, se invierte toda la página con un filtro
+   CSS (mismo truco que Dark Reader) mientras el body tenga esta clase.
+   Independiente del [data-theme] que usan Login/Portal Profesionales
+   más abajo — no se pisan porque login/portal quedan display:none
+   mientras el admin está visible.
+   El .adm-header queda afuera a propósito: ya es oscuro por diseño
+   propio, no por el filtro. Invertirlo y volver a invertirlo (doble
+   filtro) se probó y desatura todo el resto de la página por el
+   redondeo del hue-rotate encadenado — así que directamente no se lo
+   incluye en la lista de abajo, en vez de cancelarlo.
+   ═══════════════════════════════════════════ */
+body.adm-dark-invert .adm-layout,
+body.adm-dark-invert #voiceFab,
+body.adm-dark-invert #voiceHandsFreeBtn,
+body.adm-dark-invert #voiceStatus,
+body.adm-dark-invert #importModal {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* ═══════════════════════════════════════════
    MODO OSCURO — Portal Profesionales
    Generado a partir de la paleta clara: mismos matices,
    invertidos. Se activa solo con [data-theme="dark"] en <html>.
@@ -1995,6 +2023,7 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
+      <button class="adm-theme-btn" id="admThemeBtn" onclick="toggleAdmTheme()" title="Cambiar a modo oscuro">🌙</button>
       <button class="adm-hamburger" id="admHamburgerBtn" onclick="toggleAdmSidenav()" title="Menú">☰</button>
       <button class="btn-logout" id="admHomeBtn" onclick="renderAdmHome()" style="display:none">← Inicio</button>
       <button class="btn-importar" id="btnImportar" onclick="abrirImportModal()"><i data-lucide="upload" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px" stroke-width="2"></i>Importar</button>
@@ -2846,6 +2875,21 @@ function toggleAdmSidenav() {
   if (ov) ov.classList.toggle("open", open);
 }
 
+function aplicarAdmTheme(dark) {
+  document.body.classList.toggle("adm-dark-invert", dark);
+  var btn = document.getElementById("admThemeBtn");
+  if (btn) {
+    btn.textContent = dark ? "☀️" : "🌙";
+    btn.title = dark ? "Cambiar a modo claro" : "Cambiar a modo oscuro";
+  }
+}
+
+function toggleAdmTheme() {
+  var dark = !document.body.classList.contains("adm-dark-invert");
+  aplicarAdmTheme(dark);
+  try { localStorage.setItem("ceot_admin_dark", dark ? "1" : "0"); } catch (e) {}
+}
+
 function renderTotalCeot() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
@@ -3295,9 +3339,13 @@ async function handleLogin() {
 
   // Login admin
   if (resp.role === "admin") {
-    // El modo oscuro es solo para el Portal Profesionales — el panel admin
-    // queda siempre en claro, sin importar la hora.
+    // El horario automático (oscuro 20:00–06:59) es solo para el Portal
+    // Profesionales — en el admin el tema se guarda por preferencia manual
+    // (botón en el header), no por hora.
     document.documentElement.setAttribute("data-theme", "light");
+    var admDarkGuardado = false;
+    try { admDarkGuardado = localStorage.getItem("ceot_admin_dark") === "1"; } catch (e) {}
+    aplicarAdmTheme(admDarkGuardado);
     document.getElementById("loginView").style.display  = "none";
     document.getElementById("adminView").style.display  = "block";
     accCargarCustom();
@@ -3457,6 +3505,7 @@ document.getElementById("adminLogoutBtn").addEventListener("click", function() {
   AUTH_ROLE  = null;
   document.getElementById("adminView").style.display = "none";
   document.getElementById("loginView").style.display = "block";
+  aplicarAdmTheme(false);
   var h = new Date().getHours();
   document.documentElement.setAttribute("data-theme", (h >= 20 || h < 7) ? "dark" : "light");
 });
