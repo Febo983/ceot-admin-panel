@@ -1033,26 +1033,25 @@ function renderMiPanel(doctor) {
     return fetch(url, { signal: ctrl.signal }).finally(function(){ clearTimeout(t); });
   }
 
-  // Casa 2067 — recalculado en el cliente igual que la pantalla "Gastos Casa"
-  // (js/gastos-casa.js, gcCalcular): apertura + libro de movimientos. El
-  // endpoint CAJAS_ENDPOINT quedó desactualizado para este dato (devuelve
-  // "casa2067":"CEM", texto en vez de número — de ahí el "$NaN" que se veía)
-  // desde que ese módulo pasó a recalcularse solo del libro, sin tocar el Sheet.
+  // Casa 2067 — leído en vivo de la planilla (gc2067FetchSaldo, js/gastos-casa.js):
+  // toma la última celda cargada en la columna F de la pestaña "Gastos CASA
+  // 14 de julio 2067" ("Saldo al día de hoy", que Marcelo actualiza a mano).
+  // NO se recalcula del libro local (gcCalcular) — ese libro puede no tener
+  // todavía los movimientos más nuevos que sí están en la planilla real, y
+  // daba un número viejo. El endpoint CAJAS_ENDPOINT quedó descartado para
+  // este dato (devolvía "casa2067":"CEM", texto en vez de número).
   var el2067 = document.getElementById('mp-saldo-2067');
-  if (el2067 && typeof gcCalcular === 'function') {
-    var repintarCasa2067 = function() {
+  if (el2067 && typeof gc2067FetchSaldo === 'function') {
+    gc2067FetchSaldo(function(saldo, err) {
       var elLive = document.getElementById('mp-saldo-2067');
       if (!elLive) return;
-      var c = gcCalcular();
-      elLive.textContent = fmt(c.saldo);
-      elLive.style.color = c.saldo >= 0 ? '#16a34a' : '#dc2626';
-    };
-    repintarCasa2067();
-    if (!_gcPulled && typeof syncPull === 'function') {
-      _gcPulled = true;
-      syncPull(GC_K, repintarCasa2067);
-      syncPull(GC_K_APORTES, function(){});
-    }
+      if (saldo == null) {
+        elLive.innerHTML = '<span style="font-size:0.72rem;color:rgba(32,36,31,.35);">Sin conexión</span>';
+        return;
+      }
+      elLive.textContent = fmt(saldo);
+      elLive.style.color = saldo >= 0 ? '#16a34a' : '#dc2626';
+    });
   }
 
   // Fondo CEOT — Ayudantía cruzada: mismo total que ve el admin en "Sueldo

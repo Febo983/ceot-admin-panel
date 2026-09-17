@@ -36,6 +36,51 @@ var _gcCharts = {};
 var _gcFiltroRubro = "";
 var _gcFiltroTxt = "";
 
+// ── Saldo real de "Casa 2067" — leído en vivo de la planilla, no recalculado ──
+// Marcelo mantiene a mano, al final de la pestaña "Gastos CASA 14 de julio
+// 2067" del Sheet, una fila "Saldo al día de hoy" con el total real vigente
+// en columna F (misma columna que el Importe de cada movimiento — es la
+// última celda cargada de esa columna). Ese valor puede incluir gastos/aportes
+// que todavía no se cargaron como movimiento en el panel (`gcCalcular()`,
+// que solo suma lo que está en el libro local) — por eso NO se recalcula acá,
+// se trae tal cual está en la planilla. Mismo mecanismo gviz JSONP que ya usa
+// gastos-obra.js (gpFetch) y sueldo-b.js, sin backend nuevo.
+var GC2067_SHEET_ID = "1NjHxZTUy3hVinrhR09Cq22gjcMiHQuSG8P4sSIPJa98";
+var GC2067_GID = "818194589";
+var _gc2067CbSeq = 0;
+function gc2067FetchSaldo(cb) {
+  var cbName = "__gc2067Cb" + (_gc2067CbSeq++);
+  var done = false;
+  var limpiar = function () {
+    window[cbName] = function () {};
+    var s = document.getElementById(cbName); if (s) s.remove();
+  };
+  var to = setTimeout(function () { if (!done) { done = true; limpiar(); cb(null, "timeout"); } }, 15000);
+  window[cbName] = function (resp) {
+    if (done) return;
+    done = true; clearTimeout(to); limpiar();
+    try {
+      var rows = (resp && resp.table && resp.table.rows) || [];
+      var saldo = null;
+      for (var i = rows.length - 1; i >= 0; i--) {
+        var cell = (rows[i].c || [])[5]; // columna F
+        if (cell && cell.v != null && cell.v !== "") {
+          saldo = typeof cell.v === "number" ? cell.v : (typeof gpNum === "function" ? gpNum(String(cell.v)) : parseFloat(cell.v));
+          if (saldo != null && !isNaN(saldo)) break;
+          saldo = null;
+        }
+      }
+      cb(saldo);
+    } catch (e) { cb(null, e.message); }
+  };
+  var script = document.createElement("script");
+  script.id = cbName;
+  script.onerror = function () { if (!done) { done = true; clearTimeout(to); limpiar(); cb(null, "error de red"); } };
+  script.src = "https://docs.google.com/spreadsheets/d/" + GC2067_SHEET_ID +
+    "/gviz/tq?gid=" + GC2067_GID + "&headers=0&tqx=out:json;responseHandler:" + cbName;
+  document.head.appendChild(script);
+}
+
 // Saldo con el que arranca el fondo: la columna PRIMER APORTE de los 10
 // socios (todos menos Garmendia), transferida antes del primer gasto del
 // libro (16/03/2026).
