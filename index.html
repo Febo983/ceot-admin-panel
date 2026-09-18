@@ -3362,6 +3362,7 @@ async function handleLogin() {
     renderSidenavLinks();
     renderAdmHome();
     checklistActualizarBadge();
+    if (typeof chequearBannerOsdeAdmin === "function") setTimeout(chequearBannerOsdeAdmin, 1200);
     document.getElementById("usernameInput").value = "";
     document.getElementById("passwordInput").value = "";
     return;
@@ -6920,7 +6921,9 @@ async function restaurarAporteCeotPct() {
 // Es solo un recordatorio de fecha — no verifica si ya se cargó, porque ese
 // dato vive en el Sheet/Apps Script, no accesible desde acá. Se descarta con
 // el botón y no vuelve a aparecer ese mes (vuelve a aparecer el mes que viene).
-(function () {
+// Se dispara solo desde el login admin (handleLogin, más arriba) — nunca en
+// la pantalla de login ni en el Portal del Profesional.
+function chequearBannerOsdeAdmin() {
   var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto',
                'septiembre','octubre','noviembre','diciembre'];
   var hoy = new Date();
@@ -6930,33 +6933,30 @@ async function restaurarAporteCeotPct() {
   var mesKey = MESES[hoy.getMonth()] + '-' + hoy.getFullYear();
   var dismissKey = 'osdeBannerDismissed_' + mesKey;
   if (localStorage.getItem(dismissKey)) return;
+  if (document.getElementById('osdeBanner')) return;
 
-  function mostrarBannerOsde() {
-    if (document.getElementById('osdeBanner')) return;
-    var b = document.createElement('div');
-    b.id = 'osdeBanner';
-    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;'
-      + 'background:#8a4b12;color:#fff;padding:11px 16px;display:flex;'
-      + 'align-items:center;justify-content:center;gap:12px;font-size:13.5px;'
-      + 'box-shadow:0 2px 10px rgba(0,0,0,.25);font-family:system-ui,sans-serif;'
-      + 'flex-wrap:wrap;text-align:center';
-    b.innerHTML = '🩺 Recordatorio: cargá el cheque de OSDE + diferidos del mes (Importar → subir CEOT + ART + FAC).'
-      + '<button id="osdeBtnAbrir" style="background:#fff;color:#8a4b12;border:none;'
-      + 'padding:5px 14px;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px">Abrir Importar</button>'
-      + '<button id="osdeBtnOk" style="background:rgba(255,255,255,.15);color:#fff;'
-      + 'border:1px solid rgba(255,255,255,.4);padding:5px 14px;border-radius:6px;'
-      + 'font-weight:600;cursor:pointer;font-size:13px">Ya lo cargué</button>';
-    document.body.appendChild(b);
-    document.getElementById('osdeBtnAbrir').onclick = function () {
-      if (typeof abrirImportModal === 'function') abrirImportModal();
-    };
-    document.getElementById('osdeBtnOk').onclick = function () {
-      localStorage.setItem(dismissKey, '1');
-      b.remove();
-    };
-  }
-  setTimeout(mostrarBannerOsde, 1500);
-})();
+  var b = document.createElement('div');
+  b.id = 'osdeBanner';
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;'
+    + 'background:#8a4b12;color:#fff;padding:11px 16px;display:flex;'
+    + 'align-items:center;justify-content:center;gap:12px;font-size:13.5px;'
+    + 'box-shadow:0 2px 10px rgba(0,0,0,.25);font-family:system-ui,sans-serif;'
+    + 'flex-wrap:wrap;text-align:center';
+  b.innerHTML = '🩺 Recordatorio: cargá el cheque de OSDE + diferidos del mes (Importar → subir CEOT + ART + FAC).'
+    + '<button id="osdeBtnAbrir" style="background:#fff;color:#8a4b12;border:none;'
+    + 'padding:5px 14px;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px">Abrir Importar</button>'
+    + '<button id="osdeBtnOk" style="background:rgba(255,255,255,.15);color:#fff;'
+    + 'border:1px solid rgba(255,255,255,.4);padding:5px 14px;border-radius:6px;'
+    + 'font-weight:600;cursor:pointer;font-size:13px">Ya lo cargué</button>';
+  document.body.appendChild(b);
+  document.getElementById('osdeBtnAbrir').onclick = function () {
+    if (typeof abrirImportModal === 'function') abrirImportModal();
+  };
+  document.getElementById('osdeBtnOk').onclick = function () {
+    localStorage.setItem(dismissKey, '1');
+    b.remove();
+  };
+}
 </script>
 
 </body>
