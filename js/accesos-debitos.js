@@ -39,7 +39,7 @@ var ACCESOS_DATA = [
   { id:35, cat:"Admin", title:"Contable",                   desc:"Datos contables",                                           url:"https://claude.ai/code/artifact/e7c9f19e-d865-4574-9adb-56279cb542df" },
   { id:38, cat:"Admin", title:"Mi Google Calendar",        desc:"Calendario de Google de Marce (marcelo.aime74@gmail.com)", url:"https://calendar.google.com/calendar/u/0/r?authuser=marcelo.aime74@gmail.com" },
   { id:37, cat:"Clínica", title:"Normas Convenios OOSS",    desc:"Autorizaciones, coseguros, manuales de prestador y contactos por obra social", url:"https://febo983.github.io/ceot-normas-convenios/" },
-  { id:39, cat:"Clínica", title:"Portal del Profesional",   desc:"Agenda del día en vivo (sala de espera, atendidos) y estadísticas — para los médicos", url:"https://ceot-agenda.netlify.app/profesional" },
+  { id:39, cat:"Clínica", title:"Portal del Profesional GACI", desc:"Agenda del día en vivo (sala de espera, atendidos) y estadísticas — para los médicos", url:"https://ceot-agenda.netlify.app/profesional" },
   // ── Otros
   { id:30, cat:"Otros", title:"Encuesta Secretarias",       desc:"Evaluación y premios a secretarias",                        url:"https://docs.google.com/spreadsheets/d/19ITME1mzL2eIYX4YIudIGwP7yeGBDP93XM6Y2gfperw/edit?usp=sharing" },
   { id:31, cat:"Otros", title:"Encuesta Satisfacción",      desc:"Encuesta de satisfacción de pacientes CEOT",                url:"https://docs.google.com/spreadsheets/d/1T9Rck2IdVg-aYDnjZo3sQJ_0dZ0MvhDBrlWFE1EVAvs/edit?usp=sharing" },
@@ -395,120 +395,11 @@ function debFmtPeriodo(p) {
   return s;
 }
 
-async function debCargarXLSX(file) {
-  if (!file) return;
-  var rows;
-  try { rows = await leerXLSX(file); } catch(e) { alert("Error al leer el archivo: " + e.message); return; }
-  var lista = [];
-  for (var r = 1; r < rows.length; r++) {
-    var row = rows[r];
-    if (!row || row.length < 16) continue;
-    var obs = String(row[15] || '').trim().toUpperCase();
-    if (obs.indexOf('DEB') === -1) continue;
-    var imp = typeof row[3] === 'number' ? row[3] : (parseFloat(String(row[3]).replace(/\./g,'').replace(',','.')) || 0);
-    if (imp < 50000) continue;
-    var nroRaw = String(row[1] || '').trim();
-    var parts = nroRaw.split(/\s+/).filter(Boolean);
-    var fact = parts.length >= 2
-      ? String(parts[0]).padStart(4,'0') + '-' + String(parts[1]).padStart(8,'0')
-      : nroRaw;
-    lista.push({
-      fact:     fact,
-      periodo:  debFmtPeriodo(row[5]),
-      os:       String(row[7]  || '').trim(),
-      prof:     String(row[12] || '').trim(),
-      prac:     String(row[9]  || '').trim(),
-      dni:      String(row[13] || '').trim(),
-      paciente: String(row[14] || '').trim(),
-      rol:      String(row[10] || '').trim(),
-      nprest:   String(row[6]  || '').trim(),
-      imp:      imp,
-      tipo:     obs === 'DEB. GASTOS' ? 'GAS' : 'HON'
-    });
-  }
-  debImportData = lista.sort(function(a,b){ return b.imp - a.imp; });
-  renderDebitos();
-}
-
-// Importador de débitos en formato "crudo" (tal como llega de la ART, ej. debitos.xlsx),
-// distinto del formato ya preparado "CEOT.xlsx" que usa debCargarXLSX().
-// Encabezados reales vienen partidos raro al exportar (ej. "PRACTI"+"CA" = "PRACTICA",
-// "PROF"+".Q.REALIZA" = "PROFESIONAL QUE REALIZA"), por eso se matchea por nombre de columna
-// en vez de posición fija — más robusto si el orden de columnas cambia.
-async function debCargarXLSXCrudo(file) {
-  if (!file) return;
-  var rows;
-  try { rows = await leerXLSX(file); } catch(e) { alert("Error al leer el archivo: " + e.message); return; }
-  if (!rows.length) { alert("Archivo vacío."); return; }
-
-  var headers = rows[0].map(function(h){ return String(h || '').replace(/\s+/g,'').toUpperCase(); });
-  function idxOf(needle) {
-    for (var i = 0; i < headers.length; i++) if (headers[i].indexOf(needle) !== -1) return i;
-    return -1;
-  }
-
-  var iFact     = idxOf('NROF.MOV');
-  var iImp      = idxOf('IMPORTE');
-  var iPPer     = idxOf('P.PERIO');
-  var iNprest   = idxOf('NPREST');
-  var iInst     = idxOf('INST.');
-  var iPracti   = idxOf('PRACTI');       // la descripción de práctica está en la columna siguiente
-  var iRol      = headers.indexOf('ROL');
-  var iProf     = idxOf('.Q.REALIZA');   // nombre del profesional que realizó la práctica
-  var iPaciente = idxOf('PACIENTE');     // OJO: esta columna trae el DNI, no el nombre
-  var iNombre   = idxOf('NOMBREYAPELLIDO');
-  var iObs      = idxOf('OBSERVACIONES');
-
-  if (iFact === -1 || iImp === -1 || iObs === -1) {
-    alert("No reconozco las columnas de este archivo (falta NRO F.MOV, IMPORTE u OBSERVACIONES). ¿Es el formato crudo de la ART?");
-    return;
-  }
-
-  var lista = [];
-  var incompletos = 0;
-  for (var r = 1; r < rows.length; r++) {
-    var row = rows[r];
-    if (!row || !row.length) continue;
-    var obs = String(row[iObs] || '').trim().toUpperCase();
-    if (obs.indexOf('DEB') === -1) continue;
-
-    var nroRaw = String(row[iFact] || '').trim();
-    var parts = nroRaw.split(/\s+/).filter(Boolean);
-    var fact = parts.length >= 2
-      ? String(parts[0]).padStart(4,'0') + '-' + String(parts[1]).padStart(8,'0')
-      : nroRaw;
-
-    var impRaw = row[iImp];
-    var imp = typeof impRaw === 'number' ? impRaw : (parseFloat(String(impRaw).replace(/\./g,'').replace(',','.')) || 0);
-
-    var item = {
-      fact:     fact,
-      periodo:  debFmtPeriodo(iPPer !== -1 ? row[iPPer] : ''),
-      os:       String(row[iInst] || '').trim(),
-      prof:     String(row[iProf] || '').trim(),
-      prac:     String(row[iPracti + 1] || '').trim(),
-      dni:      String(row[iPaciente] || '').trim(),
-      paciente: String(row[iNombre] || '').trim(),
-      rol:      String(row[iRol] || '').trim(),
-      nprest:   String(row[iNprest] || '').trim(),
-      imp:      imp,
-      tipo:     obs === 'DEB. GASTOS' ? 'GAS' : 'HON'
-    };
-    if (!item.paciente || !item.dni || !imp) incompletos++;
-    lista.push(item);
-  }
-
-  if (!lista.length) {
-    alert("No se encontraron filas con observación \"DEB...\" en este archivo.");
-    return;
-  }
-  if (incompletos) {
-    alert("Se importaron " + lista.length + " registros; " + incompletos + " quedaron con algún dato vacío (importe, paciente o DNI) — revisalos en la tabla antes de guardar.");
-  }
-
-  debImportData = (debImportData || []).concat(lista).sort(function(a,b){ return b.imp - a.imp; });
-  renderDebitos();
-}
+// La carga manual de CEOT.xlsx/débitos crudos se sacó (2026-09-18): el modal
+// Importar ya guarda los débitos en este mismo storage (deb_imp_<key> +
+// deb_guardados) como efecto secundario de procesar CEOT+ART — ver
+// extraerDebitosDeRegistros()/guardarDebitosImportados() en importar-liquidacion.js.
+// Subir el archivo ahí alcanza; no hace falta repetirlo acá.
 
 function renderDebitos(mes) {
   if (mes) debMesActual = mes;
@@ -547,7 +438,6 @@ function renderDebitos(mes) {
     + (modoImport && debMesActual.indexOf('__g__') === 0
         ? '<button class="deb-btn" style="font-size:0.72rem;padding:4px 8px;background:rgba(220,80,60,.15);color:#c44" onclick="debEliminarGuardado(\'' + debMesActual.replace('__g__','') + '\')">🗑 Eliminar período</button>'
         : '')
-    + '<label class="deb-btn" style="cursor:pointer;position:relative">📂 Importar CEOT.xlsx<input type="file" accept=".xlsx,.xls" style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer" onchange="debCargarXLSX(this.files[0]);this.value=\'\'"></label>'
     + '<button class="deb-btn deb-btn-pri" onclick="actionFeedback(this); imprimirDebitos()" style="margin-left:4px">🖨 Imprimir</button>'
     + '<span class="deb-saved-msg" id="debSavedMsg">Guardado ✓</span>'
     + '</div>';

@@ -4032,6 +4032,15 @@ function licHonExportExcel(id) {
   aoa.push(["Total"].concat(res.totalesFecha, [res.granTotal]));
   aoa.push([]);
   aoa.push(["No incluye CEM ni OSDE — se controlan aparte."]);
+  if (/marcelo/i.test(lic.titular || '')) {
+    aoa.push([]);
+    aoa.push(["CHEQUE DE OSDE + DIFERIDOS"]);
+    aoa.push(["1. Pedirle los archivos (CEOT.xlsx/.txt + ART + Factura Colón) a Francisco Alza — 54 9 2236 00-5734, después del día 17/18."]);
+    aoa.push(["2. Subirlos en el panel > Importar. Diferidos y débitos se cargan solos."]);
+    aoa.push(["3. Apenas se acredite el cheque de OSDE, cargar el importe real en ese mismo modal — calcula solo la distribución y retenciones por profesional."]);
+    aoa.push(["4. El panel avisa solo del 10 al 27 de cada mes si todavía falta cargarlo."]);
+    aoa.push(["Efectivo, transferencias a proveedores/dividendos y la factura CEM mueven plata real — confirmar con Marcelo quién queda autorizado antes de tocar esos pasos."]);
+  }
   if (lic.notas && lic.notas.trim()) {
     aoa.push([]);
     aoa.push(["Notas / excepciones"]);
@@ -4094,6 +4103,38 @@ function licHonExportPDF(id) {
   doc.text("No incluye CEM ni OSDE — se controlan aparte, cuando se carguen en el Sheet.", LM, y);
   y += 8;
 
+  if (/marcelo/i.test(lic.titular || '')) {
+    if (y > 240) { doc.addPage(); y = 20; }
+    doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+    doc.text("CHEQUE DE OSDE + DIFERIDOS", LM, y);
+    y += 6;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
+    var osdeLineas = [
+      "1. Pedirle los archivos (CEOT.xlsx/.txt + ART + Factura Colón) a Francisco Alza — 54 9 2236 00-5734, despues del dia 17/18.",
+      "2. Subirlos en el panel > Importar. Diferidos y debitos se cargan solos.",
+      "3. Apenas se acredite el cheque de OSDE, cargar el importe real en ese mismo modal — calcula solo la distribucion y",
+      "   retenciones por profesional.",
+      "4. El panel avisa solo del 10 al 27 de cada mes si todavia falta cargarlo."
+    ];
+    osdeLineas.forEach(function (linea) {
+      if (y > 285) { doc.addPage(); y = 20; }
+      doc.text(linea, LM, y);
+      y += 5;
+    });
+    y += 1;
+    doc.setFont("helvetica", "italic"); doc.setFontSize(7.5);
+    var osdeAviso = doc.splitTextToSize(
+      "Efectivo, transferencias a proveedores/dividendos y la factura CEM mueven plata real — confirmar con Marcelo quien queda autorizado antes de tocar esos pasos.",
+      RM - LM
+    );
+    osdeAviso.forEach(function (linea) {
+      if (y > 285) { doc.addPage(); y = 20; }
+      doc.text(linea, LM, y);
+      y += 4.5;
+    });
+    y += 4;
+  }
+
   if (lic.notas && lic.notas.trim()) {
     if (y > 250) { doc.addPage(); y = 20; }
     doc.setFont("helvetica", "bold"); doc.setFontSize(9);
@@ -4149,6 +4190,16 @@ function licHonExportHtml(id) {
       + '</tbody></table>'
       + '<b style="margin-top:10px">Transferencias para gastos casa 2067</b>'
       + '<div>Jueves 15/10 (6 o 7 transferencias)<br>Jueves 22/10 (6 o 7 transferencias)</div>'
+      + '</div>'
+      + '<div class="aviso" style="border-color:#b45309;background:#fffbeb;color:#78350f">'
+      + '<b style="color:#92400e">🩺 Cheque de OSDE + diferidos</b>'
+      + '<div style="margin-top:6px;line-height:1.7">'
+      + '1. Pedirle los archivos (CEOT.xlsx/.txt + ART + Factura Colón) a <b>Francisco Alza — 54 9 2236 00-5734</b>, después del día 17/18.<br>'
+      + '2. Subirlos en el panel → Importar. Diferidos y débitos se cargan solos.<br>'
+      + '3. Apenas se acredite el cheque de OSDE, cargar el importe real en ese mismo modal — calcula solo la distribución y retenciones por profesional.<br>'
+      + '4. El panel avisa solo del 10 al 27 de cada mes si todavía falta cargarlo.'
+      + '</div>'
+      + '<div style="font-size:.85em;margin-top:8px;font-style:italic">Efectivo, transferencias a proveedores/dividendos y la factura CEM mueven plata real — confirmar con Marcelo quién queda autorizado antes de tocar esos pasos.</div>'
       + '</div>';
   }
 
@@ -4262,6 +4313,24 @@ function licHonAvisoMarceloHtml() {
     + '</tbody></table></div>'
     + '<div style="font-weight:700;color:#15803d;font-size:.86rem;margin-bottom:6px">Transferencias para gastos casa 2067</div>'
     + '<div style="font-size:.78rem;color:#166534;line-height:1.6">Jueves 15/10 (6 o 7 transferencias)<br>Jueves 22/10 (6 o 7 transferencias)</div>'
+    + '</div>'
+    + licHonAvisoOsdeHtml();
+}
+
+// OSDE queda afuera de licHonResumen (no tiene fecha fija), así que a
+// diferencia del cronograma de arriba esto no se calcula — es la posta
+// escrita a mano: a quién pedirle los archivos y qué hacer con el cheque
+// de OSDE cuando llegue. Mismo gate /marcelo/i que el resto de este aviso.
+function licHonAvisoOsdeHtml() {
+  return '<div style="margin-top:12px;border:2px solid #b45309;border-radius:10px;padding:14px 16px;background:#fffbeb">'
+    + '<div style="font-weight:700;color:#92400e;font-size:.86rem;margin-bottom:8px">🩺 Cheque de OSDE + diferidos</div>'
+    + '<div style="font-size:.78rem;color:#78350f;line-height:1.7">'
+    + '1. Pedirle los archivos (CEOT.xlsx/.txt + ART + Factura Colón) a <b>Francisco Alza — 54 9 2236 00-5734</b>, después del día 17/18.<br>'
+    + '2. Subirlos en el panel → <b>Importar</b>. Diferidos y débitos se cargan solos, no hace falta nada más.<br>'
+    + '3. Apenas se acredite el cheque de OSDE en el banco, cargar el <b>importe real</b> en ese mismo modal de Importar — ahí se calcula solo cuánto le corresponde a cada profesional y su % de retención.<br>'
+    + '4. El panel muestra un cartel arriba de la pantalla (del 10 al 27 de cada mes) recordando este paso si todavía no se cargó.'
+    + '</div>'
+    + '<div style="font-size:.72rem;color:#92400e;margin-top:8px;font-style:italic">Efectivo, transferencias a proveedores/dividendos y la factura CEM mueven plata real — confirmar con Marcelo quién queda autorizado antes de tocar esos pasos.</div>'
     + '</div>';
 }
 
@@ -6803,6 +6872,52 @@ async function restaurarAporteCeotPct() {
   }
   setTimeout(chequearVersion, 2000);
   setInterval(chequearVersion, 5 * 60 * 1000); // re-chequea cada 5 min por si queda la pestaña abierta
+})();
+</script>
+
+<script>
+// ── Recordatorio OSDE/diferidos pendiente (checklist ítem "del 10 al 20") ──
+// Entre el día 10 y el 27 de cada mes, recuerda subir CEOT+ART+FAC en
+// Importar para procesar el cheque de OSDE y los diferidos del período.
+// Es solo un recordatorio de fecha — no verifica si ya se cargó, porque ese
+// dato vive en el Sheet/Apps Script, no accesible desde acá. Se descarta con
+// el botón y no vuelve a aparecer ese mes (vuelve a aparecer el mes que viene).
+(function () {
+  var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto',
+               'septiembre','octubre','noviembre','diciembre'];
+  var hoy = new Date();
+  var dia = hoy.getDate();
+  if (dia < 10 || dia > 27) return;
+
+  var mesKey = MESES[hoy.getMonth()] + '-' + hoy.getFullYear();
+  var dismissKey = 'osdeBannerDismissed_' + mesKey;
+  if (localStorage.getItem(dismissKey)) return;
+
+  function mostrarBannerOsde() {
+    if (document.getElementById('osdeBanner')) return;
+    var b = document.createElement('div');
+    b.id = 'osdeBanner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;'
+      + 'background:#8a4b12;color:#fff;padding:11px 16px;display:flex;'
+      + 'align-items:center;justify-content:center;gap:12px;font-size:13.5px;'
+      + 'box-shadow:0 2px 10px rgba(0,0,0,.25);font-family:system-ui,sans-serif;'
+      + 'flex-wrap:wrap;text-align:center';
+    b.innerHTML = '🩺 Recordatorio: cargá el cheque de OSDE + diferidos del mes (Importar → subir CEOT + ART + FAC).'
+      + '<button id="osdeBtnAbrir" style="background:#fff;color:#8a4b12;border:none;'
+      + 'padding:5px 14px;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px">Abrir Importar</button>'
+      + '<button id="osdeBtnOk" style="background:rgba(255,255,255,.15);color:#fff;'
+      + 'border:1px solid rgba(255,255,255,.4);padding:5px 14px;border-radius:6px;'
+      + 'font-weight:600;cursor:pointer;font-size:13px">Ya lo cargué</button>';
+    document.body.appendChild(b);
+    document.getElementById('osdeBtnAbrir').onclick = function () {
+      if (typeof abrirImportModal === 'function') abrirImportModal();
+    };
+    document.getElementById('osdeBtnOk').onclick = function () {
+      localStorage.setItem(dismissKey, '1');
+      b.remove();
+    };
+  }
+  setTimeout(mostrarBannerOsde, 1500);
 })();
 </script>
 
