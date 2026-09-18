@@ -2194,13 +2194,13 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-15-aporte-pct-resync"></script>
-<script src="js/portal-render.js?v=2026-09-17-casa2067-desde-sheet"></script>
+<script src="js/datos.js?v=2026-09-18-prestamo-casa-leon"></script>
+<script src="js/portal-render.js?v=2026-09-18-prestamo-casa-leon"></script>
 <script src="js/admin-home.js?v=2026-09-15-aporte-pct-resync"></script>
 <script src="js/gastos-obra.js?v=2026-09-15-lic-nombres-completos"></script>
 <script src="js/presentacion.js?v=2026-09-15-aporte-pct-resync"></script>
 <script src="js/sueldo-b.js?v=2026-09-15-aporte-pct-resync"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-18-prestamo-casa-leon"></script>
 <script src="js/importar-liquidacion.js?v=2026-09-17-fondo-ceot-en-portal"></script>
 <script src="js/nun-data.js?v=2026-09-15-aporte-pct-resync"></script>
 <script src="js/accesos-debitos.js?v=2026-09-18-acceso-diagrama-arquitectura"></script>
@@ -3043,7 +3043,7 @@ function renderAdminPanel(periodo) {
   });
 
   var tieneAporte   = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
-  var tienePrestamo = PRESTAMO_CASA_CUOTA[periodo] !== undefined;
+  var tienePrestamo = prestamoCasaActivo(periodo);
   var tieneCm       = !!(PERIOD_EXTRAS[periodo] && PERIOD_EXTRAS[periodo].cm);
   var hayCmPend     = rows.some(function(r){ return r.calc.cmPendiente; });
   var hayPendientes = rows.some(function(r){ return r.calc.pendiente; });
@@ -3145,9 +3145,9 @@ function renderAdminPanel(periodo) {
     html += '<td>' + r.doc.apellido + (c.pendiente ? ' <span class="adm-est-badge">est</span>' : '') + '</td>';
     var prestamoAnot = '';
     if (tienePrestamo && c.prestamoCasa > 0) {
-      prestamoAnot = ' <span style="font-size:.58rem;color:#b13a2c">(-' + fmt(c.prestamoCasa) + ' · cuota ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span>';
+      prestamoAnot = ' <span style="font-size:.58rem;color:#b13a2c">(-' + fmt(c.prestamoCasa) + ' · cuota ' + c.prestamoCasaCuota + ')</span>';
     } else if (tienePrestamo && c.prestamoCasa < 0) {
-      prestamoAnot = ' <span style="font-size:.58rem;color:#16a34a">(+' + fmt(-c.prestamoCasa) + ' · reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span>';
+      prestamoAnot = ' <span style="font-size:.58rem;color:#16a34a">(+' + fmt(-c.prestamoCasa) + ' · reintegro ' + c.prestamoCasaCuota + ')</span>';
     }
     html += '<td>' + fmt(c.colonBruto) + prestamoAnot + '</td>';
     html += '<td>' + (c.osdePendiente

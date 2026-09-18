@@ -249,12 +249,9 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   // en cada cheque individual (ver forEach de abajo), además de las líneas resumen
   // que ya se arman más abajo en esta misma función.
   var pctApCheq = APORTE_CEOT_DESDE.indexOf(periodo) !== -1 ? getAporteCeotPctPeriodo(periodo, doctor.apellido) : null;
-  var prestamoCuotaCheq = PRESTAMO_CASA_CUOTA[periodo] || null;
-  var prestamoIndCheq = 0;
-  if (prestamoCuotaCheq) {
-    if (PRESTAMO_CASA_SOCIOS.indexOf(doctor.apellido) !== -1) prestamoIndCheq = PRESTAMO_CASA_MONTO;
-    else if (PRESTAMO_CASA_SOCIOS_A.indexOf(doctor.apellido) !== -1) prestamoIndCheq = -PRESTAMO_CASA_MONTO_CREDITO;
-  }
+  var _prestamoCalcCheq = prestamoCasaCalc(periodo, doctor.apellido);
+  var prestamoCuotaCheq = _prestamoCalcCheq.cuotaLabel;
+  var prestamoIndCheq = _prestamoCalcCheq.monto;
 
   var html = '<div class="period-total">'
     + '<div class="pt-left">'
@@ -391,16 +388,13 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   html += '</div>';
 
   // Préstamo Casa 14 de julio 2067 (grupo B: descuento · grupo A: reintegro, desde Agosto 2026)
-  var prestamoCuota = PRESTAMO_CASA_CUOTA[periodo] || null;
-  var prestamoInd = 0;
-  if (prestamoCuota) {
-    if (PRESTAMO_CASA_SOCIOS.indexOf(doctor.apellido) !== -1) prestamoInd = PRESTAMO_CASA_MONTO;
-    else if (PRESTAMO_CASA_SOCIOS_A.indexOf(doctor.apellido) !== -1) prestamoInd = -PRESTAMO_CASA_MONTO_CREDITO;
-  }
+  var _prestamoCalcInd = prestamoCasaCalc(periodo, doctor.apellido);
+  var prestamoCuota = _prestamoCalcInd.cuotaLabel;
+  var prestamoInd = _prestamoCalcInd.monto;
   if (prestamoInd) {
     html += '<div class="cheque-list"><div class="cl-row cl-sep-row' + (prestamoInd > 0 ? ' cl-neg' : '') + '">'
       + '<span class="cl-date">—</span>'
-      + '<span class="cl-lbl">Préstamo Casa <span style="font-size:.68rem;color:rgba(32,36,31,.35);font-weight:400">' + (prestamoInd > 0 ? 'cuota' : 'reintegro') + ' ' + prestamoCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + '</span></span>'
+      + '<span class="cl-lbl">Préstamo Casa <span style="font-size:.68rem;color:rgba(32,36,31,.35);font-weight:400">' + (prestamoInd > 0 ? 'cuota' : 'reintegro') + ' ' + prestamoCuota + '</span></span>'
       + '<span class="cl-amt"' + (prestamoInd < 0 ? ' style="color:#16a34a"' : '') + '>' + (prestamoInd > 0 ? '−' + fmt(prestamoInd) : '+' + fmt(-prestamoInd)) + '</span>'
       + '</div></div>';
   }
@@ -543,12 +537,9 @@ function calcularNetoLocal(pid, doc) {
   var baseAporte = colonBruto + osdeVal + cmVal;
   var aporteCeot = (periodoConAporte && pctAporte) ? Math.round(baseAporte * pctAporte) : 0;
   // Préstamo Casa 14 de julio 2067 — grupo B: descuento (+) · grupo A: reintegro (−), desde Agosto 2026
-  var prestamoCasaCuota = PRESTAMO_CASA_CUOTA[pid] || null;
-  var prestamoCasa = 0;
-  if (prestamoCasaCuota) {
-    if (PRESTAMO_CASA_SOCIOS.indexOf(doc.apellido) !== -1) prestamoCasa = PRESTAMO_CASA_MONTO;
-    else if (PRESTAMO_CASA_SOCIOS_A.indexOf(doc.apellido) !== -1) prestamoCasa = -PRESTAMO_CASA_MONTO_CREDITO;
-  }
+  var _prestamoCalcNeto = prestamoCasaCalc(pid, doc.apellido);
+  var prestamoCasa = _prestamoCalcNeto.monto;
+  var prestamoCasaCuota = _prestamoCalcNeto.cuotaLabel;
   var neto  = bruto - iibb - cpsm - ga - aporteCeot - prestamoCasa + cmVal;
 
   return {
@@ -826,7 +817,7 @@ function renderHistorial(doctor) {
       totalDesc += c.ga;
     }
     if (c.prestamoCasa > 0) {
-      descLineas.push('<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val neg">−' + fmt(c.prestamoCasa) + '</span></div>');
+      descLineas.push('<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (' + c.prestamoCasaCuota + ')</span><span class="hist-dline-val neg">−' + fmt(c.prestamoCasa) + '</span></div>');
       totalDesc += c.prestamoCasa;
     }
     if (c.aporteCeot > 0) {
@@ -860,7 +851,7 @@ function renderHistorial(doctor) {
 
     var creditosHtml = '';
     if (c.prestamoCasa < 0) {
-      creditosHtml += '<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val" style="color:#16a34a">+' + fmt(-c.prestamoCasa) + '</span></div>';
+      creditosHtml += '<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (reintegro ' + c.prestamoCasaCuota + ')</span><span class="hist-dline-val" style="color:#16a34a">+' + fmt(-c.prestamoCasa) + '</span></div>';
     }
     if (c.cm > 0) {
       creditosHtml += '<div class="hist-dline"><span class="hist-dline-lbl">Centro Médico</span><span class="hist-dline-val cm">+' + fmt(c.cm) + '</span></div>';

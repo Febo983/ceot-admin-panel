@@ -141,8 +141,8 @@ function descargarComprobanteHistorial(pid) {
     fila("CPSM (5%)", c.cpsm, { prefix:"- ", color:[180,0,0] });
   }
   if (c.ga)          fila("Gastos A", c.ga, { prefix:"- ", color:[180,0,0] });
-  if (c.prestamoCasa > 0) fila("Préstamo Casa (" + c.prestamoCasaCuota + "/" + PRESTAMO_CASA_TOTAL_CUOTAS + ")", c.prestamoCasa, { prefix:"- ", color:[180,0,0] });
-  if (c.prestamoCasa < 0) fila("Préstamo Casa · reintegro (" + c.prestamoCasaCuota + "/" + PRESTAMO_CASA_TOTAL_CUOTAS + ")", -c.prestamoCasa, { prefix:"+ ", color:[0,120,0] });
+  if (c.prestamoCasa > 0) fila("Préstamo Casa (" + c.prestamoCasaCuota + ")", c.prestamoCasa, { prefix:"- ", color:[180,0,0] });
+  if (c.prestamoCasa < 0) fila("Préstamo Casa · reintegro (" + c.prestamoCasaCuota + ")", -c.prestamoCasa, { prefix:"+ ", color:[0,120,0] });
   if (c.aporteCeot > 0) fila("Retención Ganancias (" + Math.round(c.pctAporte*100) + "%)", c.aporteCeot, { prefix:"- ", color:[180,0,0] });
   if (c.cm > 0)      fila("Centro Médico", c.cm, { prefix:"+ ", color:[0,120,0] });
 
