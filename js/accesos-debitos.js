@@ -38,6 +38,7 @@ var ACCESOS_DATA = [
   { id:29, cat:"Admin", title:"Archivos Reuniones",         desc:"Minutas y acuerdos de reuniones del equipo",                url:"https://drive.google.com/drive/folders/1jnwuKnJaNdR45_QfGvqOmURQL7yrLdTA?usp=drive_link" },
   { id:35, cat:"Admin", title:"Contable",                   desc:"Datos contables",                                           url:"https://claude.ai/code/artifact/e7c9f19e-d865-4574-9adb-56279cb542df" },
   { id:38, cat:"Admin", title:"Mi Google Calendar",        desc:"Calendario de Google de Marce (marcelo.aime74@gmail.com)", url:"https://calendar.google.com/calendar/u/0/r?authuser=marcelo.aime74@gmail.com" },
+  { id:41, cat:"Admin", title:"Diagrama de Arquitectura",  desc:"Cómo se conectan el panel admin y el portal profesional",  url:"https://febo983.github.io/ceot-admin-panel/architecture.html" },
   { id:37, cat:"Clínica", title:"Normas Convenios OOSS",    desc:"Autorizaciones, coseguros, manuales de prestador y contactos por obra social", url:"https://febo983.github.io/ceot-normas-convenios/" },
   { id:39, cat:"Clínica", title:"Portal del Profesional",   desc:"Agenda del día en vivo (sala de espera, atendidos) y estadísticas — para los médicos", url:"https://ceot-agenda.netlify.app/profesional" },
   { id:40, cat:"Clínica", title:"Conector de Nomencladores", desc:"Código Nacional (NN) ↔ Código NUN, según la facturación real (191 pares)", url:"https://claude.ai/code/artifact/59653f06-122f-453e-ba9b-098ba2cc0759" },
@@ -48,7 +49,7 @@ var ACCESOS_DATA = [
   { id:33, cat:"Otros", title:"BBVA CEOT",                  desc:"Home banking BBVA — cuenta CEOT",                           url:"https://www.bbva.com.ar/empresas.html" },
 ];
 
-var accNextId = 41;
+var accNextId = 42;
 var accFilterActual = "Todos";
 var accEditLinkMode = false;
 
