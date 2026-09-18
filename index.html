@@ -2194,19 +2194,19 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-15-aporte-pct-resync"></script>
-<script src="js/portal-render.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/datos.js?v=2026-09-18-prestamo-casa-leon"></script>
+<script src="js/portal-render.js?v=2026-09-18-prestamo-casa-leon"></script>
 <script src="js/admin-home.js?v=2026-09-15-aporte-pct-resync"></script>
 <script src="js/gastos-obra.js?v=2026-09-15-lic-nombres-completos"></script>
 <script src="js/presentacion.js?v=2026-09-15-aporte-pct-resync"></script>
 <script src="js/sueldo-b.js?v=2026-09-15-aporte-pct-resync"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-15-aporte-pct-resync"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-17-ayudantia-cruzada-sin-esp"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-18-prestamo-casa-leon"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-17-fondo-ceot-en-portal"></script>
 <script src="js/nun-data.js?v=2026-09-15-aporte-pct-resync"></script>
-<script src="js/accesos-debitos.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/accesos-debitos.js?v=2026-09-18-ordenes-cx-github"></script>
 <script src="js/estadisticas-datos.js?v=2026-09-15-aporte-pct-resync"></script>
 <script src="js/estadisticas.js?v=2026-09-15-aporte-pct-resync"></script>
-<script src="js/gastos-casa.js?v=2026-09-15-aporte-pct-resync"></script>
+<script src="js/gastos-casa.js?v=2026-09-17-casa2067-desde-sheet"></script>
 <script src="js/faq-asistente.js?v=2026-09-15-aporte-pct-resync"></script>
 <script src="js/asistente.js?v=2026-09-15-aporte-pct-resync"></script>
 <script src="js/correos.js?v=2026-09-15-aporte-pct-resync"></script>
@@ -3043,7 +3043,7 @@ function renderAdminPanel(periodo) {
   });
 
   var tieneAporte   = APORTE_CEOT_DESDE.indexOf(periodo) !== -1;
-  var tienePrestamo = PRESTAMO_CASA_CUOTA[periodo] !== undefined;
+  var tienePrestamo = prestamoCasaActivo(periodo);
   var tieneCm       = !!(PERIOD_EXTRAS[periodo] && PERIOD_EXTRAS[periodo].cm);
   var hayCmPend     = rows.some(function(r){ return r.calc.cmPendiente; });
   var hayPendientes = rows.some(function(r){ return r.calc.pendiente; });
@@ -3145,9 +3145,9 @@ function renderAdminPanel(periodo) {
     html += '<td>' + r.doc.apellido + (c.pendiente ? ' <span class="adm-est-badge">est</span>' : '') + '</td>';
     var prestamoAnot = '';
     if (tienePrestamo && c.prestamoCasa > 0) {
-      prestamoAnot = ' <span style="font-size:.58rem;color:#b13a2c">(-' + fmt(c.prestamoCasa) + ' · cuota ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span>';
+      prestamoAnot = ' <span style="font-size:.58rem;color:#b13a2c">(-' + fmt(c.prestamoCasa) + ' · cuota ' + c.prestamoCasaCuota + ')</span>';
     } else if (tienePrestamo && c.prestamoCasa < 0) {
-      prestamoAnot = ' <span style="font-size:.58rem;color:#16a34a">(+' + fmt(-c.prestamoCasa) + ' · reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span>';
+      prestamoAnot = ' <span style="font-size:.58rem;color:#16a34a">(+' + fmt(-c.prestamoCasa) + ' · reintegro ' + c.prestamoCasaCuota + ')</span>';
     }
     html += '<td>' + fmt(c.colonBruto) + prestamoAnot + '</td>';
     html += '<td>' + (c.osdePendiente
@@ -3700,7 +3700,7 @@ async function renderAporteCeot() {
 // Arranca solo con "Sueldo Director" abierta; SD_ACC_OPEN recuerda el estado
 // mientras dure la sesion para que un re-render no cierre lo que se abrio.
 // El .cpsm-header interno de cada seccion se oculta por CSS (el titulo va en el <summary>).
-var SD_ACC_OPEN = { sd: true, resto: false, gastosa: false, inv: false };
+var SD_ACC_OPEN = { sd: true, resto: false, gastosa: false, inv: false, fondoceot: false };
 function sdAcc(id, titulo, contenido) {
   var abierta = !!SD_ACC_OPEN[id];
   return '<details class="sd-acc" data-acc="' + id + '"' + (abierta ? ' open' : '') + '>'
@@ -3737,6 +3737,7 @@ function renderSueldoDirector() {
     + sdAcc('resto', '💳 Resto de profesionales', restoProfesionalesTabHtml(periodo))
     + sdAcc('gastosa', '🧾 Gastos A — cheques + descuento', gastosASectionHtml(periodo))
     + sdAcc('inv', '💰 Inversiones — fondo Retención Ganancias', inversionesSectionHtml(periodo))
+    + sdAcc('fondoceot', '🏛 Fondo CEOT — Ayudantía cruzada', '<div id="fondoCeotAyudBody">' + fondoCeotAyudantiaSectionHtml() + '</div>')
     + '</div>';
 
   document.getElementById("adm-content").innerHTML = html;
@@ -3745,6 +3746,10 @@ function renderSueldoDirector() {
   });
   gastosARecalcularPreview();
   invRecalcularPreview();
+  ceotAyudCruzadaCargar(function() {
+    var el = document.getElementById('fondoCeotAyudBody');
+    if (el) el.innerHTML = fondoCeotAyudantiaSectionHtml();
+  });
 }
 
 // ── Gastos A — reparto contra cheques elegidos ──────────────────────
@@ -5892,6 +5897,39 @@ function restoProfesionalesTabHtml(periodo) {
     + '</div>';
 }
 
+// ── Fondo CEOT — Ayudantía cruzada ──────────────────────────────────
+// Cada vez que se importa una liquidación de CEOT.xlsx/txt (js/importar-liquidacion.js,
+// billingDesdeRegistros) y detecta un AY2 de Bruni/De la Colina/Garmendia/Perlasco
+// cuyo ESP o AY1 es del "equipo" contrario, ese importe se acredita acá — no se
+// paga al AY2. CEOT_AYUD_CRUZADA (definida en importar-liquidacion.js) guarda
+// un registro por período, sincronizado (localStorage + Sheet) igual que
+// GASTOS_EXTRA_DEFAULT. Esta función solo lee y muestra, no calcula nada nuevo.
+function fondoCeotAyudantiaSectionHtml() {
+  var periodos = Object.keys(CEOT_AYUD_CRUZADA).sort();
+  if (!periodos.length) {
+    return '<div style="font-size:.75rem;color:rgba(32,36,31,.5);font-style:italic">Todavía no se detectó ninguna ayudantía cruzada al importar una liquidación (ni casos sin ESP/AY1 identificable).</div>';
+  }
+  var granTotal = ceotAyudCruzadaTotal();
+  var filas = periodos.map(function(p) {
+    var e = CEOT_AYUD_CRUZADA[p] || {};
+    var tot = (e.osde||0) + (e.dif||0);
+    var detalle = (e.detalle||[]).map(function(d) {
+      return 'ESP/AY1 ' + d.esp + ' / AY2 ' + d.ay2 + ': ' + fmt(d.importe) + ' (' + d.os + (d.paciente ? ', ' + d.paciente : '') + ')';
+    }).join('<br>');
+    var sinEsp = (e.sinEsp && e.sinEsp.length)
+      ? '<div style="color:#9a3412;margin-top:4px">⚠ ' + e.sinEsp.length + ' caso(s) sin ESP/AY1 identificable ese período (se pagaron normal, revisar a mano)</div>'
+      : '';
+    return '<tr><td style="text-transform:capitalize">' + p.replace('-', ' ') + '</td>' +
+      '<td class="ipt-num">' + fmt(e.osde||0) + '</td>' +
+      '<td class="ipt-num">' + fmt(e.dif||0) + '</td>' +
+      '<td class="ipt-num" style="font-weight:800">' + fmt(tot) + '</td>' +
+      '<td style="font-size:.65rem;color:rgba(32,36,31,.6);text-align:left">' + (detalle || '—') + sinEsp + '</td></tr>';
+  }).join('');
+  return '<div style="font-size:.7rem;color:rgba(32,36,31,.55);margin-bottom:10px">Cada vez que se importa una liquidación (CEOT.xlsx/.txt) y se detecta un AY2 de Bruni/De la Colina/Garmendia/Perlasco cuyo ESP o AY1 es del equipo contrario, ese importe queda registrado acá en vez de pagarse al AY2. Se actualiza solo, no hace falta cargar nada a mano.</div>'
+    + '<div style="font-weight:800;font-size:1.1rem;margin-bottom:10px">Acumulado total: ' + fmt(granTotal) + '</div>'
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Período</th><th>OSDE</th><th>Diferidos</th><th>Total</th><th>Detalle</th></tr></thead><tbody>' + filas + '</tbody></table></div>';
+}
+
 // ── Inversiones del fondo Retención Ganancias ───────────────────────
 // Registra plazos fijos (u otro tipo de colocación) armados con la Retención
 // Ganancias que va saliendo cheque a cheque. El usuario elige qué cheques del
@@ -6844,7 +6882,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-17-ayudantia-cruzada-sin-esp';
+  var CURRENT_BUILD = '2026-09-18-acceso-diagrama-arquitectura';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');

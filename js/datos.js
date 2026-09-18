@@ -513,16 +513,52 @@ async function reabrirMesAporteCeot(periodo) {
   }
 }
 
-// Préstamo Casa 14 de julio 2067 — cuota 1 de 48, desde Agosto 2026
-// Grupo B (no pagan de bolsillo): se les descuenta la cuota. Grupo A (pagan de
-// bolsillo la cuota total al banco): se les reintegra la diferencia. Recalculado
-// para 11 socios (se sumó Mazzola al grupo B) — montos editables acá cada mes.
-const PRESTAMO_CASA_MONTO = 228181.82;
-const PRESTAMO_CASA_MONTO_CREDITO = 273818.18;
+// Préstamos Casa 14 de julio 2067 — cada préstamo real (CPSM/banco) tiene su
+// propio calendario de 48 cuotas, arrancando el mes real en que empezó a
+// descontársele a quien lo sacó — NO se fuerza a que coincidan entre sí.
+// Lógica (misma para todos los préstamos, confirmada con Marcelo 18/09/2026):
+// el monto de cuota que paga de bolsillo/CPSM quien lo sacó se reparte en
+// partes iguales entre TOTAL_SOCIOS_CASA socios — a quien lo sacó se le
+// reintegra lo que pagó de más sobre su parte justa, al resto se le descuenta
+// su parte justa. Si hay varios préstamos activos el mismo mes, se suman
+// (cada uno reparte su propia parte justa de forma independiente — es
+// equivalente a un único pozo combinado dividido una sola vez, ver memoria).
 const PRESTAMO_CASA_TOTAL_CUOTAS = 48;
+const TOTAL_SOCIOS_CASA = 11;
 const PRESTAMO_CASA_SOCIOS = ["GARMENDIA", "DE LA COLINA", "SOULE", "LEON", "PERLASCO", "MAZZOLA"];
 const PRESTAMO_CASA_SOCIOS_A = ["BRUNI", "CORELICH", "DEGANUTTI", "TRIVELLINI", "LABAYEN"];
-const PRESTAMO_CASA_CUOTA = { agosto: 1, septiembre: 2, octubre: 3, noviembre: 4, diciembre: 5 };
+const PRESTAMOS_CASA = [
+  {
+    tag: null,
+    socios: ["BRUNI", "CORELICH", "DEGANUTTI", "TRIVELLINI", "LABAYEN"],
+    cuotaPersonal: 502000,
+    cuotaMap: { agosto: 1, septiembre: 2, octubre: 3, noviembre: 4, diciembre: 5 }
+  },
+  {
+    tag: "León",
+    socios: ["LEON"],
+    cuotaPersonal: 378000,
+    cuotaMap: { octubre: 1, noviembre: 2, diciembre: 3 }
+  }
+];
+// Neto + etiqueta de cuota(s) de TODOS los préstamos activos en `pid` para
+// `apellido`. monto > 0 = se le descuenta, monto < 0 = se le reintegra.
+function prestamoCasaCalc(pid, apellido) {
+  var total = 0, partes = [];
+  PRESTAMOS_CASA.forEach(function(p) {
+    var cuota = p.cuotaMap[pid];
+    if (!cuota) return;
+    var parteJusta = p.cuotaPersonal * p.socios.length / TOTAL_SOCIOS_CASA;
+    var monto = p.socios.indexOf(apellido) !== -1 ? -(p.cuotaPersonal - parteJusta) : parteJusta;
+    total += monto;
+    partes.push(cuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + (p.tag ? ' (' + p.tag + ')' : ''));
+  });
+  if (!partes.length) return { monto: 0, cuotaLabel: null };
+  return { monto: Math.round(total * 100) / 100, cuotaLabel: partes.join(' + ') };
+}
+function prestamoCasaActivo(pid) {
+  return PRESTAMOS_CASA.some(function(p) { return p.cuotaMap[pid] !== undefined; });
+}
 
 // ── Sueldo Director — mismos 5 socios que PRESTAMO_CASA_SOCIOS_A, según el contador ──
 const SUELDO_DIRECTOR_LISTA = PRESTAMO_CASA_SOCIOS_A;

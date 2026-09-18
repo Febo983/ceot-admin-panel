@@ -21,6 +21,7 @@ var impColonCheques = [], impArtTotal = 0;
 var impUndo   = { tipo: null, mes: null, data: null };
 var impCMTotales = {};
 var impCMUndo = { tipo: null, mes: null, data: null };
+var impCeotAyudantiaOsde = 0, impCeotAyudantiaDif = 0, impCeotAyudantiaDetalle = [], impCeotAyudantiaSinEspDetalle = [];
 
 function abrirImportModal() {
   impOsdeBilling = {}; impDifBilling = {}; impOsdeNeto = {};
@@ -307,19 +308,19 @@ function registrosDesdeXLSXCrudo(rows) {
 // en 3 partes iguales entre esos 3.
 var GASEQ_SOCIOS_CEOT = ['TRIVELLINI', 'CORELICH', 'DEGANUTTI'];
 
-// Ayudantía cruzada: si el AY2 de una práctica es uno de estos 4 y el ESP de
-// esa MISMA práctica (misma factura + paciente — NPREST es el código de la
-// prestación, no un ID único de la cirugía, así que 2 pacientes distintos con
-// la misma práctica en la misma facturación podrían compartirlo) es del
-// "equipo" contrario, ese importe no se le paga al AY2 — queda acreditado al
-// fondo de CEOT en vez de a su propia cuenta. Si ESP y AY2 son del mismo
-// equipo (ej. BRUNI/DE LA COLINA), o el ESP no es ninguno de los 4, el
-// importe sigue siendo normal.
+// Ayudantía cruzada: si el AY2 de una práctica es uno de estos 4 y el ESP **o
+// AY1** de esa MISMA práctica (misma factura + paciente — NPREST es el código
+// de la prestación, no un ID único de la cirugía, así que 2 pacientes
+// distintos con la misma práctica en la misma facturación podrían
+// compartirlo) es del "equipo" contrario, ese importe no se le paga al AY2 —
+// queda acreditado al fondo de CEOT en vez de a su propia cuenta. Si el
+// responsable (ESP o AY1) es del mismo equipo que el AY2 (ej. BRUNI/DE LA
+// COLINA), o ninguno de los 2 roles es de los 4, el importe sigue normal.
 var AYUD_CRUZADA_A = ['BRUNI', 'DE LA COLINA'];
 var AYUD_CRUZADA_B = ['GARMENDIA', 'PERLASCO'];
 
 // factura + DNI (o nombre si no hay DNI) del paciente — misma práctica que se
-// usa para emparejar ESP/AY2, evita depender de NPREST.
+// usa para emparejar AY2 contra ESP/AY1, evita depender de NPREST.
 function ayudPacienteKey(reg) {
   var dni = String(reg.pacienteDni || '').trim();
   if (dni) return reg.factura + '|dni:' + dni;
@@ -333,14 +334,19 @@ function billingDesdeRegistros(registros) {
   var ceotAyudantiaOsde = 0, ceotAyudantiaDif = 0, ceotAyudantiaDetalle = [];
   var ceotAyudantiaSinEspDetalle = [];
 
-  // Mapa factura|paciente → apellido normalizado del ESP de esa práctica,
-  // para poder cruzarlo contra cada renglón AY2 del mismo paciente/factura.
-  var espPorPractica = {};
+  // Mapa factura|paciente → apellidos normalizados de ESP y AY1 de esa
+  // práctica (puede haber más de uno), para cruzarlos contra cada AY2 del
+  // mismo paciente/factura sin importar cuál de los 2 roles ocupe el rival.
+  var responsablesPorPractica = {};
   registros.forEach(function(reg) {
-    if (String(reg.rol || '').trim().toUpperCase() !== 'ESP') return;
+    var rolReg = String(reg.rol || '').trim().toUpperCase();
+    if (rolReg !== 'ESP' && rolReg !== 'AY1') return;
     if (!reg.factura || (!reg.pacienteDni && !reg.pacienteNombre)) return;
-    var espKey = normDocImp(reg.profNombre);
-    if (espKey) espPorPractica[ayudPacienteKey(reg)] = espKey;
+    var respKey = normDocImp(reg.profNombre);
+    if (!respKey) return;
+    var pk = ayudPacienteKey(reg);
+    if (!responsablesPorPractica[pk]) responsablesPorPractica[pk] = [];
+    if (responsablesPorPractica[pk].indexOf(respKey) === -1) responsablesPorPractica[pk].push(respKey);
   });
 
   registros.forEach(function(reg) {
@@ -354,19 +360,25 @@ function billingDesdeRegistros(registros) {
 
     var esAy2 = String(reg.rol || '').trim().toUpperCase() === 'AY2';
     if (esAy2 && (AYUD_CRUZADA_A.indexOf(key) !== -1 || AYUD_CRUZADA_B.indexOf(key) !== -1)) {
-      var espKey = (reg.factura && (reg.pacienteDni || reg.pacienteNombre)) ? espPorPractica[ayudPacienteKey(reg)] : null;
-      var esCruce = (AYUD_CRUZADA_A.indexOf(key) !== -1 && AYUD_CRUZADA_B.indexOf(espKey) !== -1) ||
-                    (AYUD_CRUZADA_B.indexOf(key) !== -1 && AYUD_CRUZADA_A.indexOf(espKey) !== -1);
+      var responsables = (reg.factura && (reg.pacienteDni || reg.pacienteNombre)) ? (responsablesPorPractica[ayudPacienteKey(reg)] || []) : [];
+      var rivalEncontrado = null;
+      var esCruce = responsables.some(function(r) {
+        var cruce = (AYUD_CRUZADA_A.indexOf(key) !== -1 && AYUD_CRUZADA_B.indexOf(r) !== -1) ||
+                    (AYUD_CRUZADA_B.indexOf(key) !== -1 && AYUD_CRUZADA_A.indexOf(r) !== -1);
+        if (cruce) rivalEncontrado = r;
+        return cruce;
+      });
       if (esCruce) {
         if (inst === 'OSDE') ceotAyudantiaOsde += imp * sgn;
         else                 ceotAyudantiaDif  += imp * sgn;
-        ceotAyudantiaDetalle.push({ esp: espKey, ay2: key, importe: imp * sgn, os: inst, factura: reg.factura, paciente: reg.pacienteNombre || reg.pacienteDni || '' });
+        ceotAyudantiaDetalle.push({ esp: rivalEncontrado, ay2: key, importe: imp * sgn, os: inst, factura: reg.factura, paciente: reg.pacienteNombre || reg.pacienteDni || '' });
         return;
       }
-      // No se encontró ESP para esta práctica en el archivo (puede facturarse
-      // en otra factura/período) — no se puede confirmar si es cruce o no, así
-      // que se paga normal (no se asume nada), pero se avisa para revisar a mano.
-      if (!espKey) {
+      // No se encontró ESP ni AY1 para esta práctica en el archivo (puede
+      // facturarse en otra factura/período) — no se puede confirmar si es
+      // cruce o no, así que se paga normal (no se asume nada), pero se avisa
+      // para revisar a mano.
+      if (!responsables.length) {
         ceotAyudantiaSinEspDetalle.push({ ay2: key, importe: imp * sgn, os: inst, factura: reg.factura, paciente: reg.pacienteNombre || reg.pacienteDni || '' });
       }
     }
@@ -389,6 +401,77 @@ function billingDesdeRegistros(registros) {
   return { osdeBill: osdeBill, difBill: difBill, gasEqAjenoOsde: gasEqAjenoOsde, gasEqAjenoDif: gasEqAjenoDif,
            ceotAyudantiaOsde: ceotAyudantiaOsde, ceotAyudantiaDif: ceotAyudantiaDif, ceotAyudantiaDetalle: ceotAyudantiaDetalle,
            ceotAyudantiaSinEspDetalle: ceotAyudantiaSinEspDetalle };
+}
+
+// Mensajes de Ayudantía cruzada, sin markup — se usa tanto en el preview
+// (impPreviewTable, apenas se sube el archivo, como filas de tabla) como en
+// el resultado final (impResultBody, con los cheques Colón ya cargados, como
+// divs sueltos), para que el aviso no dependa de que Marcelo lo haya visto
+// solo en el paso 1.
+function ayudantiaCruzadaMensajes(osde, dif, detalle, sinEspDetalle) {
+  var msgs = [];
+  if (osde || dif) {
+    var total = osde + dif;
+    var det = (detalle || []).map(function(d) {
+      return 'ESP/AY1 ' + d.esp + ' / AY2 ' + d.ay2 + ': ' + fmtImp(d.importe) + ' (' + d.os + (d.paciente ? ', ' + d.paciente : '') + ')';
+    }).join('<br>');
+    msgs.push({ bg: '#fee2e2', color: '#991b1b', texto: '🏛 Ayudantía cruzada acreditada a CEOT (no se paga al AY2): ' + fmtImp(total) +
+      ' — OSDE ' + fmtImp(osde) + ' + Diferidos ' + fmtImp(dif) + '.<br>' + det });
+  }
+  if (sinEspDetalle && sinEspDetalle.length) {
+    var sinEspTotal = sinEspDetalle.reduce(function(s,d){ return s + d.importe; }, 0);
+    var sinEsp = sinEspDetalle.map(function(d) {
+      return 'AY2 ' + d.ay2 + ': ' + fmtImp(d.importe) + ' (' + d.os + (d.paciente ? ', ' + d.paciente : '') + ', factura ' + d.factura + ')';
+    }).join('<br>');
+    msgs.push({ bg: '#ffedd5', color: '#9a3412', texto: '⚠ AY2 de Bruni/De la Colina/Garmendia/Perlasco sin ESP/AY1 identificable en este archivo (se pagó normal, revisar a mano si corresponde a CEOT): ' +
+      fmtImp(sinEspTotal) + '.<br>' + sinEsp });
+  }
+  return msgs;
+}
+function ayudantiaCruzadaFootnoteRowsHtml(osde, dif, detalle, sinEspDetalle) {
+  return ayudantiaCruzadaMensajes(osde, dif, detalle, sinEspDetalle).map(function(m) {
+    return '<tr style="background:' + m.bg + '"><td colspan="4" style="padding:6px 10px;font-size:0.7rem;color:' + m.color + ';font-weight:600;">' + m.texto + '</td></tr>';
+  }).join('');
+}
+function ayudantiaCruzadaFootnoteDivHtml(osde, dif, detalle, sinEspDetalle) {
+  return ayudantiaCruzadaMensajes(osde, dif, detalle, sinEspDetalle).map(function(m) {
+    return '<div style="font-size:.65rem;color:' + m.color + ';padding:6px 8px;margin-top:6px;background:' + m.bg + ';border-radius:6px;font-weight:600">' + m.texto + '</div>';
+  }).join('');
+}
+
+// ── Fondo CEOT — Ayudantía cruzada: registro acumulado por período ──
+// Cada vez que se importa una liquidación y se detecta al menos un cruce (o un
+// caso sin ESP/AY1 identificable), se guarda acá — mismo mecanismo que
+// GASTOS_EXTRA_DEFAULT (localStorage + syncPull/syncPush, visible en
+// cualquier dispositivo). Reimportar el mismo período reemplaza su entrada
+// entera (idempotente), no la suma dos veces.
+var CEOT_AYUD_CRUZADA = {};
+var _ceotAyudPulled = false;
+function ceotAyudCruzadaCargar(onDone) {
+  try {
+    var raw = localStorage.getItem('ceot_ayud_cruzada');
+    if (raw) CEOT_AYUD_CRUZADA = JSON.parse(raw) || {};
+  } catch (e) {}
+  if (onDone) onDone();
+  if (!_ceotAyudPulled) {
+    _ceotAyudPulled = true;
+    syncPull('ceot_ayud_cruzada', function() { ceotAyudCruzadaCargar(onDone); });
+  }
+}
+// Total acumulado histórico de todos los períodos — usado tanto en el panel
+// admin (detalle completo) como en la home del portal profesional (solo el
+// número, sin desglose por profesional/práctica).
+function ceotAyudCruzadaTotal() {
+  return Object.keys(CEOT_AYUD_CRUZADA).reduce(function(s, p) {
+    var e = CEOT_AYUD_CRUZADA[p] || {};
+    return s + (e.osde || 0) + (e.dif || 0);
+  }, 0);
+}
+function ceotAyudCruzadaGuardarPeriodo(periodoKey, entry) {
+  if (!periodoKey) return;
+  CEOT_AYUD_CRUZADA[periodoKey] = entry;
+  try { localStorage.setItem('ceot_ayud_cruzada', JSON.stringify(CEOT_AYUD_CRUZADA)); } catch (e) {}
+  syncPush('ceot_ayud_cruzada');
 }
 
 // ── Débitos, a partir de "registros" (xlsx o txt, mismo código) ──
@@ -566,6 +649,29 @@ async function procesarArchivosImport() {
     impDifBilling  = difBill;
     impArtTotal    = artTotal;
 
+    // Período detectado del archivo — se usa tanto para Débitos como para el
+    // Fondo CEOT de Ayudantía cruzada (independiente de si hay débitos o no).
+    // El pPerio de cada registro es el período de ACREDITACIÓN de esa línea
+    // puntual (Colón deposita ~2 meses después de lo facturado), no el mes
+    // que representa el archivo — por eso el mes elegido en el selector
+    // (impMes) manda siempre que esté cargado; el pPerio solo es un
+    // fallback aproximado (por mayoría, no el primero que aparece).
+    var mesSel = document.getElementById('impMes');
+    var regConPeriodo = registros.find(function(r) { return /^\d{6}$/.test(r.pPerio); });
+    var yr = regConPeriodo ? regConPeriodo.pPerio.slice(0, 4) : String(new Date().getFullYear());
+    var periodoHint = mesSel && mesSel.value ? (mesSel.value + '-' + yr) : '';
+    var periodoKeyArchivo = periodoHint;
+    if (!/^[a-zñ]+-\d{4}$/i.test(periodoKeyArchivo)) {
+      var cuentaPPerio = {};
+      registros.forEach(function(r) {
+        if (/^\d{6}$/.test(r.pPerio)) cuentaPPerio[r.pPerio] = (cuentaPPerio[r.pPerio] || 0) + 1;
+      });
+      var pPerioMasComun = Object.keys(cuentaPPerio).sort(function(a,b){ return cuentaPPerio[b]-cuentaPPerio[a]; })[0];
+      periodoKeyArchivo = pPerioMasComun ? (DEB_MESES[parseInt(pPerioMasComun.slice(4,6),10)-1] + '-' + pPerioMasComun.slice(0,4)) : '';
+    } else {
+      periodoKeyArchivo = periodoKeyArchivo.toLowerCase();
+    }
+
     // ── Débitos > $50k (excl. consultas) → pestaña Débitos.
     // Corre para cualquiera de los 2 formatos (antes solo para .txt) — el
     // xlsx crudo ART tiene las mismas columnas, solo separadas en vez de en texto.
@@ -574,10 +680,6 @@ async function procesarArchivosImport() {
     if (debMsgEl) { debMsgEl.style.display = 'none'; debMsgEl.textContent = ''; }
     try {
       var debs   = extraerDebitosDeRegistros(registros);
-      var mesSel = document.getElementById('impMes');
-      var regConPeriodo = registros.find(function(r) { return /^\d{6}$/.test(r.pPerio); });
-      var yr = regConPeriodo ? regConPeriodo.pPerio.slice(0, 4) : String(new Date().getFullYear());
-      var periodoHint = mesSel && mesSel.value ? (mesSel.value + '-' + yr) : '';
       var resDeb = guardarDebitosImportados(debs, periodoHint);
       if (debMsgEl && resDeb.n) {
         debMsgEl.style.display = 'block';
@@ -589,6 +691,20 @@ async function procesarArchivosImport() {
       }
     } catch (e) {
       if (debMsgEl) { debMsgEl.style.display = 'block'; debMsgEl.textContent = '🩺 No se pudieron extraer los débitos: ' + e.message; }
+    }
+
+    // ── Fondo CEOT — Ayudantía cruzada: se guarda el resultado de este
+    // período (reemplaza lo que hubiera si ya se había importado antes).
+    impCeotAyudantiaOsde = ceotAyudantiaOsde;
+    impCeotAyudantiaDif  = ceotAyudantiaDif;
+    impCeotAyudantiaDetalle = ceotAyudantiaDetalle;
+    impCeotAyudantiaSinEspDetalle = ceotAyudantiaSinEspDetalle;
+    if (periodoKeyArchivo && (ceotAyudantiaOsde || ceotAyudantiaDif || ceotAyudantiaSinEspDetalle.length)) {
+      ceotAyudCruzadaGuardarPeriodo(periodoKeyArchivo, {
+        osde: ceotAyudantiaOsde, dif: ceotAyudantiaDif,
+        detalle: ceotAyudantiaDetalle, sinEsp: ceotAyudantiaSinEspDetalle,
+        actualizado: new Date().toISOString()
+      });
     }
 
     // ── Preview table
@@ -629,24 +745,7 @@ async function procesarArchivosImport() {
         'GAS.EQUIPO redistribuido (cargado a otro profesional en el xlsx): ' + fmtImp(gasEqTotal) +
         ' → 33.33% c/u a TRI/COR/DEG.<br>' + gasEqDetalle + '</td></tr>';
     }
-    if (ceotAyudantiaOsde || ceotAyudantiaDif) {
-      var ceotAyudTotal = ceotAyudantiaOsde + ceotAyudantiaDif;
-      var ceotAyudDetalle = ceotAyudantiaDetalle.map(function(d) {
-        return 'ESP ' + d.esp + ' / AY2 ' + d.ay2 + ': ' + fmtImp(d.importe) + ' (' + d.os + (d.paciente ? ', ' + d.paciente : '') + ')';
-      }).join('<br>');
-      tfootRows += '<tr style="background:#fee2e2"><td colspan="4" style="padding:6px 10px;font-size:0.7rem;color:#991b1b;font-weight:600;">' +
-        '🏛 Ayudantía cruzada acreditada a CEOT (no se paga al AY2): ' + fmtImp(ceotAyudTotal) +
-        ' — OSDE ' + fmtImp(ceotAyudantiaOsde) + ' + Diferidos ' + fmtImp(ceotAyudantiaDif) + '.<br>' + ceotAyudDetalle + '</td></tr>';
-    }
-    if (ceotAyudantiaSinEspDetalle.length) {
-      var sinEspTotal = ceotAyudantiaSinEspDetalle.reduce(function(s,d){ return s + d.importe; }, 0);
-      var sinEspDetalle = ceotAyudantiaSinEspDetalle.map(function(d) {
-        return 'AY2 ' + d.ay2 + ': ' + fmtImp(d.importe) + ' (' + d.os + (d.paciente ? ', ' + d.paciente : '') + ', factura ' + d.factura + ')';
-      }).join('<br>');
-      tfootRows += '<tr style="background:#ffedd5"><td colspan="4" style="padding:6px 10px;font-size:0.7rem;color:#9a3412;font-weight:600;">' +
-        '⚠ AY2 de Bruni/De la Colina/Garmendia/Perlasco sin ESP identificable en este archivo (se pagó normal, revisar a mano si corresponde a CEOT): ' +
-        fmtImp(sinEspTotal) + '.<br>' + sinEspDetalle + '</td></tr>';
-    }
+    tfootRows += ayudantiaCruzadaFootnoteRowsHtml(ceotAyudantiaOsde, ceotAyudantiaDif, ceotAyudantiaDetalle, ceotAyudantiaSinEspDetalle);
     if (tfootRows) {
       var tfoot = document.getElementById('impPreviewTable').createTFoot();
       tfoot.innerHTML = tfootRows;
@@ -1018,7 +1117,8 @@ function calcularDistribucionFinal() {
     '<td class="ipt-num" style="font-weight:700">' + fmtImp(sumDIF) + '</td>' +
     '<td class="ipt-num" style="font-weight:800;color:#20241f">' + fmtImp(sumOSDE+sumDIF) + '</td></tr>';
   html += '</tbody></table></div>';
-  document.getElementById('impResultBody').innerHTML = html + facDerechosFootnote + facSwissFootnote + gastosExtraFootnote;
+  var ayudantiaCruzadaFootnote = ayudantiaCruzadaFootnoteDivHtml(impCeotAyudantiaOsde, impCeotAyudantiaDif, impCeotAyudantiaDetalle, impCeotAyudantiaSinEspDetalle);
+  document.getElementById('impResultBody').innerHTML = html + facDerechosFootnote + facSwissFootnote + gastosExtraFootnote + ayudantiaCruzadaFootnote;
   document.getElementById('impResultados').style.display = 'block';
 }
 

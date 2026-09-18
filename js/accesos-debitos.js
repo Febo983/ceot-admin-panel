@@ -26,7 +26,7 @@ var ACCESOS_DATA = [
   { id:8,  cat:"Clínica", title:"CC Clínica Colón",         desc:"Sistema interno de la Clínica Colón",                        url:"https://coloncc.com.ar/" },
   { id:9,  cat:"Clínica", title:"CC CEM MDP",               desc:"Sistema privado del Centro Médico MDP",                     url:"https://privado.centromedicomdp.org.ar/" },
   { id:10, cat:"Clínica", title:"Programación CX (Sheet)",  desc:"Calendario de cirugías — Google Sheets",                    url:"https://docs.google.com/spreadsheets/d/1VYIarOpfCgqinj5Uy2dAYCSsx6c5GL9J7YbAYKvCbdk/edit?usp=sharing" },
-  { id:12, cat:"Clínica", title:"Ordenes CX",               desc:"Gestión de órdenes de cirugías",                             url:"https://ordenes-ceot-cx.netlify.app/" },
+  { id:12, cat:"Clínica", title:"Generador de Órdenes CX", desc:"PDFs de órdenes de cirugía con sello del médico",            url:"https://febo983.github.io/generador-de-ordenes-ceot/" },
   { id:15, cat:"Clínica", title:"Evoluciones",              desc:"Registro de evoluciones clínicas CEOT",                     url:"https://evoluciones-ceot.netlify.app/" },
   { id:16, cat:"Clínica", title:"Cirugías Programadas",     desc:"Agenda de cirugías programadas",                            url:"https://cirugias-progamadas.netlify.app/" },
   { id:19, cat:"Clínica", title:"Estadísticas CX 26 v2",    desc:"Estadísticas de cirugías CEOT 2026 — versión actualizada", url:"https://ceot-estadisticas-cx-26.netlify.app/" },
@@ -38,8 +38,10 @@ var ACCESOS_DATA = [
   { id:29, cat:"Admin", title:"Archivos Reuniones",         desc:"Minutas y acuerdos de reuniones del equipo",                url:"https://drive.google.com/drive/folders/1jnwuKnJaNdR45_QfGvqOmURQL7yrLdTA?usp=drive_link" },
   { id:35, cat:"Admin", title:"Contable",                   desc:"Datos contables",                                           url:"https://claude.ai/code/artifact/e7c9f19e-d865-4574-9adb-56279cb542df" },
   { id:38, cat:"Admin", title:"Mi Google Calendar",        desc:"Calendario de Google de Marce (marcelo.aime74@gmail.com)", url:"https://calendar.google.com/calendar/u/0/r?authuser=marcelo.aime74@gmail.com" },
+  { id:41, cat:"Admin", title:"Diagrama de Arquitectura",  desc:"Cómo se conectan el panel admin y el portal profesional",  url:"https://febo983.github.io/ceot-admin-panel/architecture.html" },
   { id:37, cat:"Clínica", title:"Normas Convenios OOSS",    desc:"Autorizaciones, coseguros, manuales de prestador y contactos por obra social", url:"https://febo983.github.io/ceot-normas-convenios/" },
   { id:39, cat:"Clínica", title:"Portal del Profesional GACI", desc:"Agenda del día en vivo (sala de espera, atendidos) y estadísticas — para los médicos", url:"https://ceot-agenda.netlify.app/profesional" },
+  { id:40, cat:"Clínica", title:"Conector de Nomencladores", desc:"Código Nacional (NN) ↔ Código NUN, según la facturación real (191 pares)", url:"https://claude.ai/code/artifact/59653f06-122f-453e-ba9b-098ba2cc0759" },
   // ── Otros
   { id:30, cat:"Otros", title:"Encuesta Secretarias",       desc:"Evaluación y premios a secretarias",                        url:"https://docs.google.com/spreadsheets/d/19ITME1mzL2eIYX4YIudIGwP7yeGBDP93XM6Y2gfperw/edit?usp=sharing" },
   { id:31, cat:"Otros", title:"Encuesta Satisfacción",      desc:"Encuesta de satisfacción de pacientes CEOT",                url:"https://docs.google.com/spreadsheets/d/1T9Rck2IdVg-aYDnjZo3sQJ_0dZ0MvhDBrlWFE1EVAvs/edit?usp=sharing" },
@@ -47,7 +49,7 @@ var ACCESOS_DATA = [
   { id:33, cat:"Otros", title:"BBVA CEOT",                  desc:"Home banking BBVA — cuenta CEOT",                           url:"https://www.bbva.com.ar/empresas.html" },
 ];
 
-var accNextId = 40;
+var accNextId = 42;
 var accFilterActual = "Todos";
 var accEditLinkMode = false;
 

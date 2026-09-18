@@ -249,12 +249,9 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   // en cada cheque individual (ver forEach de abajo), además de las líneas resumen
   // que ya se arman más abajo en esta misma función.
   var pctApCheq = APORTE_CEOT_DESDE.indexOf(periodo) !== -1 ? getAporteCeotPctPeriodo(periodo, doctor.apellido) : null;
-  var prestamoCuotaCheq = PRESTAMO_CASA_CUOTA[periodo] || null;
-  var prestamoIndCheq = 0;
-  if (prestamoCuotaCheq) {
-    if (PRESTAMO_CASA_SOCIOS.indexOf(doctor.apellido) !== -1) prestamoIndCheq = PRESTAMO_CASA_MONTO;
-    else if (PRESTAMO_CASA_SOCIOS_A.indexOf(doctor.apellido) !== -1) prestamoIndCheq = -PRESTAMO_CASA_MONTO_CREDITO;
-  }
+  var _prestamoCalcCheq = prestamoCasaCalc(periodo, doctor.apellido);
+  var prestamoCuotaCheq = _prestamoCalcCheq.cuotaLabel;
+  var prestamoIndCheq = _prestamoCalcCheq.monto;
 
   var html = '<div class="period-total">'
     + '<div class="pt-left">'
@@ -391,16 +388,13 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   html += '</div>';
 
   // Préstamo Casa 14 de julio 2067 (grupo B: descuento · grupo A: reintegro, desde Agosto 2026)
-  var prestamoCuota = PRESTAMO_CASA_CUOTA[periodo] || null;
-  var prestamoInd = 0;
-  if (prestamoCuota) {
-    if (PRESTAMO_CASA_SOCIOS.indexOf(doctor.apellido) !== -1) prestamoInd = PRESTAMO_CASA_MONTO;
-    else if (PRESTAMO_CASA_SOCIOS_A.indexOf(doctor.apellido) !== -1) prestamoInd = -PRESTAMO_CASA_MONTO_CREDITO;
-  }
+  var _prestamoCalcInd = prestamoCasaCalc(periodo, doctor.apellido);
+  var prestamoCuota = _prestamoCalcInd.cuotaLabel;
+  var prestamoInd = _prestamoCalcInd.monto;
   if (prestamoInd) {
     html += '<div class="cheque-list"><div class="cl-row cl-sep-row' + (prestamoInd > 0 ? ' cl-neg' : '') + '">'
       + '<span class="cl-date">—</span>'
-      + '<span class="cl-lbl">Préstamo Casa <span style="font-size:.68rem;color:rgba(32,36,31,.35);font-weight:400">' + (prestamoInd > 0 ? 'cuota' : 'reintegro') + ' ' + prestamoCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + '</span></span>'
+      + '<span class="cl-lbl">Préstamo Casa <span style="font-size:.68rem;color:rgba(32,36,31,.35);font-weight:400">' + (prestamoInd > 0 ? 'cuota' : 'reintegro') + ' ' + prestamoCuota + '</span></span>'
       + '<span class="cl-amt"' + (prestamoInd < 0 ? ' style="color:#16a34a"' : '') + '>' + (prestamoInd > 0 ? '−' + fmt(prestamoInd) : '+' + fmt(-prestamoInd)) + '</span>'
       + '</div></div>';
   }
@@ -543,12 +537,9 @@ function calcularNetoLocal(pid, doc) {
   var baseAporte = colonBruto + osdeVal + cmVal;
   var aporteCeot = (periodoConAporte && pctAporte) ? Math.round(baseAporte * pctAporte) : 0;
   // Préstamo Casa 14 de julio 2067 — grupo B: descuento (+) · grupo A: reintegro (−), desde Agosto 2026
-  var prestamoCasaCuota = PRESTAMO_CASA_CUOTA[pid] || null;
-  var prestamoCasa = 0;
-  if (prestamoCasaCuota) {
-    if (PRESTAMO_CASA_SOCIOS.indexOf(doc.apellido) !== -1) prestamoCasa = PRESTAMO_CASA_MONTO;
-    else if (PRESTAMO_CASA_SOCIOS_A.indexOf(doc.apellido) !== -1) prestamoCasa = -PRESTAMO_CASA_MONTO_CREDITO;
-  }
+  var _prestamoCalcNeto = prestamoCasaCalc(pid, doc.apellido);
+  var prestamoCasa = _prestamoCalcNeto.monto;
+  var prestamoCasaCuota = _prestamoCalcNeto.cuotaLabel;
   var neto  = bruto - iibb - cpsm - ga - aporteCeot - prestamoCasa + cmVal;
 
   return {
@@ -826,7 +817,7 @@ function renderHistorial(doctor) {
       totalDesc += c.ga;
     }
     if (c.prestamoCasa > 0) {
-      descLineas.push('<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val neg">−' + fmt(c.prestamoCasa) + '</span></div>');
+      descLineas.push('<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (' + c.prestamoCasaCuota + ')</span><span class="hist-dline-val neg">−' + fmt(c.prestamoCasa) + '</span></div>');
       totalDesc += c.prestamoCasa;
     }
     if (c.aporteCeot > 0) {
@@ -860,7 +851,7 @@ function renderHistorial(doctor) {
 
     var creditosHtml = '';
     if (c.prestamoCasa < 0) {
-      creditosHtml += '<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (reintegro ' + c.prestamoCasaCuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + ')</span><span class="hist-dline-val" style="color:#16a34a">+' + fmt(-c.prestamoCasa) + '</span></div>';
+      creditosHtml += '<div class="hist-dline"><span class="hist-dline-lbl">Préstamo Casa (reintegro ' + c.prestamoCasaCuota + ')</span><span class="hist-dline-val" style="color:#16a34a">+' + fmt(-c.prestamoCasa) + '</span></div>';
     }
     if (c.cm > 0) {
       creditosHtml += '<div class="hist-dline"><span class="hist-dline-lbl">Centro Médico</span><span class="hist-dline-val cm">+' + fmt(c.cm) + '</span></div>';
@@ -1016,6 +1007,14 @@ function renderMiPanel(doctor) {
     + '</div>'
     + '</div>';
 
+  // Fondo CEOT — Ayudantía cruzada: total acumulado, sin desglose por
+  // profesional/práctica (ese detalle queda solo en el panel admin).
+  html += '<div class="mp-card" style="margin-top:7px;">'
+    + '<div class="mp-label">Fondo CEOT — Ayudantía cruzada</div>'
+    + '<div id="mp-fondo-ceot" style="font-size:1.1rem;font-weight:800;color:rgba(32,36,31,.35);">...</div>'
+    + '<div class="mp-sub">Acumulado histórico</div>'
+    + '</div>';
+
   pane.innerHTML = html;
 
   // ── 3. Fetch con timeout ────────────────────────────────────
@@ -1025,18 +1024,47 @@ function renderMiPanel(doctor) {
     return fetch(url, { signal: ctrl.signal }).finally(function(){ clearTimeout(t); });
   }
 
-  // Cajas
+  // Casa 2067 — leído en vivo de la planilla (gc2067FetchSaldo, js/gastos-casa.js):
+  // toma la última celda cargada en la columna F de la pestaña "Gastos CASA
+  // 14 de julio 2067" ("Saldo al día de hoy", que Marcelo actualiza a mano).
+  // NO se recalcula del libro local (gcCalcular) — ese libro puede no tener
+  // todavía los movimientos más nuevos que sí están en la planilla real, y
+  // daba un número viejo. El endpoint CAJAS_ENDPOINT quedó descartado para
+  // este dato (devolvía "casa2067":"CEM", texto en vez de número).
+  var el2067 = document.getElementById('mp-saldo-2067');
+  if (el2067 && typeof gc2067FetchSaldo === 'function') {
+    gc2067FetchSaldo(function(saldo, err) {
+      var elLive = document.getElementById('mp-saldo-2067');
+      if (!elLive) return;
+      if (saldo == null) {
+        elLive.innerHTML = '<span style="font-size:0.72rem;color:rgba(32,36,31,.35);">Sin conexión</span>';
+        return;
+      }
+      elLive.textContent = fmt(saldo);
+      elLive.style.color = saldo >= 0 ? '#16a34a' : '#dc2626';
+    });
+  }
+
+  // Fondo CEOT — Ayudantía cruzada: mismo total que ve el admin en "Sueldo
+  // Director" (ceotAyudCruzadaTotal, js/importar-liquidacion.js), sin el
+  // detalle por profesional/práctica.
+  var elFondoCeot = document.getElementById('mp-fondo-ceot');
+  if (elFondoCeot && typeof ceotAyudCruzadaCargar === 'function') {
+    var repintarFondoCeot = function() {
+      var elLive = document.getElementById('mp-fondo-ceot');
+      if (!elLive) return;
+      elLive.textContent = fmt(ceotAyudCruzadaTotal());
+      elLive.style.color = '#1c78b0';
+    };
+    ceotAyudCruzadaCargar(repintarFondoCeot);
+  }
+
+  // Caja Gerling
   fetchT(CAJAS_ENDPOINT, 30000)
     .then(function(r){ return r.json(); })
     .then(function(d) {
       if (d.status !== 'ok') { console.warn('Cajas error:', d); marcarEndpointStatus("cajas", false, "respuesta sin status ok"); return; }
-      var el2067    = document.getElementById('mp-saldo-2067');
       var elGerling = document.getElementById('mp-saldo-gerling');
-      if (el2067) {
-        var v2067 = typeof d.casa2067 === 'number' ? d.casa2067 : parseFloat(String(d.casa2067).replace(/[$\.]/g,'').replace(',','.'));
-        el2067.textContent = fmt(v2067);
-        el2067.style.color = v2067 >= 0 ? '#16a34a' : '#dc2626';
-      }
       if (elGerling) {
         elGerling.textContent = fmt(d.gerling);
         elGerling.style.color = d.gerling >= 0 ? '#16a34a' : '#dc2626';
@@ -1046,11 +1074,8 @@ function renderMiPanel(doctor) {
     .catch(function(e) {
       console.warn('Cajas fetch error:', e.message);
       marcarEndpointStatus("cajas", false, e.message);
-      var msg = '<span style="font-size:0.72rem;color:rgba(32,36,31,.35);">Sin conexión</span>';
-      var el2067 = document.getElementById('mp-saldo-2067');
-      var elG    = document.getElementById('mp-saldo-gerling');
-      if (el2067) el2067.innerHTML = msg;
-      if (elG)    elG.innerHTML    = msg;
+      var elG = document.getElementById('mp-saldo-gerling');
+      if (elG) elG.innerHTML = '<span style="font-size:0.72rem;color:rgba(32,36,31,.35);">Sin conexión</span>';
     });
 
 }
