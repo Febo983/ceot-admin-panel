@@ -26,7 +26,7 @@ var ACCESOS_DATA = [
   { id:8,  cat:"Clínica", title:"CC Clínica Colón",         desc:"Sistema interno de la Clínica Colón",                        url:"https://coloncc.com.ar/" },
   { id:9,  cat:"Clínica", title:"CC CEM MDP",               desc:"Sistema privado del Centro Médico MDP",                     url:"https://privado.centromedicomdp.org.ar/" },
   { id:10, cat:"Clínica", title:"Programación CX (Sheet)",  desc:"Calendario de cirugías — Google Sheets",                    url:"https://docs.google.com/spreadsheets/d/1VYIarOpfCgqinj5Uy2dAYCSsx6c5GL9J7YbAYKvCbdk/edit?usp=sharing" },
-  { id:12, cat:"Clínica", title:"Ordenes CX",               desc:"Gestión de órdenes de cirugías",                             url:"https://ordenes-ceot-cx.netlify.app/" },
+  { id:12, cat:"Clínica", title:"Generador de Órdenes CX", desc:"PDFs de órdenes de cirugía con sello del médico",            url:"https://febo983.github.io/generador-de-ordenes-ceot/" },
   { id:15, cat:"Clínica", title:"Evoluciones",              desc:"Registro de evoluciones clínicas CEOT",                     url:"https://evoluciones-ceot.netlify.app/" },
   { id:16, cat:"Clínica", title:"Cirugías Programadas",     desc:"Agenda de cirugías programadas",                            url:"https://cirugias-progamadas.netlify.app/" },
   { id:19, cat:"Clínica", title:"Estadísticas CX 26 v2",    desc:"Estadísticas de cirugías CEOT 2026 — versión actualizada", url:"https://ceot-estadisticas-cx-26.netlify.app/" },
