@@ -40,6 +40,7 @@ var ACCESOS_DATA = [
   { id:38, cat:"Admin", title:"Mi Google Calendar",        desc:"Calendario de Google de Marce (marcelo.aime74@gmail.com)", url:"https://calendar.google.com/calendar/u/0/r?authuser=marcelo.aime74@gmail.com" },
   { id:37, cat:"Clínica", title:"Normas Convenios OOSS",    desc:"Autorizaciones, coseguros, manuales de prestador y contactos por obra social", url:"https://febo983.github.io/ceot-normas-convenios/" },
   { id:39, cat:"Clínica", title:"Portal del Profesional",   desc:"Agenda del día en vivo (sala de espera, atendidos) y estadísticas — para los médicos", url:"https://ceot-agenda.netlify.app/profesional" },
+  { id:40, cat:"Clínica", title:"Conector de Nomencladores", desc:"Código Nacional (NN) ↔ Código NUN, según la facturación real (191 pares)", url:"https://claude.ai/code/artifact/59653f06-122f-453e-ba9b-098ba2cc0759" },
   // ── Otros
   { id:30, cat:"Otros", title:"Encuesta Secretarias",       desc:"Evaluación y premios a secretarias",                        url:"https://docs.google.com/spreadsheets/d/19ITME1mzL2eIYX4YIudIGwP7yeGBDP93XM6Y2gfperw/edit?usp=sharing" },
   { id:31, cat:"Otros", title:"Encuesta Satisfacción",      desc:"Encuesta de satisfacción de pacientes CEOT",                url:"https://docs.google.com/spreadsheets/d/1T9Rck2IdVg-aYDnjZo3sQJ_0dZ0MvhDBrlWFE1EVAvs/edit?usp=sharing" },
@@ -47,7 +48,7 @@ var ACCESOS_DATA = [
   { id:33, cat:"Otros", title:"BBVA CEOT",                  desc:"Home banking BBVA — cuenta CEOT",                           url:"https://www.bbva.com.ar/empresas.html" },
 ];
 
-var accNextId = 40;
+var accNextId = 41;
 var accFilterActual = "Todos";
 var accEditLinkMode = false;
 
