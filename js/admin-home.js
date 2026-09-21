@@ -362,6 +362,7 @@ function renderAdmHome() {
   admHomeCargarModLabels();
   admHomeCargarUsage();
   admHomeCargarTema();
+  checklistSincronizar();
   checklistActualizarBadge();
   waHorariosCheck();
   var retro = admHomeTheme === "retro";
@@ -749,6 +750,27 @@ function checklistCargarEstado() {
   try { return JSON.parse(localStorage.getItem("ceot_checklist_done") || "{}"); }
   catch (e) { return {}; }
 }
+// Estado compartido entre dispositivos (y legible por el recordatorio diario):
+// se trae del Sheet al abrir el home/checklist y se sube con cada tildado.
+// La primera vez sube lo que ya había en este navegador para sembrar el Sheet.
+var _checklistSincronizado = false;
+function checklistSincronizar() {
+  if (_checklistSincronizado) return;
+  _checklistSincronizado = true;
+  syncPull("ceot_checklist_done", function() {
+    checklistActualizarBadge();
+    if (document.getElementById("adm-content") && document.querySelector("#adm-content .adm-sec-title") &&
+        /Checklist mensual/.test(document.querySelector("#adm-content .adm-sec-title").textContent)) renderChecklistBody();
+  });
+  try {
+    if (!localStorage.getItem("ceot_checklist_seeded") && localStorage.getItem("ceot_checklist_done")) {
+      setTimeout(function() {
+        syncPush("ceot_checklist_done");
+        try { localStorage.setItem("ceot_checklist_seeded", "1"); } catch (e) {}
+      }, 4000);
+    }
+  } catch (e) {}
+}
 function checklistItemDone(itemId) {
   var estado = checklistCargarEstado();
   var mk = checklistMesKey();
@@ -760,6 +782,7 @@ function toggleChecklistItem(itemId) {
   if (!estado[mk]) estado[mk] = {};
   estado[mk][itemId] = !estado[mk][itemId];
   try { localStorage.setItem("ceot_checklist_done", JSON.stringify(estado)); } catch (e) {}
+  syncPush("ceot_checklist_done");
   renderChecklistBody();
   checklistActualizarBadge();
 }
@@ -804,6 +827,7 @@ function checklistActualizarBadge() {
 }
 
 function renderChecklist() {
+  checklistSincronizar();
   cerrarAdmSidenav();
   admDesactivarSidebar();
   ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
