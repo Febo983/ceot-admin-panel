@@ -613,7 +613,7 @@ function syncPush(clave) {
     script.id = cbName;
     script.onerror = limpiar;
     script.src = SYNC_ENDPOINT + '?accion=set&clave=' + encodeURIComponent(clave) +
-      '&valor=' + encodeURIComponent(valor) + '&callback=' + cbName;
+      '&valor=' + encodeURIComponent(valor) + '&token=' + encodeURIComponent(AUTH_TOKEN || '') + '&callback=' + cbName;
     document.head.appendChild(script);
   } catch (e) {}
 }
@@ -639,7 +639,7 @@ function syncPull(clave, onDone) {
     var script = document.createElement('script');
     script.id = cbName;
     script.onerror = limpiar;
-    script.src = SYNC_ENDPOINT + '?clave=' + encodeURIComponent(clave) + '&callback=' + cbName;
+    script.src = SYNC_ENDPOINT + '?clave=' + encodeURIComponent(clave) + '&token=' + encodeURIComponent(AUTH_TOKEN || '') + '&callback=' + cbName;
     document.head.appendChild(script);
   } catch (e) {}
 }
