@@ -561,6 +561,7 @@ function premCardHtml(pk, emp, i, r) {
     +   '<div style="width:30px;height:30px;border-radius:50%;background:' + color + ';color:#fff;font-size:0.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">' + emp.ini + '</div>'
     +   '<span style="font-weight:700;font-size:0.9rem;flex:1">' + emp.nombre + '</span>'
     +   premBadgeHtml(emp.id, r)
+    +   '<button title="Imprimir recibo (PDF)" style="' + PREM_BTN + ';padding:2px 7px;font-size:0.7rem" onclick="premImprimirRecibos(\'' + emp.id + '\')">🖨</button>'
     + '</div>';
 
   h += '<label style="font-size:0.64rem;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--co-ink-dim,#6b6a5a);display:block;margin-bottom:3px">Sueldo neto (AR$)</label>'
@@ -746,7 +747,7 @@ function premExportarCSV() {
 }
 
 /* ---------- RECIBOS ---------- */
-function premImprimirRecibos() {
+function premImprimirRecibos(empId) {
   var pk = premPeriodoActual;
   var c = premCalc(pk);
   var css = '.pr{font-family:"Segoe UI",Arial,sans-serif;color:#111;padding:1.4cm 2cm;width:21cm;box-sizing:border-box;page-break-after:always}'
@@ -759,7 +760,7 @@ function premImprimirRecibos() {
     + '.pr .firma{margin-top:60px;display:flex;justify-content:space-around;font-size:9pt;text-align:center}';
   var body = "";
   c.res.forEach(function (r) {
-    if (r.sueldo <= 0) return;
+    if (r.sueldo <= 0 || (empId && r.emp.id !== empId)) return;
     body += '<div class="pr"><h1>CEOT · Premio por Desempeño</h1>'
       + '<div class="sub">Clínica de Traumatología Colón — ' + premPeriodoLabel(pk) + '</div>'
       + '<table>'
