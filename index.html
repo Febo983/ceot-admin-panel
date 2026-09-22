@@ -2194,22 +2194,22 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/portal-render.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/admin-home.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/gastos-obra.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/presentacion.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/sueldo-b.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/nun-data.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/accesos-debitos.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/estadisticas.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/gastos-casa.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/faq-asistente.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/asistente.js?v=2026-09-21-checklist-sync"></script>
-<script src="js/correos.js?v=2026-09-21-checklist-sync"></script>
+<script src="js/datos.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/portal-render.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/admin-home.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/gastos-obra.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/presentacion.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/sueldo-b.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/nun-data.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/accesos-debitos.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/estadisticas.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/gastos-casa.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/faq-asistente.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/asistente.js?v=2026-09-22-transf-derivados"></script>
+<script src="js/correos.js?v=2026-09-22-transf-derivados"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3358,7 +3358,7 @@ async function handleLogin() {
     sueldoDirectorHechoCargar();
     sueldoBbvaHechoCargar();
     restoProfHechoCargar();
-    transfNotasCargar();
+    transfDerivCargar();
     renderSidenavLinks();
     renderAdmHome();
     checklistActualizarBadge();
@@ -3727,7 +3727,8 @@ function renderSueldoDirector() {
   if (btn) btn.className = "adm-sidenav-btn active";
 
   var periodo = adminPeriodoAct || tabMesActual();
-  transfFamAutoAplicar(periodo);
+  // transfFamAutoAplicar(periodo) — se dejó de llamar, ver "Anotaciones sobre
+  // transferencias derivadas" (transfDerivBoxHtml) más abajo, 22/09/2026.
 
   var html = '<div id="sueldoDirectorScreenRoot" style="padding:16px">'
     + licHonBannerHtml()
@@ -3840,47 +3841,176 @@ function sueldoBbvaToggleHecho(periodo, apellido) {
   renderSueldoDirector();
 }
 
-// ── Machete de transferencias ──────────────────────────────────────────────
-// Nota libre por profesional y por período en la pantalla "Transferencias del
-// Mes" — apunte personal de Marcelo (a quién transferir, cuánto, recordatorios).
-// NO entra en ningún cálculo. Se guarda en localStorage y se sincroniza entre
-// PCs con el mismo patrón que TRANSF_FAM (syncPush/syncPull).
-var TRANSF_NOTAS = {};
-function transfNotasCargar() {
+// ── Anotaciones sobre transferencias derivadas ──────────────────────────────
+// Reemplaza el viejo "Machete" (nota libre) y la cascada automática
+// (transfFamAutoAplicar/transfFamCascadaProgresoHtml, que dejaron de
+// llamarse) — pedido de Marcelo, 22/09/2026: la cascada combinaba cheques y
+// partía importes solos de una forma que no podía auditar a simple vista
+// ("no me cierra"). Ahora: lista PERSISTENTE por profesional (no por
+// período) de importe + nombre y apellido — vos cargás a quién y cuánto le
+// vas a derivar, y la pantalla te dice de qué cheque(s) del mes sale ese
+// importe. Es puramente informativo: no escribe nada, no crea ninguna
+// transferencia sola — la registrás vos a mano con "+ transferencia" en la
+// columna, como siempre (esa parte no cambió).
+var TRANSF_DERIV = {};
+function transfDerivCargar() {
   try {
-    var raw = localStorage.getItem("ceot_transf_notas");
-    if (raw) TRANSF_NOTAS = JSON.parse(raw) || {};
-  } catch (e) { TRANSF_NOTAS = {}; }
-  syncPull("ceot_transf_notas", function() {
-    transfNotasCargar();
+    var raw = localStorage.getItem("ceot_transf_derivados");
+    if (raw) { TRANSF_DERIV = JSON.parse(raw) || {}; }
+    else { transfDerivMigrarDesdeDefault_(); }
+  } catch (e) { TRANSF_DERIV = {}; }
+  syncPull("ceot_transf_derivados", function() {
+    transfDerivCargar();
     if (document.getElementById('sueldoDirectorScreenRoot')) renderSueldoDirector();
   });
 }
-function transfNotasKey(periodo, apellido) { return periodo + "|" + apellido; }
-function transfNotasGet(periodo, apellido) {
-  return TRANSF_NOTAS[transfNotasKey(periodo, apellido)] || "";
+// Migración de una sola vez: si nunca se cargó ceot_transf_derivados pero sí
+// existen predeterminados viejos (TRANSF_FAM_DEFAULT), los convierte acá
+// (solo nombre + importe — alias/concepto se completan a mano al registrar
+// la transferencia real, como siempre).
+function transfDerivMigrarDesdeDefault_() {
+  if (!Object.keys(TRANSF_FAM_DEFAULT || {}).length) { TRANSF_DERIV = {}; return; }
+  var out = {};
+  Object.keys(TRANSF_FAM_DEFAULT).forEach(function(apellido) {
+    out[apellido] = TRANSF_FAM_DEFAULT[apellido].map(function(d) {
+      return { nombre: d.nombre, importe: d.importe };
+    });
+  });
+  TRANSF_DERIV = out;
+  transfDerivGuardarTodo();
 }
-function transfNotasSet(periodo, apellido, texto) {
-  var k = transfNotasKey(periodo, apellido);
-  if (texto && texto.trim()) TRANSF_NOTAS[k] = texto;
-  else delete TRANSF_NOTAS[k];
-  try { localStorage.setItem("ceot_transf_notas", JSON.stringify(TRANSF_NOTAS)); } catch (e) {}
-  syncPush("ceot_transf_notas");
+function transfDerivGuardarTodo() {
+  localStorage.setItem("ceot_transf_derivados", JSON.stringify(TRANSF_DERIV));
+  syncPush("ceot_transf_derivados");
 }
-// Textarea del machete para un profesional. onchange (al salir del campo)
-// persiste + sincroniza; no re-renderiza para no interrumpir la escritura.
-function transfNotasHtml(periodo, apellido) {
-  var aEsc = apellido.replace(/'/g, "\\'");
-  return '<div style="margin-bottom:8px">'
-    + '<textarea rows="2" spellcheck="false"'
-    +   ' onchange="transfNotasSet(\'' + periodo + '\',\'' + aEsc + '\',this.value)"'
-    +   ' placeholder="📝 Machete — mis notas sobre las transferencias de ' + escAttr(apellido) + '…"'
-    +   ' style="width:100%;box-sizing:border-box;font-family:inherit;font-size:.72rem;line-height:1.4;'
-    +   'padding:5px 8px;border:1px dashed rgba(32,36,31,.3);border-radius:6px;'
-    +   'background:rgba(255,247,214,.5);color:#20241f;resize:vertical">'
-    +   escAttr(transfNotasGet(periodo, apellido))
-    + '</textarea>'
+
+// Para cada anotación, de qué cheque(s) del profesional en este período
+// saldría ese importe. Mismo criterio que siempre tuvo la cascada: primero
+// se cubre el sueldo del profesional (recién después queda plata disponible
+// para lo demás) y no toca cheques ya acreditados (+48hs) — esos ya se
+// consideran resueltos de la forma de siempre. No escribe nada.
+function transfDerivCalcular(periodo, doc) {
+  var base = calcularDetalleChequesProfesional(periodo, doc);
+  if (!base) return null;
+  var cerrado = !base.detalle.some(function(d) { return d.pendiente; });
+  var cheques = base.detalle.filter(function(d) { return !d.pendiente; }).map(function(d) {
+    var key = transfFamKey(periodo, doc.apellido, d.fecha);
+    return { fecha: d.fecha, neto: netoEfectivo(key, d.neto) };
+  });
+
+  var sueldoMonto = null;
+  if (typeof SUELDO_DIRECTOR_LISTA !== "undefined" && SUELDO_DIRECTOR_LISTA.indexOf(doc.apellido) !== -1) {
+    sueldoMonto = SUELDO_DIRECTOR_MONTO;
+  } else if (typeof SUELDO_BBVA_LISTA !== "undefined" && SUELDO_BBVA_LISTA.indexOf(doc.apellido) !== -1) {
+    sueldoMonto = SUELDO_BBVA_MONTO;
+  }
+
+  var ptr = 0;
+  function tomarBucket(objetivo) {
+    var usados = [], suma = 0;
+    while (ptr < cheques.length && suma < objetivo) {
+      usados.push(cheques[ptr]); suma += cheques[ptr].neto; ptr++;
+    }
+    var alcanza = suma >= objetivo;
+    var aPagar = alcanza ? objetivo : (cerrado ? suma : null);
+    return { cheques: usados.map(function(c) { return c.fecha; }), monto: suma, alcanza: alcanza, aPagar: aPagar };
+  }
+
+  if (sueldoMonto) {
+    var bs = tomarBucket(sueldoMonto);
+    if (!bs.alcanza) return { derivados: [], cerrado: cerrado, sinSueldoCompleto: true };
+  }
+  // Igual que antes: para lo derivado, arrancamos "desde hoy en adelante" —
+  // no reabrir plata de un cheque ya acreditado.
+  while (ptr < cheques.length && chequeAcreditado(cheques[ptr].fecha)) ptr++;
+
+  var entries = TRANSF_DERIV[doc.apellido] || [];
+  var derivados = entries.map(function(d, idx) {
+    var bf = tomarBucket(d.importe);
+    return { idx: idx, nombre: d.nombre, objetivo: d.importe, cheques: bf.cheques, monto: bf.monto, alcanza: bf.alcanza, aPagar: bf.aPagar };
+  });
+  return { derivados: derivados, cerrado: cerrado, sinSueldoCompleto: false };
+}
+
+function transfDerivTraceTexto(d) {
+  if (d.aPagar != null && d.alcanza) {
+    return d.cheques.length > 1 ? 'Sale de los cheques ' + d.cheques.join(' + ') : (d.cheques.length ? 'Sale del cheque ' + d.cheques[0] : '');
+  }
+  if (d.aPagar != null && !d.alcanza) {
+    return 'El mes ya cerró sin alcanzar — se juntaron ' + fmt(d.monto) + ' de ' + fmt(d.objetivo) + (d.cheques.length ? ' (cheques ' + d.cheques.join(' + ') + ')' : '');
+  }
+  if (!d.cheques.length) return 'Todavía sin ningún cheque disponible este mes';
+  return 'Lleva ' + fmt(d.monto) + ' de ' + fmt(d.objetivo) + ' (cheques ' + d.cheques.join(' + ') + ') — puede sumar más este mes';
+}
+
+function transfDerivSafeId_(apellido) { return apellido.replace(/[^a-zA-Z0-9]/g, ''); }
+
+function transfDerivBoxHtml(periodo, doc) {
+  var apellido = doc.apellido, aEsc = apellido.replace(/'/g, "\\'"), safeId = transfDerivSafeId_(apellido);
+  var entries = TRANSF_DERIV[apellido] || [];
+  var calc = transfDerivCalcular(periodo, doc);
+  var traceByIdx = {};
+  if (calc && !calc.sinSueldoCompleto) calc.derivados.forEach(function(d) { traceByIdx[d.idx] = d; });
+
+  var filas = entries.map(function(e, i) {
+    var d = traceByIdx[i];
+    var traceTxt = (calc && calc.sinSueldoCompleto)
+      ? 'Todavía no se completó el sueldo este mes — no hay excedente para repartir'
+      : (d ? transfDerivTraceTexto(d) : '');
+    return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:5px;padding:5px 7px;background:rgba(31,58,46,.06);border-radius:5px">'
+      +   '<div><div style="font-weight:600;font-size:.72rem">' + escAttr(e.nombre) + ' — ' + fmt(e.importe) + '</div>'
+      +     (traceTxt ? '<div style="font-size:.62rem;color:rgba(32,36,31,.55);margin-top:1px">↳ ' + escAttr(traceTxt) + '</div>' : '') + '</div>'
+      +   '<div style="white-space:nowrap;flex-shrink:0">'
+      +     '<a href="javascript:void(0)" onclick="transfDerivEditar(\'' + aEsc + '\',' + i + ')" style="font-size:.6rem;color:#1f3a2e;text-decoration:underline;margin-right:6px">editar</a>'
+      +     '<a href="javascript:void(0)" onclick="transfDerivQuitar(\'' + aEsc + '\',' + i + ')" style="font-size:.6rem;color:#b13a2c;text-decoration:underline">quitar</a>'
+      +   '</div>'
+      + '</div>';
+  }).join('');
+
+  return '<div style="margin-bottom:8px;padding:7px 8px;border:1px dashed rgba(32,36,31,.3);border-radius:6px;background:rgba(255,247,214,.5)">'
+    + '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">📝 Anotaciones sobre transferencias derivadas</div>'
+    + (filas || '<div style="font-size:.68rem;color:rgba(32,36,31,.45);font-style:italic;margin-bottom:5px">Todavía no cargaste ninguna.</div>')
+    + '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:4px">'
+    +   '<input type="text" id="tdNombre_' + safeId + '" placeholder="Nombre y apellido" style="flex:1;min-width:110px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
+    +   '<input type="text" inputmode="decimal" id="tdImporte_' + safeId + '" placeholder="Importe $" style="width:90px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
+    +   '<button type="button" onclick="transfDerivAgregar(\'' + aEsc + '\')" style="font-size:.64rem;padding:3px 8px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">+ agregar</button>'
+    +   '</div>'
     + '</div>';
+}
+
+function transfDerivAgregar(apellido) {
+  var safeId = transfDerivSafeId_(apellido);
+  var nombreEl = document.getElementById('tdNombre_' + safeId);
+  var importeEl = document.getElementById('tdImporte_' + safeId);
+  var nombre = (nombreEl.value || '').trim();
+  var importe = parseFloat((importeEl.value || '').replace(/\./g, '').replace(',', '.'));
+  if (!nombre || !importe) { alert('Nombre e importe son obligatorios.'); return; }
+  if (!TRANSF_DERIV[apellido]) TRANSF_DERIV[apellido] = [];
+  TRANSF_DERIV[apellido].push({ nombre: nombre, importe: importe });
+  transfDerivGuardarTodo();
+  if (typeof renderSueldoDirector === 'function') renderSueldoDirector();
+}
+function transfDerivEditar(apellido, idx) {
+  var arr = TRANSF_DERIV[apellido] || [];
+  var item = arr[idx];
+  if (!item) return;
+  var nuevoNombre = prompt('Nombre y apellido:', item.nombre);
+  if (nuevoNombre === null) return;
+  var nuevoImporteTxt = prompt('Importe:', item.importe);
+  if (nuevoImporteTxt === null) return;
+  var nuevoImporte = parseFloat((nuevoImporteTxt || '').toString().replace(/\./g, '').replace(',', '.'));
+  if (!nuevoNombre.trim() || !nuevoImporte) { alert('Nombre e importe son obligatorios.'); return; }
+  arr[idx] = { nombre: nuevoNombre.trim(), importe: nuevoImporte };
+  transfDerivGuardarTodo();
+  if (typeof renderSueldoDirector === 'function') renderSueldoDirector();
+}
+function transfDerivQuitar(apellido, idx) {
+  if (!confirm('¿Quitar esta anotación?')) return;
+  var arr = TRANSF_DERIV[apellido] || [];
+  arr.splice(idx, 1);
+  if (!arr.length) delete TRANSF_DERIV[apellido];
+  transfDerivGuardarTodo();
+  if (typeof renderSueldoDirector === 'function') renderSueldoDirector();
 }
 
 // ── Licencias (Honorarios) ──────────────────────────────────────────────
@@ -5106,7 +5236,7 @@ function transfFamAbrirModal(profKey, idx, fechaSugerida) {
   transfFamActualizarTotalCheques();
 
   var apellido = profKey.split("|")[1] || "";
-  var defs = TRANSF_FAM_DEFAULT[apellido] || [];
+  var defs = TRANSF_DERIV[apellido] || []; // ver "Anotaciones sobre transferencias derivadas"
   var selWrap = document.getElementById("transfFamSelectDefaultWrap");
   var sel = document.getElementById("transfFamSelectDefault");
   if (defs.length) {
@@ -5125,12 +5255,11 @@ function transfFamAbrirModal(profKey, idx, fechaSugerida) {
 function transfFamElegirDefault(sel) {
   var apellido = (transfFamEditKey || "").split("|")[1] || "";
   if (sel.value === "") return;
-  var d = (TRANSF_FAM_DEFAULT[apellido] || [])[Number(sel.value)];
+  var d = (TRANSF_DERIV[apellido] || [])[Number(sel.value)];
   if (!d) return;
   document.getElementById("transfFamFormNombre").value   = d.nombre;
-  document.getElementById("transfFamFormAlias").value    = d.aliasCbu;
   document.getElementById("transfFamFormImporte").value  = d.importe;
-  document.getElementById("transfFamFormConcepto").value = d.concepto;
+  // Alias y concepto no viven en las Anotaciones — se completan a mano acá.
 }
 
 function transfFamCerrarModal() {
@@ -5449,13 +5578,28 @@ function transfFamMismoGrupo(a, b) {
 // neto efectivo. netosPorFecha: mapa {fecha: netoEfectivo} de TODOS los
 // cheques del profesional en el período — hace falta para calcular el total
 // de un grupo combinado y cuánto le queda al profesional (ver "resto").
-function transfFamCeldaHtml(periodo, apellido, fecha, netoCheque, netosPorFecha) {
+function transfFamCeldaHtml(periodo, apellido, fecha, netoCheque, netosPorFecha, derivCalc) {
   var profKey = transfFamProfKey(periodo, apellido);
   window._transfFamChequesCache = window._transfFamChequesCache || {};
   window._transfFamChequesCache[profKey] = netosPorFecha || {};
 
   var kEsc = profKey.replace(/'/g, "\\'");
   var todasEntries = TRANSF_FAM[profKey] || [];
+
+  // Referencia corta a las Anotaciones sobre transferencias derivadas (ver
+  // transfDerivCalcular) — solo un puntero, sin partir importes ni combinar
+  // filas. Se oculta apenas esa persona ya tiene una transferencia real
+  // registrada este período (abajo), para no duplicar el aviso.
+  var derivHints = '';
+  if (derivCalc && !derivCalc.sinSueldoCompleto) {
+    derivCalc.derivados.forEach(function(d) {
+      if (d.cheques.indexOf(fecha) === -1) return;
+      var yaRegistrado = todasEntries.some(function(e2) { return e2.nombre === d.nombre; });
+      if (yaRegistrado) return;
+      derivHints += '<div style="font-size:.6rem;color:#8a6423;margin-bottom:3px">↳ va para <b>' + escAttr(d.nombre) + '</b> (ver Anotaciones arriba)</div>';
+    });
+  }
+
   var relevantes = [];
   todasEntries.forEach(function(e, i) {
     if ((e.cheques || []).indexOf(fecha) !== -1) relevantes.push({ e: e, idx: i });
@@ -5545,7 +5689,7 @@ function transfFamCeldaHtml(periodo, apellido, fecha, netoCheque, netosPorFecha)
       + '</div>';
   }
 
-  return '<td style="min-width:150px;white-space:normal">' + filas + moverHtml
+  return '<td style="min-width:150px;white-space:normal">' + derivHints + filas + moverHtml
     + '<button type="button" onclick="transfFamAbrirModal(\'' + kEsc + '\', undefined, \'' + fecha + '\')" style="border:1px dashed rgba(32,36,31,.3);background:none;border-radius:5px;cursor:pointer;font-size:.62rem;padding:2px 6px;color:rgba(32,36,31,.55);margin-top:4px">+ transferencia</button>'
     + '</td>';
 }
@@ -5714,6 +5858,7 @@ function sueldoDirectorTabHtml(periodo) {
     s.detalle.forEach(function(d) {
       if (!d.pendiente) netosPorFecha[d.fecha] = netoEfectivo(transfFamKey(periodo, doc.apellido, d.fecha), d.neto);
     });
+    var derivCalc = transfDerivCalcular(periodo, doc);
     var detRows = s.detalle.map(function(d, i, arr) {
       if (d.pendiente) {
         return '<tr style="opacity:.65"><td style="font-style:italic">' + d.fecha + '</td>'
@@ -5735,7 +5880,7 @@ function sueldoDirectorTabHtml(periodo) {
         + '<td>−' + fmt(d.retencion) + ' <span style="font-size:.6rem;color:rgba(32,36,31,.4)">' + Math.round((s.pctAporte || 0) * 100) + '%</span></td>'
         + '<td style="font-size:.62rem;color:rgba(32,36,31,.5)">' + (extra.join('<br>') || '—') + '</td>'
         + netoChequeCeldaHtml(keyFam, d.neto, nextKey, nextNetoOriginal)
-        + transfFamCeldaHtml(periodo, doc.apellido, d.fecha, netoEfectivo(keyFam, d.neto), netosPorFecha)
+        + transfFamCeldaHtml(periodo, doc.apellido, d.fecha, netoEfectivo(keyFam, d.neto), netosPorFecha, derivCalc)
         + '<td style="' + (esCorte ? 'font-weight:700;color:#8a6423' : (d.acumulado < 0 ? 'color:#b13a2c' : '')) + '">' + fmt(d.acumulado) + (esCorte ? ' ✓ $4M' : '') + '</td>'
         + '</tr>';
     }).join('');
@@ -5743,7 +5888,7 @@ function sueldoDirectorTabHtml(periodo) {
     var totalNetoMesStyle = s.totalNetoMes < 0 ? 'color:#b13a2c' : '';
     return '<div style="margin-bottom:16px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:8px;padding:10px 12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
-      +   '<div><b>' + doc.apellido + '</b> — ' + estadoFecha + transfFamDefBadgeHtml(doc.apellido) + '</div>'
+      +   '<div><b>' + doc.apellido + '</b> — ' + estadoFecha + '</div>'
       +   '<div style="display:flex;gap:14px;align-items:center;font-size:.8rem">'
       +     '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + colores.chipFg + ';border-radius:6px;padding:5px 10px;font-weight:700">'
       +       fmt(s.monto) + ' · ' + colores.txt
@@ -5758,10 +5903,9 @@ function sueldoDirectorTabHtml(periodo) {
       +     '<span>Saldo tras sueldo <b style="' + saldoStyle + '">' + fmt(s.saldoFinal) + '</b> <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.saldoFinal) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></span>'
       +   '</div>'
       + '</div>'
-      + transfFamCascadaProgresoHtml(periodo, doc)
-      + transfNotasHtml(periodo, doc.apellido)
+      + transfDerivBoxHtml(periodo, doc)
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-      +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a familiar</th><th>Acumulado</th>'
+      +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
       + '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
       + '</div>';
   }).join("");
@@ -5816,6 +5960,7 @@ function restoProfesionalesTabHtml(periodo) {
     base.detalle.forEach(function(d) {
       if (!d.pendiente) netosPorFecha[d.fecha] = netoEfectivo(transfFamKey(periodo, doc.apellido, d.fecha), d.neto);
     });
+    var derivCalc = transfDerivCalcular(periodo, doc);
     var detRows = base.detalle.map(function(d, i, arr) {
       if (d.pendiente) {
         return '<tr style="opacity:.65"><td style="font-style:italic">' + d.fecha + '</td>'
@@ -5837,7 +5982,7 @@ function restoProfesionalesTabHtml(periodo) {
         + '<td>−' + fmt(d.retencion) + ' <span style="font-size:.6rem;color:rgba(32,36,31,.4)">' + Math.round((base.pctAporte || 0) * 100) + '%</span></td>'
         + '<td style="font-size:.62rem;color:rgba(32,36,31,.5)">' + (extra.join('<br>') || '—') + '</td>'
         + netoChequeCeldaHtml(keyFam, d.neto, nextKey, nextNetoOriginal)
-        + transfFamCeldaHtml(periodo, doc.apellido, d.fecha, netoEfectivo(keyFam, d.neto), netosPorFecha)
+        + transfFamCeldaHtml(periodo, doc.apellido, d.fecha, netoEfectivo(keyFam, d.neto), netosPorFecha, derivCalc)
         + '<td' + (d.acumulado < 0 ? ' style="color:#b13a2c"' : (esCorteBbva ? ' style="font-weight:700;color:#8a6423"' : '')) + '>' + fmt(d.acumulado) + (esCorteBbva ? ' ✓ $300k BBVA' : '') + '</td>'
         + '</tr>';
     }).join('');
@@ -5865,7 +6010,7 @@ function restoProfesionalesTabHtml(periodo) {
 
     return '<div style="margin-bottom:16px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:8px;padding:10px 12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
-      +   '<div><b>' + doc.apellido + '</b>' + pendTxt + transfFamDefBadgeHtml(doc.apellido) + '</div>'
+      +   '<div><b>' + doc.apellido + '</b>' + pendTxt + '</div>'
       +   '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + totalNetoMesChipStyle + ';border-radius:6px;padding:5px 10px;font-weight:700;font-size:.8rem">'
       +     fmt(base.totalNetoMes) + ' · ' + colores.txt
       +     '<button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(base.totalNetoMes) + '\', this)" style="border:none;background:rgba(255,255,255,.35);border-radius:4px;cursor:pointer;font-size:.72rem;padding:1px 4px;vertical-align:middle">📋</button>'
@@ -5875,10 +6020,9 @@ function restoProfesionalesTabHtml(periodo) {
       +     'Transferencia ya hecha</label>'
       + '</div>'
       + bbvaLineaHtml
-      + transfFamCascadaProgresoHtml(periodo, doc)
-      + transfNotasHtml(periodo, doc.apellido)
+      + transfDerivBoxHtml(periodo, doc)
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-      +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a familiar</th><th>Acumulado</th>'
+      +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
       + '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
       + '</div>';
   }).join("");
@@ -6883,7 +7027,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-21-checklist-sync';
+  var CURRENT_BUILD = '2026-09-22-transf-derivados';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
