@@ -2194,22 +2194,22 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/portal-render.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/admin-home.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/gastos-obra.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/presentacion.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/sueldo-b.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/nun-data.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/accesos-debitos.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/estadisticas.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/gastos-casa.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/faq-asistente.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/asistente.js?v=2026-09-22-fix-carrera-token"></script>
-<script src="js/correos.js?v=2026-09-22-fix-carrera-token"></script>
+<script src="js/datos.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/portal-render.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/admin-home.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/gastos-obra.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/presentacion.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/sueldo-b.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/nun-data.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/accesos-debitos.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/estadisticas.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/gastos-casa.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/faq-asistente.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/asistente.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/correos.js?v=2026-09-22-libro-movimientos"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3359,6 +3359,7 @@ async function handleLogin() {
     sueldoBbvaHechoCargar();
     restoProfHechoCargar();
     transfDerivCargar();
+    movLibroCargar();
     renderSidenavLinks();
     renderAdmHome();
     checklistActualizarBadge();
@@ -4019,6 +4020,113 @@ function transfDerivQuitar(apellido, idx) {
   arr.splice(idx, 1);
   if (!arr.length) delete TRANSF_DERIV[apellido];
   transfDerivGuardarTodo();
+  if (typeof renderSueldoDirector === 'function') renderSueldoDirector();
+}
+
+// ── Libro de movimientos del mes ─────────────────────────────────────────
+// Pedido de Marcelo, 22/09/2026: en vez de la columna "Acumulado" (que suma
+// desde $0 hacia arriba, por fecha de cheque), quería un saldo que arranque
+// en el TOTAL del mes y vaya bajando a medida que va transfiriendo — pero
+// el sueldo, los derivados y sus propios dividendos no coinciden con una
+// fecha de cheque puntual (salen de varios cheques mezclados), así que no
+// entra como columna de la tabla. Se resolvió como una lista aparte, a
+// mano, PERSISTENTE POR PERÍODO (no por profesional en general, como las
+// Anotaciones — cada mes arranca vacía): un mini libro de caja donde
+// Marcelo anota cada movimiento real en el orden en que fue pasando
+// (fecha opcional + concepto + importe), y la pantalla arma sola el saldo
+// que queda después de cada uno, arrancando del total neto del mes.
+var MOV_LIBRO = {};
+function movLibroCargar() {
+  try {
+    var raw = localStorage.getItem("ceot_movimientos_libro");
+    if (raw) MOV_LIBRO = JSON.parse(raw) || {};
+  } catch (e) { MOV_LIBRO = {}; }
+  syncPull("ceot_movimientos_libro", function() {
+    movLibroCargar();
+    if (document.getElementById('sueldoDirectorScreenRoot')) renderSueldoDirector();
+  });
+}
+function movLibroGuardarTodo() {
+  localStorage.setItem("ceot_movimientos_libro", JSON.stringify(MOV_LIBRO));
+  syncPush("ceot_movimientos_libro");
+}
+function movLibroKey(periodo, apellido) { return periodo + "|" + apellido; }
+function movLibroSafeId_(key) { return key.replace(/[^a-zA-Z0-9]/g, ''); }
+
+function movLibroBoxHtml(periodo, doc, totalMes) {
+  var key = movLibroKey(periodo, doc.apellido);
+  var kEsc = key.replace(/'/g, "\\'");
+  var safeId = movLibroSafeId_(key);
+  var entries = MOV_LIBRO[key] || [];
+
+  var saldo = totalMes;
+  var filas = entries.map(function(m, i) {
+    saldo -= (m.importe || 0);
+    var saldoStyle = saldo < 0 ? 'color:#b13a2c;font-weight:700' : 'font-weight:700';
+    return '<div style="display:grid;grid-template-columns:52px 1fr auto auto;gap:10px;align-items:center;padding:5px 7px;border-top:1px dashed rgba(32,36,31,.15);font-size:.72rem">'
+      +   '<span style="color:rgba(32,36,31,.45)">' + (m.fecha ? escAttr(m.fecha) : '—') + '</span>'
+      +   '<span>' + escAttr(m.concepto) + '</span>'
+      +   '<span style="color:#b13a2c;white-space:nowrap">− ' + fmt(m.importe) + '</span>'
+      +   '<span style="white-space:nowrap;' + saldoStyle + '">→ ' + fmt(saldo) + '</span>'
+      +   '<span style="grid-column:1/-1;text-align:right;margin-top:-2px">'
+      +     '<a href="javascript:void(0)" onclick="movLibroEditar(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;color:#1f3a2e;text-decoration:underline;margin-right:8px">editar</a>'
+      +     '<a href="javascript:void(0)" onclick="movLibroQuitar(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;color:#b13a2c;text-decoration:underline">quitar</a>'
+      +   '</span>'
+      + '</div>';
+  }).join('');
+
+  var saldoFinalStyle = saldo < 0 ? 'color:#b13a2c' : 'color:#1f3a2e';
+  return '<div style="margin-bottom:8px;padding:7px 8px;border:1px dashed rgba(32,36,31,.3);border-radius:6px;background:rgba(255,247,214,.5)">'
+    + '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">📒 Movimientos de ' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + '</div>'
+    + '<div style="display:flex;justify-content:space-between;padding:4px 7px;font-size:.74rem;font-weight:700">'
+    +   '<span>Total del mes</span><span>' + fmt(totalMes) + '</span>'
+    + '</div>'
+    + filas
+    + '<div style="display:flex;justify-content:space-between;padding:6px 7px;margin-top:2px;border-top:1px solid rgba(32,36,31,.25);font-size:.78rem;font-weight:800;' + saldoFinalStyle + '">'
+    +   '<span>Saldo sin repartir</span><span>' + fmt(saldo) + '</span>'
+    + '</div>'
+    + '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px">'
+    +   '<input type="text" id="mlFecha_' + safeId + '" placeholder="Fecha (opcional)" style="width:100px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
+    +   '<input type="text" id="mlConcepto_' + safeId + '" placeholder="Concepto" style="flex:1;min-width:120px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
+    +   '<input type="text" inputmode="decimal" id="mlImporte_' + safeId + '" placeholder="Importe $" style="width:90px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
+    +   '<button type="button" onclick="movLibroAgregar(\'' + kEsc + '\')" style="font-size:.64rem;padding:3px 8px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">+ agregar</button>'
+    +   '</div>'
+    + '</div>';
+}
+
+function movLibroAgregar(key) {
+  var safeId = movLibroSafeId_(key);
+  var fecha = (document.getElementById('mlFecha_' + safeId).value || '').trim();
+  var concepto = (document.getElementById('mlConcepto_' + safeId).value || '').trim();
+  var importe = parseFloat((document.getElementById('mlImporte_' + safeId).value || '').replace(/\./g, '').replace(',', '.'));
+  if (!concepto || !importe) { alert('Concepto e importe son obligatorios.'); return; }
+  if (!MOV_LIBRO[key]) MOV_LIBRO[key] = [];
+  MOV_LIBRO[key].push({ fecha: fecha, concepto: concepto, importe: importe });
+  movLibroGuardarTodo();
+  if (typeof renderSueldoDirector === 'function') renderSueldoDirector();
+}
+function movLibroEditar(key, idx) {
+  var arr = MOV_LIBRO[key] || [];
+  var item = arr[idx];
+  if (!item) return;
+  var nuevaFecha = prompt('Fecha (dejar vacío si no aplica):', item.fecha || '');
+  if (nuevaFecha === null) return;
+  var nuevoConcepto = prompt('Concepto:', item.concepto);
+  if (nuevoConcepto === null) return;
+  var nuevoImporteTxt = prompt('Importe:', item.importe);
+  if (nuevoImporteTxt === null) return;
+  var nuevoImporte = parseFloat((nuevoImporteTxt || '').toString().replace(/\./g, '').replace(',', '.'));
+  if (!nuevoConcepto.trim() || !nuevoImporte) { alert('Concepto e importe son obligatorios.'); return; }
+  arr[idx] = { fecha: nuevaFecha.trim(), concepto: nuevoConcepto.trim(), importe: nuevoImporte };
+  movLibroGuardarTodo();
+  if (typeof renderSueldoDirector === 'function') renderSueldoDirector();
+}
+function movLibroQuitar(key, idx) {
+  if (!confirm('¿Quitar este movimiento?')) return;
+  var arr = MOV_LIBRO[key] || [];
+  arr.splice(idx, 1);
+  if (!arr.length) delete MOV_LIBRO[key];
+  movLibroGuardarTodo();
   if (typeof renderSueldoDirector === 'function') renderSueldoDirector();
 }
 
@@ -5914,6 +6022,7 @@ function sueldoDirectorTabHtml(periodo) {
       +   '</div>'
       + '</div>'
       + transfDerivBoxHtml(periodo, doc)
+      + movLibroBoxHtml(periodo, doc, s.totalNetoMes)
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
       +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
       + '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
@@ -6031,6 +6140,7 @@ function restoProfesionalesTabHtml(periodo) {
       + '</div>'
       + bbvaLineaHtml
       + transfDerivBoxHtml(periodo, doc)
+      + movLibroBoxHtml(periodo, doc, base.totalNetoMes)
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
       +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
       + '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
@@ -7037,7 +7147,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-22-fix-carrera-token';
+  var CURRENT_BUILD = '2026-09-22-libro-movimientos';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
