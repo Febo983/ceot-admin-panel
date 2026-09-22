@@ -2194,22 +2194,22 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/portal-render.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/admin-home.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/gastos-obra.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/presentacion.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/sueldo-b.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/nun-data.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/accesos-debitos.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/estadisticas.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/gastos-casa.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/faq-asistente.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/asistente.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/correos.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/datos.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/portal-render.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/admin-home.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/gastos-obra.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/presentacion.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/sueldo-b.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/nun-data.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/accesos-debitos.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/estadisticas.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/gastos-casa.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/faq-asistente.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/asistente.js?v=2026-09-22-libro-por-cheque"></script>
+<script src="js/correos.js?v=2026-09-22-libro-por-cheque"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -4026,15 +4026,17 @@ function transfDerivQuitar(apellido, idx) {
 // ── Libro de movimientos del mes ─────────────────────────────────────────
 // Pedido de Marcelo, 22/09/2026: en vez de la columna "Acumulado" (que suma
 // desde $0 hacia arriba, por fecha de cheque), quería un saldo que arranque
-// en el TOTAL del mes y vaya bajando a medida que va transfiriendo — pero
-// el sueldo, los derivados y sus propios dividendos no coinciden con una
-// fecha de cheque puntual (salen de varios cheques mezclados), así que no
-// entra como columna de la tabla. Se resolvió como una lista aparte, a
-// mano, PERSISTENTE POR PERÍODO (no por profesional en general, como las
-// Anotaciones — cada mes arranca vacía): un mini libro de caja donde
-// Marcelo anota cada movimiento real en el orden en que fue pasando
-// (fecha opcional + concepto + importe), y la pantalla arma sola el saldo
-// que queda después de cada uno, arrancando del total neto del mes.
+// en el TOTAL del mes y vaya bajando a medida que va transfiriendo. Primera
+// versión: un solo saldo para todo el mes. Marcelo la probó y se confundió
+// dos veces (22/09/2026) porque un saldo único no distingue qué plata está
+// realmente acreditada — no todos los cheques del mes entraron todavía. Se
+// rehizo separando el saldo POR CADA CHEQUE/ACREDITACIÓN: cada cheque ya
+// acreditado arranca en su propio neto, y cada movimiento se anota debajo
+// del cheque del que realmente salió. PERSISTENTE POR PERÍODO (no por
+// profesional en general, como las Anotaciones — cada mes arranca vacía).
+// Compatibilidad: los movimientos cargados con la versión anterior (sin
+// cheque asignado) se guardaron con `cheque: null` y aparecen en un bloque
+// "sin asignar" aparte, para que Marcelo los reubique sin perder nada.
 var MOV_LIBRO = {};
 function movLibroCargar() {
   try {
@@ -4053,55 +4055,96 @@ function movLibroGuardarTodo() {
 function movLibroKey(periodo, apellido) { return periodo + "|" + apellido; }
 function movLibroSafeId_(key) { return key.replace(/[^a-zA-Z0-9]/g, ''); }
 
-function movLibroBoxHtml(periodo, doc, totalMes) {
+function movLibroBoxHtml(periodo, doc, netosPorFecha) {
   var key = movLibroKey(periodo, doc.apellido);
   var kEsc = key.replace(/'/g, "\\'");
-  var safeId = movLibroSafeId_(key);
   var entries = MOV_LIBRO[key] || [];
+  var fechas = Object.keys(netosPorFecha || {});
 
-  var saldo = totalMes;
-  var filas = entries.map(function(m, i) {
-    saldo -= (m.importe || 0);
-    var saldoStyle = saldo < 0 ? 'color:#b13a2c;font-weight:700' : 'font-weight:700';
-    return '<div style="display:grid;grid-template-columns:52px 1fr auto auto;gap:10px;align-items:center;padding:5px 7px;border-top:1px dashed rgba(32,36,31,.15);font-size:.72rem">'
-      +   '<span style="color:rgba(32,36,31,.45)">' + (m.fecha ? escAttr(m.fecha) : '—') + '</span>'
-      +   '<span>' + escAttr(m.concepto) + '</span>'
-      +   '<span style="color:#b13a2c;white-space:nowrap">− ' + fmt(m.importe) + '</span>'
-      +   '<span style="white-space:nowrap;' + saldoStyle + '">→ ' + fmt(saldo) + '</span>'
-      +   '<span style="grid-column:1/-1;text-align:right;margin-top:-2px">'
-      +     '<a href="javascript:void(0)" onclick="movLibroEditar(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;color:#1f3a2e;text-decoration:underline;margin-right:8px">editar</a>'
-      +     '<a href="javascript:void(0)" onclick="movLibroQuitar(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;color:#b13a2c;text-decoration:underline">quitar</a>'
-      +   '</span>'
+  var totalDisponible = 0;
+  var bloquesCheque = fechas.map(function(fecha) {
+    var neto = netosPorFecha[fecha] || 0;
+    var safeId = movLibroSafeId_(key + '|' + fecha);
+    var saldo = neto;
+    var filas = entries.map(function(m, i) { return { m: m, i: i }; })
+      .filter(function(x) { return x.m.cheque === fecha; })
+      .map(function(x) {
+        var m = x.m, i = x.i;
+        saldo -= (m.importe || 0);
+        var saldoStyle = saldo < 0 ? 'color:#b13a2c;font-weight:700' : 'font-weight:700';
+        return '<div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:5px 7px;border-top:1px dashed rgba(32,36,31,.15);font-size:.72rem">'
+          +   '<span>' + escAttr(m.concepto) + (m.fechaPago ? ' <span style="color:rgba(32,36,31,.4)">(' + escAttr(m.fechaPago) + ')</span>' : '') + '</span>'
+          +   '<span style="color:#b13a2c;white-space:nowrap">− ' + fmt(m.importe) + '</span>'
+          +   '<span style="white-space:nowrap;' + saldoStyle + '">→ ' + fmt(saldo) + '</span>'
+          +   '<span style="grid-column:1/-1;text-align:right;margin-top:-2px">'
+          +     '<a href="javascript:void(0)" onclick="movLibroEditar(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;color:#1f3a2e;text-decoration:underline;margin-right:8px">editar</a>'
+          +     '<a href="javascript:void(0)" onclick="movLibroQuitar(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;color:#b13a2c;text-decoration:underline">quitar</a>'
+          +   '</span>'
+          + '</div>';
+      }).join('');
+    totalDisponible += saldo;
+    var saldoStyleFinal = saldo < 0 ? 'color:#b13a2c' : 'color:#1f3a2e';
+    return '<div style="margin-top:6px;padding:6px 7px;border:1px solid rgba(32,36,31,.15);border-radius:5px;background:rgba(255,255,255,.5)">'
+      + '<div style="display:flex;justify-content:space-between;font-size:.72rem;font-weight:700">'
+      +   '<span>Cheque ' + escAttr(fecha) + '</span><span>' + fmt(neto) + '</span>'
+      + '</div>'
+      + filas
+      + '<div style="display:flex;justify-content:space-between;padding-top:4px;margin-top:2px;border-top:1px solid rgba(32,36,31,.2);font-size:.72rem;font-weight:800;' + saldoStyleFinal + '">'
+      +   '<span>Saldo de este cheque</span><span>' + fmt(saldo) + '</span>'
+      + '</div>'
+      + '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px">'
+      +   '<input type="text" id="mlConcepto_' + safeId + '" placeholder="Concepto" style="flex:1;min-width:110px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
+      +   '<input type="text" inputmode="decimal" id="mlImporte_' + safeId + '" placeholder="Importe $" style="width:85px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
+      +   '<input type="text" id="mlFechaPago_' + safeId + '" placeholder="¿Cuándo? (opc.)" style="width:90px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
+      +   '<button type="button" onclick="movLibroAgregar(\'' + kEsc + '\',\'' + fecha.replace(/'/g, "\\'") + '\')" style="font-size:.64rem;padding:3px 8px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">+ agregar</button>'
+      +   '</div>'
       + '</div>';
   }).join('');
 
-  var saldoFinalStyle = saldo < 0 ? 'color:#b13a2c' : 'color:#1f3a2e';
+  var sinAsignar = entries.map(function(m, i) { return { m: m, i: i }; })
+    .filter(function(x) { return !x.m.cheque || fechas.indexOf(x.m.cheque) === -1; });
+  var bloqueSinAsignar = '';
+  if (sinAsignar.length) {
+    var filasSA = sinAsignar.map(function(x) {
+      var m = x.m, i = x.i;
+      totalDisponible -= (m.importe || 0);
+      var opciones = fechas.map(function(f) { return '<option value="' + escAttr(f) + '">' + escAttr(f) + '</option>'; }).join('');
+      return '<div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:5px 7px;border-top:1px dashed rgba(177,58,44,.25);font-size:.72rem">'
+        +   '<span>' + escAttr(m.concepto) + (m.fechaPago ? ' <span style="color:rgba(32,36,31,.4)">(' + escAttr(m.fechaPago) + ')</span>' : '') + '</span>'
+        +   '<span style="color:#b13a2c;white-space:nowrap">− ' + fmt(m.importe) + '</span>'
+        +   '<span></span>'
+        +   '<span style="grid-column:1/-1;display:flex;gap:6px;align-items:center;justify-content:flex-end;margin-top:-2px">'
+        +     '<select id="mlAsignar_' + movLibroSafeId_(key) + '_' + i + '" style="font-size:.64rem;padding:2px 4px;border:1px solid rgba(32,36,31,.2);border-radius:4px"><option value="">¿de qué cheque salió?</option>' + opciones + '</select>'
+        +     '<button type="button" onclick="movLibroAsignarCheque(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;padding:2px 6px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">asignar</button>'
+        +     '<a href="javascript:void(0)" onclick="movLibroQuitar(\'' + kEsc + '\',' + i + ')" style="font-size:.6rem;color:#b13a2c;text-decoration:underline">quitar</a>'
+        +   '</span>'
+        + '</div>';
+    }).join('');
+    bloqueSinAsignar = '<div style="margin-top:6px;padding:6px 7px;border:1px dashed #b13a2c;border-radius:5px;background:rgba(177,58,44,.05)">'
+      + '<div style="font-size:.68rem;font-weight:700;color:#b13a2c">Sin asignar a un cheque (cargados antes del 22/09) — elegí de cuál salieron</div>'
+      + filasSA
+      + '</div>';
+  }
+
+  var totalStyle = totalDisponible < 0 ? 'color:#b13a2c' : 'color:#1f3a2e';
   return '<div style="margin-bottom:8px;padding:7px 8px;border:1px dashed rgba(32,36,31,.3);border-radius:6px;background:rgba(255,247,214,.5)">'
-    + '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">📒 Movimientos de ' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + '</div>'
-    + '<div style="display:flex;justify-content:space-between;padding:4px 7px;font-size:.74rem;font-weight:700">'
-    +   '<span>Total del mes</span><span>' + fmt(totalMes) + '</span>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center">'
+    +   '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.03em">📒 Movimientos de ' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' (por cheque)</div>'
+    +   '<div style="font-size:.74rem;font-weight:800;' + totalStyle + '">Disponible total ' + fmt(totalDisponible) + '</div>'
     + '</div>'
-    + filas
-    + '<div style="display:flex;justify-content:space-between;padding:6px 7px;margin-top:2px;border-top:1px solid rgba(32,36,31,.25);font-size:.78rem;font-weight:800;' + saldoFinalStyle + '">'
-    +   '<span>Saldo sin repartir</span><span>' + fmt(saldo) + '</span>'
-    + '</div>'
-    + '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px">'
-    +   '<input type="text" id="mlFecha_' + safeId + '" placeholder="Fecha (opcional)" style="width:100px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
-    +   '<input type="text" id="mlConcepto_' + safeId + '" placeholder="Concepto" style="flex:1;min-width:120px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
-    +   '<input type="text" inputmode="decimal" id="mlImporte_' + safeId + '" placeholder="Importe $" style="width:90px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
-    +   '<button type="button" onclick="movLibroAgregar(\'' + kEsc + '\')" style="font-size:.64rem;padding:3px 8px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">+ agregar</button>'
-    +   '</div>'
+    + (fechas.length ? bloquesCheque : '<div style="font-size:.68rem;color:rgba(32,36,31,.5);padding:6px 0">Todavía no hay ningún cheque acreditado este mes.</div>')
+    + bloqueSinAsignar
     + '</div>';
 }
 
-function movLibroAgregar(key) {
-  var safeId = movLibroSafeId_(key);
-  var fecha = (document.getElementById('mlFecha_' + safeId).value || '').trim();
+function movLibroAgregar(key, cheque) {
+  var safeId = movLibroSafeId_(key + '|' + cheque);
   var concepto = (document.getElementById('mlConcepto_' + safeId).value || '').trim();
   var importe = parseFloat((document.getElementById('mlImporte_' + safeId).value || '').replace(/\./g, '').replace(',', '.'));
+  var fechaPago = (document.getElementById('mlFechaPago_' + safeId).value || '').trim();
   if (!concepto || !importe) { alert('Concepto e importe son obligatorios.'); return; }
   if (!MOV_LIBRO[key]) MOV_LIBRO[key] = [];
-  MOV_LIBRO[key].push({ fecha: fecha, concepto: concepto, importe: importe });
+  MOV_LIBRO[key].push({ cheque: cheque, fechaPago: fechaPago, concepto: concepto, importe: importe });
   movLibroGuardarTodo();
   if (typeof renderSueldoDirector === 'function') renderSueldoDirector();
 }
@@ -4109,15 +4152,26 @@ function movLibroEditar(key, idx) {
   var arr = MOV_LIBRO[key] || [];
   var item = arr[idx];
   if (!item) return;
-  var nuevaFecha = prompt('Fecha (dejar vacío si no aplica):', item.fecha || '');
-  if (nuevaFecha === null) return;
   var nuevoConcepto = prompt('Concepto:', item.concepto);
   if (nuevoConcepto === null) return;
   var nuevoImporteTxt = prompt('Importe:', item.importe);
   if (nuevoImporteTxt === null) return;
   var nuevoImporte = parseFloat((nuevoImporteTxt || '').toString().replace(/\./g, '').replace(',', '.'));
   if (!nuevoConcepto.trim() || !nuevoImporte) { alert('Concepto e importe son obligatorios.'); return; }
-  arr[idx] = { fecha: nuevaFecha.trim(), concepto: nuevoConcepto.trim(), importe: nuevoImporte };
+  var nuevaFechaPago = prompt('¿Cuándo se hizo? (dejar vacío si no aplica):', item.fechaPago || '');
+  if (nuevaFechaPago === null) return;
+  arr[idx] = { cheque: item.cheque, fechaPago: nuevaFechaPago.trim(), concepto: nuevoConcepto.trim(), importe: nuevoImporte };
+  movLibroGuardarTodo();
+  if (typeof renderSueldoDirector === 'function') renderSueldoDirector();
+}
+function movLibroAsignarCheque(key, idx) {
+  var arr = MOV_LIBRO[key] || [];
+  var item = arr[idx];
+  if (!item) return;
+  var sel = document.getElementById('mlAsignar_' + movLibroSafeId_(key) + '_' + idx);
+  var cheque = sel ? sel.value : '';
+  if (!cheque) { alert('Elegí de qué cheque salió.'); return; }
+  item.cheque = cheque;
   movLibroGuardarTodo();
   if (typeof renderSueldoDirector === 'function') renderSueldoDirector();
 }
@@ -6022,7 +6076,7 @@ function sueldoDirectorTabHtml(periodo) {
       +   '</div>'
       + '</div>'
       + transfDerivBoxHtml(periodo, doc)
-      + movLibroBoxHtml(periodo, doc, s.totalNetoMes)
+      + movLibroBoxHtml(periodo, doc, netosPorFecha)
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
       +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
       + '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
@@ -6140,7 +6194,7 @@ function restoProfesionalesTabHtml(periodo) {
       + '</div>'
       + bbvaLineaHtml
       + transfDerivBoxHtml(periodo, doc)
-      + movLibroBoxHtml(periodo, doc, base.totalNetoMes)
+      + movLibroBoxHtml(periodo, doc, netosPorFecha)
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
       +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
       + '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
@@ -7147,7 +7201,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-22-libro-movimientos';
+  var CURRENT_BUILD = '2026-09-22-libro-por-cheque';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
