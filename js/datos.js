@@ -685,16 +685,23 @@ function renderEndpointStatusBanner() {
 
 async function cargarGastosARemoto() {
   if (!GASTOS_A_ENDPOINT) return;
+  // Se guarda el token que había EN ESTE MOMENTO (no el que haya cuando
+  // vuelva la respuesta): esta función se lanza sola al cargar la página,
+  // antes de loguearse, así que ese pedido sale sin token — "unauthorized"
+  // es la respuesta esperada, no una falla real. Antes se miraba el token
+  // "de ahora" al recibir la respuesta: si el login terminaba justo mientras
+  // ese pedido viejo seguía en camino, el AUTH_TOKEN ya estaba puesto y el
+  // aviso de "no se pudo actualizar" saltaba igual, por error (carrera
+  // encontrada el 22/09/2026 — el cartel de Gastos A aparecía sin que hubiera
+  // ningún problema real). Se vuelve a llamar ya logueado (Promise.all del
+  // login) y ahí sí cualquier error es real.
+  var tokenUsado = AUTH_TOKEN;
   try {
     var resp = await fetch(authURL(GASTOS_A_ENDPOINT));
     var data = await resp.json();
-    // "unauthorized" sin AUTH_TOKEN es esperado (esta función se lanza sola al
-    // cargar la página, antes de loguearse) — no es una falla real, no avisar.
-    // Se vuelve a llamar ya logueado (ver Promise.all en el login) y ahí sí
-    // cualquier error es real.
     if (data.error) {
       console.warn("Gastos A API error:", data.error);
-      if (AUTH_TOKEN) marcarEndpointStatus("gastosA", false, data.error);
+      if (tokenUsado) marcarEndpointStatus("gastosA", false, data.error);
       return;
     }
     ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre",
@@ -705,7 +712,7 @@ async function cargarGastosARemoto() {
     marcarEndpointStatus("gastosA", true);
   } catch(e) {
     console.warn("No se pudo cargar Gastos A remotos — usando valores locales:", e.message);
-    if (AUTH_TOKEN) marcarEndpointStatus("gastosA", false, e.message);
+    if (tokenUsado) marcarEndpointStatus("gastosA", false, e.message);
   }
 }
 
@@ -733,13 +740,18 @@ async function cargarAportePctRemoto() {
 
 async function cargarLiquidacionRemota() {
   if (!LIQUIDACION_ENDPOINT) return;
+  // Mismo motivo que en cargarGastosARemoto: guardar el token de ESTE pedido
+  // en vez de mirar el AUTH_TOKEN "de ahora" al volver la respuesta — evita
+  // el falso aviso de "no se pudo actualizar" cuando el login termina
+  // mientras un pedido previo (sin token) todavía está en camino.
+  var tokenUsado = AUTH_TOKEN;
   try {
     var resp = await fetch(authURL(LIQUIDACION_ENDPOINT));
     var data = await resp.json();
     // "unauthorized" sin AUTH_TOKEN es esperado (llamada automática al cargar
     // la página, antes de loguearse) — no avisar; se vuelve a llamar ya
     // logueado (Promise.all del login) y ahí cualquier error sí es real.
-    if (data.error) { if (AUTH_TOKEN) marcarEndpointStatus("liquidacion", false, data.error); return; }
+    if (data.error) { if (tokenUsado) marcarEndpointStatus("liquidacion", false, data.error); return; }
 
     // Guardar datos completos para Historial
     liquidacionData = data;
@@ -913,6 +925,6 @@ async function cargarLiquidacionRemota() {
     marcarEndpointStatus("liquidacion", true);
   } catch(e) {
     console.warn("No se pudo cargar liquidación remota — usando valores locales:", e.message);
-    if (AUTH_TOKEN) marcarEndpointStatus("liquidacion", false, e.message);
+    if (tokenUsado) marcarEndpointStatus("liquidacion", false, e.message);
   }
 }
