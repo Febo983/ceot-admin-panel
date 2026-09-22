@@ -2194,22 +2194,22 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/portal-render.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/admin-home.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/gastos-obra.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/presentacion.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/sueldo-b.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/nun-data.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/accesos-debitos.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/estadisticas.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/gastos-casa.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/faq-asistente.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/asistente.js?v=2026-09-22-libro-movimientos"></script>
-<script src="js/correos.js?v=2026-09-22-libro-movimientos"></script>
+<script src="js/datos.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/portal-render.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/admin-home.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/gastos-obra.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/presentacion.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/sueldo-b.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/nun-data.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/accesos-debitos.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/estadisticas.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/gastos-casa.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/faq-asistente.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/asistente.js?v=2026-09-22-transf-fusionadas"></script>
+<script src="js/correos.js?v=2026-09-22-transf-fusionadas"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3946,7 +3946,7 @@ function transfDerivTraceTexto(d) {
 
 function transfDerivSafeId_(apellido) { return apellido.replace(/[^a-zA-Z0-9]/g, ''); }
 
-function transfDerivBoxHtml(periodo, doc) {
+function transfDerivBoxHtml(periodo, doc, netosPorFecha) {
   var apellido = doc.apellido, aEsc = apellido.replace(/'/g, "\\'"), safeId = transfDerivSafeId_(apellido);
   var entries = TRANSF_DERIV[apellido] || [];
   var calc = transfDerivCalcular(periodo, doc);
@@ -3981,6 +3981,8 @@ function transfDerivBoxHtml(periodo, doc) {
     +   '<input type="text" inputmode="decimal" id="tdImporte_' + safeId + '" placeholder="Importe $" style="width:90px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
     +   '<button type="button" onclick="transfDerivAgregar(\'' + aEsc + '\')" style="font-size:.64rem;padding:3px 8px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">+ agregar</button>'
     +   '</div>'
+    + '<div style="border-top:1px solid rgba(32,36,31,.2);margin:9px 0 7px"></div>'
+    + movLibroSeccionHtml(periodo, doc, netosPorFecha)
     + '</div>';
 }
 
@@ -4026,15 +4028,32 @@ function transfDerivQuitar(apellido, idx) {
 // ── Libro de movimientos del mes ─────────────────────────────────────────
 // Pedido de Marcelo, 22/09/2026: en vez de la columna "Acumulado" (que suma
 // desde $0 hacia arriba, por fecha de cheque), quería un saldo que arranque
-// en el TOTAL del mes y vaya bajando a medida que va transfiriendo — pero
+// en un total y vaya bajando a medida que va aplicando movimientos — pero
 // el sueldo, los derivados y sus propios dividendos no coinciden con una
 // fecha de cheque puntual (salen de varios cheques mezclados), así que no
 // entra como columna de la tabla. Se resolvió como una lista aparte, a
 // mano, PERSISTENTE POR PERÍODO (no por profesional en general, como las
 // Anotaciones — cada mes arranca vacía): un mini libro de caja donde
 // Marcelo anota cada movimiento real en el orden en que fue pasando
-// (fecha opcional + concepto + importe), y la pantalla arma sola el saldo
-// que queda después de cada uno, arrancando del total neto del mes.
+// (fecha opcional + concepto + importe) y aprieta "Aplicar".
+//
+// Dos vueltas de rediseño el mismo 22/09/2026:
+// 1) Primera versión: el saldo arrancaba del TOTAL DEL MES (todos los
+//    cheques, acreditados o no) — Marcelo se confundió 2 veces porque no
+//    reflejaba qué plata había realmente entrado.
+// 2) Segunda versión: separar el saldo por cada cheque en cajas propias —
+//    Marcelo la probó (con un widget de ejemplo) y dijo que era demasiada
+//    información para mirar de un vistazo.
+// Versión final: UN solo saldo (compacto, como pidió), pero arrancando de
+// la SUMA DE LOS CHEQUES YA ACREDITADOS (netosPorFecha, el mismo mapa que
+// arma la tabla de detalle) en vez del total del mes — así el número de
+// arriba ya es la plata real disponible. Si un movimiento "no alcanza"
+// (más grande que lo acreditado hasta ahora), simplemente el saldo pasa a
+// negativo y se pinta en rojo — no hace falta repartirlo a mano entre
+// cheques puntuales porque la suma da lo mismo sin importar el orden.
+// Además se fusionó dentro de la caja de "Anotaciones sobre transferencias
+// derivadas" (transfDerivBoxHtml) en vez de mostrarse aparte, a pedido de
+// Marcelo, para que quede todo junto y más compacto.
 var MOV_LIBRO = {};
 function movLibroCargar() {
   try {
@@ -4053,13 +4072,14 @@ function movLibroGuardarTodo() {
 function movLibroKey(periodo, apellido) { return periodo + "|" + apellido; }
 function movLibroSafeId_(key) { return key.replace(/[^a-zA-Z0-9]/g, ''); }
 
-function movLibroBoxHtml(periodo, doc, totalMes) {
+function movLibroSeccionHtml(periodo, doc, netosPorFecha) {
   var key = movLibroKey(periodo, doc.apellido);
   var kEsc = key.replace(/'/g, "\\'");
   var safeId = movLibroSafeId_(key);
   var entries = MOV_LIBRO[key] || [];
 
-  var saldo = totalMes;
+  var acreditado = Object.keys(netosPorFecha || {}).reduce(function(s, f) { return s + (netosPorFecha[f] || 0); }, 0);
+  var saldo = acreditado;
   var filas = entries.map(function(m, i) {
     saldo -= (m.importe || 0);
     var saldoStyle = saldo < 0 ? 'color:#b13a2c;font-weight:700' : 'font-weight:700';
@@ -4076,22 +4096,20 @@ function movLibroBoxHtml(periodo, doc, totalMes) {
   }).join('');
 
   var saldoFinalStyle = saldo < 0 ? 'color:#b13a2c' : 'color:#1f3a2e';
-  return '<div style="margin-bottom:8px;padding:7px 8px;border:1px dashed rgba(32,36,31,.3);border-radius:6px;background:rgba(255,247,214,.5)">'
-    + '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">📒 Movimientos de ' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + '</div>'
+  return '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">📒 Movimientos aplicados</div>'
     + '<div style="display:flex;justify-content:space-between;padding:4px 7px;font-size:.74rem;font-weight:700">'
-    +   '<span>Total del mes</span><span>' + fmt(totalMes) + '</span>'
+    +   '<span>Acreditado hasta ahora</span><span>' + fmt(acreditado) + '</span>'
     + '</div>'
     + filas
     + '<div style="display:flex;justify-content:space-between;padding:6px 7px;margin-top:2px;border-top:1px solid rgba(32,36,31,.25);font-size:.78rem;font-weight:800;' + saldoFinalStyle + '">'
-    +   '<span>Saldo sin repartir</span><span>' + fmt(saldo) + '</span>'
+    +   '<span>Saldo</span><span>' + fmt(saldo) + '</span>'
     + '</div>'
     + '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px">'
     +   '<input type="text" id="mlFecha_' + safeId + '" placeholder="Fecha (opcional)" style="width:100px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
     +   '<input type="text" id="mlConcepto_' + safeId + '" placeholder="Concepto" style="flex:1;min-width:120px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
     +   '<input type="text" inputmode="decimal" id="mlImporte_' + safeId + '" placeholder="Importe $" style="width:90px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
-    +   '<button type="button" onclick="movLibroAgregar(\'' + kEsc + '\')" style="font-size:.64rem;padding:3px 8px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">+ agregar</button>'
-    +   '</div>'
-    + '</div>';
+    +   '<button type="button" onclick="movLibroAgregar(\'' + kEsc + '\')" style="font-size:.64rem;padding:3px 8px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">Aplicar</button>'
+    +   '</div>';
 }
 
 function movLibroAgregar(key) {
@@ -6021,8 +6039,7 @@ function sueldoDirectorTabHtml(periodo) {
       +     '<span>Saldo tras sueldo <b style="' + saldoStyle + '">' + fmt(s.saldoFinal) + '</b> <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.saldoFinal) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></span>'
       +   '</div>'
       + '</div>'
-      + transfDerivBoxHtml(periodo, doc)
-      + movLibroBoxHtml(periodo, doc, s.totalNetoMes)
+      + transfDerivBoxHtml(periodo, doc, netosPorFecha)
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
       +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
       + '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
@@ -6139,8 +6156,7 @@ function restoProfesionalesTabHtml(periodo) {
       +     'Transferencia ya hecha</label>'
       + '</div>'
       + bbvaLineaHtml
-      + transfDerivBoxHtml(periodo, doc)
-      + movLibroBoxHtml(periodo, doc, base.totalNetoMes)
+      + transfDerivBoxHtml(periodo, doc, netosPorFecha)
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
       +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
       + '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
@@ -7147,7 +7163,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-22-libro-movimientos';
+  var CURRENT_BUILD = '2026-09-22-transf-fusionadas';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
