@@ -64,7 +64,7 @@ function renderMayo(containerId, doctor) {
 
     html += '<div class="period-total">'
       + '<div class="pt-left">'
-      + '<div class="pt-lbl">Mayo 2026' + avisoTransferidoChipHtml("mayo", doctor) + '</div>'
+      + '<div class="pt-lbl">Mayo 2026</div>'
       + '<div class="pt-val">' + fmt(totalBruto) + '</div>'
       + '<div class="pt-sub">' + subPartes.join(" + ") + ' · bruto</div>'
       + '</div><div class="pt-icon">💰</div></div>';
@@ -255,7 +255,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
 
   var html = '<div class="period-total">'
     + '<div class="pt-left">'
-    + '<div class="pt-lbl">' + mes + avisoTransferidoChipHtml(periodo, doctor) + '</div>'
+    + '<div class="pt-lbl">' + mes + '</div>'
     + '<div class="pt-val">' + fmt(totalBruto) + '</div>'
     + '<div class="pt-sub">' + subPartes.join(" + ") + ' · bruto</div>'
     + '</div><div class="pt-icon">💰</div></div>';
