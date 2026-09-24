@@ -158,6 +158,131 @@ function gastosExtraQuitar(id) {
   gastosExtraRenderLista();
 }
 
+// ══════ GASTO DE EQUIPOS (Storz) — historial Gasto vs. Recuperado ══════
+// Pedido de Marcelo, 24/09/2026: hoy el gasto (Storz compra + torre, ver
+// GASTOS_EXTRA_DEFAULT) y lo recuperado en honorarios (GAS.EQUIPO, ver
+// billingDesdeRegistros) se calculan cada mes al importar, pero no quedan
+// guardados en ningún lado — se usan una vez para el reparto y se pierden.
+// Este historial guarda ambos montos por período (persistente, como
+// TRANSF_FAM) para poder ver mes a mes cuánto se gastó en equipamiento de
+// Deganutti/Trivellini/Corelich contra cuánto se recuperó vía honorarios.
+// Se completa solo al correr el import (ver el final de
+// procesarArchivosImport), pero también se puede cargar/corregir un mes a
+// mano desde el acordeón "Gasto de Equipos" (por si falta un mes viejo).
+var GASTO_EQUIPO_HIST = {};
+function gastoEquipoCargar() {
+  try {
+    var raw = localStorage.getItem('ceot_gasto_equipo_hist');
+    GASTO_EQUIPO_HIST = raw ? (JSON.parse(raw) || {}) : {};
+  } catch (e) { GASTO_EQUIPO_HIST = {}; }
+  syncPull('ceot_gasto_equipo_hist', function() {
+    gastoEquipoCargar();
+    var el = document.getElementById('gastoEquipoBody');
+    if (el) el.innerHTML = gastoEquipoSectionHtml();
+  });
+}
+function gastoEquipoGuardarTodo() {
+  localStorage.setItem('ceot_gasto_equipo_hist', JSON.stringify(GASTO_EQUIPO_HIST));
+  syncPush('ceot_gasto_equipo_hist');
+}
+// datos: { gasto, gastoDetalle:[{concepto,importe}], recuperadoOsde, recuperadoDif }
+function gastoEquipoGuardarMes(periodo, datos) {
+  if (!periodo) return;
+  GASTO_EQUIPO_HIST[periodo] = {
+    gasto: datos.gasto || 0,
+    gastoDetalle: datos.gastoDetalle || [],
+    recuperadoOsde: datos.recuperadoOsde || 0,
+    recuperadoDif: datos.recuperadoDif || 0
+  };
+  gastoEquipoGuardarTodo();
+}
+
+function gastoEquipoSectionHtml() {
+  var periodos = Object.keys(GASTO_EQUIPO_HIST).sort(function(a, b) {
+    return MESES_IMP_ORD.indexOf(a) - MESES_IMP_ORD.indexOf(b);
+  });
+  var filas = '', totGasto = 0, totRecup = 0;
+  periodos.forEach(function(p) {
+    var e = GASTO_EQUIPO_HIST[p];
+    var recup = (e.recuperadoOsde || 0) + (e.recuperadoDif || 0);
+    var dif = recup - (e.gasto || 0);
+    totGasto += (e.gasto || 0); totRecup += recup;
+    var pEsc = p.replace(/'/g, "\\'");
+    filas += '<tr>'
+      + '<td style="text-transform:capitalize">' + p + '</td>'
+      + '<td class="ipt-num">' + fmtImp(e.gasto || 0) + '</td>'
+      + '<td class="ipt-num">' + fmtImp(recup) + '</td>'
+      + '<td class="ipt-num" style="font-weight:700;' + (dif < 0 ? 'color:#b13a2c' : 'color:#16a34a') + '">' + fmtImp(dif) + '</td>'
+      + '<td><a href="javascript:void(0)" onclick="gastoEquipoAbrirForm(\'' + pEsc + '\')" style="font-size:.68rem;color:#1f3a2e;text-decoration:underline">editar</a></td>'
+      + '</tr>';
+  });
+  var difTotal = totRecup - totGasto;
+
+  // Acumulado — pedido de Marcelo, 24/09/2026: quería el total acumulado
+  // adelante, como número principal, no solo perdido al pie de la tabla
+  // mes a mes (que queda como detalle/auditoría abajo).
+  var acumHtml = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">'
+    + '<div style="flex:1;min-width:120px;padding:8px 10px;background:rgba(32,36,31,.05);border-radius:8px">'
+    +   '<div style="font-size:.62rem;color:rgba(32,36,31,.5);text-transform:uppercase;letter-spacing:.03em">Gasto acumulado</div>'
+    +   '<div style="font-size:1.05rem;font-weight:800">' + fmtImp(totGasto) + '</div></div>'
+    + '<div style="flex:1;min-width:120px;padding:8px 10px;background:rgba(32,36,31,.05);border-radius:8px">'
+    +   '<div style="font-size:.62rem;color:rgba(32,36,31,.5);text-transform:uppercase;letter-spacing:.03em">Recuperado acumulado</div>'
+    +   '<div style="font-size:1.05rem;font-weight:800">' + fmtImp(totRecup) + '</div></div>'
+    + '<div style="flex:1;min-width:120px;padding:8px 10px;background:' + (difTotal < 0 ? 'rgba(177,58,44,.1)' : 'rgba(22,163,74,.1)') + ';border-radius:8px">'
+    +   '<div style="font-size:.62rem;color:rgba(32,36,31,.5);text-transform:uppercase;letter-spacing:.03em">Diferencia acumulada</div>'
+    +   '<div style="font-size:1.05rem;font-weight:800;' + (difTotal < 0 ? 'color:#b13a2c' : 'color:#16a34a') + '">' + fmtImp(difTotal) + '</div></div>'
+    + '</div>';
+
+  var tablaHtml = periodos.length
+    ? '<details style="margin-top:2px"><summary style="cursor:pointer;font-size:.68rem;color:rgba(32,36,31,.55);margin-bottom:6px">Ver detalle mes a mes</summary>'
+      + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+      + '<th style="text-align:left">Período</th><th>Gasto</th><th>Recuperado</th><th>Diferencia</th><th></th>'
+      + '</tr></thead><tbody>' + filas + '</tbody></table></div></details>'
+    : '<div style="font-size:.72rem;color:rgba(32,36,31,.45);font-style:italic;padding:6px 0">Todavía no hay ningún mes registrado — se completa solo al correr el import, o cargalo a mano abajo.</div>';
+
+  var mesOpts = MESES_IMP_ORD.map(function(m) {
+    return '<option value="' + m + '">' + m.charAt(0).toUpperCase() + m.slice(1) + '</option>';
+  }).join('');
+
+  return '<div style="font-size:.65rem;color:rgba(32,36,31,.5);margin-bottom:8px">'
+    + 'Gasto = Storz compra + torre laparoscópica (ver "Otros gastos del mes" del importador). Recuperado = honorarios facturados '
+    + 'como GAS.EQUIPO ese mes (bruto). Ambos son de ' + GASEQ_SOCIOS_CEOT.join(' / ') + '.</div>'
+    + acumHtml
+    + tablaHtml
+    + '<div id="gastoEquipoForm" style="display:none;margin-top:10px;padding:8px;border:1px dashed rgba(32,36,31,.3);border-radius:6px">'
+    +   '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
+    +     '<select id="geFormMes" class="imp-select" style="width:auto">' + mesOpts + '</select>'
+    +     '<input type="text" inputmode="decimal" id="geFormGasto" placeholder="Gasto $" style="width:110px;font-size:.75rem;padding:5px 7px;border:1px solid rgba(32,36,31,.2);border-radius:4px">'
+    +     '<input type="text" inputmode="decimal" id="geFormRecuperado" placeholder="Recuperado $" style="width:120px;font-size:.75rem;padding:5px 7px;border:1px solid rgba(32,36,31,.2);border-radius:4px">'
+    +     '<button type="button" onclick="gastoEquipoGuardarForm()" style="font-size:.7rem;padding:5px 10px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">Guardar</button>'
+    +     '<button type="button" onclick="gastoEquipoCerrarForm()" style="font-size:.7rem;padding:5px 10px;border:1px solid rgba(32,36,31,.25);border-radius:4px;background:none;cursor:pointer">Cancelar</button>'
+    +   '</div>'
+    + '</div>'
+    + '<button type="button" onclick="gastoEquipoAbrirForm()" style="margin-top:8px;font-size:.68rem;padding:4px 10px;border:1px dashed rgba(32,36,31,.3);background:none;border-radius:5px;cursor:pointer;color:rgba(32,36,31,.55)">+ cargar/corregir un mes a mano</button>';
+}
+
+function gastoEquipoAbrirForm(periodo) {
+  document.getElementById('gastoEquipoForm').style.display = 'block';
+  var e = periodo ? GASTO_EQUIPO_HIST[periodo] : null;
+  document.getElementById('geFormMes').value = periodo || MESES_IMP_ORD[new Date().getMonth()];
+  document.getElementById('geFormGasto').value = e ? e.gasto : '';
+  document.getElementById('geFormRecuperado').value = e ? ((e.recuperadoOsde || 0) + (e.recuperadoDif || 0)) : '';
+}
+function gastoEquipoCerrarForm() {
+  document.getElementById('gastoEquipoForm').style.display = 'none';
+}
+function gastoEquipoGuardarForm() {
+  var periodo = document.getElementById('geFormMes').value;
+  var gasto = parsearMontoImp(document.getElementById('geFormGasto').value) || 0;
+  var recuperado = parsearMontoImp(document.getElementById('geFormRecuperado').value) || 0;
+  // Carga manual: el detalle/desglose OSDE-Diferidos no aplica, todo va a
+  // "recuperadoDif" (columna Recuperado suma igual los dos campos).
+  gastoEquipoGuardarMes(periodo, { gasto: gasto, gastoDetalle: [], recuperadoOsde: 0, recuperadoDif: recuperado });
+  gastoEquipoCerrarForm();
+  var el = document.getElementById('gastoEquipoBody');
+  if (el) el.innerHTML = gastoEquipoSectionHtml();
+}
+
 // Los cheques Colón se depositan ~2 meses después del mes facturado (CEOT.xlsx).
 // Sugiere automáticamente ese mes en el selector propio de Cheques Colón cada vez
 // que cambia "Mes a importar" — evita escribir con fechas de depósito reales
@@ -331,6 +456,11 @@ function billingDesdeRegistros(registros) {
   var osdeBill = {}, difBill = {};
   SOCIOS_IMP.forEach(function(k){ osdeBill[k] = 0; difBill[k] = 0; });
   var gasEqAjenoOsde = 0, gasEqAjenoDif = 0;
+  // GAS.EQUIPO que ya viene tageado a uno de los 3 (no se redistribuye, se
+  // suma normal a su facturación) — se separa acá SOLO para el reporte de
+  // Gasto vs. Recuperado por equipos (ver gastoEquipoSectionHtml), no cambia
+  // en nada el cálculo de osdeBill/difBill de abajo.
+  var gasEqPropioOsde = 0, gasEqPropioDif = 0;
   var ceotAyudantiaOsde = 0, ceotAyudantiaDif = 0, ceotAyudantiaDetalle = [];
   var ceotAyudantiaSinEspDetalle = [];
 
@@ -383,11 +513,16 @@ function billingDesdeRegistros(registros) {
       }
     }
 
-    var esGasEquipoAjeno = obs.replace(/\s+/g, '').indexOf('GAS.EQUIPO') !== -1 && GASEQ_SOCIOS_CEOT.indexOf(key) === -1;
+    var esGasEquipo = obs.replace(/\s+/g, '').indexOf('GAS.EQUIPO') !== -1;
+    var esGasEquipoAjeno = esGasEquipo && GASEQ_SOCIOS_CEOT.indexOf(key) === -1;
     if (esGasEquipoAjeno) {
       if (inst === 'OSDE') gasEqAjenoOsde += imp * sgn;
       else                 gasEqAjenoDif  += imp * sgn;
       return;
+    }
+    if (esGasEquipo) {
+      if (inst === 'OSDE') gasEqPropioOsde += imp * sgn;
+      else                 gasEqPropioDif  += imp * sgn;
     }
     if (inst === 'OSDE') osdeBill[key] += imp * sgn;
     else                 difBill[key]  += imp * sgn;
@@ -399,6 +534,7 @@ function billingDesdeRegistros(registros) {
     });
   }
   return { osdeBill: osdeBill, difBill: difBill, gasEqAjenoOsde: gasEqAjenoOsde, gasEqAjenoDif: gasEqAjenoDif,
+           gasEqPropioOsde: gasEqPropioOsde, gasEqPropioDif: gasEqPropioDif,
            ceotAyudantiaOsde: ceotAyudantiaOsde, ceotAyudantiaDif: ceotAyudantiaDif, ceotAyudantiaDetalle: ceotAyudantiaDetalle,
            ceotAyudantiaSinEspDetalle: ceotAyudantiaSinEspDetalle };
 }
@@ -1075,6 +1211,11 @@ function calcularDistribucionFinal() {
   // sus cheques Colón del mes. Reemplaza el "Equipo laparoscopia" que antes
   // estaba hardcodeado a 3 socios fijos en el código.
   var gastosExtraFootnote = '';
+  // Detalle de los gastos asignados exactamente al grupo Storz (Deganutti/
+  // Trivellini/Corelich) — para el historial de Gasto de Equipos (ver abajo,
+  // después de "Render resultado"). Cualquier gasto futuro que se agregue a
+  // ese mismo trío (no solo "Storz" por nombre) entra acá automáticamente.
+  var gastosExtraDetalleEquipo = [];
   if (impColonCheques.length > 0) {
     GASTOS_EXTRA_DEFAULT.forEach(function(g) {
       var inputEl = document.getElementById('impGastoExtra_' + g.id);
@@ -1090,7 +1231,26 @@ function calcularDistribucionFinal() {
       gastosExtraFootnote += '<div style="font-size:.65rem;color:#92610f;padding:2px 0 6px 8px">⚑ ' + escAttr(g.concepto) + ' ' +
         fmtImp(importe) + ' ÷ ' + g.socios.length + ' socio(s) (' + g.socios.join('/') + ') = ' + fmtImp(perSocio) +
         ' c/u, repartido en ' + impColonCheques.length + ' cheque(s) (' + fmtImp(perCheque) + ' c/u).</div>';
+      if (transfFamMismoGrupo(g.socios, GASEQ_SOCIOS_CEOT)) {
+        gastosExtraDetalleEquipo.push({ concepto: g.concepto, importe: importe });
+      }
     });
+  }
+
+  // Gasto de Equipos (Storz) — guarda el historial del mes (ver
+  // gastoEquipoGuardarMes, arriba en este archivo). Se completa solo acá,
+  // cada vez que se corre el import; se puede corregir a mano después desde
+  // el acordeón "Gasto de Equipos" si hace falta.
+  var mesGastoEquipo = document.getElementById('impMes').value;
+  if (mesGastoEquipo) {
+    gastoEquipoGuardarMes(mesGastoEquipo, {
+      gasto: gastosExtraDetalleEquipo.reduce(function(s, g) { return s + g.importe; }, 0),
+      gastoDetalle: gastosExtraDetalleEquipo,
+      recuperadoOsde: gasEqAjenoOsde + bill.gasEqPropioOsde,
+      recuperadoDif: gasEqAjenoDif + bill.gasEqPropioDif
+    });
+    var gastoEquipoEl = document.getElementById('gastoEquipoBody');
+    if (gastoEquipoEl) gastoEquipoEl.innerHTML = gastoEquipoSectionHtml();
   }
 
   // Render resultado
