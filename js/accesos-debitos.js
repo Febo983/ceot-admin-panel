@@ -431,6 +431,7 @@ function renderDebitos(mes) {
 
   var html = '<div class="deb-toolbar" style="flex-wrap:wrap;gap:6px">'
     + '<select class="deb-mes-sel" id="debMesSel" onchange="debSelMes(this.value)">' + opsMesGuard + opsMes + '</select>'
+    + '<button class="deb-btn" onclick="actionFeedback(this); debAbrirNormas()">📋 Normas NUN (% recargo)</button>'
     + (modoImport && debMesActual.indexOf('__g__') !== 0
         ? '<input id="debPeriodoKey" type="text" placeholder="ej: julio-2026" value="' + debSugerirPeriodo() + '"'
           + ' style="font-size:0.76rem;padding:4px 8px;border-radius:6px;border:1px solid rgba(32,36,31,.15);background:rgba(32,36,31,.05);color:#20241f;width:110px">'
@@ -633,6 +634,80 @@ function debSetEstado(sel) {
 
 function imprimirDebitos() {
   window.print();
+}
+
+/* ── NORMAS NUN — referencia rápida de % de recargo ──────────────
+   Resumen visual de Normas Primarias y Secundarias (NUN_NORMAS en
+   nun-data.js) para chequear a ojo, mientras se revisa cada débito,
+   si el recargo que reclama la obra social corresponde o no. */
+
+var DEB_NORMAS_PRIMARIAS = [
+  { sit: "Doble vía (patología no especificada), mismo tiempo quirúrgico", rec: "+50%" },
+  { sit: "Doble vía, en actos quirúrgicos diferentes", rec: "100% en c/u" },
+  { sit: "Segunda patología no relacionada, misma vía y mismo acto", rec: "+50% (2ª patología)" },
+  { sit: "Reintervención (recidiva o complicación)", rec: "+30%" },
+  { sit: "Injerto óseo autólogo", rec: "+25%" },
+  { sit: "Injerto óseo de Banco de Tejidos", rec: "+15%" },
+  { sit: "Sustituto óseo", rec: "+5%" },
+];
+var DEB_NORMAS_SECUNDARIAS = [
+  { sit: "Edades extremas (hasta 10 años o mayores de 65 años)", rec: "+20%" },
+  { sit: "Horario nocturno (21 a 7 hs), fin de semana o feriado", rec: "+20%" },
+  { sit: "Cirugía de emergencia", rec: "+20%" },
+  { sit: "Uso de radioscopía", rec: "+5%" },
+  { sit: "Por cada ayudante (sobre el valor del cirujano)", rec: "+20%" },
+];
+
+function debNormasTablaHtml(titulo, filas) {
+  return '<div style="margin-top:14px">'
+    + '<div style="background:#1f3a2e;color:#fff;font-size:0.78rem;font-weight:700;padding:7px 11px;border-radius:6px 6px 0 0">' + titulo + '</div>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:0.76rem">'
+    +   '<thead><tr>'
+    +     '<th style="text-align:left;padding:7px 11px;background:rgba(32,36,31,.06);color:#20241f;border-bottom:1px solid rgba(32,36,31,.12)">Situación</th>'
+    +     '<th style="text-align:right;padding:7px 11px;background:rgba(32,36,31,.06);color:#20241f;border-bottom:1px solid rgba(32,36,31,.12);white-space:nowrap">Recargo</th>'
+    +   '</tr></thead><tbody>'
+    +   filas.map(function(f) {
+          return '<tr>'
+            + '<td style="padding:6px 11px;color:#20241f;border-bottom:1px solid rgba(32,36,31,.08)">' + debEsc(f.sit) + '</td>'
+            + '<td style="padding:6px 11px;color:#1f3a2e;font-weight:700;text-align:right;border-bottom:1px solid rgba(32,36,31,.08);white-space:nowrap">' + debEsc(f.rec) + '</td>'
+            + '</tr>';
+        }).join('')
+    + '</tbody></table></div>';
+}
+
+function debNormasInject() {
+  if (document.getElementById("debNormasBg")) return;
+  var bg = document.createElement("div");
+  bg.id = "debNormasBg";
+  bg.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:var(--z-modal-top,4000);align-items:flex-start;justify-content:center;padding:18px 10px;overflow-y:auto";
+  bg.onclick = function(e){ if (e.target === bg) debCerrarNormas(); };
+  bg.innerHTML =
+      '<div style="background:#fdf8f0;border-radius:12px;width:100%;max-width:640px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.3)">'
+    +   '<div style="background:#1f3a2e;padding:13px 16px;display:flex;align-items:center;justify-content:space-between">'
+    +     '<div><div style="color:#fff;font-size:0.9rem;font-weight:700">📋 Normas NUN — % de recargo</div>'
+    +     '<div style="color:rgba(255,255,255,.45);font-size:0.66rem;margin-top:2px">Nomenclador Único Nacional (NUN) — ' + debEsc(NUN_EDICION || '6ª edición') + '</div></div>'
+    +     '<button onclick="debCerrarNormas()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:4px 11px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:0.8rem">✕</button>'
+    +   '</div>'
+    +   '<div style="padding:14px 16px;max-height:78vh;overflow-y:auto">'
+    +     debNormasTablaHtml("NORMAS PRIMARIAS", DEB_NORMAS_PRIMARIAS)
+    +     '<div style="font-size:0.66rem;color:#6b5f4d;padding:5px 2px">Nota: las intervenciones múltiples o simultáneas por diferentes patologías se facturan al 100% cada una, por separado (sin recargo adicional).</div>'
+    +     debNormasTablaHtml("NORMAS SECUNDARIAS", DEB_NORMAS_SECUNDARIAS)
+    +     '<div style="font-size:0.66rem;color:#6b5f4d;padding:5px 2px">Nota: el recargo de Cirugía de Emergencia no se acumula con el de Edades Extremas ni con el de Horario Nocturno/Fin de Semana/Feriado — se aplica solo uno de los tres.</div>'
+    +     '<div style="font-size:0.66rem;color:#6b5f4d;padding:0 2px 5px 2px">Nota: la Complejidad 1 no lleva ayudante. Complejidades 2 a 4 llevan 1 ayudante; de la Complejidad 5 en adelante, 2 ayudantes.</div>'
+    +     '<div style="font-size:0.6rem;color:#9a8c78;margin-top:10px;border-top:1px solid rgba(32,36,31,.1);padding-top:8px">Referencia rápida para chequear a ojo si un recargo debitado corresponde. El 🩺 Auditor de débitos usa el texto completo de las normas (NUN_NORMAS) para el análisis con IA.</div>'
+    +   '</div>'
+    + '</div>';
+  document.body.appendChild(bg);
+}
+
+function debAbrirNormas() {
+  debNormasInject();
+  document.getElementById("debNormasBg").style.display = "flex";
+}
+
+function debCerrarNormas() {
+  var bg = document.getElementById("debNormasBg");
+  if (bg) bg.style.display = "none";
 }
 
 /* ── AUDITOR DE DÉBITOS (NUN) ──────────────────────────────────
@@ -857,7 +932,8 @@ function debAuditorLeerForm() {
     edadPaciente: g("debAudEdad"),
     motivoAuditor: g("debAudMotivo"),
     diagnostico: g("debAudDx"),
-    parteQuirurgico: g("debAudParte")
+    parteQuirurgico: g("debAudParte"),
+    normasNUN: window.NUN_NORMAS || ""
   };
 }
 
