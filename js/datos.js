@@ -594,9 +594,33 @@ const SYNC_ENDPOINT      = "https://script.google.com/macros/s/AKfycbxSG-1vkb6u2
 // "xCargar()" que ya sabe parsear ese localStorage a la variable global).
 // Si el pedido falla (offline, etc.) queda todo como estaba — el panel sigue
 // funcionando 100% desde localStorage, esto es una mejora, no una dependencia.
+//
+// Desde el 25/09/2026 el script de sync exige token (ENFORZAR): leer pide
+// sesión válida y escribir pide sesión de admin. Por eso:
+//  - syncPull sin sesión (p.ej. actionDoneCargar al abrir la página, antes del
+//    login) no sale: queda en cola y la manda syncTrasLogin().
+//  - syncPush solo sale con sesión de admin (a un profesional el servidor se
+//    la rechaza igual).
+//  - Si el servidor rechaza (token vencido a las 12 hs) o el pedido no llega
+//    (red, o dato tan grande que la URL supera el límite de Google), el admin
+//    ve el aviso fijo de abajo en vez de perder el guardado sin enterarse.
 var _syncCbSeq = 0;
+var _syncPullPendientes = [];
+function syncMarcarEstado(clave, ok, error) {
+  var k = 'sync_' + clave;
+  ENDPOINT_LABELS[k] = error === 'unauthorized'
+    ? 'guardado compartido (la sesión venció: volvé a entrar)'
+    : 'guardado compartido de "' + clave + '"';
+  marcarEndpointStatus(k, ok, error);
+}
+function syncTrasLogin() {
+  var pendientes = _syncPullPendientes;
+  _syncPullPendientes = [];
+  pendientes.forEach(function(p) { syncPull(p[0], p[1]); });
+}
 function syncPush(clave) {
   try {
+    if (!AUTH_TOKEN || AUTH_ROLE !== 'admin') return;
     var valor = localStorage.getItem(clave);
     if (valor === null) return;
     var cbName = '_syncPushCb' + (_syncCbSeq++);
@@ -608,10 +632,17 @@ function syncPush(clave) {
       var s = document.getElementById(cbName);
       if (s) s.remove();
     };
-    window[cbName] = limpiar;
+    window[cbName] = function(resp) {
+      limpiar();
+      var error = resp && resp.error;
+      syncMarcarEstado(clave, !error, error);
+    };
     var script = document.createElement('script');
     script.id = cbName;
-    script.onerror = limpiar;
+    script.onerror = function() {
+      limpiar();
+      syncMarcarEstado(clave, false, 'no llegó al servidor');
+    };
     script.src = SYNC_ENDPOINT + '?accion=set&clave=' + encodeURIComponent(clave) +
       '&valor=' + encodeURIComponent(valor) + '&token=' + encodeURIComponent(AUTH_TOKEN || '') + '&callback=' + cbName;
     document.head.appendChild(script);
@@ -619,6 +650,7 @@ function syncPush(clave) {
 }
 function syncPull(clave, onDone) {
   try {
+    if (!AUTH_TOKEN) { _syncPullPendientes.push([clave, onDone]); return; }
     var cbName = '_syncPullCb' + (_syncCbSeq++);
     var limpiar = function() {
       clearTimeout(timeout);
@@ -629,6 +661,7 @@ function syncPull(clave, onDone) {
     var timeout = setTimeout(limpiar, 20000);
     window[cbName] = function(resp) {
       limpiar();
+      if (resp && resp.error) { syncMarcarEstado(clave, false, resp.error); return; }
       try {
         if (resp && resp.valor_json != null && resp.valor_json !== localStorage.getItem(clave)) {
           localStorage.setItem(clave, resp.valor_json);
@@ -745,6 +778,9 @@ async function cargarLiquidacionRemota() {
   // el falso aviso de "no se pudo actualizar" cuando el login termina
   // mientras un pedido previo (sin token) todavía está en camino.
   var tokenUsado = AUTH_TOKEN;
+  // Esta función corre en el Promise.all del login, recién puesto el token:
+  // es el momento de mandar los syncPull que quedaron en cola antes del login.
+  if (AUTH_TOKEN) syncTrasLogin();
   try {
     var resp = await fetch(authURL(LIQUIDACION_ENDPOINT));
     var data = await resp.json();
