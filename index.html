@@ -2194,22 +2194,22 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/portal-render.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/admin-home.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/gastos-obra.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/presentacion.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/sueldo-b.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/nun-data.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/accesos-debitos.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/estadisticas.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/gastos-casa.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/faq-asistente.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/asistente.js?v=2026-09-25-inversiones-en-retencion"></script>
-<script src="js/correos.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/datos.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/portal-render.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/admin-home.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/gastos-obra.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/presentacion.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/sueldo-b.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/nun-data.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/accesos-debitos.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/estadisticas.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/gastos-casa.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/faq-asistente.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/asistente.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/correos.js?v=2026-09-25-retiros-fondo"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -6324,12 +6324,25 @@ function fondoCeotAyudantiaSectionHtml() {
 // depende del backend de liquidaciones.
 var INV_STORAGE_KEY = "ceot_inversiones";
 var INV_TIPOS_KEY = "ceot_inversion_tipos";
+// Retiros del fondo — Marcelo va a ir usando el capital acumulado (ej. para
+// pagar Ganancias de la sociedad) y necesita que el "Total a devolver" de
+// cada profesional baje por lo que ya se usó, con motivo y fecha, sin perder
+// el registro de cuánto se retiró y por qué. Mismo storage local (sin sync)
+// que INV_STORAGE_KEY, por consistencia con el resto del módulo Inversiones.
+// Pedido de Marcelo, 25/09/2026.
+var INV_RETIRO_KEY = "ceot_inversion_retiros";
 
 function invCargar() {
   try { return JSON.parse(localStorage.getItem(INV_STORAGE_KEY) || "[]"); } catch (e) { return []; }
 }
 function invGuardarTodas(arr) {
   try { localStorage.setItem(INV_STORAGE_KEY, JSON.stringify(arr)); } catch (e) {}
+}
+function invRetirosCargar() {
+  try { return JSON.parse(localStorage.getItem(INV_RETIRO_KEY) || "[]"); } catch (e) { return []; }
+}
+function invRetirosGuardarTodos(arr) {
+  try { localStorage.setItem(INV_RETIRO_KEY, JSON.stringify(arr)); } catch (e) {}
 }
 function invTiposCargar() {
   try {
@@ -6517,15 +6530,26 @@ function invAcumuladoProfesionalData() {
   var acum = {};
   todas.forEach(function(r) {
     r.aportes.forEach(function(a) {
-      if (!acum[a.apellido]) acum[a.apellido] = { retencion: 0, interes: 0 };
+      if (!acum[a.apellido]) acum[a.apellido] = { retencion: 0, interes: 0, retirado: 0 };
       acum[a.apellido].retencion += a.retencion;
       acum[a.apellido].interes += a.interes;
     });
   });
+  // Retiros — bajan el saldo disponible de cada uno, pero NO tocan retencion/
+  // interes (así "Total a devolver" sigue mostrando lo bruto generado, y
+  // "Saldo disponible" es lo que realmente le queda hoy).
+  invRetirosCargar().forEach(function(r) {
+    Object.keys(r.porProfesional || {}).forEach(function(ap) {
+      if (!acum[ap]) acum[ap] = { retencion: 0, interes: 0, retirado: 0 };
+      acum[ap].retirado += r.porProfesional[ap] || 0;
+    });
+  });
   var apellidos = Object.keys(acum).sort();
-  var totRet = 0, totInt = 0;
-  apellidos.forEach(function(ap) { totRet += acum[ap].retencion; totInt += acum[ap].interes; });
-  return { apellidos: apellidos, acum: acum, totRet: totRet, totInt: totInt };
+  var totRet = 0, totInt = 0, totRetiro = 0;
+  apellidos.forEach(function(ap) {
+    totRet += acum[ap].retencion; totInt += acum[ap].interes; totRetiro += acum[ap].retirado;
+  });
+  return { apellidos: apellidos, acum: acum, totRet: totRet, totInt: totInt, totRetiro: totRetiro };
 }
 
 function invAcumuladoProfesionalHtml() {
@@ -6537,23 +6561,117 @@ function invAcumuladoProfesionalHtml() {
 
   var filas = d.apellidos.map(function(ap) {
     var x = d.acum[ap];
-    return '<tr><td>' + ap + '</td><td>' + fmt(x.retencion) + '</td><td style="color:#1f3a2e;font-weight:600">' + fmt(x.interes) + '</td><td style="font-weight:700">' + fmt(x.retencion + x.interes) + '</td></tr>';
+    var total = x.retencion + x.interes;
+    var saldo = total - x.retirado;
+    return '<tr><td>' + ap + '</td><td>' + fmt(x.retencion) + '</td><td style="color:#1f3a2e;font-weight:600">' + fmt(x.interes) + '</td>'
+      + '<td>' + fmt(total) + '</td>'
+      + '<td style="color:' + (x.retirado > 0 ? '#b13a2c' : 'rgba(32,36,31,.35)') + '">' + (x.retirado > 0 ? '− ' + fmt(x.retirado) : '—') + '</td>'
+      + '<td style="font-weight:700;' + (saldo < 0 ? 'color:#b13a2c' : '') + '">' + fmt(saldo) + '</td></tr>';
   }).join('');
-  var filaTotal = '<tr class="adm-totals"><td>TOTAL</td><td>' + fmt(d.totRet) + '</td><td>' + fmt(d.totInt) + '</td><td>' + fmt(d.totRet + d.totInt) + '</td></tr>';
+  var totSaldo = (d.totRet + d.totInt) - d.totRetiro;
+  var filaTotal = '<tr class="adm-totals"><td>TOTAL</td><td>' + fmt(d.totRet) + '</td><td>' + fmt(d.totInt) + '</td><td>' + fmt(d.totRet + d.totInt) + '</td>'
+    + '<td style="color:' + (d.totRetiro > 0 ? '#b13a2c' : 'inherit') + '">' + (d.totRetiro > 0 ? '− ' + fmt(d.totRetiro) : '—') + '</td>'
+    + '<td style="' + (totSaldo < 0 ? 'color:#b13a2c' : '') + '">' + fmt(totSaldo) + '</td></tr>';
 
   window._invAcumTexto = d.apellidos.map(function(ap) {
     var x = d.acum[ap];
-    return ap + '\t' + numParaPegar(x.retencion) + '\t' + numParaPegar(x.interes) + '\t' + numParaPegar(x.retencion + x.interes);
+    var total = x.retencion + x.interes;
+    return ap + '\t' + numParaPegar(x.retencion) + '\t' + numParaPegar(x.interes) + '\t' + numParaPegar(total) + '\t' + numParaPegar(x.retirado) + '\t' + numParaPegar(total - x.retirado);
   }).join('\n');
 
   var botones = '<div class="cpsm-btn-row" style="margin:8px 0 4px">'
-    +   '<button class="cpsm-calc-btn" title="Copiar apellido + retención + interés + total" onclick="copiarTexto(window._invAcumTexto || \'\', this)">📋 Copiar tabla</button>'
+    +   '<button class="cpsm-calc-btn" title="Copiar apellido + retención + interés + total + retirado + saldo" onclick="copiarTexto(window._invAcumTexto || \'\', this)">📋 Copiar tabla</button>'
     +   '<button class="cpsm-calc-btn" onclick="descargarPDFInversionesAcumulado()">⬇ Descargar PDF (comprobante)</button>'
     + '</div>';
 
   return botones + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-    +   '<th>Profesional</th><th>Retención invertida (acum.)</th><th>Interés ganado (acum.)</th><th>Total a devolver</th>'
-    + '</tr></thead><tbody>' + filas + filaTotal + '</tbody></table></div>';
+    +   '<th>Profesional</th><th>Retención invertida (acum.)</th><th>Interés ganado (acum.)</th><th>Total a devolver</th><th>Retirado</th><th>Saldo disponible</th>'
+    + '</tr></thead><tbody>' + filas + filaTotal + '</tbody></table></div>'
+    + invRetiroFormHtml() + invRetiroListaHtml();
+}
+
+// ── Retiros del fondo (uso del capital) ──────────────────────────────
+// Pedido de Marcelo, 25/09/2026: "ese capital lo voy a ir usando" (ej. pagar
+// Ganancias de la sociedad) — necesita anotar el motivo y que el saldo de
+// cada profesional baje solo, sin perder de vista cuánto se generó en total.
+// Un registro de retiro puede repartirse entre varios profesionales a la vez
+// (ej. un pago de Ganancias que sale de varios socios), cada uno con su
+// propio monto — no tiene que ser proporcional ni parejo.
+function invRetiroFormHtml() {
+  var d = invAcumuladoProfesionalData();
+  if (!d.apellidos.length) return '';
+  var hoy = new Date().toISOString().slice(0, 10);
+  var filas = d.apellidos.map(function(ap) {
+    var x = d.acum[ap];
+    var saldo = (x.retencion + x.interes) - x.retirado;
+    return '<div style="display:flex;align-items:center;gap:8px">'
+      +   '<span style="flex:1;font-size:.78rem">' + ap + ' <span style="color:rgba(32,36,31,.4);font-size:.68rem">(saldo ' + fmt(saldo) + ')</span></span>'
+      +   '<input type="text" inputmode="decimal" class="inv-retiro-monto" data-apellido="' + ap + '" placeholder="0" style="width:120px;padding:5px 7px;border:1px solid rgba(32,36,31,.2);border-radius:5px;text-align:right;font-family:inherit;font-size:.8rem">'
+      + '</div>';
+  }).join('');
+
+  return '<div class="adm-sec-title" style="margin-top:18px">Registrar uso del fondo (retiro)</div>'
+    + '<div style="font-size:.65rem;color:rgba(32,36,31,.4);padding:0 2px 8px 2px">Para cuando usás parte del capital acumulado (ej. pago de Ganancias de la sociedad) — descuenta del saldo disponible de quien elijas, sin tocar lo aportado/generado de la tabla de arriba. Dejá en 0 (o vacío) a quien no le corresponda.</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-bottom:10px">'
+    +   '<div><label style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Fecha</label>'
+    +     '<input type="date" id="inv-retiro-fecha" value="' + hoy + '" style="width:100%;padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem">'
+    +   '</div>'
+    +   '<div><label style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Motivo</label>'
+    +     '<input type="text" id="inv-retiro-motivo" placeholder="ej. Pago Ganancias sociedad" style="width:100%;padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem">'
+    +   '</div>'
+    + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">' + filas + '</div>'
+    + '<div class="cpsm-btn-row">'
+    +   '<button class="cpsm-calc-btn" onclick="invRetiroRegistrar()">Registrar retiro</button>'
+    + '</div>'
+    + '<div id="inv-retiro-status" style="margin-top:8px;font-size:0.8rem;color:rgba(32,36,31,.55)"></div>';
+}
+
+function invRetiroRegistrar() {
+  var st = document.getElementById('inv-retiro-status');
+  var fecha = (document.getElementById('inv-retiro-fecha') || {}).value || new Date().toISOString().slice(0, 10);
+  var motivo = ((document.getElementById('inv-retiro-motivo') || {}).value || '').trim();
+  if (!motivo) { if (st) st.textContent = '⚠ Poné un motivo (ej. "Pago Ganancias sociedad").'; return; }
+
+  var porProfesional = {};
+  var total = 0;
+  document.querySelectorAll('.inv-retiro-monto').forEach(function(inp) {
+    var m = parsearMontoImp(inp.value);
+    if (m > 0) { porProfesional[inp.getAttribute('data-apellido')] = m; total += m; }
+  });
+  if (!total) { if (st) st.textContent = '⚠ Cargá el monto a retirar de al menos un profesional.'; return; }
+
+  var registro = { id: 'ret_' + Date.now(), fecha: fecha, motivo: motivo, porProfesional: porProfesional, creado: new Date().toISOString() };
+  var todos = invRetirosCargar();
+  todos.push(registro);
+  invRetirosGuardarTodos(todos);
+
+  renderSueldoDirector();
+  toast('✓ Retiro registrado — ' + fmt(total) + ' (' + motivo + ')');
+}
+
+function invRetiroEliminar(id) {
+  if (!confirm('¿Eliminar este retiro? El saldo de los profesionales involucrados vuelve a subir.')) return;
+  var todos = invRetirosCargar().filter(function(r) { return r.id !== id; });
+  invRetirosGuardarTodos(todos);
+  renderSueldoDirector();
+}
+
+function invRetiroListaHtml() {
+  var todos = invRetirosCargar().slice().sort(function(a, b) { return new Date(b.fecha) - new Date(a.fecha); });
+  if (!todos.length) return '';
+  var filas = todos.map(function(r) {
+    var total = Object.keys(r.porProfesional || {}).reduce(function(s, ap) { return s + r.porProfesional[ap]; }, 0);
+    var detalle = Object.keys(r.porProfesional || {}).map(function(ap) { return ap + ' ' + fmt(r.porProfesional[ap]); }).join(' · ');
+    return '<tr><td>' + r.fecha + '</td><td>' + escAttr(r.motivo) + '</td>'
+      + '<td style="font-size:.68rem;color:rgba(32,36,31,.55)">' + escAttr(detalle) + '</td>'
+      + '<td style="font-weight:700;color:#b13a2c">− ' + fmt(total) + '</td>'
+      + '<td><a href="javascript:void(0)" onclick="invRetiroEliminar(\'' + r.id + '\')" style="font-size:.68rem;color:#b13a2c;text-decoration:underline">eliminar</a></td></tr>';
+  }).join('');
+  return '<div class="adm-sec-title" style="margin-top:18px">Retiros registrados</div>'
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+    +   '<th>Fecha</th><th>Motivo</th><th>Detalle por profesional</th><th>Monto</th><th></th>'
+    + '</tr></thead><tbody>' + filas + '</tbody></table></div>';
 }
 
 // PDF "comprobante" del acumulado por profesional (capital + interés de TODAS
@@ -6585,41 +6703,54 @@ function descargarPDFInversionesAcumulado() {
   doc.setFont("helvetica", "normal"); doc.setFontSize(9);
   doc.text("Fondo Retención Ganancias · emitido: " + todayStr, W / 2, 37, { align: "center" });
 
-  var colProf = LM, colRet = LM + 75, colInt = LM + 115, colTot = RM;
+  var colProf = LM, colRet = LM + 48, colInt = LM + 78, colTot = LM + 108, colRetiro = LM + 138, colSaldo = RM;
   var y = 52;
   doc.setTextColor(0, 0, 0);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
   doc.text("Profesional", colProf, y);
-  doc.text("Retención invertida", colRet, y, { align: "right" });
-  doc.text("Interés ganado", colInt, y, { align: "right" });
-  doc.text("Total a devolver", colTot, y, { align: "right" });
+  doc.text("Retención", colRet, y, { align: "right" });
+  doc.text("Interés", colInt, y, { align: "right" });
+  doc.text("Total", colTot, y, { align: "right" });
+  doc.text("Retirado", colRetiro, y, { align: "right" });
+  doc.text("Saldo", colSaldo, y, { align: "right" });
   doc.setDrawColor(31, 58, 46);
   doc.line(LM, y + 2.5, RM, y + 2.5);
   y += 9;
 
-  doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8);
   d.apellidos.forEach(function(ap) {
     if (y > 270) { doc.addPage(); y = 25; }
     var x = d.acum[ap];
-    doc.setFont("helvetica", "normal");
+    var total = x.retencion + x.interes;
+    var saldo = total - x.retirado;
+    doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
     doc.text(ap, colProf, y);
     doc.text(fmtPDF(x.retencion), colRet, y, { align: "right" });
     doc.setTextColor(31, 58, 46);
     doc.text(fmtPDF(x.interes), colInt, y, { align: "right" });
     doc.setTextColor(0, 0, 0);
+    doc.text(fmtPDF(total), colTot, y, { align: "right" });
+    doc.setTextColor(177, 58, 44);
+    doc.text(x.retirado > 0 ? "-" + fmtPDF(x.retirado) : "—", colRetiro, y, { align: "right" });
+    doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "bold");
-    doc.text(fmtPDF(x.retencion + x.interes), colTot, y, { align: "right" });
+    doc.text(fmtPDF(saldo), colSaldo, y, { align: "right" });
     y += 7;
   });
 
   doc.setDrawColor(31, 58, 46); doc.line(LM, y, RM, y); y += 7;
-  doc.setFont("helvetica", "bold"); doc.setFontSize(9.5);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+  doc.setTextColor(0, 0, 0);
   doc.text("TOTAL", colProf, y);
   doc.text(fmtPDF(d.totRet), colRet, y, { align: "right" });
   doc.setTextColor(31, 58, 46);
   doc.text(fmtPDF(d.totInt), colInt, y, { align: "right" });
   doc.setTextColor(0, 0, 0);
   doc.text(fmtPDF(d.totRet + d.totInt), colTot, y, { align: "right" });
+  doc.setTextColor(177, 58, 44);
+  doc.text(d.totRetiro > 0 ? "-" + fmtPDF(d.totRetiro) : "—", colRetiro, y, { align: "right" });
+  doc.setTextColor(0, 0, 0);
+  doc.text(fmtPDF((d.totRet + d.totInt) - d.totRetiro), colSaldo, y, { align: "right" });
 
   doc.save("Inversiones_Acumulado_" + today.toISOString().slice(0, 10) + ".pdf");
 }
@@ -7266,7 +7397,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-25-inversiones-en-retencion';
+  var CURRENT_BUILD = '2026-09-25-retiros-fondo';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
