@@ -476,6 +476,9 @@ function renderGastosCasa() {
   // —— agenda de proveedores (Proveedor · Alias/CBU, sin método) ——
   var agenda = gcAgendaProveedoresHtml();
 
+  // —— pegar gastos pendientes → Sheet (directo, no pasa por el libro de acá) ——
+  var pegarSheet = gcPasteSheetHtml();
+
   // —— alta de movimiento ——
   var rubroOpts = GC_RUBROS.map(function (r) { return '<option value="' + gcEsc(r) + '">' + gcEsc(r) + '</option>'; }).join("");
   var socioOpts = '<option value="">— socio —</option>' + ap.filas.map(function (s) { return '<option value="' + s.k + '">' + gcEsc(s.n) + '</option>'; }).join("");
@@ -539,7 +542,7 @@ function renderGastosCasa() {
       '<div class="adm-sec-title" style="margin:0">🏠 Gastos Casa — 14 de Julio 2067</div>' +
     '</div>' +
     '<div style="font-size:.68rem;color:rgba(32,36,31,.45);margin:2px 0 14px">Libro de la obra importado del Sheet. Desde acá se edita y se cargan los movimientos nuevos — el Sheet queda como respaldo.</div>' +
-    kpis + graf + tablaAportes + agenda + alta + libro +
+    kpis + graf + tablaAportes + agenda + pegarSheet + alta + libro +
     '</div>';
 
   gcPintarCharts(c, ap);
@@ -632,6 +635,136 @@ function gcPintarCharts(c, ap) {
       }
     });
   }
+}
+
+// ── pegar gastos pendientes (homebanking) → Sheet directo ────────────
+// Pedido de Marcelo, 24/09/2026: pegar la tabla de "Transferencias
+// pendientes de firma" (Fecha / Destinatario / Importe / Estado) copiada
+// del homebanking y que se cargue sola en la pestaña "Gastos CASA 14 de
+// julio 2067" del Sheet — mismo lugar/formato en que se cargaron a mano
+// los primeros 5 gastos ese día. Va DIRECTO al Sheet (endpoint nuevo
+// action=import&tipo=gastoscasa en clasp-liquidacion/Code.js, inserta las
+// filas arriba de "SALDO HOY"); no toca el libro de movimientos de este
+// panel, que es una fuente separada (ver comentario arriba del archivo).
+var _gcPasteFilas = [];
+
+function gcPasteSheetHtml() {
+  return '<div class="adm-sec-title" style="margin-top:20px">📋 Pegar gastos pendientes → Sheet</div>' +
+    '<div style="font-size:.68rem;color:rgba(32,36,31,.45);margin-bottom:6px">Pegá acá la tabla de transferencias pendientes copiada del homebanking ' +
+    '(Fecha, Destinatario, Importe, y opcionalmente Estado) — se agrega directo a la pestaña "Gastos CASA 14 de julio 2067" del Sheet, arriba de "SALDO HOY". ' +
+    'No es lo mismo que el libro de abajo (ese es aparte, de este panel).</div>' +
+    '<textarea id="gcPasteBox" rows="4" placeholder="Pegá acá la tabla (Fecha, Destinatario, Importe, Estado)…" style="width:100%;font-family:inherit;font-size:.74rem;padding:8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;resize:vertical"></textarea>' +
+    '<div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+      '<button class="cpsm-calc-btn" onclick="gcPastePreview()">Previsualizar</button>' +
+      '<span id="gcPasteMsg" style="font-size:.72rem"></span>' +
+    '</div>' +
+    '<div id="gcPastePreviewWrap"></div>';
+}
+
+// Convierte "24-09-2026" o "24/09/2026" (con año de 2 o 4 dígitos) a "DD/MM/AAAA".
+function gcPasteParseFecha(s) {
+  var m = String(s || '').trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (!m) return '';
+  var dd = ('0' + m[1]).slice(-2), mm = ('0' + m[2]).slice(-2);
+  var yyyy = m[3].length === 2 ? '20' + m[3] : m[3];
+  return dd + '/' + mm + '/' + yyyy;
+}
+
+// "$ 4.826.040,00" / "4826040" / "2.844.874,85" -> 4826040 (number).
+function gcPasteParseImporte(s) {
+  var t = String(s || '').replace(/[^\d.,]/g, '');
+  if (!t) return null;
+  if (t.indexOf(',') !== -1) {
+    t = t.replace(/\./g, '').replace(',', '.');
+  } else {
+    var partes = t.split('.');
+    if (partes.length > 1 && partes[partes.length - 1].length === 3) t = partes.join('');
+  }
+  var n = parseFloat(t);
+  return isNaN(n) ? null : n;
+}
+
+// Une lo que quede de una fila pegada (aparte de fecha/importe/estado) en el
+// concepto — tolera que la tabla traiga columnas de íconos (+/🗑) sueltas,
+// que se descartan por ser demasiado cortas para ser un nombre real.
+function gcPasteParseLinea(linea) {
+  var crudos = linea.split('\t').map(function (p) { return p.trim(); });
+  if (crudos.length < 2) crudos = linea.split(/\s{2,}/).map(function (p) { return p.trim(); });
+  var campos = crudos.filter(function (p) { return p !== ''; });
+  if (!campos.length) return null;
+
+  var fecha = '', importe = null, pendiente = false, resto = [];
+  campos.forEach(function (c) {
+    if (!fecha && gcPasteParseFecha(c)) { fecha = gcPasteParseFecha(c); return; }
+    if (/pendiente/i.test(c)) { pendiente = true; return; }
+    if (c.length <= 2) return; // ícono suelto (+, 🗑, ✓, etc.)
+    if (importe === null && /\d/.test(c) && /^[\$\s]*[\d.,]+[\$\s]*$/.test(c)) {
+      importe = gcPasteParseImporte(c);
+      return;
+    }
+    resto.push(c);
+  });
+  if (!fecha || importe === null || !resto.length) return null;
+  return { fecha: fecha, concepto: resto.join(' ') + (pendiente ? ' (pendiente de firma)' : ''), importe: importe };
+}
+
+function gcPastePreview() {
+  var raw = (document.getElementById('gcPasteBox').value || '').trim();
+  var msgEl = document.getElementById('gcPasteMsg');
+  var wrap = document.getElementById('gcPastePreviewWrap');
+  if (!raw) { msgEl.textContent = 'Pegá algo primero.'; msgEl.style.color = '#b13a2c'; wrap.innerHTML = ''; return; }
+
+  var lineas = raw.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l !== ''; });
+  var filas = [], descartadas = 0;
+  lineas.forEach(function (l) {
+    var f = gcPasteParseLinea(l);
+    if (f) filas.push(f); else descartadas++;
+  });
+  _gcPasteFilas = filas;
+
+  if (!filas.length) {
+    msgEl.textContent = 'No pude reconocer ninguna fila (esperaba fecha, destinatario e importe por línea).';
+    msgEl.style.color = '#b13a2c';
+    wrap.innerHTML = '';
+    return;
+  }
+
+  var total = filas.reduce(function (s, f) { return s + f.importe; }, 0);
+  msgEl.textContent = descartadas ? ('⚠ ' + descartadas + ' línea(s) no reconocida(s), se ignoraron.') : '';
+  msgEl.style.color = '#92610f';
+  wrap.innerHTML = '<div class="adm-table-wrap" style="margin-top:8px"><table class="adm-table"><thead><tr>' +
+    '<th style="text-align:left">Fecha</th><th style="text-align:left">Concepto</th><th style="text-align:right">Importe</th>' +
+    '</tr></thead><tbody>' +
+    filas.map(function (f) {
+      return '<tr><td>' + gcEsc(f.fecha) + '</td><td>' + gcEsc(f.concepto) + '</td><td style="text-align:right">' + gcFmt(f.importe) + '</td></tr>';
+    }).join('') +
+    '<tr style="background:rgba(32,36,31,.04);border-top:2px solid rgba(32,36,31,.15)"><td style="font-weight:800">TOTAL</td><td></td>' +
+    '<td style="text-align:right;font-weight:800">' + gcFmt(total) + '</td></tr>' +
+    '</tbody></table></div>' +
+    '<button class="cpsm-calc-btn" style="margin-top:8px;background:#1f3a2e" onclick="gcPasteConfirmar()">✓ Cargar ' + filas.length + ' fila(s) en el Sheet</button>';
+}
+
+function gcPasteConfirmar() {
+  if (!_gcPasteFilas.length) return;
+  var msgEl = document.getElementById('gcPasteMsg');
+  msgEl.textContent = 'Cargando en el Sheet…';
+  msgEl.style.color = '#92610f';
+  var url = LIQUIDACION_ENDPOINT + '?action=import&tipo=gastoscasa&filas=' + encodeURIComponent(JSON.stringify(_gcPasteFilas));
+  fetch(authURL(url)).then(function (r) { return r.json(); }).then(function (data) {
+    if (data.ok) {
+      msgEl.textContent = '✓ ' + data.escritos + ' fila(s) cargada(s) en el Sheet, arriba de "SALDO HOY".';
+      msgEl.style.color = '#16a34a';
+      document.getElementById('gcPasteBox').value = '';
+      document.getElementById('gcPastePreviewWrap').innerHTML = '';
+      _gcPasteFilas = [];
+    } else {
+      msgEl.textContent = '✗ ' + (data.error || 'Error desconocido');
+      msgEl.style.color = '#b13a2c';
+    }
+  }).catch(function (err) {
+    msgEl.textContent = '✗ ' + err.message;
+    msgEl.style.color = '#b13a2c';
+  });
 }
 
 // ── mutaciones: libro de movimientos ────────────────────────────────

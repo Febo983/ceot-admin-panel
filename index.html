@@ -2194,22 +2194,22 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/portal-render.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/admin-home.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/gastos-obra.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/presentacion.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/sueldo-b.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/nun-data.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/accesos-debitos.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/estadisticas.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/gastos-casa.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/faq-asistente.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/asistente.js?v=2026-09-24-gasto-equipos"></script>
-<script src="js/correos.js?v=2026-09-24-gasto-equipos"></script>
+<script src="js/datos.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/portal-render.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/admin-home.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/gastos-obra.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/presentacion.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/sueldo-b.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/nun-data.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/accesos-debitos.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/estadisticas.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/gastos-casa.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/faq-asistente.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/asistente.js?v=2026-09-25-inversiones-en-retencion"></script>
+<script src="js/correos.js?v=2026-09-25-inversiones-en-retencion"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3687,6 +3687,9 @@ async function renderAporteCeot() {
     + '</div>'
     + '<div id="aporte-ceot-status" style="margin-top:10px;font-size:0.8rem;color:rgba(32,36,31,.55)"></div>'
     + regHtml
+    + '<div class="adm-sec-title" style="margin-top:24px">Ganancias por inversión — detalle por profesional</div>'
+    + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:0 2px 10px 2px">Mismo detalle que "Inversiones" (pantalla Transferencias del Mes) — cuánta Retención Ganancias metió cada uno en plazos fijos, el interés que le fue generando y el total a devolver, sumando todas las inversiones registradas a la fecha. Para cargar una inversión nueva seguí yendo a esa pantalla; acá es solo para ver todo junto.</div>'
+    + invAcumuladoProfesionalHtml()
     + incidenciaFondoHtml()
     + linksHtml
     + '</div>';
@@ -7263,7 +7266,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-24-gasto-equipos';
+  var CURRENT_BUILD = '2026-09-25-inversiones-en-retencion';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
