@@ -618,11 +618,39 @@ function syncTrasLogin() {
   _syncPullPendientes = [];
   pendientes.forEach(function(p) { syncPull(p[0], p[1]); });
 }
+// syncPush manda por POST (el valor va en el cuerpo, sin límite de largo de
+// URL: Gastos Casa ya pesa más de lo que entra en un GET). Si el POST no se
+// puede usar —el script todavía no tiene doPost, o la respuesta no se puede
+// leer— vuelve al GET/JSONP de siempre, así el panel funciona antes y después
+// de publicar la versión del script con doPost.
+// Un guardado por clave a la vez: si llega otro mientras uno está en camino,
+// al terminar se manda el último valor de localStorage (evita que una
+// respuesta lenta deje en el servidor un valor más viejo que el actual).
+var _syncEnVuelo = {};
 function syncPush(clave) {
+  if (!AUTH_TOKEN || AUTH_ROLE !== 'admin') return;
+  if (_syncEnVuelo[clave]) { _syncEnVuelo[clave] = 'repetir'; return; }
+  var valor = localStorage.getItem(clave);
+  if (valor === null) return;
+  _syncEnVuelo[clave] = true;
+  var terminar = function(ok, error) {
+    syncMarcarEstado(clave, ok, error);
+    var repetir = _syncEnVuelo[clave] === 'repetir';
+    delete _syncEnVuelo[clave];
+    if (repetir) syncPush(clave);
+  };
+  fetch(SYNC_ENDPOINT, {
+    method: 'POST',
+    // Sin headers a propósito: text/plain no dispara preflight CORS, que
+    // Apps Script no contesta.
+    body: JSON.stringify({ accion: 'set', clave: clave, valor: valor, token: AUTH_TOKEN })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) { var error = resp && resp.error; terminar(!error, error); })
+    .catch(function() { syncPushJsonp_(clave, valor, terminar); });
+}
+function syncPushJsonp_(clave, valor, terminar) {
   try {
-    if (!AUTH_TOKEN || AUTH_ROLE !== 'admin') return;
-    var valor = localStorage.getItem(clave);
-    if (valor === null) return;
     var cbName = '_syncPushCb' + (_syncCbSeq++);
     // Apps Script a veces responde 500 y de todos modos entrega el script más
     // tarde (redirect/retry demorado) — dejamos un stub para siempre en vez de
@@ -635,18 +663,18 @@ function syncPush(clave) {
     window[cbName] = function(resp) {
       limpiar();
       var error = resp && resp.error;
-      syncMarcarEstado(clave, !error, error);
+      terminar(!error, error);
     };
     var script = document.createElement('script');
     script.id = cbName;
     script.onerror = function() {
       limpiar();
-      syncMarcarEstado(clave, false, 'no llegó al servidor');
+      terminar(false, 'no llegó al servidor');
     };
     script.src = SYNC_ENDPOINT + '?accion=set&clave=' + encodeURIComponent(clave) +
       '&valor=' + encodeURIComponent(valor) + '&token=' + encodeURIComponent(AUTH_TOKEN || '') + '&callback=' + cbName;
     document.head.appendChild(script);
-  } catch (e) {}
+  } catch (e) { terminar(false, 'no llegó al servidor'); }
 }
 function syncPull(clave, onDone) {
   try {
