@@ -1130,15 +1130,34 @@ body {
 .deb-stat-lbl { font-size:0.65rem; color:rgba(32,36,31,.45); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
 .deb-stat-val { font-size:1rem; font-weight:700; color:#20241f; margin-top:2px; }
 @media print {
+  /* Forzar SIEMPRE la paleta clara al imprimir, sin importar el tema oscuro
+     que esté activo en pantalla. Causa real de "Débitos me queda en blanco
+     al imprimir" (24/09/2026): en modo oscuro, --co-card/--ink/--iv* pasan a
+     ser colores claros (texto casi blanco) mientras .adm-card sigue con su
+     fondo oscuro propio — el navegador imprime texto claro sobre fondo que,
+     según la config de "gráficos de fondo" de cada impresora/PDF, puede no
+     imprimirse (queda blanco) o imprimirse oscuro (texto invisible igual).
+     Pisando las variables acá, cualquier elemento que las use (no solo
+     Débitos) imprime siempre con tinta oscura sobre papel claro. */
+  :root, :root[data-theme="dark"] {
+    --co-bg:#f2ecda !important; --co-card:#fbf8f0 !important; --co-ink:#20241f !important; --co-ink-dim:#6b6a5a !important;
+    --co-line:rgba(32,36,31,.15) !important;
+    --iv0:#f2ecda !important; --iv1:#fbf8f0 !important; --iv2:rgba(32,36,31,0.05) !important; --iv3:rgba(32,36,31,0.14) !important;
+    --ink:#20241f !important; --ink-lt:rgba(32,36,31,0.45) !important;
+  }
+  body, .adm-card, .adm-body, .deb-stat, .deb-mes-sel, .deb-nota-inp { background:#fff !important; color:#20241f !important; }
+  .deb-table th { background:#f0efe8 !important; color:#20241f !important; }
+  .deb-table td { color:rgba(32,36,31,.8) !important; }
+  .deb-neg { color:#b13a2c !important; }
+
   .no-print,
   #adminView .adm-header, #adminView .adm-tabs, #adminView .adm-footer,
   .adm-sidenav, .adm-sidenav-overlay, #admOverlay,
   .deb-toolbar button, .deb-btn { display:none !important; }
-  .deb-nota-inp { border:none; background:transparent; resize:none; }
+  .deb-nota-inp { border:none; resize:none; }
   .adm-layout { display:block !important; }
   .adm-main { margin:0 !important; padding:0 !important; }
   .adm-card { box-shadow:none !important; border:none !important; }
-  body { background:#fff !important; }
   .adm-table { font-size:0.75rem; }
 }
 .adm-kpis { display: flex; gap: 8px; margin-bottom: 14px; }
@@ -2194,22 +2213,22 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/portal-render.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/admin-home.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/gastos-obra.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/presentacion.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/sueldo-b.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/nun-data.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/accesos-debitos.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/estadisticas.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/gastos-casa.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/faq-asistente.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/asistente.js?v=2026-09-25-retiros-fondo"></script>
-<script src="js/correos.js?v=2026-09-25-retiros-fondo"></script>
+<script src="js/datos.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/portal-render.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/admin-home.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/gastos-obra.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/presentacion.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/sueldo-b.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/comprobantes-pdf.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/nun-data.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/accesos-debitos.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/estadisticas-datos.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/estadisticas.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/gastos-casa.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/faq-asistente.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/asistente.js?v=2026-09-25-fix-print-debitos"></script>
+<script src="js/correos.js?v=2026-09-25-fix-print-debitos"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -7397,7 +7416,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-25-retiros-fondo';
+  var CURRENT_BUILD = '2026-09-25-fix-print-debitos';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
