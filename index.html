@@ -1564,6 +1564,11 @@ body { background: var(--iv0); color: var(--ink); }
 .sd-acc[open] > .sd-acc-head { border-bottom:1px solid rgba(32,36,31,.12); }
 .sd-acc-body { padding:12px 14px; }
 .sd-acc-body > .cpsm-header { display:none; }
+.ga-det-acc { margin-top:6px; }
+.ga-det-head { cursor:pointer; list-style:none; font-size:.72rem; font-weight:700; color:rgba(32,36,31,.55); user-select:none; -webkit-user-select:none; display:inline-flex; align-items:center; gap:5px; }
+.ga-det-head::-webkit-details-marker { display:none; }
+.ga-det-head::before { content:"\2630"; font-size:.68rem; color:rgba(32,36,31,.4); }
+.ga-det-body { padding-top:6px; }
 .obra-add { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0 14px; }
 .obra-add select, .obra-add input { padding:6px 8px; border:1px solid rgba(32,36,31,.2); background:#fff; font:inherit; font-size:.8rem; box-sizing:border-box; }
 .obra-add select { min-width:200px; max-width:280px; }
@@ -3726,6 +3731,10 @@ async function renderAporteCeot() {
 // mientras dure la sesion para que un re-render no cierre lo que se abrio.
 // El .cpsm-header interno de cada seccion se oculta por CSS (el titulo va en el <summary>).
 var SD_ACC_OPEN = { sd: true, resto: false, gastosa: false, inv: false, fondoceot: false };
+// Plegado del detalle de cheques por persona (Sueldo Director / Resto de
+// profesionales) — cerrado por default para no tener que scrollear 11
+// tablas completas para ver solo los totales de arriba de cada uno.
+var DETALLE_CHEQUES_OPEN = {};
 function sdAcc(id, titulo, contenido) {
   var abierta = !!SD_ACC_OPEN[id];
   return '<details class="sd-acc" data-acc="' + id + '"' + (abierta ? ' open' : '') + '>'
@@ -6192,10 +6201,15 @@ function sueldoDirectorTabHtml(periodo) {
       +     '<span>Saldo tras sueldo <b style="' + saldoStyle + '">' + fmt(s.saldoFinal) + '</b> <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.saldoFinal) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></span>'
       +   '</div>'
       + '</div>'
-      + transfDerivBoxHtml(periodo, doc, netosPorFecha)
-      + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-      +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
-      + '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
+      + '<details class="ga-det-acc"' + (DETALLE_CHEQUES_OPEN[doc.apellido] ? ' open' : '') + ' ontoggle="DETALLE_CHEQUES_OPEN[\'' + doc.apellido + '\']=this.open">'
+      +   '<summary class="ga-det-head">Detalle de cheques</summary>'
+      +   '<div class="ga-det-body">'
+      +     transfDerivBoxHtml(periodo, doc, netosPorFecha)
+      +     '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+      +       '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
+      +     '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
+      +   '</div>'
+      + '</details>'
       + '</div>';
   }).join("");
 
@@ -6309,10 +6323,15 @@ function restoProfesionalesTabHtml(periodo) {
       +     'Transferencia ya hecha</label>'
       + '</div>'
       + bbvaLineaHtml
-      + transfDerivBoxHtml(periodo, doc, netosPorFecha)
-      + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-      +   '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
-      + '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
+      + '<details class="ga-det-acc"' + (DETALLE_CHEQUES_OPEN[doc.apellido] ? ' open' : '') + ' ontoggle="DETALLE_CHEQUES_OPEN[\'' + doc.apellido + '\']=this.open">'
+      +   '<summary class="ga-det-head">Detalle de cheques</summary>'
+      +   '<div class="ga-det-body">'
+      +     transfDerivBoxHtml(periodo, doc, netosPorFecha)
+      +     '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+      +       '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
+      +     '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
+      +   '</div>'
+      + '</details>'
       + '</div>';
   }).join("");
 
