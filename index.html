@@ -1564,11 +1564,6 @@ body { background: var(--iv0); color: var(--ink); }
 .sd-acc[open] > .sd-acc-head { border-bottom:1px solid rgba(32,36,31,.12); }
 .sd-acc-body { padding:12px 14px; }
 .sd-acc-body > .cpsm-header { display:none; }
-.ga-chips-acc { border:1px solid rgba(32,36,31,.15); border-radius:8px; margin-bottom:12px; background:rgba(32,36,31,.02); }
-.ga-chips-head { cursor:pointer; list-style:none; padding:8px 10px; font-weight:700; font-size:.78rem; color:rgba(32,36,31,.65); display:flex; align-items:center; gap:6px; user-select:none; -webkit-user-select:none; }
-.ga-chips-head::-webkit-details-marker { display:none; }
-.ga-chips-head::before { content:"\2630"; font-size:.72rem; color:rgba(32,36,31,.4); }
-.ga-chips-body { padding:4px 10px 10px; }
 .obra-add { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0 14px; }
 .obra-add select, .obra-add input { padding:6px 8px; border:1px solid rgba(32,36,31,.2); background:#fff; font:inherit; font-size:.8rem; box-sizing:border-box; }
 .obra-add select { min-width:200px; max-width:280px; }
@@ -3731,10 +3726,6 @@ async function renderAporteCeot() {
 // mientras dure la sesion para que un re-render no cierre lo que se abrio.
 // El .cpsm-header interno de cada seccion se oculta por CSS (el titulo va en el <summary>).
 var SD_ACC_OPEN = { sd: true, resto: false, gastosa: false, inv: false, fondoceot: false };
-// Sub-acordeón propio de la fila de chips dentro de Gastos A (cheques/OSDE/CEM) —
-// separado de SD_ACC_OPEN porque no es un hijo directo de #sueldoDirectorScreenRoot
-// (el sweep de arriba no lo alcanza), se maneja con su propio ontoggle inline.
-var GASTOSA_CHIPS_OPEN = false;
 function sdAcc(id, titulo, contenido) {
   var abierta = !!SD_ACC_OPEN[id];
   return '<details class="sd-acc" data-acc="' + id + '"' + (abierta ? ' open' : '') + '>'
@@ -5199,13 +5190,8 @@ function gastosASectionHtml(periodo) {
     +   '<div class="cpsm-subtitle">Elegí los cheques/OSDE que cubren Gastos A de ' + periodo + ', cargá el total y se calcula el neto a transferir a cada uno</div></div>'
     + '</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.4);padding:0 2px 10px 2px">Suma el Neto cheque (ya con overrides de "editar" aplicados) de los cheques que tildes, por profesional (Director + Resto), y le resta la parte de Gastos A que le toca. Se guarda solo en este navegador — no toca el Sheet.</div>'
-    + '<details class="ga-chips-acc"' + (GASTOSA_CHIPS_OPEN ? ' open' : '') + ' ontoggle="GASTOSA_CHIPS_OPEN=this.open">'
-    +   '<summary class="ga-chips-head">Cheques / OSDE / CEM <span style="font-weight:400;color:rgba(32,36,31,.45)">(' + saved.claves.length + ' de ' + claves.length + ' tildados)</span></summary>'
-    +   '<div class="ga-chips-body">'
-    +     '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">' + (chips || '<span style="font-size:.75rem;color:rgba(32,36,31,.4)">Sin cheques con neto cargado para ' + periodo + '.</span>') + '</div>'
-    +     '<div style="font-size:.62rem;color:rgba(32,36,31,.4)">🔜 "Adelantar CEM" trae el mismo importe real que ya cargaste por el importador para el CEM del mes que viene (todavía no acreditado oficialmente) — si lo usás acá, acordate de NO volver a tildar "Acreditación CEM" el mes que viene con esa misma plata.</div>'
-    +   '</div>'
-    + '</details>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">' + (chips || '<span style="font-size:.75rem;color:rgba(32,36,31,.4)">Sin cheques con neto cargado para ' + periodo + '.</span>') + '</div>'
+    + '<div style="font-size:.62rem;color:rgba(32,36,31,.4);padding:0 2px 12px 2px">🔜 "Adelantar CEM" trae el mismo importe real que ya cargaste por el importador para el CEM del mes que viene (todavía no acreditado oficialmente) — si lo usás acá, acordate de NO volver a tildar "Acreditación CEM" el mes que viene con esa misma plata.</div>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px">'
     +   '<div><label style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Gastos A — total</label>'
     +     '<input type="text" id="gastosa-total" value="' + (saved.total || '') + '" placeholder="$ importe total" oninput="gastosARecalcularPreview()" style="width:100%;padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem">'
