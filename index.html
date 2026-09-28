@@ -4907,8 +4907,8 @@ function gastosACalcCargar(periodo) {
   }
   try {
     var all = JSON.parse(localStorage.getItem(GASTOS_A_CALC_KEY) || "{}");
-    return all[periodo] || { claves: [], total: null, divisor: 13 };
-  } catch (e) { return { claves: [], total: null, divisor: 13 }; }
+    return all[periodo] || { claves: [], total: null, divisor: 13, ajustes: [] };
+  } catch (e) { return { claves: [], total: null, divisor: 13, ajustes: [] }; }
 }
 function gastosACalcGuardar(periodo, data) {
   var all;
@@ -5067,6 +5067,17 @@ function gastosARecalcularPreview() {
     });
   });
 
+  // Ajustes manuales — plata que Marcelo quiere usar ANTES de que el sistema
+  // la reconozca como acreditación oficial (ej. CEM de un socio que todavía
+  // no llegó a su fecha normal de acreditación, pero él necesita adelantar
+  // para cubrir Gastos A de este mes). No es un cheque real: se suma aparte,
+  // a mano, mes a mes — no todos los meses hay uno. Se guarda solo en este
+  // navegador (gastosACalcGuardar), igual que el resto de esta calculadora.
+  var ajustes = window._gastosAAjustes || [];
+  ajustes.forEach(function(a) {
+    porProf[a.apellido] = (porProf[a.apellido] || 0) + (a.monto || 0);
+  });
+
   // Sueldo Director pendiente: si ya se alcanzó el monto objetivo este período
   // y todavía NO se tildó "Sueldo ya transferido", se suma acá — si no, ya
   // se resolvió aparte y no corresponde sumarlo de nuevo.
@@ -5094,8 +5105,8 @@ function gastosARecalcularPreview() {
     // cheques tildados (no crea filas nuevas para directores sin ningún
     // cheque seleccionado — eso se resuelve tildando su propio cheque).
     var apellidos = Object.keys(porProf).sort();
-    if (!clavesSel.length) {
-      wrap.innerHTML = '<span style="font-size:.75rem;color:rgba(32,36,31,.4)">Elegí arriba qué cheques sumar.</span>';
+    if (!clavesSel.length && !ajustes.length) {
+      wrap.innerHTML = '<span style="font-size:.75rem;color:rgba(32,36,31,.4)">Elegí arriba qué cheques sumar (o agregá un ajuste manual).</span>';
     } else {
       var filas = apellidos.map(function(ap) {
         var subtotal = porProf[ap] || 0;
@@ -5122,7 +5133,36 @@ function gastosARecalcularPreview() {
     }
   }
 
-  gastosACalcGuardar(window._gastosAPeriodoActual, { claves: clavesSel, total: total, divisor: divisor });
+  gastosACalcGuardar(window._gastosAPeriodoActual, { claves: clavesSel, total: total, divisor: divisor, ajustes: ajustes });
+}
+
+// ── Ajustes manuales de Gastos A (adelantos no oficiales) ───────────
+function gastosAAjusteAgregar() {
+  var selEl = document.getElementById("gastosa-ajuste-prof");
+  var montoEl = document.getElementById("gastosa-ajuste-monto");
+  var motivoEl = document.getElementById("gastosa-ajuste-motivo");
+  var apellido = selEl ? selEl.value : "";
+  var montoRaw = montoEl ? montoEl.value.trim() : "";
+  var monto = montoRaw ? parseFloat(montoRaw.replace(/\./g, "").replace(",", ".")) || 0 : 0;
+  if (!apellido || !monto) { alert("Elegí un profesional y cargá un importe."); return; }
+  window._gastosAAjustes = window._gastosAAjustes || [];
+  window._gastosAAjustes.push({ apellido: apellido, monto: monto, motivo: (motivoEl ? motivoEl.value.trim() : "") });
+  if (montoEl) montoEl.value = "";
+  if (motivoEl) motivoEl.value = "";
+  gastosASectionHtmlRepintar();
+}
+function gastosAAjusteQuitar(idx) {
+  if (!window._gastosAAjustes) return;
+  window._gastosAAjustes.splice(idx, 1);
+  gastosASectionHtmlRepintar();
+}
+// Repinta solo la sección de Gastos A (no toda la pantalla) para no perder
+// el estado de los demás acordeones — mismo criterio que fondoCeotAyudBody.
+function gastosASectionHtmlRepintar() {
+  var root = document.getElementById("gastosa-section-root");
+  if (!root) return;
+  root.innerHTML = gastosASectionHtml(window._gastosAPeriodoActual);
+  gastosARecalcularPreview();
 }
 
 function gastosASectionHtml(periodo) {
@@ -5130,6 +5170,7 @@ function gastosASectionHtml(periodo) {
   var porClave = gastosANetoPorFecha(periodo);
   window._gastosAPorFecha = porClave;
   var saved = gastosACalcCargar(periodo);
+  window._gastosAAjustes = (saved.ajustes || []).slice();
 
   var claveFechas = Object.keys(porClave).filter(function(c) { return porClave[c].esFecha; }).sort(function(a, b) {
     var pa = a.split("/"), pb = b.split("/");
@@ -5155,12 +5196,36 @@ function gastosASectionHtml(periodo) {
       + '</label>';
   }).join(' ');
 
-  return '<div class="cpsm-header">'
+  var ajustesActuales = window._gastosAAjustes || [];
+  var ajustesListHtml = ajustesActuales.length
+    ? ajustesActuales.map(function(a, idx) {
+        return '<div style="display:flex;align-items:center;gap:6px;font-size:.75rem;background:rgba(202,138,4,.08);border:1px solid rgba(202,138,4,.25);border-radius:6px;padding:4px 8px;margin-bottom:4px">'
+          + '<span style="flex:1"><b>' + a.apellido + '</b> +' + fmt(a.monto) + (a.motivo ? ' — ' + escAttr(a.motivo) : '') + '</span>'
+          + '<button type="button" title="Quitar" onclick="gastosAAjusteQuitar(' + idx + ')" style="border:none;background:transparent;color:#b13a2c;cursor:pointer;font-size:.85rem">✕</button>'
+          + '</div>';
+      }).join('')
+    : '';
+
+  return '<div id="gastosa-section-root">'
+    + '<div class="cpsm-header">'
     +   '<div><div class="cpsm-title">🧾 Gastos A — cheques + descuento</div>'
     +   '<div class="cpsm-subtitle">Elegí los cheques/OSDE que cubren Gastos A de ' + periodo + ', cargá el total y se calcula el neto a transferir a cada uno</div></div>'
     + '</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.4);padding:0 2px 10px 2px">Suma el Neto cheque (ya con overrides de "editar" aplicados) de los cheques que tildes, por profesional (Director + Resto), y le resta la parte de Gastos A que le toca. Se guarda solo en este navegador — no toca el Sheet.</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">' + (chips || '<span style="font-size:.75rem;color:rgba(32,36,31,.4)">Sin cheques con neto cargado para ' + periodo + '.</span>') + '</div>'
+    + '<div style="background:rgba(32,36,31,.03);border:1px solid rgba(32,36,31,.12);border-radius:8px;padding:10px;margin-bottom:12px">'
+    +   '<div style="font-size:.7rem;font-weight:700;color:rgba(32,36,31,.6);margin-bottom:6px">➕ Ajuste manual (adelanto no oficial — ej. CEM todavía no acreditado)</div>'
+    +   ajustesListHtml
+    +   '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px">'
+    +     '<select id="gastosa-ajuste-prof" style="padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.8rem">'
+    +       (typeof SOCIOS_IMP !== "undefined" ? SOCIOS_IMP : []).map(function(k) { return '<option value="' + k + '">' + k + '</option>'; }).join('')
+    +     '</select>'
+    +     '<input type="text" id="gastosa-ajuste-monto" placeholder="$ importe" style="width:120px;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.8rem">'
+    +     '<input type="text" id="gastosa-ajuste-motivo" placeholder="motivo (opcional, ej. CEM sept adelantado)" style="flex:1;min-width:160px;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.8rem">'
+    +     '<button type="button" class="cpsm-calc-btn" onclick="gastosAAjusteAgregar()" style="padding:6px 12px;font-size:.78rem">Agregar</button>'
+    +   '</div>'
+    +   '<div style="font-size:.62rem;color:rgba(32,36,31,.4);padding-top:5px">No toca el Sheet ni ninguna acreditación oficial — solo suma el importe al subtotal de ese profesional para esta calculadora, para poder usarlo antes de su fecha normal (ej. CEM de septiembre, que oficialmente se acredita en octubre). Se guarda por mes, no se repite solo.</div>'
+    + '</div>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px">'
     +   '<div><label style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Gastos A — total</label>'
     +     '<input type="text" id="gastosa-total" value="' + (saved.total || '') + '" placeholder="$ importe total" oninput="gastosARecalcularPreview()" style="width:100%;padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem">'
@@ -5175,7 +5240,8 @@ function gastosASectionHtml(periodo) {
     +   '<button class="cpsm-calc-btn" style="background:#1f3a2e;color:#fff" onclick="gastosAPublicar(this)">📢 Publicar a profesionales</button>'
     +   '<span id="gastosa-pub-estado">' + gastosAEstadoPublicadoHtml(periodo) + '</span>'
     + '</div>'
-    + '<div style="font-size:.62rem;color:rgba(32,36,31,.4);padding:6px 2px 0 2px">Publicar congela la selección actual y le muestra a cada profesional, en el detalle de su mes, de qué acreditación sale su parte de Gastos A (cascada: OSDE → cheques viejo→nuevo → CEM). No cambia ningún total ni toca el Sheet.</div>';
+    + '<div style="font-size:.62rem;color:rgba(32,36,31,.4);padding:6px 2px 0 2px">Publicar congela la selección actual y le muestra a cada profesional, en el detalle de su mes, de qué acreditación sale su parte de Gastos A (cascada: OSDE → cheques viejo→nuevo → CEM). No cambia ningún total ni toca el Sheet.</div>'
+    + '</div>';
 }
 
 // Selector de período propio de esta pantalla — los tabs Ene..Dic de arriba
