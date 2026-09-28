@@ -2225,7 +2225,7 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
 <script src="js/presentacion.js?v=2026-09-25-1126"></script>
 <script src="js/sueldo-b.js?v=2026-09-25-1126"></script>
 <script src="js/comprobantes-pdf.js?v=2026-09-25-1126"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-25-1126"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-28-1130"></script>
 <script src="js/nun-data.js?v=2026-09-25-1126"></script>
 <script src="js/accesos-debitos.js?v=2026-09-25-1126"></script>
 <script src="js/estadisticas-datos.js?v=2026-09-25-1126"></script>
@@ -6399,7 +6399,9 @@ function fondoCeotAyudantiaSectionHtml() {
     return '<div style="font-size:.75rem;color:rgba(32,36,31,.5);font-style:italic">Todavía no se detectó ninguna ayudantía cruzada al importar una liquidación (ni casos sin ESP/AY1 identificable).</div>';
   }
   var granTotal = ceotAyudCruzadaTotal();
-  var filas = periodos.map(function(p) {
+  // Mismo lenguaje visual que el resto de la pantalla: una tarjeta crema por
+  // período en vez de una fila de tabla.
+  var tarjetas = periodos.map(function(p) {
     var e = CEOT_AYUD_CRUZADA[p] || {};
     var tot = (e.osde||0) + (e.dif||0);
     var detalle = (e.detalle||[]).map(function(d) {
@@ -6408,15 +6410,21 @@ function fondoCeotAyudantiaSectionHtml() {
     var sinEsp = (e.sinEsp && e.sinEsp.length)
       ? '<div style="color:#9a3412;margin-top:4px">⚠ ' + e.sinEsp.length + ' caso(s) sin ESP/AY1 identificable ese período (se pagaron normal, revisar a mano)</div>'
       : '';
-    return '<tr><td style="text-transform:capitalize">' + p.replace('-', ' ') + '</td>' +
-      '<td class="ipt-num">' + fmt(e.osde||0) + '</td>' +
-      '<td class="ipt-num">' + fmt(e.dif||0) + '</td>' +
-      '<td class="ipt-num" style="font-weight:800">' + fmt(tot) + '</td>' +
-      '<td style="font-size:.65rem;color:rgba(32,36,31,.6);text-align:left">' + (detalle || '—') + sinEsp + '</td></tr>';
+    return '<div style="margin-bottom:10px;background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:11px 12px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">'
+      +   '<div style="display:flex;align-items:center;gap:8px">'
+      +     '<span style="width:26px;height:26px;border-radius:7px;background:rgba(31,58,46,.13);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">🏛</span>'
+      +     '<b style="text-transform:capitalize">' + p.replace('-', ' ') + '</b>'
+      +   '</div>'
+      +   '<span style="font-weight:800">' + fmt(tot) + '</span>'
+      + '</div>'
+      + '<div style="font-size:.68rem;color:rgba(32,36,31,.5);margin-bottom:4px">OSDE ' + fmt(e.osde||0) + ' · Diferidos ' + fmt(e.dif||0) + '</div>'
+      + '<div style="font-size:.65rem;color:rgba(32,36,31,.6)">' + (detalle || '—') + sinEsp + '</div>'
+      + '</div>';
   }).join('');
   return '<div style="font-size:.7rem;color:rgba(32,36,31,.55);margin-bottom:10px">Cada vez que se importa una liquidación (CEOT.xlsx/.txt) y se detecta un AY2 de Bruni/De la Colina/Garmendia/Perlasco cuyo ESP o AY1 es del equipo contrario, ese importe queda registrado acá en vez de pagarse al AY2. Se actualiza solo, no hace falta cargar nada a mano.</div>'
     + '<div style="font-weight:800;font-size:1.1rem;margin-bottom:10px">Acumulado total: ' + fmt(granTotal) + '</div>'
-    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Período</th><th>OSDE</th><th>Diferidos</th><th>Total</th><th>Detalle</th></tr></thead><tbody>' + filas + '</tbody></table></div>';
+    + tarjetas;
 }
 
 // ── Inversiones del fondo Retención Ganancias ───────────────────────
@@ -6893,16 +6901,22 @@ function invListaHtml() {
   var tarjetas = todas.map(function(r) {
     var vto = new Date(r.fechaVencimiento + "T00:00:00");
     var vigente = vto >= hoy;
-    var colorBorde = vigente ? "#c9933a" : "#3f6b4a";
+    // Mismo lenguaje visual que el resto de la pantalla: tarjeta crema neutra
+    // + icono chico de color (ámbar = vigente/en curso, verde = ya venció y
+    // cerró) en vez de teñir todo el borde.
+    var iconBg = vigente ? 'rgba(201,147,58,.16)' : 'rgba(63,107,74,.16)';
     var estadoTxt = vigente ? "Vigente · vence " + vto.toLocaleDateString("es-AR") : "Vencido el " + vto.toLocaleDateString("es-AR");
 
     var filasAportes = r.aportes.map(function(a) {
       return '<tr><td>' + a.apellido + '</td><td>' + fmt(a.retencion) + '</td><td>' + (a.proporcion * 100).toFixed(1) + '%</td><td style="font-weight:600">' + fmt(a.interes) + '</td></tr>';
     }).join('');
 
-    return '<div style="margin-bottom:14px;border:1.5px solid ' + colorBorde + ';background:rgba(32,36,31,.03);border-radius:8px;padding:10px 12px">'
+    return '<div style="margin-bottom:10px;background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:11px 12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">'
-      +   '<div><b>' + escAttr(r.tipo) + '</b> · ' + escAttr(r.periodo.charAt(0).toUpperCase() + r.periodo.slice(1)) + ' · cheques ' + r.chequesOrigen.join(", ") + (r.notas ? ' · ' + escAttr(r.notas) : '') + '</div>'
+      +   '<div style="display:flex;align-items:center;gap:8px">'
+      +     '<span style="width:26px;height:26px;border-radius:7px;background:' + iconBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">📈</span>'
+      +     '<div><b>' + escAttr(r.tipo) + '</b> · ' + escAttr(r.periodo.charAt(0).toUpperCase() + r.periodo.slice(1)) + ' · cheques ' + r.chequesOrigen.join(", ") + (r.notas ? ' · ' + escAttr(r.notas) : '') + '</div>'
+      +   '</div>'
       +   '<div style="display:flex;gap:10px;align-items:center;font-size:.8rem">'
       +     '<span>' + estadoTxt + '</span>'
       +     '<button type="button" onclick="invEliminar(\'' + r.id + '\')" style="background:none;border:none;color:#b13a2c;cursor:pointer;font-size:.9rem" title="Eliminar">✕</button>'

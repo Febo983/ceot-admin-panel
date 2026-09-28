@@ -201,43 +201,48 @@ function gastoEquipoSectionHtml() {
   var periodos = Object.keys(GASTO_EQUIPO_HIST).sort(function(a, b) {
     return MESES_IMP_ORD.indexOf(a) - MESES_IMP_ORD.indexOf(b);
   });
-  var filas = '', totGasto = 0, totRecup = 0;
+  var tarjetasMes = '', totGasto = 0, totRecup = 0;
   periodos.forEach(function(p) {
     var e = GASTO_EQUIPO_HIST[p];
     var recup = (e.recuperadoOsde || 0) + (e.recuperadoDif || 0);
     var dif = recup - (e.gasto || 0);
     totGasto += (e.gasto || 0); totRecup += recup;
     var pEsc = p.replace(/'/g, "\\'");
-    filas += '<tr>'
-      + '<td style="text-transform:capitalize">' + p + '</td>'
-      + '<td class="ipt-num">' + fmtImp(e.gasto || 0) + '</td>'
-      + '<td class="ipt-num">' + fmtImp(recup) + '</td>'
-      + '<td class="ipt-num" style="font-weight:700;' + (dif < 0 ? 'color:#b13a2c' : 'color:#16a34a') + '">' + fmtImp(dif) + '</td>'
-      + '<td><a href="javascript:void(0)" onclick="gastoEquipoAbrirForm(\'' + pEsc + '\')" style="font-size:.68rem;color:#1f3a2e;text-decoration:underline">editar</a></td>'
-      + '</tr>';
+    var neg = dif < 0;
+    // Mismo lenguaje visual que el resto de Transferencias del Mes: tarjeta
+    // crema + icono chico de color en vez de fila de tabla.
+    tarjetasMes += '<div style="margin-bottom:8px;background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:10px 11px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
+      + '<div style="display:flex;align-items:center;gap:8px">'
+      +   '<span style="width:26px;height:26px;border-radius:7px;background:' + (neg ? 'rgba(177,58,44,.13)' : 'rgba(22,163,74,.13)') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">🔧</span>'
+      +   '<b style="text-transform:capitalize;font-size:.82rem">' + p + '</b>'
+      + '</div>'
+      + '<div style="font-size:.68rem;color:rgba(32,36,31,.5)">Gasto ' + fmtImp(e.gasto || 0) + ' · Recuperado ' + fmtImp(recup) + '</div>'
+      + '<div style="display:flex;align-items:center;gap:8px">'
+      +   '<span style="font-weight:700;' + (neg ? 'color:#b13a2c' : 'color:#16a34a') + '">' + fmtImp(dif) + '</span>'
+      +   '<a href="javascript:void(0)" onclick="gastoEquipoAbrirForm(\'' + pEsc + '\')" style="font-size:.68rem;color:#1f3a2e;text-decoration:underline">editar</a>'
+      + '</div>'
+      + '</div>';
   });
   var difTotal = totRecup - totGasto;
 
   // Acumulado — pedido de Marcelo, 24/09/2026: quería el total acumulado
   // adelante, como número principal, no solo perdido al pie de la tabla
-  // mes a mes (que queda como detalle/auditoría abajo).
+  // mes a mes (que queda como detalle/auditoría abajo). Mismo icono chico
+  // que el resto de las tarjetas de la pantalla, arriba del número.
   var acumHtml = '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">'
-    + '<div style="flex:1;min-width:120px;padding:8px 10px;background:rgba(32,36,31,.05);border-radius:8px">'
-    +   '<div style="font-size:.62rem;color:rgba(32,36,31,.5);text-transform:uppercase;letter-spacing:.03em">Gasto acumulado</div>'
+    + '<div style="flex:1;min-width:120px;padding:10px 11px;background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px">'
+    +   '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="width:20px;height:20px;border-radius:6px;background:rgba(32,36,31,.08);display:flex;align-items:center;justify-content:center;font-size:.7rem">🔧</span><span style="font-size:.62rem;color:rgba(32,36,31,.5);text-transform:uppercase;letter-spacing:.03em">Gasto acumulado</span></div>'
     +   '<div style="font-size:1.05rem;font-weight:800">' + fmtImp(totGasto) + '</div></div>'
-    + '<div style="flex:1;min-width:120px;padding:8px 10px;background:rgba(32,36,31,.05);border-radius:8px">'
-    +   '<div style="font-size:.62rem;color:rgba(32,36,31,.5);text-transform:uppercase;letter-spacing:.03em">Recuperado acumulado</div>'
+    + '<div style="flex:1;min-width:120px;padding:10px 11px;background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px">'
+    +   '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="width:20px;height:20px;border-radius:6px;background:rgba(32,36,31,.08);display:flex;align-items:center;justify-content:center;font-size:.7rem">💵</span><span style="font-size:.62rem;color:rgba(32,36,31,.5);text-transform:uppercase;letter-spacing:.03em">Recuperado acumulado</span></div>'
     +   '<div style="font-size:1.05rem;font-weight:800">' + fmtImp(totRecup) + '</div></div>'
-    + '<div style="flex:1;min-width:120px;padding:8px 10px;background:' + (difTotal < 0 ? 'rgba(177,58,44,.1)' : 'rgba(22,163,74,.1)') + ';border-radius:8px">'
-    +   '<div style="font-size:.62rem;color:rgba(32,36,31,.5);text-transform:uppercase;letter-spacing:.03em">Diferencia acumulada</div>'
+    + '<div style="flex:1;min-width:120px;padding:10px 11px;background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px">'
+    +   '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="width:20px;height:20px;border-radius:6px;background:' + (difTotal < 0 ? 'rgba(177,58,44,.13)' : 'rgba(22,163,74,.13)') + ';display:flex;align-items:center;justify-content:center;font-size:.7rem">' + (difTotal < 0 ? '⚠️' : '✅') + '</span><span style="font-size:.62rem;color:rgba(32,36,31,.5);text-transform:uppercase;letter-spacing:.03em">Diferencia acumulada</span></div>'
     +   '<div style="font-size:1.05rem;font-weight:800;' + (difTotal < 0 ? 'color:#b13a2c' : 'color:#16a34a') + '">' + fmtImp(difTotal) + '</div></div>'
     + '</div>';
 
   var tablaHtml = periodos.length
-    ? '<details style="margin-top:2px"><summary style="cursor:pointer;font-size:.68rem;color:rgba(32,36,31,.55);margin-bottom:6px">Ver detalle mes a mes</summary>'
-      + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-      + '<th style="text-align:left">Período</th><th>Gasto</th><th>Recuperado</th><th>Diferencia</th><th></th>'
-      + '</tr></thead><tbody>' + filas + '</tbody></table></div></details>'
+    ? '<details style="margin-top:2px"><summary style="cursor:pointer;font-size:.68rem;color:rgba(32,36,31,.55);margin-bottom:6px">Ver detalle mes a mes</summary>' + tarjetasMes + '</details>'
     : '<div style="font-size:.72rem;color:rgba(32,36,31,.45);font-style:italic;padding:6px 0">Todavía no hay ningún mes registrado — se completa solo al correr el import, o cargalo a mano abajo.</div>';
 
   var mesOpts = MESES_IMP_ORD.map(function(m) {
