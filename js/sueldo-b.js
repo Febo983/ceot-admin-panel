@@ -190,7 +190,7 @@ function sbFmt(n) {
   return "$ " + Math.round(n).toLocaleString("es-AR");
 }
 
-function sbCalcTotal(p, horas, usaMensualidad) {
+function sbCalcTotal(p, horas, usaMensualidad, facturacionMonto) {
   var totalHoras = 0, totalFact = 0, totalMens = 0;
   var tarifa = sbTarifaEfectiva(p);
   if (usaMensualidad && p.mensualidad) {
@@ -198,13 +198,15 @@ function sbCalcTotal(p, horas, usaMensualidad) {
   } else if (tarifa && horas > 0) {
     totalHoras = Math.round(horas * tarifa);
   }
-  if (p.facturacion) totalFact = SB_FACTURACION;
+  if (p.facturacion) {
+    totalFact = (facturacionMonto === undefined || facturacionMonto === null) ? SB_FACTURACION : facturacionMonto;
+  }
   return { totalHoras: totalHoras, totalFact: totalFact, totalMens: totalMens,
            total: totalHoras + totalFact + totalMens };
 }
 
-function sbReciboHTML(p, horas, usaMensualidad, periodo) {
-  var c = sbCalcTotal(p, horas, usaMensualidad);
+function sbReciboHTML(p, horas, usaMensualidad, periodo, facturacionMonto, facturacionMotivo) {
+  var c = sbCalcTotal(p, horas, usaMensualidad, facturacionMonto);
   if (c.total === 0) return "";
   var conceptos = "";
   if (c.totalMens > 0) {
@@ -213,7 +215,8 @@ function sbReciboHTML(p, horas, usaMensualidad, periodo) {
     conceptos += '<tr><td class="center">001</td><td class="center">'+horas+'</td><td>Horas Extras &mdash; '+horas+' hs</td><td class="right">'+sbFmt(c.totalHoras)+'</td></tr>';
   }
   if (c.totalFact > 0) {
-    conceptos += '<tr><td class="center">002</td><td class="center">1</td><td>Facturacion</td><td class="right">'+sbFmt(c.totalFact)+'</td></tr>';
+    var conceptoFact = 'Facturacion' + (facturacionMotivo ? ' &mdash; ' + facturacionMotivo : '');
+    conceptos += '<tr><td class="center">002</td><td class="center">1</td><td>'+conceptoFact+'</td><td class="right">'+sbFmt(c.totalFact)+'</td></tr>';
   }
   var conceptoTotal = (c.totalHoras > 0 && c.totalFact > 0) ? "Hs+Fc"
                     : (c.totalMens > 0 && c.totalFact > 0) ? "Mens+Fc"
@@ -250,10 +253,12 @@ function sbActualizarCard(legajo) {
   if (!p) return;
   var horasEl = document.getElementById("sb-h-"+legajo);
   var mensEl  = document.getElementById("sb-mens-"+legajo);
+  var factEl  = document.getElementById("sb-fact-"+legajo);
   var totalEl = document.getElementById("sb-total-"+legajo);
   var horas = horasEl ? parseFloat(horasEl.value)||0 : 0;
   var usaMens = mensEl ? mensEl.checked : false;
-  var c = sbCalcTotal(p, horas, usaMens);
+  var factMonto = factEl ? parsearMontoImp(factEl.value) : undefined;
+  var c = sbCalcTotal(p, horas, usaMens, factMonto);
   if (totalEl) totalEl.textContent = c.total > 0 ? sbFmt(c.total) : "—";
   if (horasEl) horasEl.disabled = usaMens;
 }
@@ -332,6 +337,13 @@ function renderSueldoB() {
       inputs += '<label class="sb-toggle"><input type="checkbox" id="sb-mens-'+p.legajo+'" '
              + 'onchange="sbActualizarCard(\''+p.legajo+'\')"> Usar mensualidad ('+sbFmt(p.mensualidad)+')</label>';
     }
+    if (p.facturacion) {
+      inputs += '<div class="sb-field" style="margin-bottom:6px"><label>Facturacion $</label>'
+             + '<input type="text" inputmode="decimal" id="sb-fact-'+p.legajo+'" value="'+SB_FACTURACION+'" '
+             + 'oninput="sbActualizarCard(\''+p.legajo+'\')" style="width:120px"></div>'
+             + '<div class="sb-field" style="margin-bottom:6px"><label>Motivo (opcional)</label>'
+             + '<input type="text" id="sb-fact-motivo-'+p.legajo+'" placeholder="ej. medio mes" style="width:200px"></div>';
+    }
 
     cards += '<div class="sb-persona">'
            + '<div class="sb-persona-header">'
@@ -373,9 +385,11 @@ function sbGenerarRecibos() {
   SB_PERSONAL.forEach(function(p) {
     var horasEl = document.getElementById("sb-h-"+p.legajo);
     var mensEl  = document.getElementById("sb-mens-"+p.legajo);
+    var factEl  = document.getElementById("sb-fact-"+p.legajo);
     var horas    = horasEl ? parseFloat(horasEl.value)||0 : 0;
     var usaMens  = mensEl ? mensEl.checked : false;
-    var c = sbCalcTotal(p, horas, usaMens);
+    var factMonto = factEl ? parsearMontoImp(factEl.value) : undefined;
+    var c = sbCalcTotal(p, horas, usaMens, factMonto);
     if (c.total === 0) return;
 
     lista += '<div style="display:flex;justify-content:space-between;align-items:center;'
@@ -385,21 +399,27 @@ function sbGenerarRecibos() {
            + '<span style="font-size:0.78rem;color:rgba(32,36,31,.45);margin-left:8px">Leg.'+p.legajo+'</span></div>'
            + '<div style="display:flex;align-items:center;gap:10px">'
            + '<span style="font-weight:700">'+sbFmt(c.total)+'</span>'
-           + '<button class="sb-print-btn" onclick="actionFeedback(this); sbImprimirUno(\''+p.legajo+'\','+horas+','+usaMens+',\''+periodo+'\')">Imprimir</button>'
+           + '<button class="sb-print-btn" onclick="actionFeedback(this); sbImprimirUno(\''+p.legajo+'\')">Imprimir</button>'
            + '</div></div>';
   });
 
   document.getElementById("sb-lista-recibos").innerHTML = lista || '<div style="color:rgba(32,36,31,.35);padding:12px">Sin importes para imprimir.</div>';
   document.getElementById("sb-resultados").style.display = "block";
 
-  // guardar estado para imprimir todos
+  // guardar estado para imprimir (uno o todos) — el motivo de facturación
+  // viaja acá porque es texto libre y no es seguro meterlo en un atributo
+  // onclick (comillas, acentos, etc.)
   SB_STATE = {};
   SB_PERSONAL.forEach(function(p) {
     var horasEl = document.getElementById("sb-h-"+p.legajo);
     var mensEl  = document.getElementById("sb-mens-"+p.legajo);
+    var factEl  = document.getElementById("sb-fact-"+p.legajo);
+    var motivoEl = document.getElementById("sb-fact-motivo-"+p.legajo);
     SB_STATE[p.legajo] = {
       horas: horasEl ? parseFloat(horasEl.value)||0 : 0,
-      usaMens: mensEl ? mensEl.checked : false
+      usaMens: mensEl ? mensEl.checked : false,
+      facturacion: factEl ? parsearMontoImp(factEl.value) : undefined,
+      facturacionMotivo: motivoEl ? motivoEl.value.trim() : ""
     };
   });
   SB_STATE._periodo = periodo;
@@ -427,10 +447,11 @@ function sbAbrirVentanaImpresion(html) {
   w.document.close();
 }
 
-function sbImprimirUno(legajo, horas, usaMens, periodo) {
+function sbImprimirUno(legajo) {
   var p = SB_PERSONAL.find(function(x){ return x.legajo === legajo; });
-  if (!p) return;
-  var html = sbReciboHTML(p, horas, usaMens, periodo);
+  var st = SB_STATE[legajo];
+  if (!p || !st) return;
+  var html = sbReciboHTML(p, st.horas, st.usaMens, SB_STATE._periodo || "", st.facturacion, st.facturacionMotivo);
   if (!html) return;
   sbAbrirVentanaImpresion(html);
 }
@@ -441,7 +462,7 @@ function sbImprimirTodos() {
   SB_PERSONAL.forEach(function(p) {
     var st = SB_STATE[p.legajo];
     if (!st) return;
-    html += sbReciboHTML(p, st.horas, st.usaMens, periodo);
+    html += sbReciboHTML(p, st.horas, st.usaMens, periodo, st.facturacion, st.facturacionMotivo);
   });
   if (!html) return;
   sbAbrirVentanaImpresion(html);
