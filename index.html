@@ -6163,10 +6163,13 @@ function sueldoDirectorTabHtml(periodo) {
     // Color del bloque + del chip de sueldo: verde = ya podés transferir hoy,
     // ámbar = todavía no llegó la fecha, rojo = no alcanza en todo el mes.
     var estado = !s.alcanza ? 'no-alcanza' : (listoHoy ? 'listo' : 'espera');
+    // Mismos colores/criterio que el tile del resumen de arriba (iconBg de
+    // sueldoDirectorResumenHtml) — icono chico de color en vez de teñir toda
+    // la tarjeta, para que las dos pantallas compartan el mismo lenguaje visual.
     var colores = {
-      'listo':      { borde: '#3f6b4a', fondo: 'rgba(63,107,74,.10)',  chipBg: '#3f6b4a', chipFg: '#fff', txt: '✓ Listo para transferir' },
-      'espera':     { borde: '#c9933a', fondo: 'rgba(201,147,58,.08)', chipBg: 'rgba(201,147,58,.18)', chipFg: '#8a6423', txt: 'Disponible el ' + (s.fechaCompleta || '—') },
-      'no-alcanza': { borde: '#b13a2c', fondo: 'rgba(177,58,44,.07)',  chipBg: 'rgba(177,58,44,.15)', chipFg: '#b13a2c', txt: 'No alcanza este mes' }
+      'listo':      { icono: 'rgba(63,107,74,.16)',  chipBg: '#3f6b4a', chipFg: '#fff', txt: '✓ Listo para transferir' },
+      'espera':     { icono: 'rgba(201,147,58,.16)', chipBg: 'rgba(201,147,58,.18)', chipFg: '#8a6423', txt: 'Disponible el ' + (s.fechaCompleta || '—') },
+      'no-alcanza': { icono: 'rgba(177,58,44,.13)',  chipBg: 'rgba(177,58,44,.15)', chipFg: '#b13a2c', txt: 'No alcanza este mes' }
     }[estado];
 
     var netosPorFecha = {};
@@ -6201,9 +6204,12 @@ function sueldoDirectorTabHtml(periodo) {
     }).join('');
 
     var totalNetoMesStyle = s.totalNetoMes < 0 ? 'color:#b13a2c' : '';
-    return '<div style="margin-bottom:16px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:8px;padding:10px 12px">'
+    return '<div style="margin-bottom:10px;background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:11px 12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
-      +   '<div><b>' + doc.apellido + '</b> — ' + estadoFecha + '</div>'
+      +   '<div style="display:flex;align-items:center;gap:8px">'
+      +     '<span style="width:26px;height:26px;border-radius:7px;background:' + colores.icono + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">🏦</span>'
+      +     '<div><b>' + doc.apellido + '</b> — ' + estadoFecha + '</div>'
+      +   '</div>'
       +   '<div style="display:flex;gap:14px;align-items:center;font-size:.8rem">'
       +     '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + colores.chipFg + ';border-radius:6px;padding:5px 10px;font-weight:700">'
       +       fmt(s.monto) + ' · ' + colores.txt
@@ -6263,9 +6269,11 @@ function restoProfesionalesTabHtml(periodo) {
       return '<div style="padding:8px 0"><b>' + doc.apellido + '</b> — <span class="adm-pend" style="font-size:.68rem">sin datos cargados para ' + periodo + '</span></div>';
     }
     var listo = sueldoDirectorFechaPaso(base.ultimaFecha);
+    // Mismo criterio visual que Sueldo Director: icono chico de color en vez
+    // de teñir toda la tarjeta.
     var colores = listo
-      ? { borde: '#3f6b4a', fondo: 'rgba(63,107,74,.10)',  chipBg: '#3f6b4a', chipFg: '#fff', txt: '✓ Neto final del mes' }
-      : { borde: '#c9933a', fondo: 'rgba(201,147,58,.08)', chipBg: 'rgba(201,147,58,.18)', chipFg: '#8a6423', txt: 'Todavía suma hasta el ' + (base.ultimaFecha || '—') };
+      ? { icono: 'rgba(63,107,74,.16)',  chipBg: '#3f6b4a', chipFg: '#fff', txt: '✓ Neto final del mes' }
+      : { icono: 'rgba(201,147,58,.16)', chipBg: 'rgba(201,147,58,.18)', chipFg: '#8a6423', txt: 'Todavía suma hasta el ' + (base.ultimaFecha || '—') };
     var pendTxt = f.pendiente ? ' <span class="adm-pend" style="font-size:.62rem">falta OSDE/CEM</span>' : '';
 
     // Sueldo BBVA — solo Mazzola y De la Colina: mismo mecanismo que Sueldo
@@ -6328,9 +6336,12 @@ function restoProfesionalesTabHtml(periodo) {
         + '</div>';
     }
 
-    return '<div style="margin-bottom:16px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:8px;padding:10px 12px">'
+    return '<div style="margin-bottom:10px;background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:11px 12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
-      +   '<div><b>' + doc.apellido + '</b>' + pendTxt + '</div>'
+      +   '<div style="display:flex;align-items:center;gap:8px">'
+      +     '<span style="width:26px;height:26px;border-radius:7px;background:' + colores.icono + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">💳</span>'
+      +     '<div><b>' + doc.apellido + '</b>' + pendTxt + '</div>'
+      +   '</div>'
       +   '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + totalNetoMesChipStyle + ';border-radius:6px;padding:5px 10px;font-weight:700;font-size:.8rem">'
       +     fmt(base.totalNetoMes) + ' · ' + colores.txt
       +     '<button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(base.totalNetoMes) + '\', this)" style="border:none;background:rgba(255,255,255,.35);border-radius:4px;cursor:pointer;font-size:.72rem;padding:1px 4px;vertical-align:middle">📋</button>'
