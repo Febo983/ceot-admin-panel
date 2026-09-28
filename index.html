@@ -2225,7 +2225,7 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
 <script src="js/presentacion.js?v=2026-09-25-1126"></script>
 <script src="js/sueldo-b.js?v=2026-09-25-1126"></script>
 <script src="js/comprobantes-pdf.js?v=2026-09-25-1126"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-28-1130"></script>
+<script src="js/importar-liquidacion.js?v=2026-09-25-1126"></script>
 <script src="js/nun-data.js?v=2026-09-25-1126"></script>
 <script src="js/accesos-debitos.js?v=2026-09-25-1126"></script>
 <script src="js/estadisticas-datos.js?v=2026-09-25-1126"></script>
@@ -5136,32 +5136,24 @@ function gastosARecalcularPreview() {
     if (!clavesSel.length) {
       wrap.innerHTML = '<span style="font-size:.75rem;color:rgba(32,36,31,.4)">Elegí arriba qué cheques sumar.</span>';
     } else {
-      // Mismo lenguaje visual que el resumen de Sueldo Director de arriba:
-      // tarjeta crema + icono chico de color (verde = a transferir, rojo =
-      // saldo negativo) en vez de una tabla.
-      var tarjetas = apellidos.map(function(ap) {
+      var filas = apellidos.map(function(ap) {
         var subtotal = porProf[ap] || 0;
         var sd = sueldoPend[ap] || 0;
         var aTransferir = subtotal - share + sd;
-        var neg = aTransferir < 0;
-        var iconBg = neg ? 'rgba(177,58,44,.13)' : 'rgba(63,107,74,.16)';
-        var colorNeg = neg ? 'color:#b13a2c;font-weight:700' : 'font-weight:700';
-        return '<div style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:5px">'
-          + '<div style="display:flex;align-items:center;gap:8px">'
-          +   '<span style="width:26px;height:26px;border-radius:7px;background:' + iconBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">' + (neg ? '⚠️' : '💵') + '</span>'
-          +   '<span style="font-weight:700;font-size:.82rem;color:var(--co-ink,#20241f)">' + ap + '</span>'
-          + '</div>'
-          + '<div style="font-size:.66rem;color:rgba(32,36,31,.5)">Subtotal ' + fmt(subtotal) + ' · Gastos A −' + fmt(share) + (sd ? (' · Sueldo Director ' + fmt(sd)) : '') + '</div>'
-          + '<div style="' + colorNeg + ';font-size:.85rem">A transferir ' + fmt(aTransferir)
-          +   ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(aTransferir) + '\', this)" style="border:none;background:rgba(32,36,31,.08);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle">📋</button>'
-          + '</div>'
-          + '</div>';
+        var colorNeg = aTransferir < 0 ? 'color:#b13a2c;font-weight:700' : 'font-weight:700';
+        return '<tr><td>' + ap + '</td><td>' + fmt(subtotal) + '</td><td>' + fmt(share) + '</td>'
+          + '<td>' + (sd ? fmt(sd) : '—') + '</td>'
+          + '<td style="' + colorNeg + '">' + fmt(aTransferir) + (aTransferir < 0 ? ' ⚠' : '')
+          + ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(aTransferir) + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle">📋</button>'
+          + '</td></tr>';
       }).join('');
       var totSub = apellidos.reduce(function(s, ap) { return s + (porProf[ap] || 0); }, 0);
       var totSd  = apellidos.reduce(function(s, ap) { return s + (sueldoPend[ap] || 0); }, 0);
       var totAT  = apellidos.reduce(function(s, ap) { return s + (porProf[ap] || 0) - share + (sueldoPend[ap] || 0); }, 0);
-      wrap.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:8px">' + tarjetas + '</div>'
-        + '<div style="font-size:.72rem;color:rgba(32,36,31,.6);font-weight:700;border-top:1px solid rgba(32,36,31,.12);padding-top:6px">TOTAL — Subtotal ' + fmt(totSub) + ' · Gastos A −' + fmt(share * apellidos.length) + ' · Sueldo Director ' + fmt(totSd) + ' · A transferir ' + fmt(totAT) + '</div>';
+      var filaTotal = '<tr class="adm-totals"><td>TOTAL</td><td>' + fmt(totSub) + '</td><td>' + fmt(share * apellidos.length) + '</td><td>' + fmt(totSd) + '</td><td>' + fmt(totAT) + '</td></tr>';
+      wrap.innerHTML = '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+        + '<th>Profesional</th><th>Subtotal seleccionado</th><th>Gastos A</th><th>Sueldo Director</th><th>A transferir</th>'
+        + '</tr></thead><tbody>' + filas + filaTotal + '</tbody></table></div>';
 
       window._gastosATexto = apellidos.map(function(ap) {
         return ap + '\t' + numParaPegar((porProf[ap] || 0) - share + (sueldoPend[ap] || 0));
@@ -6108,29 +6100,20 @@ function sueldoDirectorResumenHtml(periodo) {
     return 'Sin datos';
   }
 
-  var iconBg = {
-    'listo':      'rgba(63,107,74,.16)',
-    'espera':     'rgba(201,147,58,.16)',
-    'no-alcanza': 'rgba(177,58,44,.13)',
-    'sindatos':   'rgba(32,36,31,.08)'
-  };
-  var tiles = filas.map(function(f) {
-    var saldoStyle = (f.s && f.s.saldoFinal < 0) ? 'color:#b13a2c;font-weight:700' : 'color:rgba(32,36,31,.55)';
+  var rows = filas.map(function(f) {
+    var saldoStyle = (f.s && f.s.saldoFinal < 0) ? 'color:#b13a2c;font-weight:700' : '';
     var chk = (f.s && f.s.alcanza)
-      ? '<label style="display:inline-flex;align-items:center;gap:4px;font-size:.68rem;color:rgba(32,36,31,.6);cursor:pointer"><input type="checkbox"' + (f.hecho ? ' checked' : '') + ' onchange="sueldoDirectorToggleHecho(\'' + periodo + '\',\'' + f.apellido + '\')">Transferido</label>'
-      : '<span style="font-size:.68rem;color:rgba(32,36,31,.3)">—</span>';
-    return '<div style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:6px' + (f.hecho ? ';opacity:.55' : '') + '">'
-      + '<div style="display:flex;align-items:center;gap:8px">'
-      +   '<span style="width:26px;height:26px;border-radius:7px;background:' + iconBg[f.estado] + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">🏦</span>'
-      +   '<span style="font-weight:700;font-size:.82rem;color:var(--co-ink,#20241f)">' + f.apellido + '</span>'
-      + '</div>'
-      + '<span style="align-self:flex-start;' + chipCss[f.estado] + ';border-radius:5px;padding:3px 8px;font-size:.66rem;font-weight:700;white-space:nowrap">' + chipTxt(f) + '</span>'
-      + '<div style="font-size:.8rem;font-weight:700">' + (f.s ? fmt(f.s.monto) : '—')
-      +   (f.s && f.s.alcanza ? ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(f.s.monto) + '\', this)" style="border:none;background:rgba(32,36,31,.08);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle">📋</button>' : '')
-      + '</div>'
-      + '<div style="font-size:.68rem;' + saldoStyle + '">Saldo tras sueldo: ' + (f.s ? fmt(f.s.saldoFinal) : '—') + '</div>'
-      + chk
-      + '</div>';
+      ? '<input type="checkbox"' + (f.hecho ? ' checked' : '') + ' onchange="sueldoDirectorToggleHecho(\'' + periodo + '\',\'' + f.apellido + '\')">'
+      : '<span style="color:rgba(32,36,31,.3)">—</span>';
+    return '<tr' + (f.hecho ? ' style="opacity:.5"' : '') + '>'
+      + '<td style="font-weight:700">' + f.apellido + '</td>'
+      + '<td><span style="' + chipCss[f.estado] + ';border-radius:5px;padding:3px 8px;font-size:.68rem;font-weight:700;white-space:nowrap">' + chipTxt(f) + '</span></td>'
+      + '<td style="text-align:right">' + (f.s ? fmt(f.s.monto) : '—')
+      +   (f.s && f.s.alcanza ? ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(f.s.monto) + '\', this)" style="border:none;background:rgba(32,36,31,.08);border-radius:4px;cursor:pointer;font-size:.7rem;padding:1px 4px">📋</button>' : '')
+      + '</td>'
+      + '<td style="text-align:right;' + saldoStyle + '">' + (f.s ? fmt(f.s.saldoFinal) : '—') + '</td>'
+      + '<td style="text-align:center">' + chk + '</td>'
+      + '</tr>';
   }).join('');
 
   window._sueldoDirPendTexto = filas.filter(function(f) { return f.estado === 'listo' && !f.hecho; })
@@ -6140,7 +6123,9 @@ function sueldoDirectorResumenHtml(periodo) {
     + '<div style="font-weight:700;font-size:.9rem;margin-bottom:3px">🏦 Resumen sueldos directores — ' + mesTit + '</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.5);margin-bottom:10px">Objetivo ' + fmt(monto) + ' c/u · ' + nListos + '/' + nTotal + ' disponibles · ' + nHechos + '/' + nTotal + ' transferidos</div>'
     + banner
-    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">' + tiles + '</div>'
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+    +   '<th>Director</th><th>Estado</th><th style="text-align:right">Sueldo</th><th style="text-align:right">Saldo tras sueldo</th><th style="text-align:center">Transferido</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
     + (window._sueldoDirPendTexto
         ? '<div class="cpsm-btn-row" style="margin-top:8px"><button class="cpsm-calc-btn" onclick="copiarTexto(window._sueldoDirPendTexto || \'\', this)">📋 Copiar los que faltan transferir (' + nFaltan + ')</button></div>'
         : '')
@@ -6171,13 +6156,10 @@ function sueldoDirectorTabHtml(periodo) {
     // Color del bloque + del chip de sueldo: verde = ya podés transferir hoy,
     // ámbar = todavía no llegó la fecha, rojo = no alcanza en todo el mes.
     var estado = !s.alcanza ? 'no-alcanza' : (listoHoy ? 'listo' : 'espera');
-    // Mismos colores/criterio que el tile del resumen de arriba (iconBg de
-    // sueldoDirectorResumenHtml) — icono chico de color en vez de teñir toda
-    // la tarjeta, para que las dos pantallas compartan el mismo lenguaje visual.
     var colores = {
-      'listo':      { icono: 'rgba(63,107,74,.16)',  chipBg: '#3f6b4a', chipFg: '#fff', txt: '✓ Listo para transferir' },
-      'espera':     { icono: 'rgba(201,147,58,.16)', chipBg: 'rgba(201,147,58,.18)', chipFg: '#8a6423', txt: 'Disponible el ' + (s.fechaCompleta || '—') },
-      'no-alcanza': { icono: 'rgba(177,58,44,.13)',  chipBg: 'rgba(177,58,44,.15)', chipFg: '#b13a2c', txt: 'No alcanza · falta ' + fmt(s.faltante) }
+      'listo':      { borde: '#3f6b4a', fondo: 'rgba(63,107,74,.10)',  chipBg: '#3f6b4a', chipFg: '#fff', txt: '✓ Listo para transferir' },
+      'espera':     { borde: '#c9933a', fondo: 'rgba(201,147,58,.08)', chipBg: 'rgba(201,147,58,.18)', chipFg: '#8a6423', txt: 'Disponible el ' + (s.fechaCompleta || '—') },
+      'no-alcanza': { borde: '#b13a2c', fondo: 'rgba(177,58,44,.07)',  chipBg: 'rgba(177,58,44,.15)', chipFg: '#b13a2c', txt: 'No alcanza este mes' }
     }[estado];
 
     var netosPorFecha = {};
@@ -6212,25 +6194,23 @@ function sueldoDirectorTabHtml(periodo) {
     }).join('');
 
     var totalNetoMesStyle = s.totalNetoMes < 0 ? 'color:#b13a2c' : '';
-    // Tile compacto, mismo formato que el resumen de arriba (icono + nombre,
-    // chip de estado, importe, línea chica de detalle, checkbox) — el
-    // detalle completo de cheques queda plegado adentro del propio tile.
-    return '<div style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:6px">'
-      + '<div style="display:flex;align-items:center;gap:8px">'
-      +   '<span style="width:26px;height:26px;border-radius:7px;background:' + colores.icono + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">🏦</span>'
-      +   '<span style="font-weight:700;font-size:.82rem;color:var(--co-ink,#20241f)">' + doc.apellido + '</span>'
+    return '<div style="margin-bottom:16px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:8px;padding:10px 12px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
+      +   '<div><b>' + doc.apellido + '</b> — ' + estadoFecha + '</div>'
+      +   '<div style="display:flex;gap:14px;align-items:center;font-size:.8rem">'
+      +     '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + colores.chipFg + ';border-radius:6px;padding:5px 10px;font-weight:700">'
+      +       fmt(s.monto) + ' · ' + colores.txt
+      +       '<button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.monto) + '\', this)" style="border:none;background:rgba(255,255,255,.35);border-radius:4px;cursor:pointer;font-size:.72rem;padding:1px 4px;vertical-align:middle">📋</button>'
+      +     '</span>'
+      +     (s.alcanza
+              ? '<label style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;color:rgba(32,36,31,.6);cursor:pointer;white-space:nowrap">'
+                + '<input type="checkbox"' + (sueldoDirectorEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="sueldoDirectorToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">'
+                + 'Sueldo ya transferido</label>'
+              : '')
+      +     '<span>Total neto mes <b style="' + totalNetoMesStyle + '">' + fmt(s.totalNetoMes) + '</b></span>'
+      +     '<span>Saldo tras sueldo <b style="' + saldoStyle + '">' + fmt(s.saldoFinal) + '</b> <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.saldoFinal) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></span>'
+      +   '</div>'
       + '</div>'
-      + '<span style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;background:' + colores.chipBg + ';color:' + colores.chipFg + ';border-radius:5px;padding:3px 8px;font-size:.66rem;font-weight:700">' + colores.txt + '</span>'
-      + '<div style="font-size:.85rem;font-weight:700">' + fmt(s.monto)
-      +   ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.monto) + '\', this)" style="border:none;background:rgba(32,36,31,.08);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle">📋</button>'
-      + '</div>'
-      + '<div style="font-size:.66rem;color:rgba(32,36,31,.5)">Total neto mes <b style="' + totalNetoMesStyle + '">' + fmt(s.totalNetoMes) + '</b></div>'
-      + '<div style="font-size:.66rem;' + saldoStyle + '">Saldo tras sueldo: ' + fmt(s.saldoFinal) + ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.saldoFinal) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.68rem;padding:0 2px;vertical-align:middle">📋</button></div>'
-      + (s.alcanza
-          ? '<label style="display:inline-flex;align-items:center;gap:4px;font-size:.68rem;color:rgba(32,36,31,.6);cursor:pointer">'
-            + '<input type="checkbox"' + (sueldoDirectorEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="sueldoDirectorToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">'
-            + 'Sueldo transferido</label>'
-          : '')
       + '<details class="ga-det-acc"' + (DETALLE_CHEQUES_OPEN[doc.apellido] ? ' open' : '') + ' ontoggle="DETALLE_CHEQUES_OPEN[\'' + doc.apellido + '\']=this.open">'
       +   '<summary class="ga-det-head">Detalle de cheques</summary>'
       +   '<div class="ga-det-body">'
@@ -6252,7 +6232,7 @@ function sueldoDirectorTabHtml(periodo) {
     +   '<div class="cpsm-subtitle">' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' · monto objetivo ' + fmt(monto) + ' · Bruni, Corelich, Deganutti, Labayen y Trivellini</div></div>'
     + '</div>'
     + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:0 2px 10px 2px">⚑ La Retención Ganancias sale de cada cheque a medida que entra (no se puede reservar el bruto para el sueldo). El Préstamo Casa sale del cheque 1, IIBB del cheque 4 y CPSM del cheque 5 — igual que lo maneja el contador. La fila resaltada es donde el acumulado neto llega a ' + fmt(monto) + '.</div>'
-    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-bottom:8px">' + bloques + '</div>'
+    + bloques
     + '<div class="cpsm-btn-row" style="margin-top:6px">'
     +   '<button class="cpsm-calc-btn" onclick="copiarTexto(window._sueldoDirTexto || \'\', this)">📋 Copiar los 5 importes (apellido + monto)</button>'
     + '</div>';
@@ -6276,11 +6256,9 @@ function restoProfesionalesTabHtml(periodo) {
       return '<div style="padding:8px 0"><b>' + doc.apellido + '</b> — <span class="adm-pend" style="font-size:.68rem">sin datos cargados para ' + periodo + '</span></div>';
     }
     var listo = sueldoDirectorFechaPaso(base.ultimaFecha);
-    // Mismo criterio visual que Sueldo Director: icono chico de color en vez
-    // de teñir toda la tarjeta.
     var colores = listo
-      ? { icono: 'rgba(63,107,74,.16)',  chipBg: '#3f6b4a', chipFg: '#fff', txt: '✓ Neto final del mes' }
-      : { icono: 'rgba(201,147,58,.16)', chipBg: 'rgba(201,147,58,.18)', chipFg: '#8a6423', txt: 'Todavía suma hasta el ' + (base.ultimaFecha || '—') };
+      ? { borde: '#3f6b4a', fondo: 'rgba(63,107,74,.10)',  chipBg: '#3f6b4a', chipFg: '#fff', txt: '✓ Neto final del mes' }
+      : { borde: '#c9933a', fondo: 'rgba(201,147,58,.08)', chipBg: 'rgba(201,147,58,.18)', chipFg: '#8a6423', txt: 'Todavía suma hasta el ' + (base.ultimaFecha || '—') };
     var pendTxt = f.pendiente ? ' <span class="adm-pend" style="font-size:.62rem">falta OSDE/CEM</span>' : '';
 
     // Sueldo BBVA — solo Mazzola y De la Colina: mismo mecanismo que Sueldo
@@ -6343,19 +6321,17 @@ function restoProfesionalesTabHtml(periodo) {
         + '</div>';
     }
 
-    // Mismo tile compacto que Sueldo Director.
-    return '<div style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:6px">'
-      + '<div style="display:flex;align-items:center;gap:8px">'
-      +   '<span style="width:26px;height:26px;border-radius:7px;background:' + colores.icono + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">💳</span>'
-      +   '<span style="font-weight:700;font-size:.82rem;color:var(--co-ink,#20241f)">' + doc.apellido + '</span>' + pendTxt
+    return '<div style="margin-bottom:16px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:8px;padding:10px 12px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
+      +   '<div><b>' + doc.apellido + '</b>' + pendTxt + '</div>'
+      +   '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + totalNetoMesChipStyle + ';border-radius:6px;padding:5px 10px;font-weight:700;font-size:.8rem">'
+      +     fmt(base.totalNetoMes) + ' · ' + colores.txt
+      +     '<button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(base.totalNetoMes) + '\', this)" style="border:none;background:rgba(255,255,255,.35);border-radius:4px;cursor:pointer;font-size:.72rem;padding:1px 4px;vertical-align:middle">📋</button>'
+      +   '</span>'
+      +   '<label style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;color:rgba(32,36,31,.6);cursor:pointer;white-space:nowrap">'
+      +     '<input type="checkbox"' + (restoProfEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="restoProfToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">'
+      +     'Transferencia ya hecha</label>'
       + '</div>'
-      + '<span style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;background:' + colores.chipBg + ';color:' + totalNetoMesChipStyle + ';border-radius:5px;padding:3px 8px;font-size:.66rem;font-weight:700">' + colores.txt + '</span>'
-      + '<div style="font-size:.85rem;font-weight:700">' + fmt(base.totalNetoMes)
-      +   ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(base.totalNetoMes) + '\', this)" style="border:none;background:rgba(32,36,31,.08);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle">📋</button>'
-      + '</div>'
-      + '<label style="display:inline-flex;align-items:center;gap:4px;font-size:.68rem;color:rgba(32,36,31,.6);cursor:pointer">'
-      +   '<input type="checkbox"' + (restoProfEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="restoProfToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">'
-      +   'Transferencia hecha</label>'
       + bbvaLineaHtml
       + '<details class="ga-det-acc"' + (DETALLE_CHEQUES_OPEN[doc.apellido] ? ' open' : '') + ' ontoggle="DETALLE_CHEQUES_OPEN[\'' + doc.apellido + '\']=this.open">'
       +   '<summary class="ga-det-head">Detalle de cheques</summary>'
@@ -6378,7 +6354,7 @@ function restoProfesionalesTabHtml(periodo) {
     +   '<div class="cpsm-subtitle">' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' · Garmendia, De la Colina, Soulé, León, Perlasco y Mazzola · transferencia normal del mes</div></div>'
     + '</div>'
     + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:0 2px 10px 2px">⚑ Mismo criterio que Sueldo Director: retención por cheque, préstamo en el 1ro, IIBB en el 4to, CPSM en el 5to. Acá el préstamo es descuento (no crédito). "Neto final del mes" en verde = ya pasó la fecha del último cheque; en ámbar todavía puede sumar más. OSDE/CEM aparte, se ajustan cuando dejen de estar pendientes. De la Colina y Mazzola además tienen sueldo BBVA ' + fmt(SUELDO_BBVA_MONTO) + ' aparte (sale de la misma plata) — el resto es dividendos, marcado abajo de cada uno.</div>'
-    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-bottom:8px">' + bloques + '</div>'
+    + bloques
     + '<div class="cpsm-btn-row" style="margin-top:6px">'
     +   '<button class="cpsm-calc-btn" onclick="copiarTexto(window._restoProfTexto || \'\', this)">📋 Copiar los 6 importes (apellido + monto)</button>'
     + '</div>';
@@ -6397,9 +6373,7 @@ function fondoCeotAyudantiaSectionHtml() {
     return '<div style="font-size:.75rem;color:rgba(32,36,31,.5);font-style:italic">Todavía no se detectó ninguna ayudantía cruzada al importar una liquidación (ni casos sin ESP/AY1 identificable).</div>';
   }
   var granTotal = ceotAyudCruzadaTotal();
-  // Mismo lenguaje visual que el resto de la pantalla: una tarjeta crema por
-  // período en vez de una fila de tabla.
-  var tarjetas = periodos.map(function(p) {
+  var filas = periodos.map(function(p) {
     var e = CEOT_AYUD_CRUZADA[p] || {};
     var tot = (e.osde||0) + (e.dif||0);
     var detalle = (e.detalle||[]).map(function(d) {
@@ -6408,21 +6382,15 @@ function fondoCeotAyudantiaSectionHtml() {
     var sinEsp = (e.sinEsp && e.sinEsp.length)
       ? '<div style="color:#9a3412;margin-top:4px">⚠ ' + e.sinEsp.length + ' caso(s) sin ESP/AY1 identificable ese período (se pagaron normal, revisar a mano)</div>'
       : '';
-    return '<div style="margin-bottom:10px;background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:11px 12px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">'
-      +   '<div style="display:flex;align-items:center;gap:8px">'
-      +     '<span style="width:26px;height:26px;border-radius:7px;background:rgba(31,58,46,.13);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">🏛</span>'
-      +     '<b style="text-transform:capitalize">' + p.replace('-', ' ') + '</b>'
-      +   '</div>'
-      +   '<span style="font-weight:800">' + fmt(tot) + '</span>'
-      + '</div>'
-      + '<div style="font-size:.68rem;color:rgba(32,36,31,.5);margin-bottom:4px">OSDE ' + fmt(e.osde||0) + ' · Diferidos ' + fmt(e.dif||0) + '</div>'
-      + '<div style="font-size:.65rem;color:rgba(32,36,31,.6)">' + (detalle || '—') + sinEsp + '</div>'
-      + '</div>';
+    return '<tr><td style="text-transform:capitalize">' + p.replace('-', ' ') + '</td>' +
+      '<td class="ipt-num">' + fmt(e.osde||0) + '</td>' +
+      '<td class="ipt-num">' + fmt(e.dif||0) + '</td>' +
+      '<td class="ipt-num" style="font-weight:800">' + fmt(tot) + '</td>' +
+      '<td style="font-size:.65rem;color:rgba(32,36,31,.6);text-align:left">' + (detalle || '—') + sinEsp + '</td></tr>';
   }).join('');
   return '<div style="font-size:.7rem;color:rgba(32,36,31,.55);margin-bottom:10px">Cada vez que se importa una liquidación (CEOT.xlsx/.txt) y se detecta un AY2 de Bruni/De la Colina/Garmendia/Perlasco cuyo ESP o AY1 es del equipo contrario, ese importe queda registrado acá en vez de pagarse al AY2. Se actualiza solo, no hace falta cargar nada a mano.</div>'
     + '<div style="font-weight:800;font-size:1.1rem;margin-bottom:10px">Acumulado total: ' + fmt(granTotal) + '</div>'
-    + tarjetas;
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Período</th><th>OSDE</th><th>Diferidos</th><th>Total</th><th>Detalle</th></tr></thead><tbody>' + filas + '</tbody></table></div>';
 }
 
 // ── Inversiones del fondo Retención Ganancias ───────────────────────
@@ -6670,30 +6638,19 @@ function invAcumuladoProfesionalHtml() {
     return '<div style="font-size:.8rem;color:rgba(32,36,31,.4);padding:8px 2px">Todavía no hay inversiones registradas.</div>';
   }
 
-  // Mismo lenguaje visual que Sueldo Director / Gastos A: tarjeta crema +
-  // icono chico de color (rojo si el saldo quedó negativo) en vez de tabla.
-  var tarjetas = d.apellidos.map(function(ap) {
+  var filas = d.apellidos.map(function(ap) {
     var x = d.acum[ap];
     var total = x.retencion + x.interes;
     var saldo = total - x.retirado;
-    var neg = saldo < 0;
-    var iconBg = neg ? 'rgba(177,58,44,.13)' : 'rgba(63,107,74,.16)';
-    return '<div style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:5px">'
-      + '<div style="display:flex;align-items:center;gap:8px">'
-      +   '<span style="width:26px;height:26px;border-radius:7px;background:' + iconBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">💰</span>'
-      +   '<span style="font-weight:700;font-size:.82rem;color:var(--co-ink,#20241f)">' + ap + '</span>'
-      + '</div>'
-      + '<div style="font-size:.66rem;color:rgba(32,36,31,.5)">Retención ' + fmt(x.retencion) + ' · Interés <span style="color:#1f3a2e;font-weight:600">' + fmt(x.interes) + '</span> · Total ' + fmt(total)
-      +   (x.retirado > 0 ? ' · Retirado <span style="color:#b13a2c">−' + fmt(x.retirado) + '</span>' : '')
-      + '</div>'
-      + '<div style="font-size:.85rem;font-weight:700' + (neg ? ';color:#b13a2c' : '') + '">Saldo disponible ' + fmt(saldo) + '</div>'
-      + '</div>';
+    return '<tr><td>' + ap + '</td><td>' + fmt(x.retencion) + '</td><td style="color:#1f3a2e;font-weight:600">' + fmt(x.interes) + '</td>'
+      + '<td>' + fmt(total) + '</td>'
+      + '<td style="color:' + (x.retirado > 0 ? '#b13a2c' : 'rgba(32,36,31,.35)') + '">' + (x.retirado > 0 ? '− ' + fmt(x.retirado) : '—') + '</td>'
+      + '<td style="font-weight:700;' + (saldo < 0 ? 'color:#b13a2c' : '') + '">' + fmt(saldo) + '</td></tr>';
   }).join('');
   var totSaldo = (d.totRet + d.totInt) - d.totRetiro;
-  var totalesTxt = '<div style="font-size:.72rem;color:rgba(32,36,31,.6);font-weight:700;border-top:1px solid rgba(32,36,31,.12);padding-top:6px;margin-bottom:10px">'
-    + 'TOTAL — Retención ' + fmt(d.totRet) + ' · Interés ' + fmt(d.totInt) + ' · Total ' + fmt(d.totRet + d.totInt)
-    + (d.totRetiro > 0 ? ' · Retirado −' + fmt(d.totRetiro) : '') + ' · Saldo ' + fmt(totSaldo)
-    + '</div>';
+  var filaTotal = '<tr class="adm-totals"><td>TOTAL</td><td>' + fmt(d.totRet) + '</td><td>' + fmt(d.totInt) + '</td><td>' + fmt(d.totRet + d.totInt) + '</td>'
+    + '<td style="color:' + (d.totRetiro > 0 ? '#b13a2c' : 'inherit') + '">' + (d.totRetiro > 0 ? '− ' + fmt(d.totRetiro) : '—') + '</td>'
+    + '<td style="' + (totSaldo < 0 ? 'color:#b13a2c' : '') + '">' + fmt(totSaldo) + '</td></tr>';
 
   window._invAcumTexto = d.apellidos.map(function(ap) {
     var x = d.acum[ap];
@@ -6706,9 +6663,9 @@ function invAcumuladoProfesionalHtml() {
     +   '<button class="cpsm-calc-btn" onclick="descargarPDFInversionesAcumulado()">⬇ Descargar PDF (comprobante)</button>'
     + '</div>';
 
-  return botones
-    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:8px">' + tarjetas + '</div>'
-    + totalesTxt
+  return botones + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+    +   '<th>Profesional</th><th>Retención invertida (acum.)</th><th>Interés ganado (acum.)</th><th>Total a devolver</th><th>Retirado</th><th>Saldo disponible</th>'
+    + '</tr></thead><tbody>' + filas + filaTotal + '</tbody></table></div>'
     + invRetiroFormHtml() + invRetiroListaHtml();
 }
 
@@ -6899,22 +6856,16 @@ function invListaHtml() {
   var tarjetas = todas.map(function(r) {
     var vto = new Date(r.fechaVencimiento + "T00:00:00");
     var vigente = vto >= hoy;
-    // Mismo lenguaje visual que el resto de la pantalla: tarjeta crema neutra
-    // + icono chico de color (ámbar = vigente/en curso, verde = ya venció y
-    // cerró) en vez de teñir todo el borde.
-    var iconBg = vigente ? 'rgba(201,147,58,.16)' : 'rgba(63,107,74,.16)';
+    var colorBorde = vigente ? "#c9933a" : "#3f6b4a";
     var estadoTxt = vigente ? "Vigente · vence " + vto.toLocaleDateString("es-AR") : "Vencido el " + vto.toLocaleDateString("es-AR");
 
     var filasAportes = r.aportes.map(function(a) {
       return '<tr><td>' + a.apellido + '</td><td>' + fmt(a.retencion) + '</td><td>' + (a.proporcion * 100).toFixed(1) + '%</td><td style="font-weight:600">' + fmt(a.interes) + '</td></tr>';
     }).join('');
 
-    return '<div style="margin-bottom:10px;background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:11px 12px">'
+    return '<div style="margin-bottom:14px;border:1.5px solid ' + colorBorde + ';background:rgba(32,36,31,.03);border-radius:8px;padding:10px 12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">'
-      +   '<div style="display:flex;align-items:center;gap:8px">'
-      +     '<span style="width:26px;height:26px;border-radius:7px;background:' + iconBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">📈</span>'
-      +     '<div><b>' + escAttr(r.tipo) + '</b> · ' + escAttr(r.periodo.charAt(0).toUpperCase() + r.periodo.slice(1)) + ' · cheques ' + r.chequesOrigen.join(", ") + (r.notas ? ' · ' + escAttr(r.notas) : '') + '</div>'
-      +   '</div>'
+      +   '<div><b>' + escAttr(r.tipo) + '</b> · ' + escAttr(r.periodo.charAt(0).toUpperCase() + r.periodo.slice(1)) + ' · cheques ' + r.chequesOrigen.join(", ") + (r.notas ? ' · ' + escAttr(r.notas) : '') + '</div>'
       +   '<div style="display:flex;gap:10px;align-items:center;font-size:.8rem">'
       +     '<span>' + estadoTxt + '</span>'
       +     '<button type="button" onclick="invEliminar(\'' + r.id + '\')" style="background:none;border:none;color:#b13a2c;cursor:pointer;font-size:.9rem" title="Eliminar">✕</button>'
