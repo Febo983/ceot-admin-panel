@@ -5029,25 +5029,55 @@ function gastosARenderEstadoPublicado(periodo) {
 
 function gastosANetoPorFecha(periodo) {
   var porClave = {};
+
+  // Mes siguiente — el CEM que se carga por el importador para "periodo" se
+  // acredita oficialmente recién el mes que viene (mismo desfasaje que usa
+  // todo el resto de la app, ver "Acreditación CEM" en
+  // calcularDetalleChequesProfesional / doGet paso 2.5 del Script). Marcelo
+  // puede necesitar usar ese importe antes (a fin de "periodo", para cubrir
+  // Gastos A) en vez de esperar a que llegue su fecha oficial — para eso se
+  // arma acá una clave "Adelanto CEM" separada con el MISMO importe real que
+  // ya cargó por el importador para el mes siguiente, para que aparezca como
+  // un chip tildable más, este mes.
+  var MESES_ORD_GA = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var idxMesGA = MESES_ORD_GA.indexOf(periodo);
+  var mesSig = (idxMesGA !== -1 && idxMesGA < MESES_ORD_GA.length - 1) ? MESES_ORD_GA[idxMesGA + 1] : null;
+  var mesSigLabel = mesSig ? mesSig.charAt(0).toUpperCase() + mesSig.slice(1) : null;
+  var claveAdelanto = mesSig ? "🔜 Adelantar CEM (" + mesSigLabel + ")" : null;
+
   TODOS_SOCIOS_INVERSION.forEach(function(apellido) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === apellido; })[0];
     if (!doc) return;
     var base = calcularDetalleChequesProfesional(periodo, doc);
-    if (!base) return;
-    base.detalle.forEach(function(d) {
-      var esFecha = /^\d{2}\/\d{2}$/.test(d.fecha);
-      var clave = esFecha ? d.fecha
-        : (d.fecha.indexOf("Cheque OSDE") === 0 ? "Cheque OSDE"
-          : (d.fecha.indexOf("Acreditación CEM") === 0 ? "Acreditación CEM" : null));
-      if (!clave) return;
-      if (!porClave[clave]) porClave[clave] = { esFecha: esFecha, entradas: [], pendientes: [] };
-      if (d.pendiente || d.neto == null) {
-        porClave[clave].pendientes.push(apellido);
-      } else {
-        var keyFam = transfFamKey(periodo, apellido, d.fecha);
-        porClave[clave].entradas.push({ apellido: apellido, neto: netoEfectivo(keyFam, d.neto) });
+    if (base) {
+      base.detalle.forEach(function(d) {
+        var esFecha = /^\d{2}\/\d{2}$/.test(d.fecha);
+        var clave = esFecha ? d.fecha
+          : (d.fecha.indexOf("Cheque OSDE") === 0 ? "Cheque OSDE"
+            : (d.fecha.indexOf("Acreditación CEM") === 0 ? "Acreditación CEM" : null));
+        if (!clave) return;
+        if (!porClave[clave]) porClave[clave] = { esFecha: esFecha, entradas: [], pendientes: [] };
+        if (d.pendiente || d.neto == null) {
+          porClave[clave].pendientes.push(apellido);
+        } else {
+          var keyFam = transfFamKey(periodo, apellido, d.fecha);
+          porClave[clave].entradas.push({ apellido: apellido, neto: netoEfectivo(keyFam, d.neto) });
+        }
+      });
+    }
+
+    if (claveAdelanto) {
+      var baseSig = calcularDetalleChequesProfesional(mesSig, doc);
+      var dCem = baseSig ? baseSig.detalle.filter(function(d) { return d.fecha.indexOf("Acreditación CEM") === 0; })[0] : null;
+      if (dCem) {
+        if (!porClave[claveAdelanto]) porClave[claveAdelanto] = { esFecha: false, entradas: [], pendientes: [] };
+        if (dCem.pendiente || dCem.neto == null) {
+          porClave[claveAdelanto].pendientes.push(apellido);
+        } else {
+          porClave[claveAdelanto].entradas.push({ apellido: apellido, neto: dCem.neto });
+        }
       }
-    });
+    }
   });
   return porClave;
 }
@@ -5160,7 +5190,8 @@ function gastosASectionHtml(periodo) {
     +   '<div class="cpsm-subtitle">Elegí los cheques/OSDE que cubren Gastos A de ' + periodo + ', cargá el total y se calcula el neto a transferir a cada uno</div></div>'
     + '</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.4);padding:0 2px 10px 2px">Suma el Neto cheque (ya con overrides de "editar" aplicados) de los cheques que tildes, por profesional (Director + Resto), y le resta la parte de Gastos A que le toca. Se guarda solo en este navegador — no toca el Sheet.</div>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">' + (chips || '<span style="font-size:.75rem;color:rgba(32,36,31,.4)">Sin cheques con neto cargado para ' + periodo + '.</span>') + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">' + (chips || '<span style="font-size:.75rem;color:rgba(32,36,31,.4)">Sin cheques con neto cargado para ' + periodo + '.</span>') + '</div>'
+    + '<div style="font-size:.62rem;color:rgba(32,36,31,.4);padding:0 2px 12px 2px">🔜 "Adelantar CEM" trae el mismo importe real que ya cargaste por el importador para el CEM del mes que viene (todavía no acreditado oficialmente) — si lo usás acá, acordate de NO volver a tildar "Acreditación CEM" el mes que viene con esa misma plata.</div>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px">'
     +   '<div><label style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Gastos A — total</label>'
     +     '<input type="text" id="gastosa-total" value="' + (saved.total || '') + '" placeholder="$ importe total" oninput="gastosARecalcularPreview()" style="width:100%;padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem">'
