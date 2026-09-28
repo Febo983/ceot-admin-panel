@@ -6085,7 +6085,17 @@ function sueldoDirectorResumenHtml(periodo) {
   };
   function chipTxt(f) {
     if (f.estado === 'listo')      return '✓ Listo';
-    if (f.estado === 'espera')     return 'Disp. ' + (f.s.fechaCompleta || '—');
+    if (f.estado === 'espera') {
+      // fechaCompleta puede ser una fecha real ("15/09") o la etiqueta de la
+      // fila que completó el monto (ej. "Acreditación CEM (liquidación de
+      // Agosto)", "Cheque OSDE") cuando fue esa acreditación la que lo
+      // alcanzó — en ese caso mostrar la etiqueta larga acá queda sin
+      // sentido ("Disp. Acreditación CEM..."), así que se omite y se deja
+      // un genérico. El detalle completo (con la etiqueta correcta) sigue
+      // visible en la tarjeta de abajo.
+      var esFechaCorta = f.s.fechaCompleta && /^\d{2}\/\d{2}$/.test(f.s.fechaCompleta);
+      return esFechaCorta ? ('Disp. ' + f.s.fechaCompleta) : 'Disponible';
+    }
     if (f.estado === 'no-alcanza') return 'No alcanza · falta ' + fmt(f.s.faltante);
     return 'Sin datos';
   }
