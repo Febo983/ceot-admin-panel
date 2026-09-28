@@ -500,7 +500,13 @@ function calcularNetoLocal(pid, doc) {
   for (var i = 0; i < raw.length; i++) {
     if (raw[i].k === matchKey) { row = raw[i]; break; }
   }
-  if (!row) return null;
+  // Sin fila en el Colón del mes (ej. un socio que ese mes solo tiene OSDE,
+  // como Garmendia en septiembre/2026) no implica "sin datos" — antes esto
+  // cortaba acá y lo dejaba afuera de TODA la liquidación (ni entradas ni
+  // pendiente), aunque su OSDE/CEM sí estuvieran cargados. Se sigue con
+  // colonBruto=0 y se deja que el chequeo de abajo (bruto===0 && cm===0)
+  // decida si de verdad no hay nada que mostrar.
+  if (!row) row = { f1:0, f2:0, f3:0, f4:0, f5:0 };
 
   var colonBruto = (row.f1||0)+(row.f2||0)+(row.f3||0)+(row.f4||0)+(row.f5||0);
   var fechas = fechasMap[pid] || [];
