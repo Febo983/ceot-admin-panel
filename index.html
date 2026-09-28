@@ -5136,24 +5136,32 @@ function gastosARecalcularPreview() {
     if (!clavesSel.length) {
       wrap.innerHTML = '<span style="font-size:.75rem;color:rgba(32,36,31,.4)">Elegí arriba qué cheques sumar.</span>';
     } else {
-      var filas = apellidos.map(function(ap) {
+      // Mismo lenguaje visual que el resumen de Sueldo Director de arriba:
+      // tarjeta crema + icono chico de color (verde = a transferir, rojo =
+      // saldo negativo) en vez de una tabla.
+      var tarjetas = apellidos.map(function(ap) {
         var subtotal = porProf[ap] || 0;
         var sd = sueldoPend[ap] || 0;
         var aTransferir = subtotal - share + sd;
-        var colorNeg = aTransferir < 0 ? 'color:#b13a2c;font-weight:700' : 'font-weight:700';
-        return '<tr><td>' + ap + '</td><td>' + fmt(subtotal) + '</td><td>' + fmt(share) + '</td>'
-          + '<td>' + (sd ? fmt(sd) : '—') + '</td>'
-          + '<td style="' + colorNeg + '">' + fmt(aTransferir) + (aTransferir < 0 ? ' ⚠' : '')
-          + ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(aTransferir) + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle">📋</button>'
-          + '</td></tr>';
+        var neg = aTransferir < 0;
+        var iconBg = neg ? 'rgba(177,58,44,.13)' : 'rgba(63,107,74,.16)';
+        var colorNeg = neg ? 'color:#b13a2c;font-weight:700' : 'font-weight:700';
+        return '<div style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:5px">'
+          + '<div style="display:flex;align-items:center;gap:8px">'
+          +   '<span style="width:26px;height:26px;border-radius:7px;background:' + iconBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">' + (neg ? '⚠️' : '💵') + '</span>'
+          +   '<span style="font-weight:700;font-size:.82rem;color:var(--co-ink,#20241f)">' + ap + '</span>'
+          + '</div>'
+          + '<div style="font-size:.66rem;color:rgba(32,36,31,.5)">Subtotal ' + fmt(subtotal) + ' · Gastos A −' + fmt(share) + (sd ? (' · Sueldo Director ' + fmt(sd)) : '') + '</div>'
+          + '<div style="' + colorNeg + ';font-size:.85rem">A transferir ' + fmt(aTransferir)
+          +   ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(aTransferir) + '\', this)" style="border:none;background:rgba(32,36,31,.08);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle">📋</button>'
+          + '</div>'
+          + '</div>';
       }).join('');
       var totSub = apellidos.reduce(function(s, ap) { return s + (porProf[ap] || 0); }, 0);
       var totSd  = apellidos.reduce(function(s, ap) { return s + (sueldoPend[ap] || 0); }, 0);
       var totAT  = apellidos.reduce(function(s, ap) { return s + (porProf[ap] || 0) - share + (sueldoPend[ap] || 0); }, 0);
-      var filaTotal = '<tr class="adm-totals"><td>TOTAL</td><td>' + fmt(totSub) + '</td><td>' + fmt(share * apellidos.length) + '</td><td>' + fmt(totSd) + '</td><td>' + fmt(totAT) + '</td></tr>';
-      wrap.innerHTML = '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-        + '<th>Profesional</th><th>Subtotal seleccionado</th><th>Gastos A</th><th>Sueldo Director</th><th>A transferir</th>'
-        + '</tr></thead><tbody>' + filas + filaTotal + '</tbody></table></div>';
+      wrap.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:8px">' + tarjetas + '</div>'
+        + '<div style="font-size:.72rem;color:rgba(32,36,31,.6);font-weight:700;border-top:1px solid rgba(32,36,31,.12);padding-top:6px">TOTAL — Subtotal ' + fmt(totSub) + ' · Gastos A −' + fmt(share * apellidos.length) + ' · Sueldo Director ' + fmt(totSd) + ' · A transferir ' + fmt(totAT) + '</div>';
 
       window._gastosATexto = apellidos.map(function(ap) {
         return ap + '\t' + numParaPegar((porProf[ap] || 0) - share + (sueldoPend[ap] || 0));
@@ -6656,19 +6664,30 @@ function invAcumuladoProfesionalHtml() {
     return '<div style="font-size:.8rem;color:rgba(32,36,31,.4);padding:8px 2px">Todavía no hay inversiones registradas.</div>';
   }
 
-  var filas = d.apellidos.map(function(ap) {
+  // Mismo lenguaje visual que Sueldo Director / Gastos A: tarjeta crema +
+  // icono chico de color (rojo si el saldo quedó negativo) en vez de tabla.
+  var tarjetas = d.apellidos.map(function(ap) {
     var x = d.acum[ap];
     var total = x.retencion + x.interes;
     var saldo = total - x.retirado;
-    return '<tr><td>' + ap + '</td><td>' + fmt(x.retencion) + '</td><td style="color:#1f3a2e;font-weight:600">' + fmt(x.interes) + '</td>'
-      + '<td>' + fmt(total) + '</td>'
-      + '<td style="color:' + (x.retirado > 0 ? '#b13a2c' : 'rgba(32,36,31,.35)') + '">' + (x.retirado > 0 ? '− ' + fmt(x.retirado) : '—') + '</td>'
-      + '<td style="font-weight:700;' + (saldo < 0 ? 'color:#b13a2c' : '') + '">' + fmt(saldo) + '</td></tr>';
+    var neg = saldo < 0;
+    var iconBg = neg ? 'rgba(177,58,44,.13)' : 'rgba(63,107,74,.16)';
+    return '<div style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:5px">'
+      + '<div style="display:flex;align-items:center;gap:8px">'
+      +   '<span style="width:26px;height:26px;border-radius:7px;background:' + iconBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.85rem">💰</span>'
+      +   '<span style="font-weight:700;font-size:.82rem;color:var(--co-ink,#20241f)">' + ap + '</span>'
+      + '</div>'
+      + '<div style="font-size:.66rem;color:rgba(32,36,31,.5)">Retención ' + fmt(x.retencion) + ' · Interés <span style="color:#1f3a2e;font-weight:600">' + fmt(x.interes) + '</span> · Total ' + fmt(total)
+      +   (x.retirado > 0 ? ' · Retirado <span style="color:#b13a2c">−' + fmt(x.retirado) + '</span>' : '')
+      + '</div>'
+      + '<div style="font-size:.85rem;font-weight:700' + (neg ? ';color:#b13a2c' : '') + '">Saldo disponible ' + fmt(saldo) + '</div>'
+      + '</div>';
   }).join('');
   var totSaldo = (d.totRet + d.totInt) - d.totRetiro;
-  var filaTotal = '<tr class="adm-totals"><td>TOTAL</td><td>' + fmt(d.totRet) + '</td><td>' + fmt(d.totInt) + '</td><td>' + fmt(d.totRet + d.totInt) + '</td>'
-    + '<td style="color:' + (d.totRetiro > 0 ? '#b13a2c' : 'inherit') + '">' + (d.totRetiro > 0 ? '− ' + fmt(d.totRetiro) : '—') + '</td>'
-    + '<td style="' + (totSaldo < 0 ? 'color:#b13a2c' : '') + '">' + fmt(totSaldo) + '</td></tr>';
+  var totalesTxt = '<div style="font-size:.72rem;color:rgba(32,36,31,.6);font-weight:700;border-top:1px solid rgba(32,36,31,.12);padding-top:6px;margin-bottom:10px">'
+    + 'TOTAL — Retención ' + fmt(d.totRet) + ' · Interés ' + fmt(d.totInt) + ' · Total ' + fmt(d.totRet + d.totInt)
+    + (d.totRetiro > 0 ? ' · Retirado −' + fmt(d.totRetiro) : '') + ' · Saldo ' + fmt(totSaldo)
+    + '</div>';
 
   window._invAcumTexto = d.apellidos.map(function(ap) {
     var x = d.acum[ap];
@@ -6681,9 +6700,9 @@ function invAcumuladoProfesionalHtml() {
     +   '<button class="cpsm-calc-btn" onclick="descargarPDFInversionesAcumulado()">⬇ Descargar PDF (comprobante)</button>'
     + '</div>';
 
-  return botones + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-    +   '<th>Profesional</th><th>Retención invertida (acum.)</th><th>Interés ganado (acum.)</th><th>Total a devolver</th><th>Retirado</th><th>Saldo disponible</th>'
-    + '</tr></thead><tbody>' + filas + filaTotal + '</tbody></table></div>'
+  return botones
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:8px">' + tarjetas + '</div>'
+    + totalesTxt
     + invRetiroFormHtml() + invRetiroListaHtml();
 }
 
