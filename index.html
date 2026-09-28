@@ -6314,13 +6314,15 @@ function restoProfesionalesTabHtml(periodo) {
     return '<div style="margin-bottom:16px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:8px;padding:10px 12px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
       +   '<div><b>' + doc.apellido + '</b>' + pendTxt + '</div>'
-      +   '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + totalNetoMesChipStyle + ';border-radius:6px;padding:5px 10px;font-weight:700;font-size:.8rem">'
-      +     fmt(base.totalNetoMes) + ' · ' + colores.txt
-      +     '<button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(base.totalNetoMes) + '\', this)" style="border:none;background:rgba(255,255,255,.35);border-radius:4px;cursor:pointer;font-size:.72rem;padding:1px 4px;vertical-align:middle">📋</button>'
-      +   '</span>'
-      +   '<label style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;color:rgba(32,36,31,.6);cursor:pointer;white-space:nowrap">'
-      +     '<input type="checkbox"' + (restoProfEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="restoProfToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">'
-      +     'Transferencia ya hecha</label>'
+      +   '<div style="display:flex;gap:14px;align-items:center;font-size:.8rem">'
+      +     '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + totalNetoMesChipStyle + ';border-radius:6px;padding:5px 10px;font-weight:700">'
+      +       fmt(base.totalNetoMes) + ' · ' + colores.txt
+      +       '<button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(base.totalNetoMes) + '\', this)" style="border:none;background:rgba(255,255,255,.35);border-radius:4px;cursor:pointer;font-size:.72rem;padding:1px 4px;vertical-align:middle">📋</button>'
+      +     '</span>'
+      +     '<label style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;color:rgba(32,36,31,.6);cursor:pointer;white-space:nowrap">'
+      +       '<input type="checkbox"' + (restoProfEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="restoProfToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">'
+      +       'Transferencia ya hecha</label>'
+      +   '</div>'
       + '</div>'
       + bbvaLineaHtml
       + '<details class="ga-det-acc"' + (DETALLE_CHEQUES_OPEN[doc.apellido] ? ' open' : '') + ' ontoggle="DETALLE_CHEQUES_OPEN[\'' + doc.apellido + '\']=this.open">'
