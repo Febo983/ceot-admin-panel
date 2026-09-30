@@ -5098,11 +5098,14 @@ function gastosARecalcularPreview() {
   var clavesSel = Array.prototype.map.call(chks, function(c) { return c.value; });
 
   var porProf = {};
+  var porProfDetalle = {}; // { apellido: [{clave, neto}, ...] } — de qué cheques sale cada subtotal
   clavesSel.forEach(function(clave) {
     var info = porClave[clave];
     if (!info) return;
     info.entradas.forEach(function(x) {
       porProf[x.apellido] = (porProf[x.apellido] || 0) + x.neto;
+      if (!porProfDetalle[x.apellido]) porProfDetalle[x.apellido] = [];
+      porProfDetalle[x.apellido].push({ clave: clave, neto: x.neto });
     });
   });
 
@@ -5141,7 +5144,16 @@ function gastosARecalcularPreview() {
         var sd = sueldoPend[ap] || 0;
         var aTransferir = subtotal - share + sd;
         var colorNeg = aTransferir < 0 ? 'color:#b13a2c;font-weight:700' : 'font-weight:700';
-        return '<tr><td>' + ap + '</td><td>' + fmt(subtotal) + '</td><td>' + fmt(share) + '</td>'
+        // Desglose de qué cheques/acreditaciones compone el subtotal — solo
+        // vale la pena mostrarlo cuando hay 2 o más aportando (con 1 solo ya
+        // es obvio, es el mismo número). Pedido de Marcelo, 30/09/2026.
+        var detalle = porProfDetalle[ap] || [];
+        var desgloseHtml = detalle.length > 1
+          ? '<div style="font-size:.65rem;color:rgba(32,36,31,.45);font-weight:400;margin-top:2px">'
+            + detalle.map(function(d) { return d.clave + ': ' + fmt(d.neto); }).join(' + ')
+            + '</div>'
+          : '';
+        return '<tr><td>' + ap + '</td><td>' + fmt(subtotal) + desgloseHtml + '</td><td>' + fmt(share) + '</td>'
           + '<td>' + (sd ? fmt(sd) : '—') + '</td>'
           + '<td style="' + colorNeg + '">' + fmt(aTransferir) + (aTransferir < 0 ? ' ⚠' : '')
           + ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(aTransferir) + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle">📋</button>'
