@@ -195,7 +195,9 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     // Un profesional puede tener OSDE y/o CEM ANTES de sumarse a los cheques
     // Colón (ej. GARMENDIA: OSDE arranca en septiembre 2026, Diferidos recién
     // en noviembre) — antes esto mostraba "Sin datos" aunque hubiera plata
-    // real esperándolo. Mismo patrón que renderEnero (sin Colón, con OSDE).
+    // real esperándolo. Mismo patrón que renderEnero (sin Colón, con OSDE),
+    // sumando Gastos A y Retención Ganancias (30/09/2026: sin esto Gastos A
+    // no se descontaba nunca para quien todavía no tiene cheques Colón).
     var osdeExtSC = getExtra(periodo, "osde", doctor.apellido);
     var cmExtSC   = getExtra(periodo, "cm",   doctor.apellido);
     var osdeValSC = (!osdeExtSC.pendiente && osdeExtSC.val) ? osdeExtSC.val : 0;
@@ -207,6 +209,22 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     var subPartesSC = [];
     if (osdeValSC) subPartesSC.push("OSDE");
     if (cmValSC)   subPartesSC.push("CEM");
+    var pctApSC = APORTE_CEOT_DESDE.indexOf(periodo) !== -1 ? getAporteCeotPctPeriodo(periodo, doctor.apellido) : null;
+    var _gaSigMesSC = {febrero:"marzo",marzo:"abril",abril:"mayo",mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
+    var gaTotalSC = GASTOS_A[_gaSigMesSC[periodo]] !== undefined ? GASTOS_A[_gaSigMesSC[periodo]] : null;
+    var gaPPSC    = gaTotalSC ? Math.round(gaTotalSC / 13) : null;
+    var gaPubSC   = (typeof gastosAPublicadoCargar === "function") ? gastosAPublicadoCargar(periodo) : null;
+    var gaProfSC  = (gaPubSC && gaPubSC.porProfesional && gaPubSC.porProfesional[doctor.apellido]) || null;
+    var gaPartesSC = gaProfSC && gaProfSC.partes && gaProfSC.partes.length ? gaProfSC.partes : null;
+    var gaFaltanteSC = gaProfSC ? (gaProfSC.faltante || 0) : 0;
+    var sigMesNombreSC = {"febrero":"Marzo","marzo":"Abril","abril":"Mayo","mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre"};
+    var gaLabelMesSC = sigMesNombreSC[periodo] ? " · " + sigMesNombreSC[periodo] + " 2026" : "";
+    function gaChipForSC(clave) {
+      if (!gaPartesSC) return '';
+      if (!gaPartesSC.filter(function(p){ return p.clave === clave; })[0]) return '';
+      return ' <span style="display:inline-block;font-size:.6rem;font-weight:700;background:rgba(146,97,15,.14);color:#92610f;border-radius:9px;padding:1px 7px;margin-left:5px;vertical-align:1px;text-transform:uppercase;letter-spacing:.03em">Gastos A</span>';
+    }
+
     var html = DISCLAIMER + '<div class="period-total">'
       + '<div class="pt-left">'
       + '<div class="pt-lbl">' + mes + '</div>'
@@ -214,8 +232,34 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
       + '<div class="pt-sub">' + subPartesSC.join(" + ") + ' · bruto</div>'
       + '</div><div class="pt-icon">💰</div></div>';
     html += '<div class="cheque-list">';
-    html += extraRow("OSDE", osdeExtSC);
-    html += extraRow("Centro Médico", cmExtSC);
+    html += extraRow("OSDE", osdeExtSC, retencionExtraAnotHtml(osdeValSC, pctApSC), gaChipForSC("Cheque OSDE"));
+    html += extraRow("Centro Médico", cmExtSC, retencionExtraAnotHtml(cmValSC, pctApSC), gaChipForSC("Acreditación CEM"));
+    if (gaPPSC) {
+      html += '<div class="cl-row cl-sep-row cl-neg">'
+        + '<span class="cl-date">—</span>'
+        + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:rgba(32,36,31,.35);font-weight:400">' + gaLabelMesSC + '</span></span>'
+        + '<span class="cl-amt">−' + fmt(gaPPSC) + '</span>'
+        + '</div>';
+    } else {
+      html += '<div class="cl-row cl-sep-row">'
+        + '<span class="cl-date">—</span>'
+        + '<span class="cl-lbl">Gastos A<span style="font-size:.68rem;color:rgba(32,36,31,.35);font-weight:400">' + gaLabelMesSC + '</span></span>'
+        + '<span class="cl-amt" style="color:rgba(32,36,31,.35);font-size:.75rem">pendiente</span>'
+        + '</div>';
+    }
+    if (gaPPSC && gaPartesSC) {
+      var gaResumenSC = gaPartesSC.map(function(p){
+        var etq = p.clave === "Cheque OSDE" ? "OSDE" : (p.clave === "Acreditación CEM" ? "CEM" : "Cheque " + p.clave);
+        return etq + ' ' + fmt(p.monto);
+      }).join('  +  ');
+      if (gaFaltanteSC) gaResumenSC += '  ·  resto ' + fmt(gaFaltanteSC);
+      html += '<div style="margin:4px 0 2px;padding:7px 10px;background:rgba(146,97,15,.10);border-radius:8px;font-size:.66rem;color:#92610f;line-height:1.5">'
+        + 'Se cubre con: ' + gaResumenSC
+        + '<br><span style="opacity:.8">Se descuenta este mes para cubrir ' + ((sigMesNombreSC[periodo] || 'el mes siguiente').toLowerCase()) + '.</span>'
+        + '</div>';
+    } else {
+      html += '<div style="font-size:.62rem;color:rgba(32,36,31,.35);padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
+    }
     html += '</div>';
     html += '<div class="mini-disc">⚠ Todavía no tenés cheques Colón este mes — solo ' + subPartesSC.join(" y ") + '.</div>';
     container.innerHTML = html;
