@@ -70,7 +70,16 @@ var PERIODO_CPSM = { enero:null, febrero:{
 }, mayo:null, junio:null, julio:null, agosto:{
   "BRUNI":978146.45,"CORELICH":358263.80,"DE LA COLINA":1149627.10,"DEGANUTTI":1928352.40,
   "LEON":331733.60,"MAZZOLA":790061.80,"PERLASCO":402392.85,"SOULE":421247.45,"TRIVELLINI":953503.20,
-}, septiembre:null, octubre:null, noviembre:null, diciembre:null };
+}, septiembre:null, octubre:{
+  // 5% de Diferidos+OSDE de Agosto (M-2) por profesional — mismo criterio que
+  // agosto (línea de arriba), calculado desde el Sheet (pestaña Ago-2026 +
+  // sección OSDE AL DÍA de RESUMEN) porque esta vez no había Excel de
+  // honorarios armado. LABAYEN exento (queda afuera, esLab ya lo pone en 0).
+  // GARMENDIA en 0: sin Diferidos/OSDE en agosto (recién arrancó en septiembre).
+  "BRUNI":955060,"CORELICH":408139,"DE LA COLINA":672214,"DEGANUTTI":1570463,
+  "LEON":324107,"MAZZOLA":545651,"PERLASCO":533479,"SOULE":445577,"TRIVELLINI":1077158,
+  "GARMENDIA":0,
+}, noviembre:null, diciembre:null };
 
 function calcularCPSMDesde(rawData, osdeMap) {
   var difMap = {}, totalDif = 0;
