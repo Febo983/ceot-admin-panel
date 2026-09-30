@@ -709,7 +709,15 @@ function syncPull(clave, onDone) {
 var AUTH_TOKEN = null;
 var AUTH_ROLE  = null;
 function authURL(url) {
-  return url + (url.indexOf('?') === -1 ? '?' : '&') + 'token=' + encodeURIComponent(AUTH_TOKEN || '');
+  // Cache-buster (_ts): sin esto, la misma URL exacta (mismo token, sin acción
+  // que cambie) puede repetirse dentro de la sesión — el navegador a veces
+  // cachea la redirección 302 que da Google Apps Script hacia su dominio de
+  // contenido (script.googleusercontent.com/macros/echo?...), y si esa URL de
+  // contenido ya expiró, la respuesta cacheada da 404 → ".json() is not valid
+  // JSON" (el "Unexpected token '<'" que se vio repetidas veces el
+  // 30/09/2026). Un parámetro que cambia en cada pedido evita que el
+  // navegador reuse esa redirección vieja.
+  return url + (url.indexOf('?') === -1 ? '?' : '&') + 'token=' + encodeURIComponent(AUTH_TOKEN || '') + '&_ts=' + Date.now();
 }
 
 // ── Estado de conexión de cada fuente remota ──────────────────────
