@@ -192,7 +192,33 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   }
 
   if (!row) {
-    container.innerHTML = DISCLAIMER + '<div class="sin-datos">Sin datos para este período.</div>';
+    // Un profesional puede tener OSDE y/o CEM ANTES de sumarse a los cheques
+    // Colón (ej. GARMENDIA: OSDE arranca en septiembre 2026, Diferidos recién
+    // en noviembre) — antes esto mostraba "Sin datos" aunque hubiera plata
+    // real esperándolo. Mismo patrón que renderEnero (sin Colón, con OSDE).
+    var osdeExtSC = getExtra(periodo, "osde", doctor.apellido);
+    var cmExtSC   = getExtra(periodo, "cm",   doctor.apellido);
+    var osdeValSC = (!osdeExtSC.pendiente && osdeExtSC.val) ? osdeExtSC.val : 0;
+    var cmValSC   = (!cmExtSC.pendiente && cmExtSC.val) ? cmExtSC.val : 0;
+    if (!osdeValSC && !cmValSC) {
+      container.innerHTML = DISCLAIMER + '<div class="sin-datos">Sin datos para este período.</div>';
+      return;
+    }
+    var subPartesSC = [];
+    if (osdeValSC) subPartesSC.push("OSDE");
+    if (cmValSC)   subPartesSC.push("CEM");
+    var html = DISCLAIMER + '<div class="period-total">'
+      + '<div class="pt-left">'
+      + '<div class="pt-lbl">' + mes + '</div>'
+      + '<div class="pt-val">' + fmt(osdeValSC + cmValSC) + '</div>'
+      + '<div class="pt-sub">' + subPartesSC.join(" + ") + ' · bruto</div>'
+      + '</div><div class="pt-icon">💰</div></div>';
+    html += '<div class="cheque-list">';
+    html += extraRow("OSDE", osdeExtSC);
+    html += extraRow("Centro Médico", cmExtSC);
+    html += '</div>';
+    html += '<div class="mini-disc">⚠ Todavía no tenés cheques Colón este mes — solo ' + subPartesSC.join(" y ") + '.</div>';
+    container.innerHTML = html;
     return;
   }
 
