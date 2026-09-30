@@ -1387,13 +1387,15 @@ async function procesarCentroMedico() {
       for (var r = 0; r < rows.length; r++) {
         var row = rows[r];
         if (!row) continue;
-        // Formato A: col N(13)=matrícula, col Q(16)=importe
+        // Formato A: col N(13)=matrícula. El importe puede venir en col Q(16) o en
+        // col R(17) según el rubro de esa línea (ej. rubro 121801 factura por R en vez
+        // de Q) — confirmado por Marcelo (30/09/2026): las dos son honorarios reales
+        // del profesional, se suman. Los valores ya vienen en pesos con "." decimal
+        // (nunca en centavos) — sin dividir por nada.
         var mapeA = String(row[13] || '').trim();
         var profA = MAPE_MAP[mapeA];
         if (profA) {
-          var vA = row[16];
-          // Celda numérica: Excel la trae en centavos (ej. 340347873 = $3.403.478,73)
-          var valA = typeof vA === 'number' ? vA / 100 : parsearMontoImp(vA);
+          var valA = parsearImporteCM(row[16]) + parsearImporteCM(row[17]);
           totales[profA] += valA;
           continue;
         }
