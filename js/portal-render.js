@@ -1136,7 +1136,7 @@ function renderMiPanel(doctor) {
   }
 
   // Caja Gerling
-  fetchT(CAJAS_ENDPOINT, 30000)
+  fetchT(authURL(CAJAS_ENDPOINT), 30000)
     .then(function(r){ return r.json(); })
     .then(function(d) {
       if (d.status !== 'ok') { console.warn('Cajas error:', d); marcarEndpointStatus("cajas", false, "respuesta sin status ok"); return; }
