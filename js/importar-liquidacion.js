@@ -691,6 +691,56 @@ function guardarDebitosImportados(items, periodoHint) {
   return { n: items.length, periodoKey: periodoKey, total: total };
 }
 
+// ── Seguimiento liquidaciones REDSOM, a partir de "registros" (xlsx o txt, mismo código) ──
+// A diferencia de Débitos (que filtra DEB. HONORARIOS/GASTOS > $50.000), acá
+// entra CADA línea facturada a REDSOM tal cual viene en el archivo —
+// consultas, cirugías, débitos, lo que sea — sin importar tipo ni importe.
+// No es un filtro de casos a revisar, es un listado de seguimiento completo
+// por profesional y paciente.
+function extraerRedsomDeRegistros(registros) {
+  var out = [];
+  registros.forEach(function(reg) {
+    if (!reg.importe) return;
+    if (String(reg.os || '').toUpperCase().indexOf('REDSOM') === -1) return;
+    out.push({
+      factura: reg.factura, nprest: reg.nprest,
+      periodo: debFmtPeriodo(reg.pPerio), periodoFact: debFmtPeriodo(reg.fPerio), pperioRaw: reg.pPerio,
+      prof: reg.profNombre, rol: reg.rol,
+      dni: reg.pacienteDni, paciente: reg.pacienteNombre,
+      practicaCod: reg.practicaCod, practica: reg.practicaDesc,
+      tipo: reg.obs.indexOf('DEB') !== -1 ? 'DÉBITO' : (reg.obs.indexOf('GAS') !== -1 ? 'GASTOS' : 'HONORARIOS'),
+      imp: reg.importe
+    });
+  });
+  out.sort(function(a, b) { return (a.prof || '').localeCompare(b.prof || '') || (a.paciente || '').localeCompare(b.paciente || ''); });
+  return out;
+}
+
+// Guarda el detalle de un período (mismo mecanismo que guardarDebitosImportados:
+// redsom_imp_<key> + redsom_guardados). Reimportar el mismo período reemplaza
+// su entrada entera (idempotente, no duplica).
+function guardarRedsomImportados(items, periodoHint) {
+  if (!items || !items.length) return { n: 0 };
+  var periodoKey = (periodoHint || '').trim().toLowerCase();
+  if (!/^[a-zñ]+-\d{4}$/.test(periodoKey)) {
+    var cuenta = {};
+    items.forEach(function(it) {
+      var m = String(it.pperioRaw || '').match(/^(\d{4})(\d{2})$/);
+      var key = m ? (DEB_MESES[parseInt(m[2], 10) - 1] + '-' + m[1]) : 'sin-periodo';
+      cuenta[key] = (cuenta[key] || 0) + 1;
+    });
+    periodoKey = Object.keys(cuenta).sort(function(a, b) { return cuenta[b] - cuenta[a]; })[0];
+  }
+  try {
+    localStorage.setItem('redsom_imp_' + periodoKey, JSON.stringify(items));
+    var guard = [];
+    try { guard = JSON.parse(localStorage.getItem('redsom_guardados') || '[]'); } catch (e) {}
+    if (guard.indexOf(periodoKey) === -1) { guard.unshift(periodoKey); localStorage.setItem('redsom_guardados', JSON.stringify(guard)); }
+  } catch (e) { return { n: 0, error: e.message }; }
+  var total = items.reduce(function(s, it) { return s + (it.imp || 0); }, 0);
+  return { n: items.length, periodoKey: periodoKey, total: total };
+}
+
 async function leerTextoArchivo(file) {
   return new Promise(function(resolve, reject) {
     var reader = new FileReader();
@@ -827,6 +877,26 @@ async function procesarArchivosImport() {
       }
     } catch (e) {
       if (debMsgEl) { debMsgEl.style.display = 'block'; debMsgEl.textContent = '🩺 No se pudieron extraer los débitos: ' + e.message; }
+    }
+
+    // ── REDSOM: detalle completo de lo facturado (no es un filtro de casos a
+    // revisar como Débitos, es un seguimiento de todo lo que entra) →
+    // pantalla "Seguimiento liquidaciones REDSOM".
+    var redsomMsgEl = document.getElementById('impRedsomMsg');
+    if (redsomMsgEl) { redsomMsgEl.style.display = 'none'; redsomMsgEl.textContent = ''; }
+    try {
+      var redsomItems = extraerRedsomDeRegistros(registros);
+      var resRedsom = guardarRedsomImportados(redsomItems, periodoHint);
+      if (redsomMsgEl && resRedsom.n) {
+        redsomMsgEl.style.display = 'block';
+        redsomMsgEl.textContent = '📋 ' + resRedsom.n + ' registro(s) de REDSOM (' + fmtImp(resRedsom.total) +
+          ') cargados a «Seguimiento liquidaciones REDSOM» — período «' + resRedsom.periodoKey + '».';
+      } else if (redsomMsgEl) {
+        redsomMsgEl.style.display = 'block';
+        redsomMsgEl.textContent = '📋 Sin registros de REDSOM en este archivo.';
+      }
+    } catch (e) {
+      if (redsomMsgEl) { redsomMsgEl.style.display = 'block'; redsomMsgEl.textContent = '📋 No se pudo procesar REDSOM: ' + e.message; }
     }
 
     // ── Fondo CEOT — Ayudantía cruzada: se guarda el resultado de este

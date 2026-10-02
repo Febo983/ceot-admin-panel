@@ -2064,6 +2064,7 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
     <div class="adm-sidenav" id="admSidenav">
       <div class="adm-sidenav-title">Módulos</div>
       <button class="adm-sidenav-btn" id="adm-sidenav-debitos"     onclick="renderDebitos()"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Débitos</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-redsom"     onclick="renderSeguimientoRedsom()"><i data-lucide="stethoscope" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Seguimiento REDSOM</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-pendientes" onclick="renderPendientes()"><i data-lucide="clipboard-list" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Pendientes</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-gastospagos" onclick="renderGastosPagos()"><i data-lucide="wallet" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Gastos y Pagos</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-facturas"       onclick="renderFacturas()"><i data-lucide="receipt" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Facturas</button>
@@ -2225,7 +2226,8 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
 <script src="js/presentacion.js?v=2026-09-25-1126"></script>
 <script src="js/sueldo-b.js?v=2026-09-25-1126"></script>
 <script src="js/comprobantes-pdf.js?v=2026-09-25-1126"></script>
-<script src="js/importar-liquidacion.js?v=2026-09-30-0945"></script>
+<script src="js/importar-liquidacion.js?v=2026-10-02-0900"></script>
+<script src="js/redsom.js?v=2026-10-02-0900"></script>
 <script src="js/nun-data.js?v=2026-09-25-1126"></script>
 <script src="js/accesos-debitos.js?v=2026-09-25-1126"></script>
 <script src="js/estadisticas-datos.js?v=2026-09-25-1126"></script>
@@ -2432,6 +2434,8 @@ var VOICE_COMANDOS = [
   // Módulos genéricos
   { match: /debito/,             resp: "Abriendo Débitos",
     accion: function(){ renderDebitos(); } },
+  { match: /redsom/,             resp: "Abriendo seguimiento REDSOM",
+    accion: function(){ renderSeguimientoRedsom(); } },
   { match: /pendiente/,          resp: "Abriendo Pendientes",
     accion: function(){ renderPendientes(); } },
   { match: /factura/,            resp: "Abriendo Facturas",
@@ -7252,6 +7256,7 @@ async function restaurarAporteCeotPct() {
         </div>
         <button class="imp-btn-blue" onclick="cargarEnSheet('diferidos')">⬆ Cargar Diferidos en Sheet</button>
         <div id="impDebitosMsg" class="imp-sheet-msg" style="display:none;margin-top:8px"></div>
+        <div id="impRedsomMsg" class="imp-sheet-msg" style="display:none;margin-top:8px"></div>
 
         <hr class="imp-sep">
         <div class="imp-sec-title">Cheques</div>
