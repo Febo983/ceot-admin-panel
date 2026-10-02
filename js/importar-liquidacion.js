@@ -18,10 +18,17 @@ const MAPE_MAP = {
 
 var impOsdeBilling = {}, impDifBilling = {}, impOsdeNeto = {};
 var impColonCheques = [], impArtTotal = 0;
+// bill/gasEqAjenoOsde/gasEqAjenoDif: resultado de billingDesdeRegistros() del
+// último "Procesar archivos" — calcularDistribucionFinal() los necesita para
+// el historial de Gasto de Equipos (ver gastoEquipoGuardarMes), pero es una
+// función separada que corre después, así que tienen que vivir acá (no como
+// "var" local dentro de procesarArchivosImport, que quedaría inaccesible).
+var bill = null, gasEqAjenoOsde = 0, gasEqAjenoDif = 0;
 var impUndo   = { tipo: null, mes: null, data: null };
 var impCMTotales = {};
 var impCMUndo = { tipo: null, mes: null, data: null };
 var impCeotAyudantiaOsde = 0, impCeotAyudantiaDif = 0, impCeotAyudantiaDetalle = [], impCeotAyudantiaSinEspDetalle = [];
+var impPeriodoActual = '';
 
 function abrirImportModal() {
   impOsdeBilling = {}; impDifBilling = {}; impOsdeNeto = {};
@@ -43,6 +50,7 @@ function abrirImportModal() {
   document.body.style.overflow = 'hidden';
   actualizarMesColonAuto();
   gastosExtraDefaultCargar();
+  impChequesHistCargar();
 }
 
 // ══════ OTROS GASTOS DEL MES (plantillas de reparto, persistentes) ══════
@@ -281,6 +289,55 @@ function gastoEquipoGuardarForm() {
   gastoEquipoCerrarForm();
   var el = document.getElementById('gastoEquipoBody');
   if (el) el.innerHTML = gastoEquipoSectionHtml();
+}
+
+// ══════ CHEQUES DEL IMPORT — historial por período ══════
+// Pedido de Marcelo, 02/10/2026: al reprocesar un archivo ya importado (para
+// corregir/agregar algo, ej. un gasto extra nuevo) los campos de Cheque OSDE
+// y Cheques Colón 1-5 (con fecha) se vaciaban porque nunca quedaban guardados
+// en ningún lado — había que retipear todo de memoria. Ahora, cada vez que se
+// calcula la distribución final (calcularDistribucionFinal), se guarda un
+// snapshot de esos campos por período (mismo mecanismo que GASTOS_EXTRA_DEFAULT:
+// localStorage + syncPull/syncPush); al reprocesar ese mismo período, se
+// restauran solos — corregís lo que haga falta y volvés a calcular.
+var IMP_CHEQUES_HIST = {};
+function impChequesHistCargar() {
+  try {
+    var raw = localStorage.getItem('ceot_imp_cheques_hist');
+    if (raw) IMP_CHEQUES_HIST = JSON.parse(raw) || {};
+  } catch (e) {}
+  syncPull('ceot_imp_cheques_hist', function() { impChequesHistCargar(); });
+}
+function impChequesHistGuardarTodo() {
+  localStorage.setItem('ceot_imp_cheques_hist', JSON.stringify(IMP_CHEQUES_HIST));
+  syncPush('ceot_imp_cheques_hist');
+}
+function impChequesGuardarPeriodo(periodoKey) {
+  if (!periodoKey) return;
+  var colon = [];
+  for (var i = 1; i <= 5; i++) {
+    var montoEl = document.getElementById('impChqColon' + i);
+    var fechaEl = document.getElementById('impFechaColon' + i);
+    colon.push({ monto: montoEl ? montoEl.value : '', fecha: fechaEl ? fechaEl.value : '' });
+  }
+  var osdeEl = document.getElementById('impChqOSDE');
+  IMP_CHEQUES_HIST[periodoKey] = { chqOSDE: osdeEl ? osdeEl.value : '', colon: colon };
+  impChequesHistGuardarTodo();
+}
+// Restaura solo campos vacíos — no pisa algo que ya se haya retipeado distinto
+// en la misma sesión (ej. corrigiendo un importe antes de volver a calcular).
+function impChequesRestaurarPeriodo(periodoKey) {
+  var e = periodoKey && IMP_CHEQUES_HIST[periodoKey];
+  if (!e) return false;
+  var osdeEl = document.getElementById('impChqOSDE');
+  if (osdeEl && !osdeEl.value) osdeEl.value = e.chqOSDE || '';
+  (e.colon || []).forEach(function(c, idx) {
+    var montoEl = document.getElementById('impChqColon' + (idx + 1));
+    var fechaEl = document.getElementById('impFechaColon' + (idx + 1));
+    if (montoEl && !montoEl.value && c.monto) montoEl.value = c.monto;
+    if (fechaEl && !fechaEl.value && c.fecha) fechaEl.value = c.fecha;
+  });
+  return true;
 }
 
 // Los cheques Colón se depositan ~2 meses después del mes facturado (CEOT.xlsx).
@@ -812,9 +869,9 @@ async function procesarArchivosImport() {
     var registros = await leerRegistrosCeot(fileCEOT);
     if (!registros.length) throw new Error('Archivo vacío o sin filas reconocibles.');
 
-    var bill = billingDesdeRegistros(registros);
+    bill = billingDesdeRegistros(registros);
     var osdeBill = bill.osdeBill, difBill = bill.difBill;
-    var gasEqAjenoOsde = bill.gasEqAjenoOsde, gasEqAjenoDif = bill.gasEqAjenoDif;
+    gasEqAjenoOsde = bill.gasEqAjenoOsde; gasEqAjenoDif = bill.gasEqAjenoDif;
     var ceotAyudantiaOsde = bill.ceotAyudantiaOsde, ceotAyudantiaDif = bill.ceotAyudantiaDif, ceotAyudantiaDetalle = bill.ceotAyudantiaDetalle;
     var ceotAyudantiaSinEspDetalle = bill.ceotAyudantiaSinEspDetalle;
     var GASEQ_SOCIOS = GASEQ_SOCIOS_CEOT;
@@ -857,6 +914,7 @@ async function procesarArchivosImport() {
     } else {
       periodoKeyArchivo = periodoKeyArchivo.toLowerCase();
     }
+    impPeriodoActual = periodoKeyArchivo;
 
     // ── Débitos > $50k (excl. consultas) → pestaña Débitos.
     // Corre para cualquiera de los 2 formatos (antes solo para .txt) — el
@@ -967,6 +1025,15 @@ async function procesarArchivosImport() {
         '<input type="text" id="impChqColon' + i + '" class="imp-colon-input" placeholder="Importe bruto $">' +
         '<input type="text" id="impFechaColon' + i + '" class="imp-colon-fecha" placeholder="DD/MM">' +
         '</div>';
+    }
+
+    var chequesMsgEl = document.getElementById('impChequesRestMsg');
+    if (chequesMsgEl) {
+      var huboRestauro = impChequesRestaurarPeriodo(impPeriodoActual);
+      chequesMsgEl.style.display = huboRestauro ? 'block' : 'none';
+      chequesMsgEl.textContent = huboRestauro
+        ? '↺ Se restauraron los cheques ya cargados para «' + impPeriodoActual + '» — corregí lo que haga falta y volvé a Calcular distribución.'
+        : '';
     }
 
     document.getElementById('impStep2').style.display = 'block';
@@ -1202,6 +1269,7 @@ async function facCargarPDF(file) {
 }
 
 function calcularDistribucionFinal() {
+  impChequesGuardarPeriodo(impPeriodoActual);
   var totOSDE = SOCIOS_IMP.reduce(function(s,k){ return s+(impOsdeBilling[k]||0); }, 0);
   var totDIF  = SOCIOS_IMP.reduce(function(s,k){ return s+(impDifBilling[k]||0);  }, 0);
 
