@@ -1,14 +1,21 @@
 // ═══════════════════════════════════════════════════════════════════
 // estadisticas-export.js — exporta el módulo "Estadísticas CEOT".
-//   · PDF  → una hoja por vista: Consultas y Cirugías.
-//   · JPG  → la vista que se está mirando, en una sola imagen.
-// Cada hoja se arma con el mismo #estRoot que ya está en pantalla: se
-// ocultan los controles (botones de vista, importador), se le pone un
-// encabezado de comprobante, se le fija el ancho de hoja y se captura
-// con html2canvas. Al terminar queda todo como estaba.
-// La orientación de cada hoja (apaisada o vertical) sale de la
-// proporción de lo capturado, así siempre entra en UNA hoja usando el
-// máximo de papel posible.
+//
+//   Panel admin     → PDF (una hoja de Consultas + una de Cirugías)
+//                     JPG (la vista que se está mirando).
+//   Portal del prof → PDF / JPG con UNA hoja, solo con sus números.
+//                     La hoja del profesional NO lleva nada del total
+//                     del servicio (ni su participación ni su puesto en
+//                     el ranking): eso lo sigue viendo en pantalla, pero
+//                     no viaja en un archivo descargado.
+//
+// Cómo funciona: se captura con html2canvas el mismo bloque que ya está
+// en pantalla. Antes de la captura se ocultan los controles y lo que no
+// va al documento ([data-est-skip]), se agrega un encabezado de
+// comprobante, se fija el ancho de hoja y la grilla de gráficos a dos
+// columnas. Al terminar queda todo como estaba.
+// La orientación de cada hoja sale de la proporción de lo capturado, así
+// entra en UNA hoja usando el máximo de papel posible.
 // Solo definiciones — se carga DESPUÉS de js/estadisticas.js.
 // ═══════════════════════════════════════════════════════════════════
 
@@ -32,6 +39,20 @@ function estExpSelloArchivo() {
 
 function estExpTitulo(vista) { return vista === "cirugias" ? "Cirugías" : "Consultas"; }
 
+// "DR. DE LA COLINA" → "Dr. De La Colina"
+function estExpNombreLindo(s) {
+  return String(s || "").toLowerCase().replace(/(^|[\s.])([a-záéíóúñ])/g, function (m, pre, letra) {
+    return pre + letra.toUpperCase();
+  });
+}
+
+function estExpSlug(s) {
+  return String(s || "").toLowerCase()
+    .replace(/[áàä]/g, "a").replace(/[éèë]/g, "e").replace(/[íìï]/g, "i")
+    .replace(/[óòö]/g, "o").replace(/[úùü]/g, "u").replace(/ñ/g, "n")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
 // Último mes de 2026 con dato cargado, para el encabezado.
 function estExpUltimoMes(vista) {
   try {
@@ -42,29 +63,52 @@ function estExpUltimoMes(vista) {
   } catch (e) { return ""; }
 }
 
-// ── botones (van en el encabezado del módulo) ─────────────────────
-function estExpBotones() {
-  var base = "padding:7px 13px;border-radius:9px;border:1px solid var(--co-line,#d9d0b8);"
+// ── botones ───────────────────────────────────────────────────────
+function estExpEstiloBoton() {
+  return "padding:7px 13px;border-radius:9px;border:1px solid var(--co-line,#d9d0b8);"
     + "background:var(--co-card,#fbf8f0);color:var(--co-ink,#20241f);"
     + "font-size:0.78rem;font-weight:700;cursor:pointer";
-  return '<button onclick="estExportar(\'pdf\')" title="Las dos vistas: una hoja de Consultas y una de Cirugías" style="' + base + '">PDF</button>'
-    + '<button onclick="estExportar(\'jpg\')" title="La vista que estás mirando, como imagen" style="' + base + '">JPG</button>';
+}
+
+function estExpBotones() {
+  var e = estExpEstiloBoton();
+  return '<button onclick="estExportar(\'pdf\')" title="Las dos vistas: una hoja de Consultas y una de Cirugías" style="' + e + '">PDF</button>'
+    + '<button onclick="estExportar(\'jpg\')" title="La vista que estás mirando, como imagen" style="' + e + '">JPG</button>';
+}
+
+function estExpBotonesProf() {
+  var e = estExpEstiloBoton();
+  return '<button onclick="estExportarProf(\'pdf\')" title="Mis estadísticas en una hoja PDF" style="' + e + '">PDF</button>'
+    + '<button onclick="estExportarProf(\'jpg\')" title="Mis estadísticas como imagen" style="' + e + '">JPG</button>';
 }
 
 // ── encabezado de la hoja exportada ───────────────────────────────
-function estExpCabecera(vista) {
-  var ultimo = estExpUltimoMes(vista);
+function estExpCabeceraNodo(titulo, bajada) {
   var d = document.createElement("div");
   d.setAttribute("data-est-cab", "1");
   d.style.cssText = "margin:0 0 18px;padding:0 0 10px;border-bottom:2px solid #20241f";
   d.innerHTML =
     '<div style="font-family:Georgia,\'Iowan Old Style\',\'Times New Roman\',serif;'
-    + 'font-size:1.5rem;font-weight:700;letter-spacing:.01em;color:#1f3a2e">'
-    + 'Estadísticas CEOT &mdash; ' + estExpTitulo(vista) + '</div>'
-    + '<div style="margin-top:4px;font-size:0.78rem;color:#6b6a5a">Año 2026'
-    + (ultimo ? ' &middot; datos hasta ' + ultimo : '')
-    + ' &middot; emitido el ' + estExpHoy() + '</div>';
+    + 'font-size:1.5rem;font-weight:700;letter-spacing:.01em;color:#1f3a2e">' + titulo + '</div>'
+    + '<div style="margin-top:4px;font-size:0.78rem;color:#6b6a5a">' + bajada + '</div>';
   return d;
+}
+
+function estExpCabecera(vista) {
+  var ultimo = estExpUltimoMes(vista);
+  return estExpCabeceraNodo(
+    'Estadísticas CEOT &mdash; ' + estExpTitulo(vista),
+    'Año 2026' + (ultimo ? ' &middot; datos hasta ' + ultimo : '') + ' &middot; emitido el ' + estExpHoy()
+  );
+}
+
+function estExpCabeceraProf(doctor) {
+  var ultimo = estExpUltimoMes("consultas");
+  return estExpCabeceraNodo(
+    'Estadísticas CEOT &mdash; ' + estExpNombreLindo(doctor && doctor.nombre ? doctor.nombre : ""),
+    'Mis consultas y cirugías &middot; año 2026'
+    + (ultimo ? ' &middot; datos hasta ' + ultimo : '') + ' &middot; emitido el ' + estExpHoy()
+  );
 }
 
 // ── cartel "generando" (tapa el reacomodo de la pantalla) ──────────
@@ -95,21 +139,23 @@ function estExpEsperarPintado(cb) {
   });
 }
 
-// ── captura de una vista ──────────────────────────────────────────
+// ── captura de una hoja ───────────────────────────────────────────
+// opts = { rootId, cabecera, repintar }
+//   repintar: función que deja el bloque en pantalla antes de capturar
+//             (el admin la usa para cambiar de vista). Puede faltar.
 // Devuelve (por callback) un <canvas> con la hoja, o null si falló.
-function estExpCapturar(vista, cb) {
-  estVista = vista;
-  estPintarAdmin();
+function estExpCapturar(opts, cb) {
+  if (opts.repintar) opts.repintar();
 
-  var root = document.getElementById("estRoot");
+  var root = document.getElementById(opts.rootId);
   if (!root) { cb(null); return; }
 
-  // Lo que no va al documento: título con los botones, aviso de Chart,
-  // y el bloque de importación.
+  // Lo que no va al documento: títulos con botones, avisos, el bloque de
+  // importación y, en la hoja del profesional, todo lo del servicio.
   var ocultos = root.querySelectorAll("[data-est-skip]");
   for (var i = 0; i < ocultos.length; i++) ocultos[i].style.display = "none";
 
-  root.insertBefore(estExpCabecera(vista), root.firstChild);
+  root.insertBefore(opts.cabecera, root.firstChild);
 
   // Grilla de gráficos a dos columnas fijas: queda de documento, no
   // depende del ancho de la ventana de quien exporta.
@@ -178,7 +224,7 @@ function estExpCapturar(vista, cb) {
   });
 }
 
-// ── descarga de un dataURL ────────────────────────────────────────
+// ── descarga ──────────────────────────────────────────────────────
 function estExpBajar(dataUrl, nombre) {
   var a = document.createElement("a");
   a.href = dataUrl;
@@ -188,38 +234,48 @@ function estExpBajar(dataUrl, nombre) {
   document.body.removeChild(a);
 }
 
-// ── punto de entrada ──────────────────────────────────────────────
-// formato: "pdf" (las dos vistas, una hoja cada una) | "jpg" (la vista actual)
-function estExportar(formato) {
-  if (estExpEnCurso) return;
-
+// ── librerías listas ──────────────────────────────────────────────
+function estExpLibrosListos(formato) {
   if (typeof html2canvas !== "function") {
     alert("La librería de captura todavía se está cargando. Esperá un segundo y volvé a intentar.");
-    return;
+    return false;
   }
   if (formato === "pdf" && !window.jspdf) {
     alert("La librería PDF todavía se está cargando. Esperá un segundo y volvé a intentar.");
-    return;
+    return false;
   }
+  return true;
+}
 
-  estExpEnCurso = true;
-  var vistaOriginal = estVista;
+// Deja el documento listo para capturar: tema claro (se imprime en papel) y
+// sin animación de Chart.js (si no html2canvas agarra los gráficos a mitad
+// de dibujo). Devuelve la función que restaura todo.
+function estExpModoDocumento() {
   var temaOriginal = document.documentElement.getAttribute("data-theme");
   var animOriginal = (window.Chart && Chart.defaults) ? Chart.defaults.animation : null;
-
-  // El documento se imprime en papel: siempre tema claro y sin animación
-  // (si no, html2canvas captura los gráficos a mitad de dibujo).
   document.documentElement.setAttribute("data-theme", "light");
   if (window.Chart && Chart.defaults) Chart.defaults.animation = false;
   window.scrollTo(0, 0);
+  return function () {
+    if (temaOriginal) document.documentElement.setAttribute("data-theme", temaOriginal);
+    else document.documentElement.removeAttribute("data-theme");
+    if (window.Chart && Chart.defaults) Chart.defaults.animation = animOriginal;
+  };
+}
 
+// ══════ ADMIN ═════════════════════════════════════════════════════
+// formato: "pdf" (las dos vistas, una hoja cada una) | "jpg" (la vista actual)
+function estExportar(formato) {
+  if (estExpEnCurso || !estExpLibrosListos(formato)) return;
+  estExpEnCurso = true;
+
+  var vistaOriginal = estVista;
+  var salirModoDoc = estExpModoDocumento();
   var vistas = (formato === "pdf") ? ["consultas", "cirugias"] : [vistaOriginal];
   var hojas = [];
 
   var terminar = function () {
-    if (temaOriginal) document.documentElement.setAttribute("data-theme", temaOriginal);
-    else document.documentElement.removeAttribute("data-theme");
-    if (window.Chart && Chart.defaults) Chart.defaults.animation = animOriginal;
+    salirModoDoc();
     estVista = vistaOriginal;
     estPintarAdmin();
     estExpDestapar();
@@ -233,31 +289,78 @@ function estExportar(formato) {
         alert("No se pudo generar la exportación. Probá recargar la página.");
         return;
       }
-      if (formato === "pdf") estExpArmarPDF(hojas);
-      else estExpBajar(hojas[0].canvas.toDataURL("image/jpeg", 0.92),
-        "CEOT-estadisticas-" + hojas[0].vista + "-" + estExpSelloArchivo() + ".jpg");
+      if (formato === "pdf") {
+        estExpArmarPDF(hojas, "CEOT-estadisticas-" + estExpSelloArchivo() + ".pdf");
+      } else {
+        estExpBajar(hojas[0].toDataURL("image/jpeg", 0.92),
+          "CEOT-estadisticas-" + vistas[0] + "-" + estExpSelloArchivo() + ".jpg");
+      }
       terminar();
       return;
     }
     estExpTapar("Generando " + estExpTitulo(vistas[i]) + "…");
-    estExpCapturar(vistas[i], function (canvas) {
-      if (canvas) hojas.push({ vista: vistas[i], canvas: canvas });
-      siguiente(i + 1);
-    });
+    (function (vista) {
+      estExpCapturar({
+        rootId: "estRoot",
+        cabecera: estExpCabecera(vista),
+        repintar: function () { estVista = vista; estPintarAdmin(); }
+      }, function (canvas) {
+        if (canvas) hojas.push(canvas);
+        siguiente(i + 1);
+      });
+    })(vistas[i]);
   };
 
   estExpTapar("Generando…");
-  // Un respiro para que el cartel se pinte antes de empezar a trabajar.
   estExpEsperarPintado(function () { siguiente(0); });
 }
 
-// ── PDF: una hoja A4 por vista, orientación según la proporción ───
-function estExpArmarPDF(hojas) {
+// ══════ PORTAL DEL PROFESIONAL ════════════════════════════════════
+// Una sola hoja, solo con sus números: lo del total del servicio queda
+// marcado con data-est-skip en estPintarProf() y no entra en la captura.
+function estExportarProf(formato) {
+  if (estExpEnCurso || !estExpLibrosListos(formato)) return;
+
+  var doctor = estProfDoctor;
+  if (!doctor) { alert("No pudimos identificar al profesional. Recargá la página."); return; }
+
+  estExpEnCurso = true;
+  var salirModoDoc = estExpModoDocumento();
+
+  var terminar = function () {
+    salirModoDoc();
+    estPintarProf(doctor);
+    estExpDestapar();
+    estExpEnCurso = false;
+  };
+
+  estExpTapar("Generando…");
+  estExpEsperarPintado(function () {
+    estExpCapturar({
+      rootId: "estProfRoot",
+      cabecera: estExpCabeceraProf(doctor),
+      repintar: null
+    }, function (canvas) {
+      if (!canvas) {
+        terminar();
+        alert("No se pudo generar la exportación. Probá recargar la página.");
+        return;
+      }
+      var base = "CEOT-estadisticas-" + estExpSlug(doctor.apellido) + "-" + estExpSelloArchivo();
+      if (formato === "pdf") estExpArmarPDF([canvas], base + ".pdf");
+      else estExpBajar(canvas.toDataURL("image/jpeg", 0.92), base + ".jpg");
+      terminar();
+    });
+  });
+}
+
+// ── PDF: una hoja A4 por captura, orientación según la proporción ─
+function estExpArmarPDF(hojas, nombre) {
   var jsPDF = window.jspdf.jsPDF;
   var doc = null;
 
   for (var i = 0; i < hojas.length; i++) {
-    var c = hojas[i].canvas;
+    var c = hojas[i];
     var apaisada = c.width >= c.height;
     var orient = apaisada ? "landscape" : "portrait";
     var pw = apaisada ? 297 : 210;
@@ -276,5 +379,5 @@ function estExpArmarPDF(hojas) {
       (pw - w) / 2, (ph - h) / 2, w, h, undefined, "FAST");
   }
 
-  doc.save("CEOT-estadisticas-" + estExpSelloArchivo() + ".pdf");
+  doc.save(nombre);
 }

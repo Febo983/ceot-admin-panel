@@ -13,6 +13,7 @@ var estChartInstances = {};
 var estVista      = "consultas";   // "consultas" | "cirugias"
 var estImpPreview = null;           // preview pendiente de confirmar
 var estProfCtx    = null;           // datos para (re)dibujar los charts del portal
+var estProfDoctor = null;           // profesional logueado, para la exportación
 
 function estN(n) { return (n == null || n === "") ? "—" : Number(n).toLocaleString("es-AR"); }
 function estPct(n) { return (Math.round(n * 1000) / 10).toLocaleString("es-AR") + "%"; }
@@ -184,16 +185,16 @@ function estBtnVista(v, txt) {
     + ';font-size:0.78rem;font-weight:700;cursor:pointer">' + txt + '</button>';
 }
 
-function estCardWrap(titulo, inner, extra) {
-  return '<div style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:14px">'
+function estCardWrap(titulo, inner, extra, attrs) {
+  return '<div ' + (attrs || '') + ' style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:14px">'
     + '<div style="font-size:0.72rem;font-weight:700;color:var(--co-ink-dim,#6b6a5a);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">' + titulo + (extra || "") + '</div>'
     + inner + '</div>';
 }
-function estChartCard(titulo, canvasId, heightPx) {
-  return estCardWrap(titulo, '<div style="position:relative;height:' + (heightPx || 240) + 'px"><canvas id="' + canvasId + '"></canvas></div>');
+function estChartCard(titulo, canvasId, heightPx, attrs) {
+  return estCardWrap(titulo, '<div style="position:relative;height:' + (heightPx || 240) + 'px"><canvas id="' + canvasId + '"></canvas></div>', "", attrs);
 }
-function estKpi(lbl, val, sub, color) {
-  return '<div class="adm-kpi" style="border-left-color:' + color + '">'
+function estKpi(lbl, val, sub, color, attrs) {
+  return '<div class="adm-kpi" ' + (attrs || '') + ' style="border-left-color:' + color + '">'
     + '<div class="adm-kpi-lbl">' + lbl + '</div>'
     + '<div class="adm-kpi-val">' + val + '</div>'
     + (sub ? '<div class="adm-kpi-sub">' + sub + '</div>' : '')
@@ -814,6 +815,7 @@ function renderEstadisticasProf(doctor) {
 function estPintarProf(doctor) {
   var pane = document.getElementById("pane-estadisticas");
   if (!pane) return;
+  estProfDoctor = doctor;   // lo necesita la exportación para repintar
   var apellido = (doctor && doctor.apellido) ? doctor.apellido.toUpperCase() : "";
 
   var consMat = estConsMatriz2026();
@@ -846,21 +848,25 @@ function estPintarProf(doctor) {
 
   var mp = function (n) { return estN(n); };
   var html = '<div id="estProfRoot" style="padding:4px 0">';
-  html += '<div class="mp-section-label">Estadísticas del servicio</div>';
+  html += '<div data-est-skip="1" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+    + '<div class="mp-section-label">Estadísticas del servicio</div>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap">'
+    + (typeof estExpBotonesProf === "function" ? estExpBotonesProf() : "")
+    + '</div></div>';
 
   html += '<div class="adm-kpis" style="flex-wrap:wrap;margin-bottom:12px">'
     + estKpi("Mis consultas 2026", mp(miCYtd), estDelta(miCYtd, miCYtd25), "#1c78b0")
     + estKpi("Mis cirugías 2026", mp(miXYtd), estDelta(miXYtd, miXYtd25), "#1f3a2e")
-    + estKpi("Mi lugar en cirugías", puestoTxt, "por volumen 2026", "#c9933a")
+    + estKpi("Mi lugar en cirugías", puestoTxt, "por volumen 2026", "#c9933a", 'data-est-skip="1"')
     + '</div>';
 
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">'
+  html += '<div data-est-grid="1" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">'
     + estChartCard("Mis consultas por mes · 2026 vs 2025", "estProfCons", 220)
     + estChartCard("Mis cirugías por mes · 2026 vs 2025", "estProfCx", 220)
-    + estChartCard("Mi participación en el total del servicio · 2026", "estProfPart", 220)
+    + estChartCard("Mi participación en el total del servicio · 2026", "estProfPart", 220, 'data-est-skip="1"')
     + '</div>';
 
-  html += '<div style="margin-top:12px;font-size:0.72rem;color:var(--co-ink-dim,#6b6a5a)">'
+  html += '<div data-est-skip="1" style="margin-top:12px;font-size:0.72rem;color:var(--co-ink-dim,#6b6a5a)">'
     + 'La barra <span style="color:' + EST_COL_2025 + ';font-weight:700">ámbar</span> es 2025, para comparar. Tus números se comparan contra el total de CEOT; el detalle individual del resto solo lo ve la administración.'
     + '</div>';
   html += '</div>';
