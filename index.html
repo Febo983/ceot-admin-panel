@@ -19,6 +19,7 @@
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/lucide@1.26.0/dist/umd/lucide.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -2219,23 +2220,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-09-30-1230"></script>
-<script src="js/portal-render.js?v=2026-09-30-1145"></script>
-<script src="js/admin-home.js?v=2026-09-25-1126"></script>
-<script src="js/gastos-obra.js?v=2026-09-25-1126"></script>
-<script src="js/presentacion.js?v=2026-09-25-1126"></script>
-<script src="js/sueldo-b.js?v=2026-09-25-1126"></script>
-<script src="js/comprobantes-pdf.js?v=2026-09-25-1126"></script>
-<script src="js/importar-liquidacion.js?v=2026-10-02-0900"></script>
-<script src="js/redsom.js?v=2026-10-02-0900"></script>
-<script src="js/nun-data.js?v=2026-09-25-1126"></script>
-<script src="js/accesos-debitos.js?v=2026-09-25-1126"></script>
-<script src="js/estadisticas-datos.js?v=2026-09-25-1126"></script>
-<script src="js/estadisticas.js?v=2026-09-25-1126"></script>
-<script src="js/gastos-casa.js?v=2026-09-25-1126"></script>
-<script src="js/faq-asistente.js?v=2026-09-25-1126"></script>
-<script src="js/asistente.js?v=2026-09-25-1126"></script>
-<script src="js/correos.js?v=2026-09-25-1126"></script>
+<script src="js/datos.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/portal-render.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/admin-home.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/gastos-obra.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/presentacion.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/sueldo-b.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/comprobantes-pdf.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/importar-liquidacion.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/redsom.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/nun-data.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/accesos-debitos.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/estadisticas-datos.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/estadisticas.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/estadisticas-export.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/gastos-casa.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/faq-asistente.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/asistente.js?v=2026-10-05-estadisticas-export"></script>
+<script src="js/correos.js?v=2026-10-05-estadisticas-export"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -7496,7 +7498,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-09-28-sueldob-facturacion-editable';
+  var CURRENT_BUILD = '2026-10-05-estadisticas-export';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');

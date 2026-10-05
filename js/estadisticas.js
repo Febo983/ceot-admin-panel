@@ -205,13 +205,16 @@ function estPintarAdmin() {
   if (!cont) return;
 
   var html = '<div id="estRoot">';
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
+  html += '<div data-est-skip="1" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
     + '<div class="adm-sec-title" style="margin:0;border:none;padding:0">📈 Estadísticas CEOT</div>'
-    + '<div style="display:flex;gap:6px">' + estBtnVista("consultas", "Consultas") + estBtnVista("cirugias", "Cirugías") + '</div>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap">'
+    + estBtnVista("consultas", "Consultas") + estBtnVista("cirugias", "Cirugías")
+    + (typeof estExpBotones === "function" ? estExpBotones() : "")
+    + '</div>'
     + '</div>';
 
   if (!window.Chart) {
-    html += '<div style="padding:8px 10px;margin-bottom:10px;border-radius:8px;background:rgba(220,38,38,.08);color:#dc2626;font-size:0.72rem">⚠ No se pudo cargar la librería de gráficos. Se muestran solo las tablas.</div>';
+    html += '<div data-est-skip="1" style="padding:8px 10px;margin-bottom:10px;border-radius:8px;background:rgba(220,38,38,.08);color:#dc2626;font-size:0.72rem">⚠ No se pudo cargar la librería de gráficos. Se muestran solo las tablas.</div>';
   }
 
   html += estBloqueImport();
@@ -226,7 +229,7 @@ function estPintarAdmin() {
 
 // ── Bloque de importación mensual ────────────────────────────────
 function estBloqueImport() {
-  var h = '<div style="background:var(--co-card,#fbf8f0);border:1px dashed var(--co-line,#d9d0b8);border-radius:10px;padding:14px;margin-bottom:16px">';
+  var h = '<div data-est-skip="1" style="background:var(--co-card,#fbf8f0);border:1px dashed var(--co-line,#d9d0b8);border-radius:10px;padding:14px;margin-bottom:16px">';
 
   if (estImpPreview) {
     var p = estImpPreview;
@@ -504,7 +507,7 @@ function estAdminConsultas() {
     + estKpi("Último mes cargado", ultMes != null ? estCap(EST_MESES[ultMes]) + " · " + estN(totMes[ultMes]) : "—", deltaTxt, "#c9933a")
     + '</div>';
 
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:6px">'
+  html += '<div data-est-grid="1" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:6px">'
     + estChartCard("Evolución mensual — servicio (2026 vs 2025 · 2024)", "estChartConsEvo", 260)
     + estChartCard("Ranking por profesional · 2026 vs 2025 (mismo período)", "estChartConsRank", Math.max(240, rank.length * 30))
     + '</div>';
@@ -541,7 +544,7 @@ function estAdminCirugias() {
     + estKpi("Particulares", estN(ytd.particular), estPct(ytd.particular / (totYtd || 1)) + " · 2025: " + estN(parYtd2025), "#7f77dd")
     + '</div>';
 
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:6px">'
+  html += '<div data-est-grid="1" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:6px">'
     + estChartCard("Evolución mensual (2026 vs 2025 · 2024)", "estChartCxEvo", 260)
     + estChartCard("Ranking por cirujano · 2026 vs 2025 (mismo período)", "estChartCxRank", Math.max(240, rank.length * 30))
     + estChartCard("Cobertura por mes · 2026 (ART / particular / obras sociales)", "estChartCxCob", 260)
