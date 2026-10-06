@@ -2220,24 +2220,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/portal-render.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/admin-home.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/gastos-obra.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/presentacion.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/sueldo-b.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/comprobantes-pdf.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/importar-liquidacion.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/redsom.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/nun-data.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/accesos-debitos.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/estadisticas-datos.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/estadisticas.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/estadisticas-export.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/gastos-casa.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/faq-asistente.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/asistente.js?v=2026-10-05-estadisticas-export-prof"></script>
-<script src="js/correos.js?v=2026-10-05-estadisticas-export-prof"></script>
+<script src="js/datos.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/portal-render.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/admin-home.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/gastos-obra.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/presentacion.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/sueldo-b.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/comprobantes-pdf.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/importar-liquidacion.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/redsom.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/nun-data.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/accesos-debitos.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/estadisticas-datos.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/estadisticas.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/estadisticas-export.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/gastos-casa.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/faq-asistente.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/asistente.js?v=2026-10-06-cem-duplicado"></script>
+<script src="js/correos.js?v=2026-10-06-cem-duplicado"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3129,6 +3129,9 @@ function renderAdminPanel(periodo) {
     html += '<div class="adm-br-row" style="background:rgba(22,163,74,.12)"><span class="adm-br-lbl">Centro Médico (ingreso)</span><span class="adm-br-val" style="color:#16a34a">+ ' + fmt(totCM) + '</span></div>';
   }
   html += '</div>';
+  // Si el CEM de este mes repite los importes del mes anterior, avisarlo acá
+  // mismo: este desglose es donde el monto se ve por primera vez.
+  html += cemDuplicadoAvisoHtml(periodo);
   if (totGA > 0) {
     var periodoCap = periodo.charAt(0).toUpperCase() + periodo.slice(1);
     html += '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:4px 2px 0 2px">⚑ Los Gastos A de ' + periodoCap + ' se descuentan de este cheque para cubrir ' + (sigMesNombreAdm[periodo] || 'el mes siguiente') + '.</div>';
@@ -3674,7 +3677,12 @@ async function renderAporteCeot() {
     var totalRealCells = socios.map(function(d) { return '<td style="font-weight:700">' + fmt(acumulado[d.apellido] + ((invData.acum[d.apellido] || {}).interes || 0)) + '</td>'; }).join("");
     var totalRealRow = '<tr class="adm-totals"><td>TOTAL REAL</td>' + totalRealCells + '<td style="font-weight:700">' + fmt(totalGeneral + invData.totInt) + '</td><td></td></tr>';
 
-    regHtml = '<div class="adm-sec-title" style="margin-top:20px">Registro mensual — montos de Retención Ganancias</div>'
+    // Un CEM duplicado infla la retención del mes sin dejar rastro en la tabla
+    // (el monto entra mezclado con los cheques Colón). Se avisa por período.
+    var avisosCem = APORTE_CEOT_DESDE.map(cemDuplicadoAvisoHtml).join("");
+
+    regHtml = avisosCem
+      + '<div class="adm-sec-title" style="margin-top:20px">Registro mensual — montos de Retención Ganancias</div>'
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Período</th>' + theadCols + '<th>Total Retenido</th><th>Estado</th></tr></thead>'
       + '<tbody>' + tbodyRows + acumRow + interesRow + totalRealRow + '</tbody></table></div>'
       + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:6px 2px 0 2px">⚑ Mientras un mes esté abierto, sus montos se recalculan solos con el % vigente de cada profesional (y con los importes que vayas cargando). "Cerrar mes" guarda una foto del % de ese momento — de ahí en más ese mes ya no se mueve aunque después cambies porcentajes. "Reabrir" vuelve a usar el % vigente. Los montos mostrados (y el ACUMULADO) solo cuentan cheques ya acreditados por el banco a hoy — no lo agendado a futuro. TOTAL REAL suma además los intereses ya generados por los plazos fijos de la sección Inversiones.</div>'
@@ -7498,7 +7506,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-10-05-estadisticas-export-prof';
+  var CURRENT_BUILD = '2026-10-06-cem-duplicado';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');

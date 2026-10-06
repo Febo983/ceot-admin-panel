@@ -660,6 +660,56 @@ function retencionPorAcreditacion(c) {
 // cheques Colón).
 // Pedido de Marcelo, 11/09/2026: el acumulado de Retención Ganancias mostraba
 // septiembre/octubre completos aunque la última acreditación real fue 08/09.
+// ── CEM duplicado entre dos meses consecutivos ───────────────────
+// El CEM de un período es la liquidación del mes anterior y se cobra UNA sola
+// vez. Si el mismo cobro queda cargado en dos pestañas del Sheet, el panel lo
+// suma en los dos meses sin avisar nada: infla bruto, neto y Retención
+// Ganancias del segundo. Pasó de verdad en octubre 2026 — el CEM se adelantó
+// y se cobró en septiembre, pero quedó también en la pestaña de octubre, y
+// octubre arrancó $29.114.252 de bruto y $5.709.929 de retención arriba.
+//
+// No se puede resolver filtrando por fecha: PERIOD_EXTRAS[p].cm.fecha es una
+// descripción ("1ra sem. de Oct"), no una fecha parseable, y de hecho
+// cargarLiquidacionRemota ni siquiera la trae del Sheet (solo copia .m y
+// .pendiente). Y aunque fuera una fecha real tampoco alcanzaría: el CEM de
+// octubre SÍ estaba acreditado, el problema es que correspondía a septiembre.
+// Lo único que delata el caso es que los importes se repiten, así que es eso
+// lo que se compara.
+function cemDuplicadoConMesPrevio(periodo) {
+  var vacio = { dup: false, previo: null, monto: 0, cuantos: 0 };
+  var idx = (typeof MESES_CPSM !== "undefined") ? MESES_CPSM.indexOf(periodo) : -1;
+  if (idx < 1) return vacio;
+  var previo = MESES_CPSM[idx - 1];
+  var act = PERIOD_EXTRAS[periodo] && PERIOD_EXTRAS[periodo].cm;
+  var ant = PERIOD_EXTRAS[previo]  && PERIOD_EXTRAS[previo].cm;
+  if (!act || !ant || act.pendiente || ant.pendiente) return vacio;
+
+  var kAct = Object.keys(act.m).filter(function(k) { return act.m[k] > 0; });
+  var kAnt = Object.keys(ant.m).filter(function(k) { return ant.m[k] > 0; });
+  if (!kAct.length || kAct.length !== kAnt.length) return vacio;
+
+  var todosIguales = kAct.every(function(k) { return ant.m[k] === act.m[k]; });
+  if (!todosIguales) return vacio;
+
+  var monto = kAct.reduce(function(t, k) { return t + act.m[k]; }, 0);
+  return { dup: true, previo: previo, monto: monto, cuantos: kAct.length };
+}
+
+// Cartel de aviso, para pegar en cualquier pantalla que muestre plata del mes.
+function cemDuplicadoAvisoHtml(periodo) {
+  var d = cemDuplicadoConMesPrevio(periodo);
+  if (!d.dup) return "";
+  var cap = function(x) { return x.charAt(0).toUpperCase() + x.slice(1); };
+  return '<div style="margin:10px 0;padding:10px 12px;border:1px solid #f59e0b;'
+    + 'background:rgba(245,158,11,.12);border-radius:8px;font-size:.78rem;color:#78350f;line-height:1.5">'
+    + '⚠ <b>CEM posiblemente duplicado.</b> El Centro Médico de ' + cap(periodo) + ' ('
+    + fmt(d.monto) + ', ' + d.cuantos + ' profesionales) tiene exactamente los mismos importes '
+    + 'que el de ' + cap(d.previo) + '. Si es el mismo cobro, en el Sheet la fila CEM de '
+    + cap(periodo) + ' tiene que quedar marcada como <b>pendiente</b> — vaciar las celdas no '
+    + 'alcanza, el panel solo pisa valores cuando el cheque viene no-pendiente y nunca los borra.'
+    + '</div>';
+}
+
 function aporteCeotAcreditadoHoy(c) {
   if (!c || !c.pctAporte) return 0;
   var total = 0;
