@@ -1152,7 +1152,7 @@ function cpsmDescargarExcel() {
   XLSX.writeFile(wb, "CPSM_" + mesLiqStr + "_" + anio + ".xlsx");
 }
 
-function cpsmRenderTabla(honorariosData) {
+function cpsmRenderTabla(honorariosData, origen) {
   var filas = CPSM_PROF.map(function(p) {
     var id    = "cpsm-in-" + p.ap.replace(/ /g,"_");
     var resId = "cpsm-res-" + p.ap.replace(/ /g,"_");
@@ -1171,10 +1171,43 @@ function cpsmRenderTabla(honorariosData) {
 
   var statusEl = document.getElementById("cpsm-fetch-status");
   if (statusEl) {
-    statusEl.textContent = honorariosData ? "Honorarios cargados desde RESUMEN." : "Sin datos del Sheet — ingresá los importes manualmente.";
-    statusEl.style.color = honorariosData ? "#1a7a52" : "#b45309";
+    if (honorariosData && origen === "local") {
+      statusEl.textContent = "Sin datos del Sheet — honorarios reconstruidos desde el CPSM ya cargado del mes (CPSM ÷ 5%). Revisalos antes de generar el Excel.";
+      statusEl.style.color = "#b45309";
+    } else if (honorariosData) {
+      statusEl.textContent = "Honorarios cargados desde RESUMEN.";
+      statusEl.style.color = "#1a7a52";
+    } else {
+      statusEl.textContent = "Sin datos del Sheet — ingresá los importes manualmente.";
+      statusEl.style.color = "#b45309";
+    }
   }
   cpsmActualizarResultados();
+}
+
+// ── Fallback local cuando el Sheet no responde ────────────────
+// PERIODO_CPSM[mes] guarda, por profesional, el 5% de Diferidos+OSDE de M-2
+// (lo que se descuenta ese mes). Así que si el endpoint no trae los
+// honorarios, los reconstruimos al revés: honorarios = CPSM / 0.05. Vuelve
+// exacto porque cpsmCalc hace Math.floor(honor * 0.05) y el CPSM guardado es
+// entero. Sin esto la tabla queda en $0 y hay que cargar 9 importes a mano.
+function cpsmHonorariosLocales(mesLiqStr) {
+  if (typeof PERIODO_CPSM === "undefined") return null;
+  var cpsmMes = PERIODO_CPSM[mesLiqStr];
+  if (!cpsmMes) return null;
+  var out = {}, hay = false;
+  CPSM_PROF.forEach(function(p) {
+    if (p.exento) return;              // LABAYEN va por la rama de $10 fijo
+    var c = cpsmMes[p.ap];
+    if (typeof c === "number" && c > 0) { out[p.ap] = Math.round(c / 0.05); hay = true; }
+  });
+  return hay ? out : null;
+}
+
+function cpsmRenderFallback() {
+  var mesLiqEl = document.getElementById("cpsm-mes-liq");
+  var local = cpsmHonorariosLocales(mesLiqEl ? mesLiqEl.value : "");
+  cpsmRenderTabla(local, local ? "local" : null);
 }
 
 async function cpsmFetchHonorarios(mesFuente) {
@@ -1185,12 +1218,12 @@ async function cpsmFetchHonorarios(mesFuente) {
     var resp = await fetch(authURL(url));
     var data = await resp.json();
     if (data.ok && data.data) {
-      cpsmRenderTabla(data.data);
+      cpsmRenderTabla(data.data, "sheet");
     } else {
-      cpsmRenderTabla(null);
+      cpsmRenderFallback();
     }
   } catch(e) {
-    cpsmRenderTabla(null);
+    cpsmRenderFallback();
   }
 }
 
