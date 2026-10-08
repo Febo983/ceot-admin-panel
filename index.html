@@ -2220,24 +2220,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/portal-render.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/admin-home.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/gastos-obra.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/presentacion.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/sueldo-b.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/comprobantes-pdf.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/importar-liquidacion.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/redsom.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/nun-data.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/accesos-debitos.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/estadisticas-datos.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/estadisticas.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/estadisticas-export.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/gastos-casa.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/faq-asistente.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/asistente.js?v=2026-10-08-cant-y-export"></script>
-<script src="js/correos.js?v=2026-10-08-cant-y-export"></script>
+<script src="js/datos.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/portal-render.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/admin-home.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/gastos-obra.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/presentacion.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/sueldo-b.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/comprobantes-pdf.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/importar-liquidacion.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/redsom.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/nun-data.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/accesos-debitos.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/estadisticas-datos.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/estadisticas.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/estadisticas-export.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/gastos-casa.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/faq-asistente.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/asistente.js?v=2026-10-08-garmendia-totalceot"></script>
+<script src="js/correos.js?v=2026-10-08-garmendia-totalceot"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -2939,7 +2939,9 @@ function renderTotalCeot() {
 
   var MESES_ORD = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
   var meses = MESES_ORD.filter(function(m){ return tc[m]; });
-  var SOCIOS = ["BRUNI","CORELICH","DE LA COLINA","DEGANUTTI","LABAYEN","LEON","MAZZOLA","PERLASCO","SOULE","TRIVELLINI"];
+  // GARMENDIA se suma acá desde su alta (ago-2026): sin ella, este cuadro
+  // dejaba sus importes afuera del total y de los % (08/10/2026).
+  var SOCIOS = ["BRUNI","CORELICH","DE LA COLINA","DEGANUTTI","LABAYEN","LEON","MAZZOLA","PERLASCO","SOULE","TRIVELLINI","GARMENDIA"];
 
   // calcular grandTotal primero para poder mostrar %
   var grandTotal = 0;
@@ -3609,11 +3611,19 @@ async function renderAporteCeot() {
   // celda se autoactualiza sola a medida que cargan los importes acreditados
   // (Colón/OSDE/CEM) de ese período — calcularNetoLocal devuelve null cuando
   // todavía no hay ningún importe cargado para ese profesional/período.
-  // El monto de cada celda usa aporteCeotAcreditadoHoy() en vez de
-  // c.aporteCeot: solo cuenta los cheques Colón cuya fecha de acreditación ya
-  // pasó (fecha+48hs vs hoy) — no el total del mes agendado por adelantado.
-  // Así un mes recién cargado empieza en $0 y va creciendo cheque a cheque a
-  // medida que el banco los acredita de verdad (pedido de Marcelo, 11/09/2026).
+  // El monto de cada celda es c.aporteCeot: la retención del período entera,
+  // tal como sale de la liquidación (base = Colón + OSDE + CEM del mes × el %
+  // del profesional), esté o no acreditado todavía cada cheque en el banco.
+  // Entre el 11/09 y el 08/10/2026 acá se usó aporteCeotAcreditadoHoy() — solo
+  // los cheques con fecha de acreditación ya cumplida — para ver el mes en
+  // curso crecer cheque a cheque. Se volvió al devengado porque el número que
+  // se usa afuera (el que va al contador para Ganancias) es el de la
+  // liquidación, no el del extracto bancario: con el criterio anterior
+  // Septiembre 2026 mostraba $15.282.870 contra los $28.642.705 realmente
+  // retenidos (pedido de Marcelo, 08/10/2026).
+  // El acumulado de Accesos/Débitos sigue con el criterio de lo acreditado
+  // (getAporteCeotAcumuladoPorApellido, js/accesos-debitos.js): ahí interesa la
+  // plata ya disponible en el banco, no lo devengado.
   var regHtml;
   {
     var cerrados = getAporteCerrados();
@@ -3631,7 +3641,7 @@ async function renderAporteCeot() {
         var c = calcularNetoLocal(p, d);
         if (!c) return '<td><span class="adm-pend" style="font-size:.68rem">pendiente</span></td>';
         hayDatoPeriodo = true;
-        var monto = aporteCeotAcreditadoHoy(c);
+        var monto = c.aporteCeot || 0;
         totPeriodo += monto;
         acumulado[d.apellido] += monto;
         return '<td>' + fmt(monto) + '</td>';
@@ -3652,11 +3662,11 @@ async function renderAporteCeot() {
         + (p === mesActualAporte ? ' <span style="font-weight:400;font-size:.65rem;color:rgba(32,36,31,.45)">(Corresponde a liquidaciones hasta el día de hoy)</span>' : '');
       return '<tr><td>' + labelPeriodo + '</td>' + cells + totCell + estadoCell + '</tr>';
     }).join("");
-    // ACUMULADO acá suma solo lo ya acreditado en el banco a la fecha de hoy (ver aporteCeotAcreditadoHoy).
+    // ACUMULADO suma la retención devengada de cada período (c.aporteCeot), mismo criterio que las celdas de arriba.
     APORTE_CEOT_DESDE.forEach(function(p) {
       socios.forEach(function(d) {
         var c = calcularNetoLocal(p, d);
-        if (c) totalGeneral += aporteCeotAcreditadoHoy(c);
+        if (c) totalGeneral += (c.aporteCeot || 0);
       });
     });
 
@@ -6991,7 +7001,9 @@ function inversionesSectionHtml(periodo) {
 // PDF de Retención Ganancias: detalle por profesional y período + acumulado
 // total — para tener registro de cuánto se va reteniendo/ahorrando en total.
 // Reusa calcularNetoLocal() igual que el "Registro mensual" en pantalla, así
-// que el PDF siempre coincide con lo que se ve en la tabla.
+// que el PDF siempre coincide con lo que se ve en la tabla: los importes son
+// los retenidos según la liquidación de cada período (c.aporteCeot), no lo
+// acreditado en el banco a hoy — ver el comentario del Registro mensual.
 function descargarPDFAporteCeot() {
   if (!window.jspdf) {
     alert("La librería PDF aún se está cargando. Esperá un segundo y volvé a intentar.");
@@ -7057,11 +7069,11 @@ function descargarPDFAporteCeot() {
     meses.forEach(function(p, i) {
       var c = calcularNetoLocal(p, d);
       var x = colMes0 + i * mesW + mesW - 3;
-      var montoAcreditado = c ? aporteCeotAcreditadoHoy(c) : 0;
-      if (c && montoAcreditado) {
-        doc.text(fmtPDF(montoAcreditado), x, y, { align: "right" });
-        acumProf += montoAcreditado;
-        totalPorMes[i] += montoAcreditado;
+      var montoRetenido = c ? (c.aporteCeot || 0) : 0;
+      if (c && montoRetenido) {
+        doc.text(fmtPDF(montoRetenido), x, y, { align: "right" });
+        acumProf += montoRetenido;
+        totalPorMes[i] += montoRetenido;
       } else {
         doc.setTextColor(150, 150, 150);
         doc.text("—", x, y, { align: "right" });
@@ -7087,7 +7099,7 @@ function descargarPDFAporteCeot() {
   y += 10;
   doc.setFont("helvetica", "italic"); doc.setFontSize(7.5);
   doc.setTextColor(120, 120, 120);
-  doc.text("% = porcentaje vigente al momento de emitir este PDF (default 15% desde Agosto 2026, editable por profesional). \"—\" = período sin importes cargados todavía.", LM, y);
+  doc.text("% = porcentaje vigente al momento de emitir este PDF (default 15% desde Agosto 2026, editable por profesional). Importes retenidos según la liquidación de cada período. \"—\" = período sin importes cargados todavía.", LM, y);
   doc.setTextColor(0, 0, 0);
 
   var fname = "RetencionGanancias_" + today.getFullYear() + "-" +
@@ -7506,7 +7518,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-10-08-cant-y-export';
+  var CURRENT_BUILD = '2026-10-08-garmendia-totalceot';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
