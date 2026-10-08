@@ -361,20 +361,39 @@ function estImportarCirugias(file) {
         if (XLSX.utils.sheet_to_json(s, { header: 1 }).length > XLSX.utils.sheet_to_json(ws, { header: 1 }).length) ws = s;
       });
       var rows = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, raw: false });
+
+      // El reporte del sistema no siempre exporta las columnas en el mismo orden
+      // (en agosto 2026 venía PACIENTE | PROFESIONAL | INSTITUCION, en septiembre
+      // PACIENTE | INSTITUCION | PROFESIONAL). Se ubican por el nombre del
+      // encabezado y solo se cae al orden histórico si no hay fila de títulos.
+      var COL = { pac: 0, prof: 1, inst: 2, pres: 3, fecha: 4 }, hdrRow = -1;
+      for (var hi = 0; hi < Math.min(5, rows.length); hi++) {
+        var hr = rows[hi] || [];
+        var txt = hr.map(function (x) { return String(x == null ? "" : x).toUpperCase(); });
+        if (!txt.some(function (t) { return /PACIENTE/.test(t); })) continue;
+        var map = { pac: /PACIENTE/, prof: /PROFESIONAL/, inst: /INSTITUCION|INSTITUCIÓN/, pres: /PRESTACION|PRESTACIÓN/, fecha: /FECHA/ };
+        Object.keys(map).forEach(function (k) {
+          for (var ci = 0; ci < txt.length; ci++) { if (map[k].test(txt[ci])) { COL[k] = ci; return; } }
+        });
+        hdrRow = hi;
+        break;
+      }
+
       var grupos = [], cur = null, detYm = null, totFooter = null;
+      var cel = function (r, ci) { return String(r[ci] == null ? "" : r[ci]).trim(); };
       for (var i = 0; i < rows.length; i++) {
         var r = rows[i] || [];
-        var c0 = String(r[0] == null ? "" : r[0]).trim();
-        var c1 = String(r[1] == null ? "" : r[1]).trim();
-        var c2 = String(r[2] == null ? "" : r[2]).trim();
-        var c3 = String(r[3] == null ? "" : r[3]).trim();
-        var c4 = String(r[4] == null ? "" : r[4]).trim();
+        var c0 = cel(r, COL.pac);
+        var cProf = cel(r, COL.prof);
+        var cInst = cel(r, COL.inst);
+        var c3 = cel(r, COL.pres);
+        var c4 = cel(r, COL.fecha);
         var mFoot = /cantidad de resultados:\s*(\d+)/i.exec(c0);
         if (mFoot) { totFooter = parseInt(mFoot[1], 10); break; }
         if (/^-{3,}/.test(c0) || /^col[oó]n s\.?a\.?a\.?/i.test(c0) || /^prestaciones$/i.test(c0)) break;
-        if (i === 0 && /paciente/i.test(c0)) continue;               // encabezado
-        if (!c0 && !c1 && !c2 && !c4) continue;                       // fila vacía
-        if (c0) { cur = { prof: c1, inst: c2, fecha: c4, nun: null }; grupos.push(cur); }
+        if (i === hdrRow || (i === 0 && /paciente/i.test(c0))) continue;   // encabezado
+        if (!c0 && !cProf && !cInst && !c4) continue;                 // fila vacía
+        if (c0) { cur = { prof: cProf, inst: cInst, fecha: c4, nun: null }; grupos.push(cur); }
         // Complejidad NUN: viene como una fila de "prestación" propia dentro del
         // mismo grupo, ej. "(1-125056) NUN-COMPLEJIDAD 7". Si el grupo trae más de
         // una (varias prácticas facturadas), se toma la de mayor complejidad.
