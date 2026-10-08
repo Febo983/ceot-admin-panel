@@ -390,6 +390,11 @@ function estImportarCirugias(file) {
         var c4 = cel(r, COL.fecha);
         var mFoot = /cantidad de resultados:\s*(\d+)/i.exec(c0);
         if (mFoot) { totFooter = parseInt(mFoot[1], 10); break; }
+        // Pie del reporte. "CANT:162" viene ANTES de la línea de guiones y, al
+        // traer texto en la columna del paciente, se contaba como una cirugía más
+        // (el total daba 1 de más que "Cantidad de Resultados" y sumaba una
+        // fila fantasma a "sin asignar").
+        if (/^cant\s*:/i.test(c0)) break;
         if (/^-{3,}/.test(c0) || /^col[oó]n s\.?a\.?a\.?/i.test(c0) || /^prestaciones$/i.test(c0)) break;
         if (i === hdrRow || (i === 0 && /paciente/i.test(c0))) continue;   // encabezado
         if (!c0 && !cProf && !cInst && !c4) continue;                 // fila vacía

@@ -133,9 +133,29 @@ function estExpDestapar() {
 }
 
 // Dos frames + un respiro: le da tiempo a Chart.js a redibujar.
+//
+// requestAnimationFrame NO se dispara mientras la pestaña no está visible
+// (el usuario se cambió a otra pestaña, minimizó la ventana, cambió de
+// escritorio). La exportación tarda unos segundos, así que era muy fácil
+// irse a otra pestaña mientras generaba y que quedara colgada para siempre
+// en "Generando…", con el cartel tapando toda la pantalla y sin forma de
+// salir más que recargando. Se espera el frame igual (cuando se ve, es
+// instantáneo) pero con un setTimeout de respaldo: gana el que llegue
+// primero y el callback corre una sola vez.
+function estExpUnFrame(cb) {
+  var corrido = false;
+  var una = function () {
+    if (corrido) return;
+    corrido = true;
+    cb();
+  };
+  requestAnimationFrame(una);
+  setTimeout(una, 120);
+}
+
 function estExpEsperarPintado(cb) {
-  requestAnimationFrame(function () {
-    requestAnimationFrame(function () { setTimeout(cb, 200); });
+  estExpUnFrame(function () {
+    estExpUnFrame(function () { setTimeout(cb, 200); });
   });
 }
 
