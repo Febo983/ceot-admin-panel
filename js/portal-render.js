@@ -1041,10 +1041,9 @@ function renderMiPanel(doctor) {
   var fmt = function(n) { return '$' + Math.round(n).toLocaleString('es-AR'); };
 
   // ── 1. Honorarios desde datos locales (síncronos) ──────────
-  // Extendido hasta Dic-2026 (13/08/2026, pedido de Marcelo) — Oct/Nov ya
-  // sincronizan solos con el sheet (ver cargarLiquidacionRemota); Dic muestra
-  // "Sin datos" hasta que se resuelva el choque con Dic-2025 (ver nota en
-  // cargarLiquidacionRemota, "diciembre excluido a propósito").
+  // Extendido hasta Dic-2026 (13/08/2026, pedido de Marcelo) — Oct/Nov/Dic
+  // sincronizan solos con el sheet (ver cargarLiquidacionRemota). Dic se
+  // habilitó el 29/10/2026, cuando se cargó la pestaña Dic-2026.
   // ⚠️ NO se pudo extender hasta Jun-2027 como se pidió originalmente: el
   // sistema entero identifica los períodos solo por nombre de mes SIN año
   // (calcularNetoLocal, PERIODO_IIBB, PERIODO_CPSM, GASTOS_A...) — "febrero"

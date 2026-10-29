@@ -841,10 +841,12 @@ async function cargarLiquidacionRemota() {
     window.__syncLiquidacionTs = Date.now();
 
     // ── Extraer OSDE y CM para cada período ────────────────
-    // "diciembre" excluido a propósito: el endpoint devuelve datos de Dic-2025
-    // (planilla vieja), no de Dic-2026 real — sacar de esta lista cuando
-    // Marce confirme que la pestaña de Dic-2026 ya está cargada en el Sheet.
-    ["mayo","junio","julio","agosto","septiembre","octubre","noviembre"].forEach(function(pid) {
+    // "diciembre" entra desde el 29/10/2026: ese día se cargó la pestaña
+    // Dic-2026 del Sheet y el endpoint pasó a devolver "Diciembre 2026" con
+    // sus 5 cheques. Dic-2025 no la pisa: su tabla de distribución no tiene
+    // fechas, así que parsearHoja la descarta, y además Dic-2026 va después
+    // en el orden de pestañas, con lo cual gana aunque algún día se complete.
+    ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(pid) {
       if (!data[pid] || !data[pid].cheques) return;
       var cheques = data[pid].cheques;
 
@@ -954,12 +956,13 @@ async function cargarLiquidacionRemota() {
     }
 
     // ── Reconstruir RAW/FECHAS para agosto en adelante ──────
-    // "diciembre" excluido a propósito (ver nota más arriba, mismo motivo).
+    // "diciembre" también entra (ver nota más arriba).
     var mesesDin = {
       agosto:     { RAW: AGOSTO_RAW,     FECHAS: AGOSTO_FECHAS     },
       septiembre: { RAW: SEPTIEMBRE_RAW, FECHAS: SEPTIEMBRE_FECHAS },
       octubre:    { RAW: OCTUBRE_RAW,    FECHAS: OCTUBRE_FECHAS    },
       noviembre:  { RAW: NOVIEMBRE_RAW,  FECHAS: NOVIEMBRE_FECHAS  },
+      diciembre:  { RAW: DICIEMBRE_RAW,  FECHAS: DICIEMBRE_FECHAS  },
     };
     Object.keys(mesesDin).forEach(function(pid) {
       if (!data[pid] || !data[pid].cheques) return;
