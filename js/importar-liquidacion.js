@@ -399,7 +399,7 @@ async function leerRegistrosCeot(file) {
     var texto = await leerTextoArchivo(file);
     return registrosDesdeTXT(texto);
   }
-  var rows = await leerXLSX(file);
+  var rows = await leerXLSX(file, { csvTexto: true });
   return registrosDesdeXLSXCrudo(rows);
 }
 
@@ -807,7 +807,64 @@ async function leerTextoArchivo(file) {
   });
 }
 
-async function leerXLSX(file) {
+// ── CSV de la clínica (ART / CEOT crudo): se parsea a mano ─────────
+// Estos .csv vienen separados por ';', en latin-1 y con **coma decimal**
+// (`  23664,71`). Si se los pasa por SheetJS, su parser toma esa coma como
+// separador de miles y devuelve 2366471: todos los importes quedan ×100.
+// Detectado el 29/10/2026 — el total del ART de septiembre dio
+// $1.138.506.389 en vez de $11.385.063,89, y eso se cargó en el Sheet
+// inflando a Deganutti/Trivellini/Mazzola. Acá se devuelven las celdas como
+// TEXTO para que las interprete `parsearMontoImp` (criterio es-AR).
+// Los CSV de Centro Médico NO pasan por acá: usan punto decimal y los lee
+// `parsearImporteCM`, que espera el formato de SheetJS.
+function partirLineaCSV(linea, sep) {
+  var out = [], i = 0, n = linea.length, val = '';
+  while (i < n) {
+    if (linea[i] === '"') {
+      i++;
+      while (i < n) {
+        if (linea[i] === '"') {
+          if (linea[i+1] === '"') { val += '"'; i += 2; continue; }
+          i++; break;
+        }
+        val += linea[i]; i++;
+      }
+    } else if (linea[i] === sep) {
+      out.push(val); val = ''; i++;
+    } else {
+      val += linea[i]; i++;
+    }
+  }
+  out.push(val);
+  return out;
+}
+
+function detectarSepCSV(primeraLinea) {
+  // El ';' manda: es el que usa la clínica y además convive con la coma
+  // decimal. Si no hay, se prueba tab y por último coma.
+  if (primeraLinea.indexOf(';') !== -1) return ';';
+  if (primeraLinea.indexOf('\t') !== -1) return '\t';
+  return ',';
+}
+
+async function leerCSVTextoLatin1(file) {
+  var texto = await new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function(ev) { resolve(ev.target.result); };
+    reader.onerror = function() { reject(new Error('No se pudo leer el archivo')); };
+    reader.readAsText(file, 'ISO-8859-1');
+  });
+  var lineas = String(texto || '').split('\n')
+    .map(function(l) { return l.replace(/\s+$/, ''); })
+    .filter(function(l) { return l.trim(); });
+  if (!lineas.length) return [];
+  var sep = detectarSepCSV(lineas[0]);
+  return lineas.map(function(l) { return partirLineaCSV(l, sep); });
+}
+
+async function leerXLSX(file, opts) {
+  // opts.csvTexto: para los CSV de la clínica — ver nota en leerCSVTextoLatin1.
+  if (opts && opts.csvTexto && /\.csv$/i.test(file.name)) return leerCSVTextoLatin1(file);
   return new Promise(function(resolve, reject) {
     var esCSV = /\.csv$/i.test(file.name);
     var reader = new FileReader();
@@ -838,7 +895,7 @@ async function detectarTotalART() {
   row.style.display = 'block';
   inp.value = 'Leyendo...';
   try {
-    var artRows = await leerXLSX(fileART);
+    var artRows = await leerXLSX(fileART, { csvTexto: true });
     // Sumar todos los valores numéricos de columna P (índice 15), saltar encabezado
     var totalVal = 0;
     for (var r = 0; r < artRows.length; r++) {
