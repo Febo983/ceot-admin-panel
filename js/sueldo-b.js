@@ -100,6 +100,14 @@ async function sbFetchHorasSheet(mes, anio) {
     var texto = await resp.text();
     var lineas = texto.split(/\r?\n/).filter(function(l) { return l.trim(); });
 
+    // El Sheet trae una columna por día del mes, así que la columna del total
+    // se corre según cuántos días tenga: nombre(0) + horas fijas(1) + N días
+    // => total en 2+N. Antes estaba fijo en 32 (mes de 30 días), por lo que en
+    // los meses de 31 días (ene, mar, may, jul, ago, oct, dic) leía una celda
+    // vacía y auto-cargaba 0 (detectado 29/10/2026 con octubre).
+    var diasEnMes = new Date(anio, mes, 0).getDate();
+    var colTotal = 2 + diasEnMes;
+
     var porLegajo = {};
     for (var i = 3; i < lineas.length; i++) { // fila 0=título, 1=días, 2=día de semana
       var campos = sbParsearLineaCSV(lineas[i]);
@@ -107,11 +115,16 @@ async function sbFetchHorasSheet(mes, anio) {
       if (!nombre) continue;
       var legajo = SB_NOMBRE_A_LEGAJO[nombre];
       if (!legajo) continue; // persona del Sheet sin correlato en Sueldo B (ej. no cobra por hora acá)
-      // Columna 32 (índice 0-based, tras 30 días + horas fijas + nombre) = total
-      // de horas ya sumado por el propio Sheet. Verificado (13/09/2026) contra
-      // suma manual de las 30 celdas de días — coincide exacto.
-      var total = parseFloat((campos[32] || "0").replace(",", "."));
-      porLegajo[legajo] = isNaN(total) ? 0 : total;
+      // Se suman las celdas de los días (cada una ya es la hora extra de ese día,
+      // confirmado por Marcelo 13/09/2026) y se usa esa suma salvo que el propio
+      // Sheet traiga su total — verificado que coinciden.
+      var suma = 0;
+      for (var d = 2; d < colTotal; d++) {
+        var v = parseFloat((campos[d] || "").replace(",", "."));
+        if (!isNaN(v)) suma += v;
+      }
+      var total = parseFloat((campos[colTotal] || "").replace(",", "."));
+      porLegajo[legajo] = isNaN(total) ? suma : total;
     }
     SB_HORAS_SHEET_CACHE[cacheKey] = porLegajo;
     return porLegajo;
