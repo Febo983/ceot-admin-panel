@@ -683,10 +683,37 @@ function ayudantiaCruzadaFootnoteDivHtml(osde, dif, detalle, sinEspDetalle) {
 // entera (idempotente), no la suma dos veces.
 var CEOT_AYUD_CRUZADA = {};
 var _ceotAyudPulled = false;
+// Une dos mapas período→entry. Nunca borra un período: el módulo no tiene
+// forma de eliminar nada, así que cualquier período que exista de un lado
+// tiene que sobrevivir. Si el mismo período está en los dos, gana el de
+// "actualizado" más nuevo (una reimportación es más reciente que lo guardado).
+function ceotAyudCruzadaMerge_(base, extra) {
+  var out = {};
+  Object.keys(base || {}).forEach(function(p) { out[p] = base[p]; });
+  Object.keys(extra || {}).forEach(function(p) {
+    var a = out[p], b = extra[p];
+    if (!a) { out[p] = b; return; }
+    var ta = String((a && a.actualizado) || ''), tb = String((b && b.actualizado) || '');
+    out[p] = tb > ta ? b : a;
+  });
+  return out;
+}
 function ceotAyudCruzadaCargar(onDone) {
   try {
     var raw = localStorage.getItem('ceot_ayud_cruzada');
-    if (raw) CEOT_AYUD_CRUZADA = JSON.parse(raw) || {};
+    // MERGE, no reemplazo: si esta pantalla ya tenía períodos en memoria (p.ej.
+    // se acaba de importar uno) y lo que llega de localStorage/Sheet no los
+    // trae, no se pierden. Si el merge agrega algo que el lado remoto no tenía,
+    // se vuelve a guardar y pushear, así un período que se perdió en el Sheet
+    // se recupera solo desde cualquier equipo que todavía lo tenga local.
+    var guardado = raw ? (JSON.parse(raw) || {}) : {};
+    var unido = ceotAyudCruzadaMerge_(CEOT_AYUD_CRUZADA, guardado);
+    CEOT_AYUD_CRUZADA = unido;
+    var unidoJson = JSON.stringify(unido);
+    if (raw !== null && unidoJson !== raw) {
+      localStorage.setItem('ceot_ayud_cruzada', unidoJson);
+      syncPush('ceot_ayud_cruzada');
+    }
   } catch (e) {}
   if (onDone) onDone();
   if (!_ceotAyudPulled) {
@@ -705,6 +732,16 @@ function ceotAyudCruzadaTotal() {
 }
 function ceotAyudCruzadaGuardarPeriodo(periodoKey, entry) {
   if (!periodoKey) return;
+  // El importador NO pasa por ceotAyudCruzadaCargar (el fondo solo se carga al
+  // entrar a Sueldo Director o a la home del portal), así que acá
+  // CEOT_AYUD_CRUZADA puede estar vacío aunque localStorage tenga períodos
+  // viejos. Sin este merge, guardar un período pisaba el objeto entero en
+  // localStorage y syncPush mandaba ESO al Sheet compartido, borrando los
+  // períodos anteriores en todos los equipos (pasó con septiembre 2026).
+  try {
+    var raw = localStorage.getItem('ceot_ayud_cruzada');
+    if (raw) CEOT_AYUD_CRUZADA = ceotAyudCruzadaMerge_(CEOT_AYUD_CRUZADA, JSON.parse(raw) || {});
+  } catch (e) {}
   CEOT_AYUD_CRUZADA[periodoKey] = entry;
   try { localStorage.setItem('ceot_ayud_cruzada', JSON.stringify(CEOT_AYUD_CRUZADA)); } catch (e) {}
   syncPush('ceot_ayud_cruzada');
