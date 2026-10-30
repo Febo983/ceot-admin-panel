@@ -1484,19 +1484,43 @@ function cemNotaGenerarPDF() {
 // espeja entre PCs con syncPush/syncPull (mismo patrón que el resto del panel
 // desde el commit "Sync de estado entre PCs", 25/08/2026).
 var INCIDENCIA_TOTAL_KEY = "ceot_incidencia_total";
+// Plan de pago del Impuesto a las Ganancias y Dividendos. Antes acá había un
+// solo "Total a repartir" editable y las cuotas se calculaban como Falta ÷ 3
+// (Nov-Dic-Ene). El plan real de ARCA no se puede derivar de un total: son
+// tramos de importes propios (un pago inmediato, otro a 30 días y N cuotas),
+// así que se cargan los cuatro valores y el total pasa a ser la suma.
+// "meses" es en cuántos meses se quiere cubrir lo que falta.
+var INCIDENCIA_PLAN_KEY = "ceot_incidencia_plan";
+var INCIDENCIA_PLAN_DEF = { inm: 13795859, d30: 44917035, cuota: 12330965, nc: 6, meses: 6 };
 var _incidenciaTotalPulled = false;
-function incidenciaTotalCargar() {
+function incidenciaPlanCargar() {
   if (!_incidenciaTotalPulled) {
     _incidenciaTotalPulled = true;
-    syncPull(INCIDENCIA_TOTAL_KEY, function() {
-      if (document.getElementById("incidencia-total-input")) renderIncidenciaFondo();
+    syncPull(INCIDENCIA_PLAN_KEY, function() {
+      if (document.getElementById("incidencia-plan-inm")) renderIncidenciaFondo();
     });
   }
-  var raw = localStorage.getItem(INCIDENCIA_TOTAL_KEY);
-  return raw ? (parseFloat(raw) || 0) : 0;
+  var plan = null;
+  try { plan = JSON.parse(localStorage.getItem(INCIDENCIA_PLAN_KEY) || "null"); } catch (e) { plan = null; }
+  if (!plan) plan = {};
+  return {
+    inm:   plan.inm   != null ? plan.inm   : INCIDENCIA_PLAN_DEF.inm,
+    d30:   plan.d30   != null ? plan.d30   : INCIDENCIA_PLAN_DEF.d30,
+    cuota: plan.cuota != null ? plan.cuota : INCIDENCIA_PLAN_DEF.cuota,
+    nc:    plan.nc    != null ? plan.nc    : INCIDENCIA_PLAN_DEF.nc,
+    meses: plan.meses != null ? plan.meses : INCIDENCIA_PLAN_DEF.meses
+  };
 }
-function incidenciaTotalGuardar(v) {
-  localStorage.setItem(INCIDENCIA_TOTAL_KEY, String(v || 0));
+function incidenciaPlanTotal(plan) {
+  return (plan.inm || 0) + (plan.d30 || 0) + (plan.cuota || 0) * (plan.nc || 0);
+}
+function incidenciaPlanGuardar(plan) {
+  try { localStorage.setItem(INCIDENCIA_PLAN_KEY, JSON.stringify(plan)); } catch (e) {}
+  syncPush(INCIDENCIA_PLAN_KEY);
+  // Se sigue espejando el total en la clave vieja: es lo que leían las
+  // versiones anteriores del panel, y así un navegador sin actualizar no
+  // se queda con un total de otro mes.
+  try { localStorage.setItem(INCIDENCIA_TOTAL_KEY, String(incidenciaPlanTotal(plan))); } catch (e) {}
   syncPush(INCIDENCIA_TOTAL_KEY);
 }
 
@@ -1521,7 +1545,10 @@ function getAporteCeotAcumuladoPorApellido(apellidos) {
   return acumulado;
 }
 
-function incidenciaFondoWrapHtml(total) {
+function incidenciaFondoWrapHtml(plan) {
+  var total = incidenciaPlanTotal(plan);
+  var nc    = plan.nc || 0;
+  var meses = plan.meses || 1;
   var apellidos = Object.keys(INCIDENCIA_FONDO_PCT);
   var acumulado = getAporteCeotAcumuladoPorApellido(apellidos);
   // Suma los intereses ya generados por los plazos fijos de "Inversiones"
@@ -1531,63 +1558,119 @@ function incidenciaFondoWrapHtml(total) {
   // acumulado". El reparto de interés por profesional ya viene bien calculado
   // desde ese módulo (proporcional a lo que cada uno aportó al PF).
   var invData = (typeof invAcumuladoProfesionalData === "function") ? invAcumuladoProfesionalData() : { acum: {}, totInt: 0 };
+
+  var ROJO = "#b13a2c", VERDE = "#1d6b62";
+  var T = { monto:0, acum:0, inm:0, d30:0, cuota:0, resto:0, falta:0, retener:0 };
+
   var filas = apellidos.map(function(ap) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
     var pct = INCIDENCIA_FONDO_PCT[ap];
     var monto = Math.round(total * pct);
-    var acum = (acumulado[ap] || 0) + ((invData.acum[ap] || {}).interes || 0);
+    var acum  = (acumulado[ap] || 0) + ((invData.acum[ap] || {}).interes || 0);
+    var inm   = Math.round((plan.inm   || 0) * pct);
+    var d30   = Math.round((plan.d30   || 0) * pct);
+    var cuota = Math.round((plan.cuota || 0) * pct);
+    // Lo que le queda del fondo una vez pagados los dos primeros tramos, y
+    // cuántas cuotas enteras cubre con eso.
+    var resto = acum - inm - d30;
+    var cubre = (cuota > 0 && resto > 0) ? Math.min(nc, Math.floor(resto / cuota)) : 0;
     var falta = monto - acum;
-    var cuota = Math.round(falta / 3);
+    var retener = falta > 0 ? Math.round(falta / meses) : 0;
+    T.monto += monto; T.acum += acum; T.inm += inm; T.d30 += d30; T.cuota += cuota;
+    T.resto += resto; T.falta += falta; T.retener += retener;
     return '<tr><td>' + (doc ? doc.nombre : ap) + '</td>'
       + '<td>' + (Math.round(pct * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%</td>'
       + '<td>' + fmt(acum) + '</td>'
-      + '<td style="color:#b13a2c">' + fmt(falta) + '</td>'
-      + '<td style="color:#b13a2c">' + fmt(cuota) + '</td>'
-      + '<td style="color:#b13a2c">' + fmt(cuota) + '</td>'
-      + '<td style="color:#b13a2c">' + fmt(cuota) + '</td>'
+      + '<td>' + fmt(inm) + '</td>'
+      + '<td>' + fmt(d30) + '</td>'
+      + '<td style="color:' + (resto >= 0 ? VERDE : ROJO) + '">' + fmt(resto) + '</td>'
+      + '<td>' + fmt(cuota) + '</td>'
+      + '<td style="font-weight:700;color:' + (cubre >= nc ? VERDE : ROJO) + '">' + cubre + ' de ' + nc + '</td>'
+      + '<td style="color:' + (falta > 0 ? ROJO : VERDE) + '">' + fmt(falta > 0 ? falta : -falta) + (falta > 0 ? '' : ' a favor') + '</td>'
+      + '<td style="color:' + (retener > 0 ? ROJO : VERDE) + '">' + (retener > 0 ? fmt(retener) : '—') + '</td>'
       + '<td style="font-weight:700">' + fmt(monto)
       +   ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(monto) + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle">📋</button>'
       + '</td>'
       + '</tr>';
   }).join("");
-  var totalCalc = apellidos.reduce(function(s, ap) { return s + Math.round(total * INCIDENCIA_FONDO_PCT[ap]); }, 0);
-  var totalAcum = apellidos.reduce(function(s, ap) { return s + (acumulado[ap] || 0) + ((invData.acum[ap] || {}).interes || 0); }, 0);
+
   window._incidenciaTexto = apellidos.map(function(ap) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
     return (doc ? doc.nombre : ap) + '\t' + numParaPegar(Math.round(total * INCIDENCIA_FONDO_PCT[ap]));
   }).join('\n');
-  var totalCuota = Math.round((totalCalc - totalAcum) / 3);
+
   return '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-    + '<th>Profesional</th><th>% de incidencia</th><th>Acumulado</th><th>Falta</th><th>Nov</th><th>Dic</th><th>Ene</th><th>Importe a pagar</th>'
+    + '<th>Profesional</th><th>% de incidencia</th><th>Acumulado</th>'
+    + '<th>Inmediato</th><th>A 30 días</th><th>Queda tras 30 días</th>'
+    + '<th>Cuota (c/u)</th><th>Cuotas que cubre</th>'
+    + '<th>Falta</th><th>A retener por mes</th><th>Importe a pagar</th>'
     + '</tr></thead><tbody>' + filas
-    + '<tr class="adm-totals"><td>TOTAL</td><td>100,00%</td><td>' + fmt(totalAcum) + '</td><td style="color:#b13a2c">' + fmt(totalCalc - totalAcum) + '</td><td style="color:#b13a2c">' + fmt(totalCuota) + '</td><td style="color:#b13a2c">' + fmt(totalCuota) + '</td><td style="color:#b13a2c">' + fmt(totalCuota) + '</td><td>' + fmt(totalCalc) + '</td></tr>'
+    + '<tr class="adm-totals"><td>TOTAL</td><td>100,00%</td>'
+    +   '<td>' + fmt(T.acum) + '</td>'
+    +   '<td>' + fmt(T.inm) + '</td>'
+    +   '<td>' + fmt(T.d30) + '</td>'
+    +   '<td style="color:' + (T.resto >= 0 ? VERDE : ROJO) + '">' + fmt(T.resto) + '</td>'
+    +   '<td>' + fmt(T.cuota) + '</td><td>—</td>'
+    +   '<td style="color:' + (T.falta > 0 ? ROJO : VERDE) + '">' + fmt(T.falta > 0 ? T.falta : -T.falta) + (T.falta > 0 ? '' : ' a favor') + '</td>'
+    +   '<td style="color:' + (T.retener > 0 ? ROJO : VERDE) + '">' + (T.retener > 0 ? fmt(T.retener) : '—') + '</td>'
+    +   '<td>' + fmt(T.monto) + '</td></tr>'
     + '</tbody></table></div>';
 }
 
+function incidenciaPlanLeerInput(id) {
+  var el = document.getElementById(id);
+  var raw = el ? String(el.value).trim() : "";
+  if (!raw) return 0;
+  return parseFloat(raw.replace(/\./g, "").replace(",", ".")) || 0;
+}
+
 function incidenciaFondoRecalcular() {
-  var input = document.getElementById("incidencia-total-input");
-  var raw = input ? input.value.trim() : "";
-  var total = raw ? (parseFloat(raw.replace(/\./g, "").replace(",", ".")) || 0) : 0;
+  var plan = {
+    inm:   incidenciaPlanLeerInput("incidencia-plan-inm"),
+    d30:   incidenciaPlanLeerInput("incidencia-plan-d30"),
+    cuota: incidenciaPlanLeerInput("incidencia-plan-cuota"),
+    nc:    Math.max(0, Math.round(incidenciaPlanLeerInput("incidencia-plan-nc"))),
+    meses: Math.max(1, Math.round(incidenciaPlanLeerInput("incidencia-plan-meses")) || 1)
+  };
   var wrap = document.getElementById("incidencia-fondo-wrap");
-  if (wrap) wrap.innerHTML = incidenciaFondoWrapHtml(total);
-  incidenciaTotalGuardar(total);
+  if (wrap) wrap.innerHTML = incidenciaFondoWrapHtml(plan);
+  var totEl = document.getElementById("incidencia-plan-total");
+  if (totEl) totEl.textContent = fmt(incidenciaPlanTotal(plan));
+  incidenciaPlanGuardar(plan);
 }
 
 function renderIncidenciaFondo() {
+  var plan = incidenciaPlanCargar();
   var wrap = document.getElementById("incidencia-fondo-wrap");
-  if (wrap) wrap.innerHTML = incidenciaFondoWrapHtml(incidenciaTotalCargar());
+  if (wrap) wrap.innerHTML = incidenciaFondoWrapHtml(plan);
+  var totEl = document.getElementById("incidencia-plan-total");
+  if (totEl) totEl.textContent = fmt(incidenciaPlanTotal(plan));
+}
+
+function incidenciaPlanCampoHtml(id, label, valor, ancho) {
+  return '<div><label for="' + id + '" style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">' + label + '</label>'
+    + '<input type="text" id="' + id + '" value="' + (valor || "") + '" oninput="incidenciaFondoRecalcular()" '
+    + 'style="width:' + ancho + ';padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem;text-align:right"></div>';
 }
 
 function incidenciaFondoHtml() {
-  var total = incidenciaTotalCargar();
-  return '<div class="adm-sec-title" style="margin-top:20px">Reparto del fondo — importe final por profesional</div>'
-    + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">% de incidencia fija de cada socio (no cambia con el % de Retención Ganancias de arriba) — solo el total es editable, los importes se acomodan solos. "Acumulado" incluye los intereses ya generados por los plazos fijos de Inversiones. Las columnas Nov · Dic · Ene son la Falta dividida en 3 cuotas iguales (Falta ÷ 3), a pagar de noviembre 2026 a enero 2027.</div>'
-    + '<div style="margin-bottom:10px;display:flex;align-items:center;gap:8px">'
-    +   '<label for="incidencia-total-input" style="font-size:0.82rem;font-weight:600;color:#20241f">Total a repartir</label>'
-    +   '<input type="text" id="incidencia-total-input" value="' + (total || "") + '" '
-    +     'placeholder="$ importe total" oninput="incidenciaFondoRecalcular()" '
-    +     'style="width:200px;padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem;text-align:right">'
+  var plan = incidenciaPlanCargar();
+  return '<div class="adm-sec-title" style="margin-top:20px">Reparto del fondo — Impuesto a las Ganancias y Dividendos</div>'
+    + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
+    +   'Cada socio paga según su % de incidencia fija (no cambia con el % de Retención Ganancias de arriba). Cargá los tramos del plan y los importes se acomodan solos; el total es la suma de los tres. '
+    +   '"Acumulado" incluye los intereses ya generados por los plazos fijos de Inversiones. '
+    +   '"Queda tras 30 días" es lo que le sobra del fondo después de pagar el inmediato y el de 30 días, y "Cuotas que cubre" cuántas cuotas enteras paga con eso. '
+    +   '"A retener por mes" es lo que le falta repartido en los meses que pongas.'
     + '</div>'
-    + '<div id="incidencia-fondo-wrap">' + incidenciaFondoWrapHtml(total) + '</div>';
+    + '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px">'
+    +   incidenciaPlanCampoHtml("incidencia-plan-inm",   "Pago inmediato",  plan.inm,   "150px")
+    +   incidenciaPlanCampoHtml("incidencia-plan-d30",   "A 30 días",       plan.d30,   "150px")
+    +   incidenciaPlanCampoHtml("incidencia-plan-cuota", "Valor de cuota",  plan.cuota, "150px")
+    +   incidenciaPlanCampoHtml("incidencia-plan-nc",    "Cant. de cuotas", plan.nc,    "90px")
+    +   incidenciaPlanCampoHtml("incidencia-plan-meses", "Meses para juntar", plan.meses, "90px")
+    +   '<div style="padding-bottom:7px"><span style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Total a repartir</span>'
+    +     '<span id="incidencia-plan-total" style="font-size:1.05rem;font-weight:800;color:#1f3a2e">' + fmt(incidenciaPlanTotal(plan)) + '</span></div>'
+    + '</div>'
+    + '<div id="incidencia-fondo-wrap">' + incidenciaFondoWrapHtml(plan) + '</div>';
 }
 
