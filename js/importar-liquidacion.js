@@ -52,6 +52,11 @@ function abrirImportModal() {
   cmMesAutoSeleccionar();
   gastosExtraDefaultCargar();
   impChequesHistCargar();
+  // El Fondo CEOT se escribe desde acá (procesarArchivosImport) pero se
+  // mostraba solo en Sueldo Director, así que esta pantalla nunca lo cargaba:
+  // se carga también acá para tener los períodos viejos (locales y los que
+  // llegan del Sheet) en memoria antes de guardar el del archivo.
+  ceotAyudCruzadaCargar(function() {});
 }
 
 // ══════ OTROS GASTOS DEL MES (plantillas de reparto, persistentes) ══════
