@@ -49,6 +49,7 @@ function abrirImportModal() {
   document.getElementById('importModal').style.display = 'flex';
   document.body.style.overflow = 'hidden';
   actualizarMesColonAuto();
+  cmMesAutoSeleccionar();
   gastosExtraDefaultCargar();
   impChequesHistCargar();
 }
@@ -347,6 +348,48 @@ function impChequesRestaurarPeriodo(periodoKey) {
 // columnas y termina escribiendo 0 celdas en silencio.
 const MESES_IMP_ORD = ['enero','febrero','marzo','abril','mayo','junio','julio',
                         'agosto','septiembre','octubre','noviembre','diciembre'];
+// ── Mes CM: elegirlo solo y decir en palabras qué se está cargando ──
+// El CEM se guarda indexado por el mes en que el Centro Médico ACREDITA la
+// plata, no por el mes de la liquidación: lo que se carga a fin de octubre es
+// la liquidación de octubre, que se deposita la 1ra semana de noviembre y por
+// eso va en "noviembre". Antes el selector arrancaba siempre en un mes fijo y
+// solo decía el mes de acreditación, así que no se veía cuál de los dos era.
+// Ahora se posiciona por la fecha de hoy y el aviso nombra los dos meses.
+var CM_MES_PREV = {
+  mayo:"Abril", junio:"Mayo", julio:"Junio", agosto:"Julio",
+  septiembre:"Agosto", octubre:"Septiembre", noviembre:"Octubre", diciembre:"Noviembre"
+};
+
+// Mes de acreditación que corresponde a lo que se carga hoy: pasada la mitad
+// del mes ya se está cargando la liquidación del mes en curso (se acredita el
+// que viene); antes del 15 todavía se carga la del mes anterior.
+function cmMesAcreditacionHoy() {
+  var hoy = new Date();
+  var idx = hoy.getDate() >= 15 ? hoy.getMonth() + 1 : hoy.getMonth();
+  return MESES_IMP_ORD[idx % 12];
+}
+
+function cmAvisoActualizar() {
+  var sel = document.getElementById('impMesCM');
+  var el  = document.getElementById('impCMAviso');
+  if (!sel || !el) return;
+  var acred = sel.value;
+  var prev  = CM_MES_PREV[acred];
+  var cap   = acred.charAt(0).toUpperCase() + acred.slice(1);
+  if (!prev) { el.textContent = ''; return; }
+  el.innerHTML = 'Estás cargando la <b>liquidación de ' + prev + '</b>. '
+    + 'El Centro Médico la acredita en <b>' + cap + '</b>, así que va a figurar '
+    + 'en el período ' + cap + ' de los portales.';
+}
+
+function cmMesAutoSeleccionar() {
+  var sel = document.getElementById('impMesCM');
+  if (!sel) return;
+  var mes = cmMesAcreditacionHoy();
+  if (sel.querySelector('option[value="' + mes + '"]')) sel.value = mes;
+  cmAvisoActualizar();
+}
+
 function actualizarMesColonAuto() {
   var mesSel = document.getElementById('impMes').value;
   var idx = MESES_IMP_ORD.indexOf(mesSel);

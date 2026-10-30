@@ -2220,24 +2220,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/portal-render.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/admin-home.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/gastos-obra.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/presentacion.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/sueldo-b.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/comprobantes-pdf.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/importar-liquidacion.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/redsom.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/nun-data.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/accesos-debitos.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/estadisticas-datos.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/estadisticas.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/estadisticas-export.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/gastos-casa.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/faq-asistente.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/asistente.js?v=2026-10-30-retenciones-plan"></script>
-<script src="js/correos.js?v=2026-10-30-retenciones-plan"></script>
+<script src="js/datos.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/portal-render.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/admin-home.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/gastos-obra.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/presentacion.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/sueldo-b.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/comprobantes-pdf.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/importar-liquidacion.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/redsom.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/nun-data.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/accesos-debitos.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/estadisticas-datos.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/estadisticas.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/estadisticas-export.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/gastos-casa.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/faq-asistente.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/asistente.js?v=2026-10-30-cm-mes-auto"></script>
+<script src="js/correos.js?v=2026-10-30-cm-mes-auto"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -7368,17 +7368,18 @@ async function restaurarAporteCeotPct() {
       <div class="imp-sec-title">Centro Médico — Acreditaciones</div>
       <div class="imp-field">
         <label class="imp-label">Mes CM</label>
-        <select id="impMesCM" class="imp-select">
-          <option value="mayo">Mayo 2026</option>
-          <option value="junio">Junio 2026</option>
-          <option value="julio" selected>Julio 2026</option>
-          <option value="agosto">Agosto 2026</option>
-          <option value="septiembre">Septiembre 2026</option>
-          <option value="octubre">Octubre 2026</option>
-          <option value="noviembre">Noviembre 2026</option>
-          <option value="diciembre">Diciembre 2026</option>
+        <select id="impMesCM" class="imp-select" onchange="cmAvisoActualizar()">
+          <option value="mayo">Liquid. Abril &rarr; acredita Mayo 2026</option>
+          <option value="junio">Liquid. Mayo &rarr; acredita Junio 2026</option>
+          <option value="julio">Liquid. Junio &rarr; acredita Julio 2026</option>
+          <option value="agosto">Liquid. Julio &rarr; acredita Agosto 2026</option>
+          <option value="septiembre">Liquid. Agosto &rarr; acredita Septiembre 2026</option>
+          <option value="octubre">Liquid. Septiembre &rarr; acredita Octubre 2026</option>
+          <option value="noviembre">Liquid. Octubre &rarr; acredita Noviembre 2026</option>
+          <option value="diciembre">Liquid. Noviembre &rarr; acredita Diciembre 2026</option>
         </select>
       </div>
+      <div id="impCMAviso" style="font-size:.7rem;line-height:1.45;color:#1f3a2e;background:rgba(29,107,98,.08);border-left:3px solid #1d6b62;border-radius:0 4px 4px 0;padding:7px 10px;margin:-2px 0 10px 0"></div>
       <div class="imp-field">
         <label class="imp-label">Archivos CM <span style="color:rgba(32,36,31,.35);font-weight:400;text-transform:none;letter-spacing:0">(CSV, selección múltiple)</span></label>
         <input type="file" id="fileCM" accept=".csv" multiple class="imp-file-input">
@@ -7530,7 +7531,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-10-30-retenciones-plan';
+  var CURRENT_BUILD = '2026-10-30-cm-mes-auto';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
