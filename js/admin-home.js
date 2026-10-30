@@ -249,6 +249,32 @@ function admHomeSetCat(cat) {
   if (inp) inp.focus();
 }
 
+// ── Home: franja fija con lo más usado + el resto plegado ───────────
+// La home mostraba los 17 módulos y los 26 accesos juntos (43 tiles). El
+// contador de uso real (USAGE_COUNT, sincronizado entre equipos) dice que 2
+// módulos concentran más de la mitad de las aperturas, así que arriba va una
+// franja con los más usados y lo demás queda detrás de "Ver todo": no se
+// esconde nada ni se borra nada, se ordena por lo que Marcelo realmente abre.
+var ADM_HOME_DESTACADOS_N = 6;
+var homeVerTodo = false;
+try { homeVerTodo = localStorage.getItem("ceot_home_ver_todo") === "1"; } catch (e) {}
+
+function admHomeToggleVerTodo() {
+  homeVerTodo = !homeVerTodo;
+  try { localStorage.setItem("ceot_home_ver_todo", homeVerTodo ? "1" : "0"); } catch (e) {}
+  admHomeRenderResults();
+}
+
+// Los N módulos con más aperturas reales. Devuelve [] —y la home queda como
+// estaba, con todos los grupos a la vista— mientras no haya uso suficiente
+// registrado: navegador nuevo, contador todavía sin llegar del Sheet, o tan
+// pocos módulos usados que separarlos no ordenaría nada.
+function admHomeDestacados() {
+  var conUso = ADM_HOME_MODULOS.filter(function(m) { return (USAGE_COUNT["mod:" + m.key] || 0) > 0; });
+  if (conUso.length <= ADM_HOME_DESTACADOS_N) return [];
+  return admHomeOrdenarPorUso(conUso, function(m) { return "mod:" + m.key; }).slice(0, ADM_HOME_DESTACADOS_N);
+}
+
 function admHomeRenderResults() {
   var root = document.getElementById("admHomeDynamic");
   if (!root) return;
@@ -302,19 +328,37 @@ function admHomeRenderResults() {
       html += '<div style="' + tileWrap + ';margin-bottom:6px">' + tiles.join("") + '</div>';
     }
   } else {
+    // Franja fija de arriba: los módulos más abiertos, sin encabezado de grupo
+    // ni nada alrededor. En modo edición no se arma (hay que poder renombrar y
+    // borrar todo desde su grupo, sin tiles duplicados).
+    var destacados = homeEditMode ? [] : admHomeDestacados();
+    var destKeys = destacados.map(function(m) { return m.key; });
+    if (destacados.length) {
+      html += '<div style="display:flex;align-items:center;gap:7px;margin:0 0 7px">'
+        + '<span style="width:9px;height:9px;border-radius:3px;background:#ef6fa2;border:2px solid #0f1c28;flex-shrink:0"></span>'
+        + '<span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.42)">Lo que más usás</span>'
+        + '</div>';
+      html += '<div style="' + tileWrap + ';margin-bottom:16px">'
+        + destacados.map(function(m) { return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(32,36,31,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key }); }).join("")
+        + '</div>';
+    }
+
+    // Todo lo demás (el resto de los módulos y los accesos) se arma igual que
+    // siempre, pero en su propia variable para poder plegarlo entero.
+    var resto = "";
     // Módulos separados por "mundo" (Plata / Gestión / Más), cada uno con
     // divisor pixel y su color de categoría en el borde izquierdo.
     var _modEnGrupos = ADM_HOME_MOD_GRUPOS.reduce(function(a, g) { return a.concat(g.keys); }, []);
     var _modSueltos = ADM_HOME_MODULOS.filter(function(m) { return _modEnGrupos.indexOf(m.key) === -1; });
     var _modGrupos = ADM_HOME_MOD_GRUPOS.concat(_modSueltos.length ? [{ t:"Más", c:"rgba(32,36,31,0.4)", keys:_modSueltos.map(function(m){ return m.key; }) }] : []);
     _modGrupos.forEach(function(g) {
-      var mods = admHomeOrdenarPorUso(ADM_HOME_MODULOS.filter(function(m) { return g.keys.indexOf(m.key) !== -1; }), function(m) { return "mod:" + m.key; });
+      var mods = admHomeOrdenarPorUso(ADM_HOME_MODULOS.filter(function(m) { return g.keys.indexOf(m.key) !== -1 && destKeys.indexOf(m.key) === -1; }), function(m) { return "mod:" + m.key; });
       if (!mods.length) return;
-      html += '<div style="display:flex;align-items:center;gap:7px;margin:0 0 7px">'
+      resto += '<div style="display:flex;align-items:center;gap:7px;margin:0 0 7px">'
         + '<span style="width:9px;height:9px;border-radius:3px;background:' + g.c + ';border:2px solid #0f1c28;flex-shrink:0"></span>'
         + '<span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.42)">' + g.t + ' <span style="color:rgba(32,36,31,.2);font-weight:500">· ' + mods.length + '</span></span>'
         + '</div>';
-      html += '<div style="' + tileWrap + ';margin-bottom:16px;border-left:3px solid ' + g.c + ';padding-left:10px">'
+      resto += '<div style="' + tileWrap + ';margin-bottom:16px;border-left:3px solid ' + g.c + ';padding-left:10px">'
         + mods.map(function(m) { return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(32,36,31,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key }); }).join("")
         + '</div>';
     });
@@ -333,9 +377,22 @@ function admHomeRenderResults() {
           + '<div style="font-size:11px;color:rgba(31,58,46,.8);font-weight:500">Nuevo</div>'
           + '</div>');
       }
-      html += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.32);margin:0 0 6px">' + cat + ' <span style="color:rgba(32,36,31,.18);font-weight:500">· ' + items.length + '</span></div>';
-      html += '<div style="' + tileWrap + ';margin-bottom:14px">' + tiles.join("") + '</div>';
+      resto += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.32);margin:0 0 6px">' + cat + ' <span style="color:rgba(32,36,31,.18);font-weight:500">· ' + items.length + '</span></div>';
+      resto += '<div style="' + tileWrap + ';margin-bottom:14px">' + tiles.join("") + '</div>';
     });
+
+    // El resto va plegado mientras haya franja de destacados: un botón en vez
+    // de 37 tiles más abajo. El estado es por navegador (localStorage), no se
+    // sincroniza — es una preferencia de pantalla, no un dato del panel.
+    if (!destacados.length || homeVerTodo) {
+      html += resto;
+      if (destacados.length) {
+        html += '<div onclick="admHomeToggleVerTodo()" style="cursor:pointer;text-align:center;font-size:0.68rem;font-weight:700;color:rgba(32,36,31,.45);padding:9px;margin-bottom:6px">Ver menos ▲</div>';
+      }
+    } else {
+      var ocultos = (ADM_HOME_MODULOS.length - destacados.length) + ACCESOS_DATA.length;
+      html += '<div onclick="admHomeToggleVerTodo()" style="cursor:pointer;background:#fffaf1;border:2px solid #0f1c28;border-radius:16px;box-shadow:0 3px 0 #0f1c28;padding:13px;text-align:center;font-size:0.72rem;font-weight:700;color:#1c2b3a;margin-bottom:6px">Ver todo · ' + ocultos + ' más ▼</div>';
+    }
   }
 
   root.innerHTML = html;
