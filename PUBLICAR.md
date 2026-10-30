@@ -5,10 +5,16 @@ No hay build: lo que está en `master` es lo que ven los profesionales.
 
 ## Antes de cada push
 
-1. **Bumpear la versión** (si el cambio toca `index.html`): poné el mismo valor
-   nuevo en `version.txt` y en `CURRENT_BUILD` (dentro de `index.html`, script
-   final "Auto-chequeo de versión"). Sin esto, quien tenga la página abierta
-   no ve el aviso "hay versión nueva".
+1. **Bumpear la versión** (si el cambio toca `index.html` o cualquier `js/*.js`):
+   ```
+   node tools/bump.mjs nombre-del-cambio
+   ```
+   Escribe el mismo valor en `version.txt`, en `CURRENT_BUILD` (script final
+   "Auto-chequeo de versión" de `index.html`) y en el `?v=` de cada
+   `<script src>` local. Sin argumento usa `AAAA-MM-DD-HHMM`; con `--dry` solo
+   muestra qué cambiaría. Sin este paso, quien tenga la página abierta no ve el
+   aviso "hay versión nueva" y los navegadores se quedan con el JS viejo en caché.
+   (No hace falta editar nada a mano: son 20 lugares y tienen que coincidir todos.)
 
 2. **Correr el chequeo automático:**
    ```
@@ -39,5 +45,6 @@ No hay build: lo que está en `master` es lo que ven los profesionales.
   (liquidaciones por mes, config de grupos/porcentajes, proveedores de obra).
   Cargan como `<script src>` **antes** del script principal.
 - `js/` — módulos del script principal, en orden de carga.
+- `tools/bump.mjs` — bumpea la versión en los 20 lugares a la vez.
 - `tools/preflight.mjs` — chequeo previo a publicar.
 - `version.txt` — build actual, para el auto-chequeo de versión del cliente.
