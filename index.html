@@ -2220,24 +2220,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/portal-render.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/admin-home.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/gastos-obra.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/presentacion.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/sueldo-b.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/comprobantes-pdf.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/importar-liquidacion.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/redsom.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/nun-data.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/accesos-debitos.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/estadisticas-datos.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/estadisticas.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/estadisticas-export.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/gastos-casa.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/faq-asistente.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/asistente.js?v=2026-10-30-atajos-y-acordeones"></script>
-<script src="js/correos.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/datos.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/portal-render.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/admin-home.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/gastos-obra.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/presentacion.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/sueldo-b.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/comprobantes-pdf.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/importar-liquidacion.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/redsom.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/nun-data.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/accesos-debitos.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/estadisticas-datos.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/estadisticas.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/estadisticas-export.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/gastos-casa.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/faq-asistente.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/asistente.js?v=2026-10-30-transferencias-una-pila"></script>
+<script src="js/correos.js?v=2026-10-30-transferencias-una-pila"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3758,7 +3758,7 @@ async function renderAporteCeot() {
 // "solo Sueldo Director" cada vez que entra. Es por navegador, sin syncPush:
 // es preferencia de pantalla, no un dato del panel.
 // El .cpsm-header interno de cada seccion se oculta por CSS (el titulo va en el <summary>).
-var SD_ACC_OPEN = { sd: true, resto: false, gastosa: false, inv: false, fondoceot: false };
+var SD_ACC_OPEN = { resumen: true, transffam: true, sd: true, resto: false, gastosa: false, inv: false, fondoceot: false };
 try {
   var _sdAccGuardado = JSON.parse(localStorage.getItem("ceot_sd_acc_open") || "null");
   if (_sdAccGuardado && typeof _sdAccGuardado === "object") {
@@ -3772,6 +3772,14 @@ function sdAccGuardarEstado() {
 // profesionales) — cerrado por default para no tener que scrollear 11
 // tablas completas para ver solo los totales de arriba de cada uno.
 var DETALLE_CHEQUES_OPEN = {};
+// Igual que sdAcc pero no arma la tarjeta si la seccion no tiene nada que
+// mostrar (transfFamResumenMesHtml devuelve "" cuando no hay transferencias
+// familiares ese mes): un acordeon vacio seria peor que no tenerlo.
+function sdAccSiHay(id, contenido, titulo) {
+  if (!contenido) return '';
+  return sdAcc(id, titulo, contenido);
+}
+
 function sdAcc(id, titulo, contenido) {
   var abierta = !!SD_ACC_OPEN[id];
   return '<details class="sd-acc" data-acc="' + id + '"' + (abierta ? ' open' : '') + '>'
@@ -3800,11 +3808,15 @@ function renderSueldoDirector() {
   // transfFamAutoAplicar(periodo) — se dejó de llamar, ver "Anotaciones sobre
   // transferencias derivadas" (transfDerivBoxHtml) más abajo, 22/09/2026.
 
+  // Se arma antes para poder poner el conteo de pendientes en el titulo del
+  // acordeon (la funcion lo deja en TRANSF_FAM_RESUMEN_PEND).
+  var transfFamHtml = transfFamResumenMesHtml(periodo);
+
   var html = '<div id="sueldoDirectorScreenRoot" style="padding:16px">'
     + licHonBannerHtml()
     + sueldoDirectorPeriodoSelectorHtml(periodo)
-    + sueldoDirectorResumenHtml(periodo)
-    + transfFamResumenMesHtml(periodo)
+    + sdAcc('resumen', '📊 Resumen sueldos directores — ' + periodo.charAt(0).toUpperCase() + periodo.slice(1), sueldoDirectorResumenHtml(periodo))
+    + sdAccSiHay('transffam', transfFamHtml, '🏠 Transferencias a familiares' + (TRANSF_FAM_RESUMEN_PEND ? ' — ' + TRANSF_FAM_RESUMEN_PEND + ' pendiente' + (TRANSF_FAM_RESUMEN_PEND === 1 ? '' : 's') : ''))
     + sdAcc('sd', '🏦 Sueldo Director', sueldoDirectorTabHtml(periodo))
     + sdAcc('resto', '💳 Resto de profesionales', restoProfesionalesTabHtml(periodo))
     + sdAcc('gastosa', '🧾 Gastos A — cheques + descuento', gastosASectionHtml(periodo))
@@ -5825,6 +5837,7 @@ function transfFamCascadaProgresoHtml(periodo, doc) {
 // Resumen consolidado de todas las transferencias a familiares del período
 // (de todos los profesionales juntos), separadas en pendientes/hechas, con
 // un botón para copiar de una sola vez el texto de las que faltan.
+var TRANSF_FAM_RESUMEN_PEND = 0;
 function transfFamResumenMesHtml(periodo) {
   var filas = [];
   Object.keys(TRANSF_FAM).forEach(function(key) {
@@ -5841,6 +5854,9 @@ function transfFamResumenMesHtml(periodo) {
     return a.apellido.localeCompare(b.apellido);
   });
   var pendientes = filas.filter(function(f) { return !f.hecho; });
+  // El subtitulo de .cpsm-header no se ve dentro del acordeon (lo esconde
+  // .sd-acc-body > .cpsm-header), asi que el conteo viaja al titulo.
+  TRANSF_FAM_RESUMEN_PEND = pendientes.length;
 
   var rows = filas.map(function(f) {
     var linea2 = [f.e.aliasCbu, f.e.concepto].filter(Boolean).join(' · ');
@@ -5868,7 +5884,7 @@ function transfFamResumenMesHtml(periodo) {
     +   '<th>Profesional</th><th>Fecha cheque</th><th>Familiar</th><th>Importe</th><th>Estado</th>'
     + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
     + (pendientes.length ? '<div class="cpsm-btn-row" style="margin-bottom:6px"><button class="cpsm-calc-btn" onclick="copiarTexto(window._transfFamResumenTexto || \'\', this)">📋 Copiar pendientes (familiar + importe)</button></div>' : '')
-    + '<div style="height:20px;border-bottom:1px solid rgba(32,36,31,.15);margin-bottom:16px"></div>';
+    + '';
 }
 
 // No hace nada — su único propósito es que el string del onclick del botón
@@ -6173,8 +6189,10 @@ function sueldoDirectorResumenHtml(periodo) {
   window._sueldoDirPendTexto = filas.filter(function(f) { return f.estado === 'listo' && !f.hecho; })
     .map(function(f) { return f.apellido + '\t' + numParaPegar(f.s.monto); }).join('\n');
 
-  return '<div style="margin-bottom:18px;border:1.5px solid rgba(32,36,31,.18);border-radius:9px;padding:12px 14px;background:rgba(32,36,31,.03)">'
-    + '<div style="font-weight:700;font-size:.9rem;margin-bottom:3px">🏦 Resumen sueldos directores — ' + mesTit + '</div>'
+  // Sin tarjeta ni titulo propios: los pone el acordeon que lo envuelve
+  // (sdAcc 'resumen'), para que la pantalla sea una sola pila de tarjetas
+  // iguales en vez de un bloque suelto arriba con su propio marco.
+  return '<div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.5);margin-bottom:10px">Objetivo ' + fmt(monto) + ' c/u · ' + nListos + '/' + nTotal + ' disponibles · ' + nHechos + '/' + nTotal + ' transferidos</div>'
     + banner
     + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
@@ -6248,7 +6266,7 @@ function sueldoDirectorTabHtml(periodo) {
     }).join('');
 
     var totalNetoMesStyle = s.totalNetoMes < 0 ? 'color:#b13a2c' : '';
-    return '<div style="margin-bottom:16px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:8px;padding:10px 12px">'
+    return '<div style="margin-bottom:12px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:10px;padding:12px 14px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
       +   '<div><b>' + doc.apellido + '</b> — ' + estadoFecha + '</div>'
       +   '<div style="display:flex;gap:14px;align-items:center;font-size:.8rem">'
@@ -6375,7 +6393,7 @@ function restoProfesionalesTabHtml(periodo) {
         + '</div>';
     }
 
-    return '<div style="margin-bottom:16px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:8px;padding:10px 12px">'
+    return '<div style="margin-bottom:12px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:10px;padding:12px 14px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
       +   '<div><b>' + doc.apellido + '</b>' + pendTxt + '</div>'
       +   '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + totalNetoMesChipStyle + ';border-radius:6px;padding:5px 10px;font-weight:700;font-size:.8rem">'
@@ -7065,7 +7083,7 @@ function invListaHtml() {
       return '<tr><td>' + a.apellido + '</td><td>' + fmt(a.retencion) + '</td><td>' + (a.proporcion * 100).toFixed(1) + '%</td><td style="font-weight:600">' + fmt(a.interes) + '</td></tr>';
     }).join('');
 
-    return '<div style="margin-bottom:14px;border:1.5px solid ' + colorBorde + ';background:rgba(32,36,31,.03);border-radius:8px;padding:10px 12px">'
+    return '<div style="margin-bottom:12px;border:1.5px solid ' + colorBorde + ';background:rgba(32,36,31,.03);border-radius:10px;padding:12px 14px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px">'
       +   '<div><b>' + escAttr(r.tipo) + '</b> · ' + escAttr(r.periodo.charAt(0).toUpperCase() + r.periodo.slice(1)) + ' · cheques ' + r.chequesOrigen.join(", ") + (r.notas ? ' · ' + escAttr(r.notas) : '') + '</div>'
       +   '<div style="display:flex;gap:10px;align-items:center;font-size:.8rem">'
@@ -7685,7 +7703,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-10-30-atajos-y-acordeones';
+  var CURRENT_BUILD = '2026-10-30-transferencias-una-pila';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
