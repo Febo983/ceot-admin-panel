@@ -532,41 +532,70 @@ async function reabrirMesAporteCeot(periodo) {
 // su parte justa. Si hay varios préstamos activos el mismo mes, se suman
 // (cada uno reparte su propia parte justa de forma independiente — es
 // equivalente a un único pozo combinado dividido una sola vez, ver memoria).
-const PRESTAMO_CASA_TOTAL_CUOTAS = 48;
+const PRESTAMO_CASA_TOTAL_CUOTAS = 48;   // default para un prestamo sin "cuotas" propio
 const TOTAL_SOCIOS_CASA = 11;
 const PRESTAMO_CASA_SOCIOS = ["GARMENDIA", "DE LA COLINA", "SOULE", "LEON", "PERLASCO", "MAZZOLA"];
 const PRESTAMO_CASA_SOCIOS_A = ["BRUNI", "CORELICH", "DEGANUTTI", "TRIVELLINI", "LABAYEN"];
+
+// Año que representan los períodos del panel. Todo el motor identifica los
+// períodos por nombre de mes SIN año ("octubre" = Octubre 2026), así que el
+// año se asume acá; el día que los períodos lleven año propio, esta constante
+// deja de hacer falta y prestamoCuotaNro() recibe el año de verdad.
+const PERIODOS_ANIO_BASE = 2026;
+const MESES_ORD_PRESTAMO = ["enero","febrero","marzo","abril","mayo","junio",
+                            "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+// Cada préstamo declara CUÁNDO arranca y CUÁNTAS cuotas tiene, en vez de
+// enumerar mes por mes a qué número de cuota corresponde. Antes era un
+// cuotaMap a mano que había que ampliar cada mes y que, al quedarse corto,
+// hacía que el préstamo dejara de descontarse en silencio (el principal se
+// cortaba en diciembre 2026, en la cuota 5 de 48).
 const PRESTAMOS_CASA = [
   {
     tag: null,
     socios: ["BRUNI", "CORELICH", "DEGANUTTI", "TRIVELLINI", "LABAYEN"],
     cuotaPersonal: 502000,
-    cuotaMap: { agosto: 1, septiembre: 2, octubre: 3, noviembre: 4, diciembre: 5 }
+    inicio: { mes: "agosto", anio: 2026 },   // cuota 1 = Ago 2026, cuota 48 = Jul 2030
+    cuotas: 48
   },
   {
     tag: "León",
     socios: ["LEON"],
     cuotaPersonal: 378000,
-    cuotaMap: { octubre: 1, noviembre: 2, diciembre: 3 }
+    inicio: { mes: "octubre", anio: 2026 },  // cuota 1 = Oct 2026, cuota 48 = Sep 2030
+    cuotas: 48
   }
 ];
+
+// Número de cuota de `p` en el período `pid` (nombre de mes) del año `anio`,
+// o 0 si ese mes cae fuera del préstamo.
+function prestamoCuotaNro(p, pid, anio) {
+  var idx = MESES_ORD_PRESTAMO.indexOf(pid);
+  if (idx === -1) return 0;
+  var iMes = MESES_ORD_PRESTAMO.indexOf(p.inicio.mes);
+  if (iMes === -1) return 0;
+  var n = ((anio || PERIODOS_ANIO_BASE) * 12 + idx) - (p.inicio.anio * 12 + iMes) + 1;
+  return (n >= 1 && n <= (p.cuotas || PRESTAMO_CASA_TOTAL_CUOTAS)) ? n : 0;
+}
 // Neto + etiqueta de cuota(s) de TODOS los préstamos activos en `pid` para
 // `apellido`. monto > 0 = se le descuenta, monto < 0 = se le reintegra.
-function prestamoCasaCalc(pid, apellido) {
+function prestamoCasaCalc(pid, apellido, anio) {
   var total = 0, partes = [];
   PRESTAMOS_CASA.forEach(function(p) {
-    var cuota = p.cuotaMap[pid];
+    var cuota = prestamoCuotaNro(p, pid, anio);
     if (!cuota) return;
     var parteJusta = p.cuotaPersonal * p.socios.length / TOTAL_SOCIOS_CASA;
     var monto = p.socios.indexOf(apellido) !== -1 ? -(p.cuotaPersonal - parteJusta) : parteJusta;
     total += monto;
-    partes.push(cuota + '/' + PRESTAMO_CASA_TOTAL_CUOTAS + (p.tag ? ' (' + p.tag + ')' : ''));
+    // El total de cuotas sale de cada préstamo: el de León no tiene por qué
+    // ser de 48 solo porque el principal lo sea.
+    partes.push(cuota + '/' + (p.cuotas || PRESTAMO_CASA_TOTAL_CUOTAS) + (p.tag ? ' (' + p.tag + ')' : ''));
   });
   if (!partes.length) return { monto: 0, cuotaLabel: null };
   return { monto: Math.round(total * 100) / 100, cuotaLabel: partes.join(' + ') };
 }
-function prestamoCasaActivo(pid) {
-  return PRESTAMOS_CASA.some(function(p) { return p.cuotaMap[pid] !== undefined; });
+function prestamoCasaActivo(pid, anio) {
+  return PRESTAMOS_CASA.some(function(p) { return prestamoCuotaNro(p, pid, anio) > 0; });
 }
 
 // ── Sueldo Director — mismos 5 socios que PRESTAMO_CASA_SOCIOS_A, según el contador ──
