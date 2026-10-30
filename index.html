@@ -2220,24 +2220,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/portal-render.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/admin-home.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/gastos-obra.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/presentacion.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/sueldo-b.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/comprobantes-pdf.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/importar-liquidacion.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/redsom.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/nun-data.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/accesos-debitos.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/estadisticas-datos.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/estadisticas.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/estadisticas-export.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/gastos-casa.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/faq-asistente.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/asistente.js?v=2026-10-30-home-por-uso"></script>
-<script src="js/correos.js?v=2026-10-30-home-por-uso"></script>
+<script src="js/datos.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/portal-render.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/admin-home.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/gastos-obra.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/presentacion.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/sueldo-b.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/comprobantes-pdf.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/importar-liquidacion.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/redsom.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/nun-data.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/accesos-debitos.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/estadisticas-datos.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/estadisticas.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/estadisticas-export.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/gastos-casa.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/faq-asistente.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/asistente.js?v=2026-10-30-atajos-y-acordeones"></script>
+<script src="js/correos.js?v=2026-10-30-atajos-y-acordeones"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3751,10 +3751,23 @@ async function renderAporteCeot() {
 // qué le queda disponible una vez cubiertos IIBB/CPSM/Gastos A/Retención
 // Ganancias/Préstamo Casa — reusa calcularNetoLocal, no duplica datos.
 // Acordeon de la pantalla Transferencias del Mes: cada seccion se pliega.
-// Arranca solo con "Sueldo Director" abierta; SD_ACC_OPEN recuerda el estado
-// mientras dure la sesion para que un re-render no cierre lo que se abrio.
+// Arranca solo con "Sueldo Director" abierta. SD_ACC_OPEN recuerda el estado
+// para que un re-render no cierre lo que se abrio, y desde el 30/10/2026
+// tambien entre visitas: se guarda en localStorage (ceot_sd_acc_open), asi la
+// pantalla que mas se usa abre como Marcelo la dejo en vez de resetearse a
+// "solo Sueldo Director" cada vez que entra. Es por navegador, sin syncPush:
+// es preferencia de pantalla, no un dato del panel.
 // El .cpsm-header interno de cada seccion se oculta por CSS (el titulo va en el <summary>).
 var SD_ACC_OPEN = { sd: true, resto: false, gastosa: false, inv: false, fondoceot: false };
+try {
+  var _sdAccGuardado = JSON.parse(localStorage.getItem("ceot_sd_acc_open") || "null");
+  if (_sdAccGuardado && typeof _sdAccGuardado === "object") {
+    Object.keys(_sdAccGuardado).forEach(function(k) { SD_ACC_OPEN[k] = !!_sdAccGuardado[k]; });
+  }
+} catch (e) {}
+function sdAccGuardarEstado() {
+  try { localStorage.setItem("ceot_sd_acc_open", JSON.stringify(SD_ACC_OPEN)); } catch (e) {}
+}
 // Plegado del detalle de cheques por persona (Sueldo Director / Resto de
 // profesionales) — cerrado por default para no tener que scrollear 11
 // tablas completas para ver solo los totales de arriba de cada uno.
@@ -3803,7 +3816,10 @@ function renderSueldoDirector() {
 
   document.getElementById("adm-content").innerHTML = html;
   document.querySelectorAll('#sueldoDirectorScreenRoot > .sd-acc').forEach(function(d) {
-    d.addEventListener('toggle', function() { SD_ACC_OPEN[d.getAttribute('data-acc')] = d.open; });
+    d.addEventListener('toggle', function() {
+      SD_ACC_OPEN[d.getAttribute('data-acc')] = d.open;
+      sdAccGuardarEstado();
+    });
   });
   gastosARecalcularPreview();
   invRecalcularPreview();
@@ -7669,7 +7685,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-10-30-home-por-uso';
+  var CURRENT_BUILD = '2026-10-30-atajos-y-acordeones';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');

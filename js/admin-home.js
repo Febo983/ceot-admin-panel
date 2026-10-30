@@ -265,6 +265,16 @@ function admHomeToggleVerTodo() {
   admHomeRenderResults();
 }
 
+// Los accesos (links externos) más abiertos. Van en una tira aparte abajo de
+// los módulos: con todo plegado quedaban detrás de "Ver todo" aunque el Sheet
+// de liquidaciones o Valores Convenios se abran más que varios módulos.
+var ADM_HOME_ATAJOS_N = 5;
+function admHomeAtajos() {
+  var conUso = ACCESOS_DATA.filter(function(a) { return (USAGE_COUNT["acc:" + a.id] || 0) > 0; });
+  if (conUso.length <= ADM_HOME_ATAJOS_N) return [];
+  return admHomeOrdenarPorUso(conUso, function(a) { return "acc:" + a.id; }).slice(0, ADM_HOME_ATAJOS_N);
+}
+
 // Los N módulos con más aperturas reales. Devuelve [] —y la home queda como
 // estaba, con todos los grupos a la vista— mientras no haya uso suficiente
 // registrado: navegador nuevo, contador todavía sin llegar del Sheet, o tan
@@ -343,6 +353,22 @@ function admHomeRenderResults() {
         + '</div>';
     }
 
+    var atajos = (homeEditMode || !destacados.length) ? [] : admHomeAtajos();
+    var atajoIds = atajos.map(function(a) { return a.id; });
+    if (atajos.length) {
+      html += '<div style="display:flex;align-items:center;gap:7px;margin:0 0 7px">'
+        + '<span style="width:9px;height:9px;border-radius:3px;background:rgba(55,138,221,0.9);border:2px solid #0f1c28;flex-shrink:0"></span>'
+        + '<span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.42)">Atajos</span>'
+        + '</div>';
+      html += '<div style="' + tileWrap + ';margin-bottom:16px">'
+        + atajos.map(function(a) {
+            var ico = LUCIDE_ACC_ICON[a.title] || "link";
+            var nav = a.fn ? { fn: a.fn } : { href: a.url };
+            return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[a.cat] || "rgba(32,36,31,0.1)", Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
+          }).join("")
+        + '</div>';
+    }
+
     // Todo lo demás (el resto de los módulos y los accesos) se arma igual que
     // siempre, pero en su propia variable para poder plegarlo entero.
     var resto = "";
@@ -364,7 +390,7 @@ function admHomeRenderResults() {
     });
 
     ["Finanzas","Clínica","Admin","Otros"].forEach(function(cat) {
-      var items = admHomeOrdenarPorUso(ACCESOS_DATA.filter(function(a) { return a.cat === cat; }), function(a) { return "acc:" + a.id; });
+      var items = admHomeOrdenarPorUso(ACCESOS_DATA.filter(function(a) { return a.cat === cat && atajoIds.indexOf(a.id) === -1; }), function(a) { return "acc:" + a.id; });
       if (!items.length && !homeEditMode) return;
       var tiles = items.map(function(a) {
         var ico = LUCIDE_ACC_ICON[a.title] || "link";
@@ -390,7 +416,7 @@ function admHomeRenderResults() {
         html += '<div onclick="admHomeToggleVerTodo()" style="cursor:pointer;text-align:center;font-size:0.68rem;font-weight:700;color:rgba(32,36,31,.45);padding:9px;margin-bottom:6px">Ver menos ▲</div>';
       }
     } else {
-      var ocultos = (ADM_HOME_MODULOS.length - destacados.length) + ACCESOS_DATA.length;
+      var ocultos = (ADM_HOME_MODULOS.length - destacados.length) + (ACCESOS_DATA.length - atajos.length);
       html += '<div onclick="admHomeToggleVerTodo()" style="cursor:pointer;background:#fffaf1;border:2px solid #0f1c28;border-radius:16px;box-shadow:0 3px 0 #0f1c28;padding:13px;text-align:center;font-size:0.72rem;font-weight:700;color:#1c2b3a;margin-bottom:6px">Ver todo · ' + ocultos + ' más ▼</div>';
     }
   }
