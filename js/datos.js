@@ -550,8 +550,12 @@ const MESES_ORD_PRESTAMO = ["enero","febrero","marzo","abril","mayo","junio",
 // cuotaMap a mano que había que ampliar cada mes y que, al quedarse corto,
 // hacía que el préstamo dejara de descontarse en silencio (el principal se
 // cortaba en diciembre 2026, en la cuota 5 de 48).
-const PRESTAMOS_CASA = [
+// `reparteEntre` es opcional: cuántos socios se reparten la cuota. Si falta,
+// se usa TOTAL_SOCIOS_CASA. Está por préstamo porque no todos tienen por qué
+// repartirse entre los mismos 11 (y la cantidad de socios puede cambiar).
+const PRESTAMOS_CASA_BASE = [
   {
+    id: "principal",
     tag: null,
     socios: ["BRUNI", "CORELICH", "DEGANUTTI", "TRIVELLINI", "LABAYEN"],
     cuotaPersonal: 502000,
@@ -559,6 +563,7 @@ const PRESTAMOS_CASA = [
     cuotas: 48
   },
   {
+    id: "leon",
     tag: "León",
     socios: ["LEON"],
     cuotaPersonal: 378000,
@@ -566,6 +571,72 @@ const PRESTAMOS_CASA = [
     cuotas: 48
   }
 ];
+
+// La lista viva de préstamos. Arranca con los de arriba y se reemplaza por lo
+// que haya guardado en el panel (pantalla "Préstamos Casa"), sincronizado
+// entre PCs igual que el resto del estado. Así agregar un préstamo nuevo no
+// necesita tocar código ni publicar.
+var PRESTAMOS_CASA = PRESTAMOS_CASA_BASE.map(function(p) { return p; });
+var PRESTAMOS_CASA_KEY = "ceot_prestamos_casa";
+var _prestamosCasaPulled = false;
+
+function prestamosCasaNormalizar(lista) {
+  if (!lista || !lista.length) return null;
+  var out = [];
+  lista.forEach(function(p) {
+    if (!p || !p.socios || !p.socios.length || !p.cuotaPersonal || !p.inicio) return;
+    out.push({
+      id: p.id || ('p' + Math.random().toString(36).slice(2, 9)),
+      tag: p.tag || null,
+      socios: p.socios.slice(),
+      cuotaPersonal: Number(p.cuotaPersonal) || 0,
+      inicio: { mes: p.inicio.mes, anio: Number(p.inicio.anio) || PERIODOS_ANIO_BASE },
+      cuotas: Number(p.cuotas) || PRESTAMO_CASA_TOTAL_CUOTAS,
+      reparteEntre: Number(p.reparteEntre) || TOTAL_SOCIOS_CASA
+    });
+  });
+  return out.length ? out : null;
+}
+
+function prestamosCasaLeerLocal() {
+  try {
+    var raw = localStorage.getItem(PRESTAMOS_CASA_KEY);
+    var lista = raw ? prestamosCasaNormalizar(JSON.parse(raw)) : null;
+    if (lista) PRESTAMOS_CASA = lista;
+  } catch (e) { /* queda la base del código */ }
+}
+
+// onDone corre en forma SÍNCRONA, así que no puede volver a renderizar la
+// pantalla que llamó acá (sería recursión infinita). El refresco de lo que
+// haya en pantalla cuando llega el valor del server lo hace el propio
+// callback del syncPull, una sola vez.
+function prestamosCasaCargar(onDone) {
+  prestamosCasaLeerLocal();
+  if (onDone) onDone();
+  if (!_prestamosCasaPulled) {
+    _prestamosCasaPulled = true;
+    syncPull(PRESTAMOS_CASA_KEY, function() {
+      prestamosCasaLeerLocal();
+      if (typeof prestRepintar === 'function') prestRepintar();
+      if (typeof renderSueldoDirector === 'function' && document.getElementById('sueldoDirectorScreenRoot')) {
+        renderSueldoDirector();
+      }
+    });
+  }
+}
+
+function prestamosCasaGuardar(lista) {
+  var norm = prestamosCasaNormalizar(lista) || [];
+  PRESTAMOS_CASA = norm;
+  try { localStorage.setItem(PRESTAMOS_CASA_KEY, JSON.stringify(norm)); } catch (e) {}
+  syncPush(PRESTAMOS_CASA_KEY);
+}
+
+// Vuelve a los dos préstamos que viven en el código — red de seguridad por si
+// una edición desde el panel deja la lista mal.
+function prestamosCasaRestaurarBase() {
+  prestamosCasaGuardar(PRESTAMOS_CASA_BASE);
+}
 
 // Número de cuota de `p` en el período `pid` (nombre de mes) del año `anio`,
 // o 0 si ese mes cae fuera del préstamo.
@@ -584,7 +655,7 @@ function prestamoCasaCalc(pid, apellido, anio) {
   PRESTAMOS_CASA.forEach(function(p) {
     var cuota = prestamoCuotaNro(p, pid, anio);
     if (!cuota) return;
-    var parteJusta = p.cuotaPersonal * p.socios.length / TOTAL_SOCIOS_CASA;
+    var parteJusta = p.cuotaPersonal * p.socios.length / (p.reparteEntre || TOTAL_SOCIOS_CASA);
     var monto = p.socios.indexOf(apellido) !== -1 ? -(p.cuotaPersonal - parteJusta) : parteJusta;
     total += monto;
     // El total de cuotas sale de cada préstamo: el de León no tiene por qué
