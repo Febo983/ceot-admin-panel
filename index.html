@@ -2220,24 +2220,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/portal-render.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/admin-home.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/gastos-obra.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/presentacion.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/sueldo-b.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/comprobantes-pdf.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/importar-liquidacion.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/redsom.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/nun-data.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/accesos-debitos.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/estadisticas-datos.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/estadisticas.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/estadisticas-export.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/gastos-casa.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/faq-asistente.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/asistente.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
-<script src="js/correos.js?v=2026-10-30-recibo-generico-sueldo-b"></script>
+<script src="js/datos.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/portal-render.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/admin-home.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/gastos-obra.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/presentacion.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/sueldo-b.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/redsom.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/nun-data.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/accesos-debitos.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/estadisticas.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/estadisticas-export.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/gastos-casa.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/faq-asistente.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/asistente.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/correos.js?v=2026-11-02-textos-retgan-garmendia"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3695,7 +3695,7 @@ async function renderAporteCeot() {
       + '<div class="adm-sec-title" style="margin-top:20px">Registro mensual — montos de Retención Ganancias</div>'
       + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Período</th>' + theadCols + '<th>Total Retenido</th><th>Estado</th></tr></thead>'
       + '<tbody>' + tbodyRows + acumRow + interesRow + totalRealRow + '</tbody></table></div>'
-      + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:6px 2px 0 2px">⚑ Mientras un mes esté abierto, sus montos se recalculan solos con el % vigente de cada profesional (y con los importes que vayas cargando). "Cerrar mes" guarda una foto del % de ese momento — de ahí en más ese mes ya no se mueve aunque después cambies porcentajes. "Reabrir" vuelve a usar el % vigente. Los montos mostrados (y el ACUMULADO) solo cuentan cheques ya acreditados por el banco a hoy — no lo agendado a futuro. TOTAL REAL suma además los intereses ya generados por los plazos fijos de la sección Inversiones.</div>'
+      + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:6px 2px 0 2px">⚑ Mientras un mes esté abierto, sus montos se recalculan solos con el % vigente de cada profesional (y con los importes que vayas cargando). "Cerrar mes" guarda una foto del % de ese momento — de ahí en más ese mes ya no se mueve aunque después cambies porcentajes. "Reabrir" vuelve a usar el % vigente. Los montos mostrados (y el ACUMULADO) son los devengados de la liquidación: la retención entera del período, esté o no acreditado todavía cada cheque en el banco — es el número que va al contador para Ganancias. TOTAL REAL suma además los intereses ya generados por los plazos fijos de la sección Inversiones.</div>'
       + '<div class="cpsm-btn-row" style="margin-top:10px">'
       +   '<button class="cpsm-dl-btn" style="display:inline-block" onclick="actionFeedback(this); descargarPDFAporteCeot()">⬇ Descargar PDF — detalle y total</button>'
       + '</div>';
@@ -7703,7 +7703,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-10-30-recibo-generico-sueldo-b';
+  var CURRENT_BUILD = '2026-11-02-textos-retgan-garmendia';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');

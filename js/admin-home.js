@@ -426,6 +426,18 @@ function admHomeRenderResults() {
   if (window.lucide) lucide.createIcons();
 }
 
+// La Dra. Garmendia se incorporó en agosto 2026. El cartel de "Socios
+// activos" decía "1er mes" fijo y quedó viejo apenas pasó septiembre, así que
+// el mes se cuenta desde el alta. Pasado el año deja de ser novedad y el
+// renglón no se dibuja (devuelve "").
+var GARMENDIA_ALTA = { anio: 2026, mes: 8 };
+function admHomeGarmendiaNota() {
+  var hoy = new Date();
+  var n = (hoy.getFullYear() - GARMENDIA_ALTA.anio) * 12 + (hoy.getMonth() + 1 - GARMENDIA_ALTA.mes) + 1;
+  if (n < 1 || n > 12) return "";
+  return "Garmendia: " + (n === 1 ? "1er" : n + "º") + " mes";
+}
+
 function renderAdmHome() {
   admDesactivarSidebar();
   var hb = document.getElementById("admHomeBtn");
@@ -453,6 +465,7 @@ function renderAdmHome() {
   var h = new Date().getHours();
   var saludo = h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
   var mesAct = tabMesActual();
+  var garmNota = admHomeGarmendiaNota();
   var MESES_CORTO = {enero:"Ene",febrero:"Feb",marzo:"Mar",abril:"Abr",mayo:"May",junio:"Jun",julio:"Jul",agosto:"Ago",septiembre:"Sep",octubre:"Oct",noviembre:"Nov",diciembre:"Dic"};
 
   var mesStrip = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].map(function(m) {
@@ -525,7 +538,7 @@ function renderAdmHome() {
       +   '<div onclick="renderPendientes()" style="background:#fffaf1;border:2px solid #0f1c28;border-radius:14px;padding:12px 14px;box-shadow:0 3px 0 #0f1c28;cursor:pointer">'
       +     '<div style="font-size:9px;color:#5b6b7a;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Socios activos</div>'
       +     '<span style="font-size:1.2rem;font-weight:800;color:#1c2b3a">10</span>'
-      +     '<div style="font-size:9.5px;color:#5b6b7a;margin-top:2px">Garmendia: 1er mes</div>'
+      +     (garmNota ? '<div style="font-size:9.5px;color:#5b6b7a;margin-top:2px">' + garmNota + '</div>' : '')
       +   '</div>'
       + '</div>'
 
@@ -550,7 +563,7 @@ function renderAdmHome() {
       + '<div style="background:rgba(32,36,31,0.05);border:0.5px solid rgba(32,36,31,0.1);border-radius:10px;padding:11px 12px">'
       + '<div style="font-size:9px;color:rgba(32,36,31,0.35);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Socios activos</div>'
       + '<span style="font-size:1.2rem;font-weight:800;color:#20241f">10</span>'
-      + '<div style="font-size:9.5px;color:rgba(32,36,31,0.3);margin-top:2px">Garmendia: 1er mes</div>'
+      + (garmNota ? '<div style="font-size:9.5px;color:rgba(32,36,31,0.3);margin-top:2px">' + garmNota + '</div>' : '')
       + '</div>'
       + '</div>'
       + '<div style="display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;scrollbar-width:none">' + mesStrip + '</div>'
