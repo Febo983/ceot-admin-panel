@@ -817,6 +817,29 @@ function syncPull(clave, onDone) {
 // ── Sesión: token emitido por el Script al loguearse, se manda en cada pedido ──
 var AUTH_TOKEN = null;
 var AUTH_ROLE  = null;
+
+// ── La sesión sobrevive al F5 ─────────────────────────────────────
+// El token vivía solo acá, en memoria: cualquier recarga (o un F5 sin querer)
+// devolvía a la pantalla de apellido + matrícula aunque la sesión siguiera
+// siendo válida. Se guarda en sessionStorage, que muere al cerrar la pestaña y
+// no se comparte con otras — no es un "recordarme", es no perder la sesión en
+// la misma pestaña. Si el token ya no sirve, restaurarSesion() lo descarta y
+// vuelve el login (ver index.html).
+var SESION_KEY = "ceot_sesion";
+function sesionGuardar(resp) {
+  try {
+    sessionStorage.setItem(SESION_KEY, JSON.stringify({ token: resp.token, role: resp.role, user: resp.user }));
+  } catch (e) { /* modo privado o storage bloqueado: se sigue, sin persistir */ }
+}
+function sesionLeer() {
+  try {
+    var s = JSON.parse(sessionStorage.getItem(SESION_KEY) || "null");
+    return (s && s.token) ? s : null;
+  } catch (e) { return null; }
+}
+function sesionBorrar() {
+  try { sessionStorage.removeItem(SESION_KEY); } catch (e) {}
+}
 function authURL(url) {
   // Cache-buster (_ts): sin esto, la misma URL exacta (mismo token, sin acción
   // que cambie) puede repetirse dentro de la sesión — el navegador a veces

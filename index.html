@@ -2220,24 +2220,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/portal-render.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/admin-home.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/gastos-obra.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/presentacion.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/sueldo-b.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/redsom.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/nun-data.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/accesos-debitos.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/estadisticas.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/estadisticas-export.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/gastos-casa.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/faq-asistente.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/asistente.js?v=2026-11-02-textos-retgan-garmendia"></script>
-<script src="js/correos.js?v=2026-11-02-textos-retgan-garmendia"></script>
+<script src="js/datos.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/portal-render.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/admin-home.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/gastos-obra.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/presentacion.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/sueldo-b.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/redsom.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/nun-data.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/accesos-debitos.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/estadisticas.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/estadisticas-export.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/gastos-casa.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/faq-asistente.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/asistente.js?v=2026-11-02-sesion-sobrevive-f5"></script>
+<script src="js/correos.js?v=2026-11-02-sesion-sobrevive-f5"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3363,14 +3363,25 @@ async function handleLogin() {
     return;
   }
 
+  var entro = await entrarConSesion(resp, false);
+
+  loginBtn.disabled = false;
+  loginBtn.textContent = loginBtnTextoOrig;
+
+  if (entro) sesionGuardar(resp);
+}
+
+// Monta todo lo que va después de tener el token: lo llama el login con el
+// token recién emitido, y restaurarSesion() con el que quedó guardado tras un
+// F5 (esRestauracion = true, que además saltea el saludo por voz para no
+// repetirlo en cada recarga). Devuelve false si el usuario del token no figura
+// en DOCTORES — ahí el que llama se encarga de descartar la sesión.
+async function entrarConSesion(resp, esRestauracion) {
   AUTH_TOKEN = resp.token;
   AUTH_ROLE  = resp.role;
 
   // Con el token ya emitido, traer los datos reales antes de renderizar
   await Promise.all([cargarGastosARemoto(), cargarLiquidacionRemota(), cargarAportePctRemoto(), cargarAporteCerradosRemoto(), cargarNominaRemota()]);
-
-  loginBtn.disabled = false;
-  loginBtn.textContent = loginBtnTextoOrig;
 
   // Login admin
   if (resp.role === "admin") {
@@ -3402,7 +3413,7 @@ async function handleLogin() {
     if (typeof chequearBannerOsdeAdmin === "function") setTimeout(chequearBannerOsdeAdmin, 1200);
     document.getElementById("usernameInput").value = "";
     document.getElementById("passwordInput").value = "";
-    return;
+    return true;
   }
 
   var doctor = null;
@@ -3410,10 +3421,10 @@ async function handleLogin() {
     if (DOCTORES[i].user === resp.user) { doctor=DOCTORES[i]; break; }
   }
   if (!doctor) {
-    errDiv.style.display = "block";
+    document.getElementById("loginError").style.display = "block";
     document.getElementById("passwordInput").value = "";
     document.getElementById("passwordInput").focus();
-    return;
+    return false;
   }
 
   doctorActual = doctor;
@@ -3428,7 +3439,7 @@ async function handleLogin() {
   transfFamCargar();
   transfFamHechoCargar();
   transfFamMigrarSiHaceFalta();
-  saludarConVoz(doctor);
+  if (!esRestauracion) saludarConVoz(doctor);
   document.getElementById("phAvatar").textContent  = doctor.ini;
   document.getElementById("phNombre").textContent  = doctor.nombre;
 
@@ -3463,12 +3474,14 @@ async function handleLogin() {
   document.getElementById("portalCard").style.display = "none";
   document.getElementById("usernameInput").value = "";
   document.getElementById("passwordInput").value = "";
+  return true;
 }
 
 function handleLogout() {
   doctorActual = null;
   AUTH_TOKEN = null;
   AUTH_ROLE  = null;
+  sesionBorrar();
   document.getElementById("portalView").style.display = "none";
   document.getElementById("loginView").style.display  = "block";
   ["pane-abril","pane-mayo","pane-junio","pane-julio","pane-agosto",
@@ -3541,6 +3554,7 @@ document.getElementById("logoutBtn").addEventListener("click", handleLogout);
 document.getElementById("adminLogoutBtn").addEventListener("click", function() {
   AUTH_TOKEN = null;
   AUTH_ROLE  = null;
+  sesionBorrar();
   document.getElementById("adminView").style.display = "none";
   document.getElementById("loginView").style.display = "block";
   aplicarAdmTheme(false);
@@ -3556,6 +3570,28 @@ document.getElementById("adminRefreshBtn").addEventListener("click", async funct
 });
 document.getElementById("usernameInput").addEventListener("keypress", function(e){ if(e.key==="Enter") handleLogin(); });
 document.getElementById("passwordInput").addEventListener("keypress", function(e){ if(e.key==="Enter") handleLogin(); });
+
+// Tras un F5, volver a entrar con el token guardado en vez de pedir apellido y
+// matrícula otra vez. Se valida contra Gastos A antes de montar nada: si el
+// token ya no sirve se descarta y queda la pantalla de login, como antes. El
+// await deja que terminen de cargar el resto de los <script> del final.
+async function restaurarSesion() {
+  var s = sesionLeer();
+  if (!s) return;
+  AUTH_TOKEN = s.token;
+  var vivo = false;
+  try {
+    var r = await fetch(authURL(GASTOS_A_ENDPOINT));
+    var d = await r.json();
+    vivo = !d.error;
+  } catch (e) { vivo = false; }
+  if (!vivo || !(await entrarConSesion({ token: s.token, role: s.role, user: s.user }, true))) {
+    AUTH_TOKEN = null;
+    AUTH_ROLE  = null;
+    sesionBorrar();
+  }
+}
+restaurarSesion();
 
 // Botones marcados en verde (ver actionFeedback más abajo): cargar lo guardado
 // y repintar cada vez que cualquier pantalla del panel reconstruye su HTML.
@@ -7703,7 +7739,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-02-textos-retgan-garmendia';
+  var CURRENT_BUILD = '2026-11-02-sesion-sobrevive-f5';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
