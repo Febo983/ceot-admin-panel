@@ -10,39 +10,49 @@ var homeSearchQ = "";
 var homeSearchCat = "Todos";
 var USAGE_COUNT = {};
 
+// ── Las categorías del panel ──────────────────────────────────────
+// Una sola taxonomía para módulos Y accesos. Antes convivían tres: el `cat`
+// de cada módulo (que solo pintaba el color del mosaico), los grupos
+// Honorarios/Gestión de la home, y el `cat` de los accesos — que era el único
+// que filtraba, así que tocar "Finanzas" escondía los 7 módulos financieros.
+// Las cinco de aca valen para todo: agrupan, filtran y dan el color.
+// "El mes" es el circuito del checklist (01-10, 10-20, 20-30). Transferencias,
+// Débitos y Facturas caen en los tres tramos, por eso la categoría es el mes
+// entero y no un tramo.
+var ADM_HOME_CATS = [
+  { k:"mes",     t:"El mes",        c:"rgba(29,158,117,0.9)",  tile:"rgba(29,158,117,0.22)" },
+  { k:"gente",   t:"Gente",         c:"rgba(127,119,221,0.9)", tile:"rgba(127,119,221,0.22)" },
+  { k:"casa",    t:"Casa y gastos", c:"rgba(216,90,48,0.9)",   tile:"rgba(216,90,48,0.22)" },
+  { k:"clinica", t:"Clínica",       c:"rgba(55,138,221,0.9)",  tile:"rgba(55,138,221,0.22)" },
+  { k:"sistema", t:"Sistema",       c:"rgba(32,36,31,0.45)",   tile:"rgba(32,36,31,0.1)" }
+];
+// Lo que no se reconoce cae en Sistema en vez de desaparecer de la home.
+function admHomeCat(k) {
+  for (var i = 0; i < ADM_HOME_CATS.length; i++) if (ADM_HOME_CATS[i].k === k) return ADM_HOME_CATS[i];
+  return ADM_HOME_CATS[ADM_HOME_CATS.length - 1];
+}
+function admHomeCatColor(k) { return admHomeCat(k).tile; }
+function admHomeCatLabel(k) { return k === "Todos" ? "Todos" : admHomeCat(k).t; }
+
 var ADM_HOME_MODULOS = [
-  { key:"liquidaciones",    ico:"bar-chart-3",     lbl:"Liquidaciones", cat:"cat-fin", fn:"renderAdminPanelPage(tabMesActual())" },
-  { key:"totalceot",        ico:"trending-up",     lbl:"Total CEOT",    cat:"cat-fin", fn:"renderTotalCeot()" },
-  { key:"debitos",          ico:"alert-triangle",  lbl:"Débitos",       cat:"cat-gst", fn:"renderDebitos()" },
-  { key:"gastospagos",      ico:"wallet",          lbl:"Gastos y Pagos",cat:"cat-gst", fn:"renderGastosPagos()" },
-  { key:"facturas",         ico:"receipt",         lbl:"Facturas",      cat:"cat-adm", fn:"renderFacturas()" },
-  { key:"sueldob",          ico:"briefcase",       lbl:"Sueldo B",      cat:"cat-adm", fn:"renderSueldoB()" },
-  { key:"cpsm",             ico:"landmark",        lbl:"CPSM",          cat:"cat-fin", fn:"renderCpsm()" },
-  { key:"aporteceot",       ico:"percent",         lbl:"Retención Ganancias",   cat:"cat-fin", fn:"renderAporteCeot()" },
-  { key:"sueldodirector",   ico:"banknote",        lbl:"Transferencias del Mes", cat:"cat-fin", fn:"abrirSueldoDirectorMesActual()" },
-  { key:"licenciashon",     ico:"plane-takeoff",   lbl:"Licencias (Honorarios)", cat:"cat-fin", fn:"renderLicenciasHon()" },
-  { key:"licencias",        ico:"calendar-heart",  lbl:"Licencias",     cat:"cat-adm", fn:"renderLicencias()" },
-  { key:"presentacion",     ico:"presentation",    lbl:"Presentación",  cat:"cat-fin", fn:"renderPresentacion()" },
-  { key:"premios",          ico:"award",           lbl:"Premios",       cat:"cat-adm", fn:"renderPremios()" },
-  { key:"estadisticas",     ico:"line-chart",      lbl:"Estadísticas CEOT", cat:"cat-inf", fn:"renderEstadisticasCeot()" },
-  { key:"gastoscasa",       ico:"home",            lbl:"Gastos Casa",   cat:"cat-gst", fn:"renderGastosCasa()" },
-  { key:"faqasistente",     ico:"bot",             lbl:"FAQ del asistente", cat:"cat-adm", fn:"renderFaqAsistente()" },
-  { key:"correos",          ico:"mail",            lbl:"Correos",       cat:"cat-adm", fn:"renderCorreos()" },
+  { key:"liquidaciones",    ico:"bar-chart-3",     lbl:"Liquidaciones", cat:"mes", fn:"renderAdminPanelPage(tabMesActual())" },
+  { key:"sueldodirector",   ico:"banknote",        lbl:"Transferencias del Mes", cat:"mes", fn:"abrirSueldoDirectorMesActual()" },
+  { key:"aporteceot",       ico:"percent",         lbl:"Retención Ganancias",   cat:"mes", fn:"renderAporteCeot()" },
+  { key:"cpsm",             ico:"landmark",        lbl:"CPSM",          cat:"mes", fn:"renderCpsm()" },
+  { key:"debitos",          ico:"alert-triangle",  lbl:"Débitos",       cat:"mes", fn:"renderDebitos()" },
+  { key:"facturas",         ico:"receipt",         lbl:"Facturas",      cat:"mes", fn:"renderFacturas()" },
+  { key:"presentacion",     ico:"presentation",    lbl:"Presentación",  cat:"mes", fn:"renderPresentacion()" },
+  { key:"sueldob",          ico:"briefcase",       lbl:"Sueldo B",      cat:"gente", fn:"renderSueldoB()" },
+  { key:"premios",          ico:"award",           lbl:"Premios",       cat:"gente", fn:"renderPremios()" },
+  { key:"licenciashon",     ico:"plane-takeoff",   lbl:"Licencias (Honorarios)", cat:"gente", fn:"renderLicenciasHon()" },
+  { key:"licencias",        ico:"calendar-heart",  lbl:"Licencias",     cat:"gente", fn:"renderLicencias()" },
+  { key:"gastoscasa",       ico:"home",            lbl:"Gastos Casa",   cat:"casa", fn:"renderGastosCasa()" },
+  { key:"gastospagos",      ico:"wallet",          lbl:"Gastos y Pagos",cat:"casa", fn:"renderGastosPagos()" },
+  { key:"estadisticas",     ico:"line-chart",      lbl:"Estadísticas CEOT", cat:"clinica", fn:"renderEstadisticasCeot()" },
+  { key:"totalceot",        ico:"trending-up",     lbl:"Total CEOT",    cat:"sistema", fn:"renderTotalCeot()" },
+  { key:"faqasistente",     ico:"bot",             lbl:"FAQ del asistente", cat:"sistema", fn:"renderFaqAsistente()" },
+  { key:"correos",          ico:"mail",            lbl:"Correos",       cat:"sistema", fn:"renderCorreos()" },
 ];
-var ADM_HOME_MOD_COLOR = {
-  "cat-fin":"rgba(29,158,117,0.22)","cat-cli":"rgba(55,138,221,0.22)",
-  "cat-adm":"rgba(127,119,221,0.22)","cat-gst":"rgba(216,90,48,0.22)","cat-inf":"rgba(32,36,31,0.1)"
-};
-// Módulos del home agrupados por "mundo" (tema retro ordenado).
-// Cualquier key que no figure acá cae automáticamente en un grupo "Más".
-var ADM_HOME_MOD_GRUPOS = [
-  { t:"Honorarios", c:"rgba(29,158,117,0.9)",  keys:["liquidaciones","totalceot","sueldodirector","licenciashon","cpsm","aporteceot","debitos","facturas","presentacion"] },
-  { t:"Gestión", c:"rgba(127,119,221,0.9)", keys:["sueldob","licencias","premios","estadisticas","gastoscasa","faqasistente","correos"] }
-];
-var ADM_HOME_ACC_COLOR = {
-  "Finanzas":"rgba(29,158,117,0.22)","Clínica":"rgba(55,138,221,0.22)",
-  "Admin":"rgba(127,119,221,0.22)","Otros":"rgba(32,36,31,0.1)"
-};
 
 var LUCIDE_ACC_ICON = {
   "Liquidaciones Clínica":"file-spreadsheet","Liquidaciones CEM":"file-spreadsheet","Gastos y Sueldos":"wallet",
@@ -294,7 +304,7 @@ function admHomeRenderResults() {
   var tileWrap = retroChips
     ? "display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px"
     : "display:grid;grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:8px";
-  var cats = ["Todos","Módulos","Finanzas","Clínica","Admin","Otros"];
+  var cats = ["Todos"].concat(ADM_HOME_CATS.map(function(x) { return x.k; }));
   var chips = cats.map(function(c) {
     var on = homeSearchCat === c;
     var onBg     = retroChips ? '#ef6fa2' : '#1f3a2e';
@@ -303,14 +313,14 @@ function admHomeRenderResults() {
     var offBg     = retroChips ? '#fffaf1' : 'rgba(32,36,31,.04)';
     var offText   = retroChips ? 'rgba(28,43,58,.6)' : 'rgba(32,36,31,.55)';
     var offBorder = retroChips ? '2px solid #0f1c28' : '1px solid rgba(32,36,31,.15)';
-    return '<span onclick="admHomeSetCat(\'' + c + '\')" style="flex-shrink:0;cursor:pointer;font-size:0.7rem;padding:5px 12px;border-radius:20px;border:' + (on ? onBorder : offBorder) + ';background:' + (on ? onBg : offBg) + ';color:' + (on ? onText : offText) + ';font-weight:700;white-space:nowrap">' + c + '</span>';
+    return '<span onclick="admHomeSetCat(\'' + c + '\')" style="flex-shrink:0;cursor:pointer;font-size:0.7rem;padding:5px 12px;border-radius:20px;border:' + (on ? onBorder : offBorder) + ';background:' + (on ? onBg : offBg) + ';color:' + (on ? onText : offText) + ';font-weight:700;white-space:nowrap">' + admHomeCatLabel(c) + '</span>';
   }).join("");
 
   var modMatch = admHomeOrdenarPorUso(ADM_HOME_MODULOS.filter(function(m) {
-    return (homeSearchCat === "Todos" || homeSearchCat === "Módulos") && (!q || m.lbl.toLowerCase().indexOf(q) !== -1);
+    return (homeSearchCat === "Todos" || homeSearchCat === m.cat) && (!q || admHomeModLabel(m).toLowerCase().indexOf(q) !== -1);
   }), function(m) { return "mod:" + m.key; });
   var accMatch = admHomeOrdenarPorUso(ACCESOS_DATA.filter(function(a) {
-    return (homeSearchCat === "Todos" || homeSearchCat === a.cat) && (!q || a.title.toLowerCase().indexOf(q) !== -1 || a.desc.toLowerCase().indexOf(q) !== -1);
+    return (homeSearchCat === "Todos" || homeSearchCat === admHomeCat(a.cat).k) && (!q || a.title.toLowerCase().indexOf(q) !== -1 || (a.desc || "").toLowerCase().indexOf(q) !== -1);
   }), function(a) { return "acc:" + a.id; });
 
   var flatMode = !!q || homeSearchCat !== "Todos";
@@ -329,11 +339,11 @@ function admHomeRenderResults() {
       html += '<div style="padding:26px 10px;text-align:center;color:rgba(32,36,31,.3);font-size:0.8rem">Sin resultados.</div>';
     } else {
       var tiles = modMatch.map(function(m) {
-        return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(32,36,31,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key });
+        return admHomeTile(m.ico, admHomeModLabel(m), admHomeCatColor(m.cat), { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key });
       }).concat(accMatch.map(function(a) {
         var ico = LUCIDE_ACC_ICON[a.title] || "link";
         var nav = a.fn ? { fn: a.fn } : { href: a.url };
-        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[a.cat] || "rgba(32,36,31,0.1)", Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
+        return admHomeTile(ico, a.title, admHomeCatColor(a.cat), Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
       }));
       html += '<div style="' + tileWrap + ';margin-bottom:6px">' + tiles.join("") + '</div>';
     }
@@ -349,7 +359,7 @@ function admHomeRenderResults() {
         + '<span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.42)">Lo que más usás</span>'
         + '</div>';
       html += '<div style="' + tileWrap + ';margin-bottom:16px">'
-        + destacados.map(function(m) { return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(32,36,31,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key }); }).join("")
+        + destacados.map(function(m) { return admHomeTile(m.ico, admHomeModLabel(m), admHomeCatColor(m.cat), { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key }); }).join("")
         + '</div>';
     }
 
@@ -364,7 +374,7 @@ function admHomeRenderResults() {
         + atajos.map(function(a) {
             var ico = LUCIDE_ACC_ICON[a.title] || "link";
             var nav = a.fn ? { fn: a.fn } : { href: a.url };
-            return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[a.cat] || "rgba(32,36,31,0.1)", Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
+            return admHomeTile(ico, a.title, admHomeCatColor(a.cat), Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
           }).join("")
         + '</div>';
     }
@@ -372,39 +382,32 @@ function admHomeRenderResults() {
     // Todo lo demás (el resto de los módulos y los accesos) se arma igual que
     // siempre, pero en su propia variable para poder plegarlo entero.
     var resto = "";
-    // Módulos separados por "mundo" (Plata / Gestión / Más), cada uno con
-    // divisor pixel y su color de categoría en el borde izquierdo.
-    var _modEnGrupos = ADM_HOME_MOD_GRUPOS.reduce(function(a, g) { return a.concat(g.keys); }, []);
-    var _modSueltos = ADM_HOME_MODULOS.filter(function(m) { return _modEnGrupos.indexOf(m.key) === -1; });
-    var _modGrupos = ADM_HOME_MOD_GRUPOS.concat(_modSueltos.length ? [{ t:"Más", c:"rgba(32,36,31,0.4)", keys:_modSueltos.map(function(m){ return m.key; }) }] : []);
-    _modGrupos.forEach(function(g) {
-      var mods = admHomeOrdenarPorUso(ADM_HOME_MODULOS.filter(function(m) { return g.keys.indexOf(m.key) !== -1 && destKeys.indexOf(m.key) === -1; }), function(m) { return "mod:" + m.key; });
-      if (!mods.length) return;
-      resto += '<div style="display:flex;align-items:center;gap:7px;margin:0 0 7px">'
-        + '<span style="width:9px;height:9px;border-radius:3px;background:' + g.c + ';border:2px solid #0f1c28;flex-shrink:0"></span>'
-        + '<span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.42)">' + g.t + ' <span style="color:rgba(32,36,31,.2);font-weight:500">· ' + mods.length + '</span></span>'
-        + '</div>';
-      resto += '<div style="' + tileWrap + ';margin-bottom:16px;border-left:3px solid ' + g.c + ';padding-left:10px">'
-        + mods.map(function(m) { return admHomeTile(m.ico, admHomeModLabel(m), ADM_HOME_MOD_COLOR[m.cat] || "rgba(32,36,31,0.1)", { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key }); }).join("")
-        + '</div>';
-    });
-
-    ["Finanzas","Clínica","Admin","Otros"].forEach(function(cat) {
-      var items = admHomeOrdenarPorUso(ACCESOS_DATA.filter(function(a) { return a.cat === cat && atajoIds.indexOf(a.id) === -1; }), function(a) { return "acc:" + a.id; });
-      if (!items.length && !homeEditMode) return;
-      var tiles = items.map(function(a) {
+    // Una sola pasada por las categorías: cada una trae primero sus módulos y
+    // después sus accesos. Antes eran dos listas separadas — los módulos por
+    // grupo (Honorarios/Gestión) y más abajo los accesos por su propio cat —
+    // así que lo del mismo tema quedaba en dos lugares distintos de la home.
+    ADM_HOME_CATS.forEach(function(g) {
+      var mods = admHomeOrdenarPorUso(ADM_HOME_MODULOS.filter(function(m) { return m.cat === g.k && destKeys.indexOf(m.key) === -1; }), function(m) { return "mod:" + m.key; });
+      var accs = admHomeOrdenarPorUso(ACCESOS_DATA.filter(function(a) { return admHomeCat(a.cat).k === g.k && atajoIds.indexOf(a.id) === -1; }), function(a) { return "acc:" + a.id; });
+      if (!mods.length && !accs.length && !homeEditMode) return;
+      var tiles = mods.map(function(m) {
+        return admHomeTile(m.ico, admHomeModLabel(m), admHomeCatColor(m.cat), { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key });
+      }).concat(accs.map(function(a) {
         var ico = LUCIDE_ACC_ICON[a.title] || "link";
         var nav = a.fn ? { fn: a.fn } : { href: a.url };
-        return admHomeTile(ico, a.title, ADM_HOME_ACC_COLOR[cat], Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
-      });
+        return admHomeTile(ico, a.title, admHomeCatColor(a.cat), Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
+      }));
       if (homeEditMode) {
-        tiles.push('<div onclick="admHomeNuevoAcceso(\'' + cat + '\')" style="cursor:pointer;background:rgba(32,36,31,0.03);border:1px dashed rgba(32,36,31,.3);border-radius:10px;padding:12px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;min-height:64px">'
+        tiles.push('<div onclick="admHomeNuevoAcceso(\'' + g.k + '\')" style="cursor:pointer;background:rgba(32,36,31,0.03);border:1px dashed rgba(32,36,31,.3);border-radius:10px;padding:12px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;min-height:64px">'
           + '<i data-lucide="plus" style="width:18px;height:18px;color:rgba(31,58,46,.8)" stroke-width="1.75"></i>'
           + '<div style="font-size:11px;color:rgba(31,58,46,.8);font-weight:500">Nuevo</div>'
           + '</div>');
       }
-      resto += '<div style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.32);margin:0 0 6px">' + cat + ' <span style="color:rgba(32,36,31,.18);font-weight:500">· ' + items.length + '</span></div>';
-      resto += '<div style="' + tileWrap + ';margin-bottom:14px">' + tiles.join("") + '</div>';
+      resto += '<div style="display:flex;align-items:center;gap:7px;margin:0 0 7px">'
+        + '<span style="width:9px;height:9px;border-radius:3px;background:' + g.c + ';border:2px solid #0f1c28;flex-shrink:0"></span>'
+        + '<span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.42)">' + g.t + ' <span style="color:rgba(32,36,31,.2);font-weight:500">· ' + (mods.length + accs.length) + '</span></span>'
+        + '</div>';
+      resto += '<div style="' + tileWrap + ';margin-bottom:16px;border-left:3px solid ' + g.c + ';padding-left:10px">' + tiles.join("") + '</div>';
     });
 
     // El resto va plegado mientras haya franja de destacados: un botón en vez
