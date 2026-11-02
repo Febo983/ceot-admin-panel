@@ -225,7 +225,7 @@ function sbReciboHTML(p, horas, usaMensualidad, periodo, facturacionMonto, factu
   if (c.totalMens > 0) {
     conceptos += '<tr><td class="center">001</td><td class="center">1</td><td>Mensualidad</td><td class="right">'+sbFmt(c.totalMens)+'</td></tr>';
   } else if (c.totalHoras > 0) {
-    conceptos += '<tr><td class="center">001</td><td class="center">'+horas+'</td><td>Horas Extras &mdash; '+horas+' hs</td><td class="right">'+sbFmt(c.totalHoras)+'</td></tr>';
+    conceptos += '<tr><td class="center">001</td><td class="center">'+horas+'</td><td>'+(p.conceptoHoras || 'Horas Extras')+' &mdash; '+horas+' hs</td><td class="right">'+sbFmt(c.totalHoras)+'</td></tr>';
   }
   if (c.totalFact > 0) {
     var conceptoFact = 'Facturacion' + (facturacionMotivo ? ' &mdash; ' + facturacionMotivo : '');
@@ -235,7 +235,7 @@ function sbReciboHTML(p, horas, usaMensualidad, periodo, facturacionMonto, factu
                     : (c.totalMens > 0 && c.totalFact > 0) ? "Mens+Fc"
                     : (c.totalMens > 0) ? "Mensualidad"
                     : (c.totalFact > 0) ? "Facturacion"
-                    : "Horas Extras";
+                    : (p.conceptoHoras || "Horas Extras");
   return '<div class="sb-recibo"><div class="recibo-wrap">'
     + '<div class="recibo-header">'
     + '<div class="recibo-titulo">CEOT &mdash; Clinica de Traumatologia Colon</div>'
@@ -245,13 +245,13 @@ function sbReciboHTML(p, horas, usaMensualidad, periodo, facturacionMonto, factu
     + '<table class="recibo-datos">'
     + '<tr><td>Legajo</td><td>'+p.legajo+'</td><td>CUIL</td><td>'+p.cuil+'</td></tr>'
     + '<tr><td>Apellido y Nombres</td><td colspan="3">'+p.nombre+'</td></tr>'
-    + '<tr><td>Ingreso</td><td>'+p.ingreso+'</td><td>Tarea</td><td>Administrativo</td></tr>'
-    + '<tr><td>Categoria</td><td colspan="3">Prof. de nivel medio Adm.</td></tr>'
+    + '<tr><td>Ingreso</td><td>'+p.ingreso+'</td><td>Tarea</td><td>'+(p.tarea || 'Administrativo')+'</td></tr>'
+    + '<tr><td>Categoria</td><td colspan="3">'+(p.categoria || 'Prof. de nivel medio Adm.')+'</td></tr>'
     + '</table>'
     + '<table class="recibo-conceptos">'
     + '<thead><tr><th>COD</th><th>CANTIDAD</th><th>CONCEPTO</th><th>IMPORTE</th></tr></thead>'
     + '<tbody>'+conceptos
-    + '<tr class="recibo-total-row"><td class="center">001</td><td class="center">30</td><td>'+conceptoTotal+'</td><td class="right">'+sbFmt(c.total)+'</td></tr>'
+    + '<tr class="recibo-total-row"><td class="center">001</td><td class="center">'+(p.esGenerico ? horas : 30)+'</td><td>'+conceptoTotal+'</td><td class="right">'+sbFmt(c.total)+'</td></tr>'
     + '</tbody></table>'
     + '<div class="recibo-son"><strong>SON:</strong> '+sbMontoLetras(c.total)+'</div>'
     + '<div class="recibo-neto"><strong>NETO A COBRAR: '+sbFmt(c.total)+'</strong></div>'
@@ -259,6 +259,71 @@ function sbReciboHTML(p, horas, usaMensualidad, periodo, facturacionMonto, factu
     + '<div>_______________________<br>Firma y Aclaracion</div>'
     + '<div>_______________________<br>Recibi Conforme</div>'
     + '</div></div></div>';
+}
+
+// ══════ RECIBO GENERICO ═══════════════════════════════════════════
+// Para alguien que no esta en SB_PERSONAL (un reemplazo, un eventual):
+// se cargan nombre, horas y valor de hora a mano y sale el mismo recibo,
+// sin tocar la lista de personal ni el Sheet de horarios.
+var SB_GEN_TARIFA_DEFAULT = 9300;
+
+function sbGenCardHtml() {
+  return '<div class="sb-persona" style="border-style:dashed">'
+    + '<div class="sb-persona-header">'
+    + '<div><span class="sb-persona-nombre">Recibo generico</span>'
+    + '<span class="sb-persona-legajo"> &nbsp;reemplazo / eventual &mdash; no figura en el personal</span></div>'
+    + '<span class="sb-persona-total" id="sb-total-GEN">&mdash;</span>'
+    + '</div>'
+    + '<div class="sb-form-grid" style="margin-bottom:0">'
+    + '<div class="sb-field"><label>Apellido y nombres</label>'
+    + '<input type="text" id="sb-gen-nombre" placeholder="ej. Perez, Ana" oninput="sbActualizarGen()"></div>'
+    + '<div class="sb-field"><label>CUIL (opcional)</label>'
+    + '<input type="text" id="sb-gen-cuil" placeholder="00-00000000-0"></div>'
+    + '<div class="sb-field"><label>Horas trabajadas</label>'
+    + '<input type="number" id="sb-gen-horas" min="0" step="0.5" placeholder="0" oninput="sbActualizarGen()"></div>'
+    + '<div class="sb-field"><label>Valor hora $</label>'
+    + '<input type="text" inputmode="decimal" id="sb-gen-tarifa" value="' + SB_GEN_TARIFA_DEFAULT + '" oninput="sbActualizarGen()"></div>'
+    + '<div class="sb-field"><label>Concepto</label>'
+    + '<input type="text" id="sb-gen-concepto" value="Horas trabajadas"></div>'
+    + '<div class="sb-field"><label>Tarea</label>'
+    + '<input type="text" id="sb-gen-tarea" value="Reemplazo administrativo"></div>'
+    + '<div class="sb-field" style="grid-column:1/-1"><label>Periodo del recibo (opcional &mdash; pisa el mes/ano de arriba)</label>'
+    + '<input type="text" id="sb-gen-periodo" placeholder="ej. del 13 al 24 de octubre de 2026"></div>'
+    + '</div></div>';
+}
+
+// Devuelve los datos del generico, o null si todavia no alcanzan para un recibo.
+function sbGenLeer() {
+  var el = function(id) { return document.getElementById(id); };
+  if (!el("sb-gen-nombre")) return null;
+  var nombre = (el("sb-gen-nombre").value || "").trim();
+  var horas  = parseFloat(el("sb-gen-horas").value) || 0;
+  var tarifa = parsearMontoImp(el("sb-gen-tarifa").value) || 0;
+  if (!nombre || horas <= 0 || tarifa <= 0) return null;
+  return {
+    nombre: nombre,
+    cuil: (el("sb-gen-cuil").value || "").trim() || "\u2014",
+    tarea: (el("sb-gen-tarea").value || "").trim() || "Reemplazo administrativo",
+    concepto: (el("sb-gen-concepto").value || "").trim() || "Horas trabajadas",
+    periodo: (el("sb-gen-periodo").value || "").trim(),
+    horas: horas,
+    tarifa: tarifa
+  };
+}
+
+// Mismo contrato que un item de SB_PERSONAL, asi reusa sbCalcTotal/sbReciboHTML.
+function sbGenPersona(g) {
+  return { legajo: "\u2014", nombre: g.nombre, cuil: g.cuil, ingreso: "\u2014",
+           tarifa: g.tarifa, facturacion: false, mensualidad: null,
+           conceptoHoras: g.concepto, tarea: g.tarea, categoria: "Personal eventual",
+           esGenerico: true };
+}
+
+function sbActualizarGen() {
+  var totalEl = document.getElementById("sb-total-GEN");
+  if (!totalEl) return;
+  var g = sbGenLeer();
+  totalEl.innerHTML = g ? sbFmt(Math.round(g.horas * g.tarifa)) : "&mdash;";
 }
 
 function sbActualizarCard(legajo) {
@@ -376,6 +441,7 @@ function renderSueldoB() {
     + '</div>'
     + '<div id="sb-horas-msg" style="font-size:.72rem;color:rgba(32,36,31,.5);margin:-6px 0 10px 2px">Cargando horas del Sheet…</div>'
     + cards
+    + sbGenCardHtml()
     + '<button class="sb-calcular-btn" onclick="actionFeedback(this); sbGenerarRecibos()">Generar recibos</button>'
     + '</div>'
     + '<div id="sb-resultados" style="padding:0 2px 24px;display:none">'
@@ -416,6 +482,20 @@ function sbGenerarRecibos() {
            + '</div></div>';
   });
 
+  var gen = sbGenLeer();
+  if (gen) {
+    var cGen = sbCalcTotal(sbGenPersona(gen), gen.horas, false, undefined);
+    lista += '<div style="display:flex;justify-content:space-between;align-items:center;'
+           + 'background:rgba(32,36,31,.05);border:0.5px dashed rgba(32,36,31,.25);'
+           + 'border-radius:8px;padding:10px 14px;margin-bottom:8px">'
+           + '<div><span style="font-weight:700">'+gen.nombre+'</span>'
+           + '<span style="font-size:0.78rem;color:rgba(32,36,31,.45);margin-left:8px">generico &mdash; '+gen.horas+' hs</span></div>'
+           + '<div style="display:flex;align-items:center;gap:10px">'
+           + '<span style="font-weight:700">'+sbFmt(cGen.total)+'</span>'
+           + '<button class="sb-print-btn" onclick="actionFeedback(this); sbImprimirUno(\'GEN\')">Imprimir</button>'
+           + '</div></div>';
+  }
+
   document.getElementById("sb-lista-recibos").innerHTML = lista || '<div style="color:rgba(32,36,31,.35);padding:12px">Sin importes para imprimir.</div>';
   document.getElementById("sb-resultados").style.display = "block";
 
@@ -436,6 +516,7 @@ function sbGenerarRecibos() {
     };
   });
   SB_STATE._periodo = periodo;
+  SB_STATE._gen = gen;
 }
 
 function sbAbrirVentanaImpresion(html) {
@@ -460,7 +541,20 @@ function sbAbrirVentanaImpresion(html) {
   w.document.close();
 }
 
+// HTML del recibo generico guardado al generar, o "" si no hay.
+function sbGenReciboHTML() {
+  var g = SB_STATE._gen;
+  if (!g) return "";
+  var periodo = g.periodo ? g.periodo.toUpperCase() : (SB_STATE._periodo || "");
+  return sbReciboHTML(sbGenPersona(g), g.horas, false, periodo, undefined, "");
+}
+
 function sbImprimirUno(legajo) {
+  if (legajo === "GEN") {
+    var htmlGen = sbGenReciboHTML();
+    if (htmlGen) sbAbrirVentanaImpresion(htmlGen);
+    return;
+  }
   var p = SB_PERSONAL.find(function(x){ return x.legajo === legajo; });
   var st = SB_STATE[legajo];
   if (!p || !st) return;
@@ -477,6 +571,7 @@ function sbImprimirTodos() {
     if (!st) return;
     html += sbReciboHTML(p, st.horas, st.usaMens, periodo, st.facturacion, st.facturacionMotivo);
   });
+  html += sbGenReciboHTML();
   if (!html) return;
   sbAbrirVentanaImpresion(html);
 }
