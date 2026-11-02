@@ -32,26 +32,68 @@ function admHomeCat(k) {
   return ADM_HOME_CATS[ADM_HOME_CATS.length - 1];
 }
 function admHomeCatColor(k) { return admHomeCat(k).tile; }
+
+// ── Sub-pestañas ──────────────────────────────────────────────────
+// Los módulos del mismo tema comparten una tira arriba del contenido en vez de
+// un mosaico cada uno en la home. Cada uno conserva su propia función de
+// render y su botón del menú lateral: lo que se unifica es cómo se llega.
+// La tira vive en #adm-subtabs, fuera de #adm-content, así no se la lleva
+// puesta el innerHTML de cada módulo; admDesactivarSidebar la limpia y los
+// módulos del grupo la vuelven a poner.
+var ADM_SUBTABS = {
+  liquidaciones: [
+    { k:"liquidaciones", lbl:"Del mes",    fn:"renderAdminPanelPage(tabMesActual())" },
+    { k:"cpsm",          lbl:"CPSM",       fn:"renderCpsm()" },
+    { k:"totalceot",     lbl:"Total CEOT", fn:"renderTotalCeot()" }
+  ],
+  licencias: [
+    { k:"licenciashon", lbl:"Honorarios",   fn:"renderLicenciasHon()" },
+    { k:"licencias",    lbl:"Del personal", fn:"renderLicencias()" }
+  ]
+};
+function admSubtabs(grupo, activa) {
+  var el = document.getElementById("adm-subtabs");
+  if (!el) return;
+  el.innerHTML = '<div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:12px 16px 0">'
+    + (ADM_SUBTABS[grupo] || []).map(function(s) {
+        var on = s.k === activa;
+        return '<span onclick="' + s.fn + '" style="flex-shrink:0;cursor:pointer;font-size:0.72rem;padding:5px 13px;border-radius:20px;white-space:nowrap;font-weight:700;border:1px solid '
+          + (on ? '#1f3a2e;background:#1f3a2e;color:#fff' : 'rgba(32,36,31,.15);background:rgba(32,36,31,.04);color:rgba(32,36,31,.55)')
+          + '">' + s.lbl + '</span>';
+      }).join("")
+    + '</div>';
+}
+function admSubtabsLimpiar() {
+  var el = document.getElementById("adm-subtabs");
+  if (el) el.innerHTML = "";
+}
 function admHomeCatLabel(k) { return k === "Todos" ? "Todos" : admHomeCat(k).t; }
+// Los módulos con home:false no tienen mosaico propio: se llega a ellos por el
+// menú lateral o por la tira de sub-pestañas del módulo con el que comparten
+// tema (ver ADM_SUBTABS). Siguen en ADM_HOME_MODULOS para que el renombrado y
+// la búsqueda por clave los sigan encontrando.
+function admHomeModulosEnHome() {
+  return ADM_HOME_MODULOS.filter(function(m) { return m.home !== false; });
+}
 
 var ADM_HOME_MODULOS = [
   { key:"liquidaciones",    ico:"bar-chart-3",     lbl:"Liquidaciones", cat:"mes", fn:"renderAdminPanelPage(tabMesActual())" },
   { key:"sueldodirector",   ico:"banknote",        lbl:"Transferencias del Mes", cat:"mes", fn:"abrirSueldoDirectorMesActual()" },
   { key:"aporteceot",       ico:"percent",         lbl:"Retención Ganancias",   cat:"mes", fn:"renderAporteCeot()" },
-  { key:"cpsm",             ico:"landmark",        lbl:"CPSM",          cat:"mes", fn:"renderCpsm()" },
+  { key:"cpsm",             ico:"landmark",        lbl:"CPSM",          cat:"mes", home:false, fn:"renderCpsm()" },
   { key:"debitos",          ico:"alert-triangle",  lbl:"Débitos",       cat:"mes", fn:"renderDebitos()" },
   { key:"facturas",         ico:"receipt",         lbl:"Facturas",      cat:"mes", fn:"renderFacturas()" },
   { key:"presentacion",     ico:"presentation",    lbl:"Presentación",  cat:"mes", fn:"renderPresentacion()" },
   { key:"sueldob",          ico:"briefcase",       lbl:"Sueldo B",      cat:"gente", fn:"renderSueldoB()" },
   { key:"premios",          ico:"award",           lbl:"Premios",       cat:"gente", fn:"renderPremios()" },
   { key:"licenciashon",     ico:"plane-takeoff",   lbl:"Licencias (Honorarios)", cat:"gente", fn:"renderLicenciasHon()" },
-  { key:"licencias",        ico:"calendar-heart",  lbl:"Licencias",     cat:"gente", fn:"renderLicencias()" },
+  { key:"licencias",        ico:"calendar-heart",  lbl:"Licencias",     cat:"gente", home:false, fn:"renderLicencias()" },
   { key:"gastoscasa",       ico:"home",            lbl:"Gastos Casa",   cat:"casa", fn:"renderGastosCasa()" },
   { key:"gastospagos",      ico:"wallet",          lbl:"Gastos y Pagos",cat:"casa", fn:"renderGastosPagos()" },
   { key:"estadisticas",     ico:"line-chart",      lbl:"Estadísticas CEOT", cat:"clinica", fn:"renderEstadisticasCeot()" },
-  { key:"totalceot",        ico:"trending-up",     lbl:"Total CEOT",    cat:"sistema", fn:"renderTotalCeot()" },
-  { key:"faqasistente",     ico:"bot",             lbl:"FAQ del asistente", cat:"sistema", fn:"renderFaqAsistente()" },
-  { key:"correos",          ico:"mail",            lbl:"Correos",       cat:"sistema", fn:"renderCorreos()" },
+  { key:"totalceot",        ico:"trending-up",     lbl:"Total CEOT",    cat:"sistema", home:false, fn:"renderTotalCeot()" },
+  { key:"faqasistente",     ico:"bot",             lbl:"FAQ del asistente", cat:"sistema", home:false, fn:"renderFaqAsistente()" },
+  { key:"correos",          ico:"mail",            lbl:"Correos",       cat:"sistema", home:false, fn:"renderCorreos()" },
 ];
 
 var LUCIDE_ACC_ICON = {
@@ -290,7 +332,7 @@ function admHomeAtajos() {
 // registrado: navegador nuevo, contador todavía sin llegar del Sheet, o tan
 // pocos módulos usados que separarlos no ordenaría nada.
 function admHomeDestacados() {
-  var conUso = ADM_HOME_MODULOS.filter(function(m) { return (USAGE_COUNT["mod:" + m.key] || 0) > 0; });
+  var conUso = admHomeModulosEnHome().filter(function(m) { return (USAGE_COUNT["mod:" + m.key] || 0) > 0; });
   if (conUso.length <= ADM_HOME_DESTACADOS_N) return [];
   return admHomeOrdenarPorUso(conUso, function(m) { return "mod:" + m.key; }).slice(0, ADM_HOME_DESTACADOS_N);
 }
@@ -316,7 +358,7 @@ function admHomeRenderResults() {
     return '<span onclick="admHomeSetCat(\'' + c + '\')" style="flex-shrink:0;cursor:pointer;font-size:0.7rem;padding:5px 12px;border-radius:20px;border:' + (on ? onBorder : offBorder) + ';background:' + (on ? onBg : offBg) + ';color:' + (on ? onText : offText) + ';font-weight:700;white-space:nowrap">' + admHomeCatLabel(c) + '</span>';
   }).join("");
 
-  var modMatch = admHomeOrdenarPorUso(ADM_HOME_MODULOS.filter(function(m) {
+  var modMatch = admHomeOrdenarPorUso(admHomeModulosEnHome().filter(function(m) {
     return (homeSearchCat === "Todos" || homeSearchCat === m.cat) && (!q || admHomeModLabel(m).toLowerCase().indexOf(q) !== -1);
   }), function(m) { return "mod:" + m.key; });
   var accMatch = admHomeOrdenarPorUso(ACCESOS_DATA.filter(function(a) {
@@ -387,7 +429,7 @@ function admHomeRenderResults() {
     // grupo (Honorarios/Gestión) y más abajo los accesos por su propio cat —
     // así que lo del mismo tema quedaba en dos lugares distintos de la home.
     ADM_HOME_CATS.forEach(function(g) {
-      var mods = admHomeOrdenarPorUso(ADM_HOME_MODULOS.filter(function(m) { return m.cat === g.k && destKeys.indexOf(m.key) === -1; }), function(m) { return "mod:" + m.key; });
+      var mods = admHomeOrdenarPorUso(admHomeModulosEnHome().filter(function(m) { return m.cat === g.k && destKeys.indexOf(m.key) === -1; }), function(m) { return "mod:" + m.key; });
       var accs = admHomeOrdenarPorUso(ACCESOS_DATA.filter(function(a) { return admHomeCat(a.cat).k === g.k && atajoIds.indexOf(a.id) === -1; }), function(a) { return "acc:" + a.id; });
       if (!mods.length && !accs.length && !homeEditMode) return;
       var tiles = mods.map(function(m) {
@@ -419,7 +461,7 @@ function admHomeRenderResults() {
         html += '<div onclick="admHomeToggleVerTodo()" style="cursor:pointer;text-align:center;font-size:0.68rem;font-weight:700;color:rgba(32,36,31,.45);padding:9px;margin-bottom:6px">Ver menos ▲</div>';
       }
     } else {
-      var ocultos = (ADM_HOME_MODULOS.length - destacados.length) + (ACCESOS_DATA.length - atajos.length);
+      var ocultos = (admHomeModulosEnHome().length - destacados.length) + (ACCESOS_DATA.length - atajos.length);
       html += '<div onclick="admHomeToggleVerTodo()" style="cursor:pointer;background:#fffaf1;border:2px solid #0f1c28;border-radius:16px;box-shadow:0 3px 0 #0f1c28;padding:13px;text-align:center;font-size:0.72rem;font-weight:700;color:#1c2b3a;margin-bottom:6px">Ver todo · ' + ocultos + ' más ▼</div>';
     }
   }

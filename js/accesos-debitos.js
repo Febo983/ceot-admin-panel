@@ -64,20 +64,20 @@ function toggleEditLinks() {
   renderSidenavLinks(accEditLinkMode ? "" : (document.getElementById("accSearch")||{}).value);
 }
 
-var ACC_CAT_CLASS = {"Finanzas":"cat-fin","Clínica":"cat-cli","Admin":"cat-adm","Otros":"cat-otros"};
+var ACC_CAT_CLASS = {"mes":"cat-fin","clinica":"cat-cli","gente":"cat-adm","casa":"cat-otros","sistema":"cat-sis"};
 
 function renderSidenavLinks(q) {
-  var cats = ["Finanzas","Clínica","Admin","Otros"];
+  var cats = ADM_HOME_CATS.map(function(c) { return c.k; });
   var html = "";
   var query = accEditLinkMode ? "" : (q || "").toLowerCase().trim();
   var hayResultados = false;
   cats.forEach(function(cat) {
     var items = ACCESOS_DATA.filter(function(a){
-      return a.cat === cat && (!query || a.title.toLowerCase().includes(query) || a.desc.toLowerCase().includes(query));
+      return admHomeCat(a.cat).k === cat && (!query || a.title.toLowerCase().includes(query) || (a.desc || "").toLowerCase().includes(query));
     });
     if (!items.length) return;
     hayResultados = true;
-    if (!query || accEditLinkMode) html += '<div class="adm-sidenav-sep" style="font-size:0.6rem">' + cat + '</div>';
+    if (!query || accEditLinkMode) html += '<div class="adm-sidenav-sep" style="font-size:0.6rem">' + admHomeCatLabel(cat) + '</div>';
     items.forEach(function(a) {
       if (accEditLinkMode) {
         html += '<div style="display:flex;align-items:center;gap:3px;padding:2px 6px">'
@@ -1250,6 +1250,7 @@ async function cpsmFetchHonorarios(mesFuente) {
 function renderCpsm() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
+  admSubtabs("liquidaciones", "cpsm");
   var btn = document.getElementById("adm-sidenav-cpsm");
   if (btn) btn.className = "adm-sidenav-btn active";
 

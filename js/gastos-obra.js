@@ -477,6 +477,7 @@ function renderLicenciasBody() {
 function renderLicencias() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
+  admSubtabs("licencias", "licencias");
   ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
