@@ -429,7 +429,18 @@ const APORTE_CEOT_DESDE = ["agosto","septiembre","octubre","noviembre","diciembr
 // Ganancias de arriba (ese se aplica sobre los honorarios propios de cada uno;
 // este es la proporción de participación societaria de cada uno sobre CUALQUIER
 // monto a repartir, suma 100%). Datos provistos por Marcelo (25/08/2026).
-// GARMENDIA no tiene % asignado todavía (se sumó como socia en agosto 2026).
+//
+// DE DONDE SALEN: son el promedio de los meses pasados de cada socio. El
+// 03/11/2026 se compararon contra la planilla del contador ("NETO FINAL A
+// PERCIBIR", dic-2025 a ago-2026), que da otros porcentajes — Bruni 11,92% en
+// vez de 13,16%, Deganutti 26,70% en vez de 21,95% — porque toma una ventana
+// mas corta. Sobre el reparto del fondo de Ganancias esa diferencia le movia
+// 10 millones a Deganutti. Marcelo decidio mantener estos: no son la planilla
+// del contador desactualizada, son otra base. Si alguien vuelve a encontrar la
+// diferencia, ya esta mirada.
+//
+// GARMENDIA no participa de este reparto: entra solo en los anticipos de
+// Ganancias 2027, con INCIDENCIA_GARMENDIA_ANT_PCT (ver abajo).
 const INCIDENCIA_FONDO_PCT = {
   "BRUNI":        0.1316,
   "CORELICH":     0.0910,
