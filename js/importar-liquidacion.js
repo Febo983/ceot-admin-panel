@@ -878,6 +878,10 @@ function guardarRedsomImportados(items, periodoHint) {
     var guard = [];
     try { guard = JSON.parse(localStorage.getItem('redsom_guardados') || '[]'); } catch (e) {}
     if (guard.indexOf(periodoKey) === -1) { guard.unshift(periodoKey); localStorage.setItem('redsom_guardados', JSON.stringify(guard)); }
+    // Espejado al guardado compartido para que el detalle no quede atrapado en
+    // la PC que importó (ver redsom.js): el período que se acaba de guardar y
+    // el índice, cada uno en su clave.
+    if (typeof syncPush === 'function') { syncPush('redsom_imp_' + periodoKey); syncPush('redsom_guardados'); }
   } catch (e) { return { n: 0, error: e.message }; }
   var total = items.reduce(function(s, it) { return s + (it.imp || 0); }, 0);
   return { n: items.length, periodoKey: periodoKey, total: total };
@@ -1089,8 +1093,13 @@ async function procesarArchivosImport() {
       var resRedsom = guardarRedsomImportados(redsomItems, periodoHint);
       if (redsomMsgEl && resRedsom.n) {
         redsomMsgEl.style.display = 'block';
-        redsomMsgEl.textContent = '📋 ' + resRedsom.n + ' registro(s) de REDSOM (' + fmtImp(resRedsom.total) +
-          ') cargados a «Seguimiento liquidaciones REDSOM» — período «' + resRedsom.periodoKey + '».';
+        // El aviso era texto muerto: ahora lleva al módulo justo cuando uno se
+        // acaba de enterar de que hay datos nuevos. El período viaja en
+        // data-periodo y lo lee redsomDesdeImport() (redsom.js).
+        redsomMsgEl.innerHTML = '📋 ' + resRedsom.n + ' registro(s) de REDSOM (' + fmtImp(resRedsom.total) +
+          ') cargados a «Seguimiento liquidaciones REDSOM» — período «' + resRedsom.periodoKey + '». '
+          + '<a href="#" onclick="event.preventDefault(); redsomDesdeImport(this)" data-periodo="'
+          + resRedsom.periodoKey + '" style="color:#1f3a2e;font-weight:700;text-decoration:underline">Ver el detalle</a>';
       } else if (redsomMsgEl) {
         redsomMsgEl.style.display = 'block';
         redsomMsgEl.textContent = '📋 Sin registros de REDSOM en este archivo.';

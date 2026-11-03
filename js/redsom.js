@@ -7,8 +7,30 @@
 
 var redsomPeriodoActual = '';
 
+// El detalle importado vivía solo en el localStorage de la PC que subió el
+// archivo: desde la otra el módulo aparecía vacío. Ahora se espeja al guardado
+// compartido (syncPush/syncPull de datos.js). Son claves separadas —el índice
+// de períodos y el detalle de cada período— así una importación no manda un
+// JSON con todos los meses juntos. Cada clave se pide una sola vez por sesión
+// y, si lo que vuelve difiere de lo local, repinta la pantalla.
+var REDSOM_GUARD_KEY = 'redsom_guardados';
+var _redsomPulled = {};
+function redsomPull(clave) {
+  if (!clave || _redsomPulled[clave] || typeof syncPull !== 'function') return;
+  _redsomPulled[clave] = true;
+  syncPull(clave, function() {
+    if (document.getElementById('redsomScreenRoot')) renderSeguimientoRedsom();
+  });
+}
+
+// Link "Ver el detalle" del aviso que deja la importación: el período viaja en
+// data-periodo del propio link, así el onclick no necesita comillas adentro.
+function redsomDesdeImport(el) {
+  renderSeguimientoRedsom((el && el.getAttribute('data-periodo')) || '');
+}
+
 function redsomGetGuardados() {
-  try { return JSON.parse(localStorage.getItem('redsom_guardados') || '[]'); } catch (e) { return []; }
+  try { return JSON.parse(localStorage.getItem(REDSOM_GUARD_KEY) || '[]'); } catch (e) { return []; }
 }
 
 function redsomCargarPeriodo(key) {
@@ -18,8 +40,10 @@ function redsomCargarPeriodo(key) {
 function renderSeguimientoRedsom(periodo) {
   cerrarAdmSidenav();
   admDesactivarSidebar();
+  admSubtabs('liquidaciones', 'redsom');
   var btn = document.getElementById('adm-sidenav-redsom');
   if (btn) btn.className = 'adm-sidenav-btn active';
+  redsomPull(REDSOM_GUARD_KEY);
 
   var guardados = redsomGetGuardados();
   if (periodo) redsomPeriodoActual = periodo;
@@ -27,7 +51,7 @@ function renderSeguimientoRedsom(periodo) {
     redsomPeriodoActual = guardados[0] || '';
   }
 
-  var html = '<div class="deb-toolbar" style="flex-wrap:wrap;gap:6px">'
+  var html = '<div class="deb-toolbar" id="redsomScreenRoot" style="flex-wrap:wrap;gap:6px">'
     + (guardados.length
         ? '<select class="deb-mes-sel" id="redsomMesSel" onchange="renderSeguimientoRedsom(this.value)">'
           + guardados.map(function(g) {
@@ -46,6 +70,7 @@ function renderSeguimientoRedsom(periodo) {
   }
 
   var items = redsomCargarPeriodo(redsomPeriodoActual);
+  redsomPull('redsom_imp_' + redsomPeriodoActual);
 
   var porProf = {};
   items.forEach(function(it) { porProf[it.prof || '—'] = (porProf[it.prof || '—'] || 0) + (it.imp || 0); });

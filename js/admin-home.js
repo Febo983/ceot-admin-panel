@@ -44,7 +44,8 @@ var ADM_SUBTABS = {
   liquidaciones: [
     { k:"liquidaciones", lbl:"Del mes",    fn:"renderAdminPanelPage(tabMesActual())" },
     { k:"cpsm",          lbl:"CPSM",       fn:"renderCpsm()" },
-    { k:"totalceot",     lbl:"Total CEOT", fn:"renderTotalCeot()" }
+    { k:"totalceot",     lbl:"Total CEOT", fn:"renderTotalCeot()" },
+    { k:"redsom",        lbl:"REDSOM",     fn:"renderSeguimientoRedsom()" }
   ],
   licencias: [
     { k:"licenciashon", lbl:"Honorarios",   fn:"renderLicenciasHon()" },
@@ -71,7 +72,8 @@ function admHomeCatLabel(k) { return k === "Todos" ? "Todos" : admHomeCat(k).t; 
 // Los módulos con home:false no tienen mosaico propio: se llega a ellos por el
 // menú lateral o por la tira de sub-pestañas del módulo con el que comparten
 // tema (ver ADM_SUBTABS). Siguen en ADM_HOME_MODULOS para que el renombrado y
-// la búsqueda por clave los sigan encontrando.
+// la búsqueda los sigan encontrando: admHomeRenderResults filtra sobre la lista
+// completa, no sobre admHomeModulosEnHome().
 function admHomeModulosEnHome() {
   return ADM_HOME_MODULOS.filter(function(m) { return m.home !== false; });
 }
@@ -81,6 +83,7 @@ var ADM_HOME_MODULOS = [
   { key:"sueldodirector",   ico:"banknote",        lbl:"Transferencias del Mes", cat:"mes", fn:"abrirSueldoDirectorMesActual()" },
   { key:"aporteceot",       ico:"percent",         lbl:"Retención Ganancias",   cat:"mes", fn:"renderAporteCeot()" },
   { key:"cpsm",             ico:"landmark",        lbl:"CPSM",          cat:"mes", home:false, fn:"renderCpsm()" },
+  { key:"redsom",           ico:"stethoscope",     lbl:"Seguimiento REDSOM", cat:"mes", home:false, fn:"renderSeguimientoRedsom()" },
   { key:"debitos",          ico:"alert-triangle",  lbl:"Débitos",       cat:"mes", fn:"renderDebitos()" },
   { key:"facturas",         ico:"receipt",         lbl:"Facturas",      cat:"mes", fn:"renderFacturas()" },
   { key:"presentacion",     ico:"presentation",    lbl:"Presentación",  cat:"mes", fn:"renderPresentacion()" },
@@ -358,7 +361,13 @@ function admHomeRenderResults() {
     return '<span onclick="admHomeSetCat(\'' + c + '\')" style="flex-shrink:0;cursor:pointer;font-size:0.7rem;padding:5px 12px;border-radius:20px;border:' + (on ? onBorder : offBorder) + ';background:' + (on ? onBg : offBg) + ';color:' + (on ? onText : offText) + ';font-weight:700;white-space:nowrap">' + admHomeCatLabel(c) + '</span>';
   }).join("");
 
-  var modMatch = admHomeOrdenarPorUso(admHomeModulosEnHome().filter(function(m) {
+  // Buscar y filtrar por categoría miran TODOS los módulos, también los
+  // home:false: lo que no tiene mosaico propio igual tiene que aparecer cuando
+  // se lo escribe. Antes "redsom", "cpsm" o "correos" no daban resultados y el
+  // único camino era acordarse del menú lateral. La franja de destacados sigue
+  // saliendo de admHomeModulosEnHome(), así un home:false no se gana un mosaico
+  // en la home por mucho que se lo busque.
+  var modMatch = admHomeOrdenarPorUso(ADM_HOME_MODULOS.filter(function(m) {
     return (homeSearchCat === "Todos" || homeSearchCat === m.cat) && (!q || admHomeModLabel(m).toLowerCase().indexOf(q) !== -1);
   }), function(m) { return "mod:" + m.key; });
   var accMatch = admHomeOrdenarPorUso(ACCESOS_DATA.filter(function(a) {
