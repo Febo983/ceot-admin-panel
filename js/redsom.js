@@ -5,8 +5,6 @@
 // importar-liquidacion.js) — no hay carga manual, subir el archivo por
 // "Importar" alcanza.
 
-var redsomPeriodoActual = '';
-
 // El detalle importado vivía solo en el localStorage de la PC que subió el
 // archivo: desde la otra el módulo aparecía vacío. Ahora se espeja al guardado
 // compartido (syncPush/syncPull de datos.js). Son claves separadas —el índice
@@ -52,8 +50,22 @@ function redsomCargarPeriodo(key) {
 var REDSOM_TODOS = '__todos';
 
 function redsomCargarTodo() {
+  return redsomCargarVarios(redsomGetGuardados());
+}
+
+function redsomCargarItems(key) {
+  return key === REDSOM_TODOS ? redsomCargarTodo() : redsomCargarPeriodo(key);
+}
+
+// ── Reporte de varios meses ───────────────────────────────────────
+// La pantalla del admin dejó de mirar un período a la vez: redsomSeleccion es
+// la lista de los elegidos. Uno solo, varios sueltos o todos es el mismo
+// camino — "Todos" no es un modo aparte, es tenerlos todos tildados.
+var redsomSeleccion = [];
+
+function redsomCargarVarios(periodos) {
   var out = [];
-  redsomGetGuardados().forEach(function(k) {
+  (periodos || []).forEach(function(k) {
     redsomCargarPeriodo(k).forEach(function(it) {
       var copia = Object.assign({}, it);
       copia._periodoKey = k;
@@ -63,8 +75,28 @@ function redsomCargarTodo() {
   return out;
 }
 
-function redsomCargarItems(key) {
-  return key === REDSOM_TODOS ? redsomCargarTodo() : redsomCargarPeriodo(key);
+// Nunca deja la selección vacía ni con períodos que ya no existen: sin esto,
+// borrar o recargar el histórico dejaría la pantalla pidiendo un mes fantasma.
+function redsomSelNormalizar(guardados) {
+  var s = redsomSeleccion.filter(function(p) { return guardados.indexOf(p) !== -1; });
+  if (!s.length && guardados.length) s = [guardados[0]];
+  redsomSeleccion = s;
+  return s;
+}
+
+// El período viaja en data-periodo, como en el resto del módulo.
+function redsomTogglePeriodo(el) {
+  var p = el && el.getAttribute('data-periodo');
+  var guardados = redsomGetGuardados();
+  if (p === REDSOM_TODOS) {
+    // Botón de dos tiempos: si ya están todos, vuelve al más nuevo solo.
+    redsomSeleccion = (redsomSeleccion.length === guardados.length) ? [guardados[0]] : guardados.slice();
+  } else {
+    var i = redsomSeleccion.indexOf(p);
+    if (i === -1) redsomSeleccion.push(p);
+    else if (redsomSeleccion.length > 1) redsomSeleccion.splice(i, 1);
+  }
+  renderSeguimientoRedsom();
 }
 
 // Con "todos" hay que traerse cada período, no uno. redsomPull ya ignora la
@@ -96,23 +128,32 @@ function renderSeguimientoRedsom(periodo) {
   redsomPull(REDSOM_GUARD_KEY);
 
   var guardados = redsomGetGuardados();
-  if (periodo) redsomPeriodoActual = periodo;
-  if (!redsomPeriodoActual || (!redsomEsTodos(redsomPeriodoActual) && guardados.indexOf(redsomPeriodoActual) === -1)) {
-    redsomPeriodoActual = guardados[0] || '';
-  }
+  // Sigue aceptando un período suelto (lo usa el link del aviso de importación)
+  // o REDSOM_TODOS; sin argumento, mantiene lo que ya estaba elegido.
+  if (periodo === REDSOM_TODOS) redsomSeleccion = guardados.slice();
+  else if (periodo) redsomSeleccion = [periodo];
+  var sel = redsomSelNormalizar(guardados);
 
-  var html = '<div class="deb-toolbar" id="redsomScreenRoot" style="flex-wrap:wrap;gap:6px">'
-    + (guardados.length
-        ? '<select class="deb-mes-sel" id="redsomMesSel" onchange="renderSeguimientoRedsom(this.value)">'
-          + '<option value="' + REDSOM_TODOS + '"' + (redsomEsTodos(redsomPeriodoActual) ? ' selected' : '') + '>'
-          + 'Todos los períodos (' + guardados.length + ')</option>'
-          + guardados.map(function(g) {
-              return '<option value="' + g + '"' + (g === redsomPeriodoActual ? ' selected' : '') + '>' + g + '</option>';
-            }).join('')
-          + '</select>'
-        : '')
+  var html = '<style>@media print { .redsom-no-print { display:none !important } }</style>'
+    + '<div class="deb-toolbar redsom-no-print" id="redsomScreenRoot" style="flex-wrap:wrap;gap:6px">'
+    + '<button class="deb-btn" onclick="redsomCargarHistorico()" title="Cargar un JSON con períodos que el importador nunca vio">⬆ Cargar histórico</button>'
     + '<button class="deb-btn deb-btn-pri" onclick="actionFeedback(this); imprimirRedsom()" style="margin-left:4px">🖨 Imprimir</button>'
     + '</div>';
+
+  // Tira de meses: se tildan los que entran en el reporte, uno o varios.
+  if (guardados.length) {
+    var todosTildados = sel.length === guardados.length;
+    var chip = function(k, lbl, on) {
+      return '<span onclick="redsomTogglePeriodo(this)" data-periodo="' + k + '"'
+        + ' style="flex-shrink:0;cursor:pointer;font-size:0.72rem;font-weight:700;padding:5px 13px;border-radius:20px;white-space:nowrap;border:1px solid '
+        + (on ? '#1f3a2e;background:#1f3a2e;color:#fff' : 'rgba(32,36,31,.18);background:rgba(32,36,31,.04);color:rgba(32,36,31,.55)')
+        + '">' + (on ? '✓ ' : '') + lbl + '</span>';
+    };
+    html += '<div class="redsom-no-print" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px">'
+      + chip(REDSOM_TODOS, 'Todos (' + guardados.length + ')', todosTildados)
+      + guardados.map(function(g) { return chip(g, g, sel.indexOf(g) !== -1); }).join('')
+      + '</div>';
+  }
 
   if (!guardados.length) {
     html += '<div style="padding:20px;text-align:center;color:rgba(32,36,31,.45);font-style:italic">'
@@ -121,12 +162,12 @@ function renderSeguimientoRedsom(periodo) {
     return;
   }
 
-  var todos = redsomEsTodos(redsomPeriodoActual);
-  var items = redsomCargarItems(redsomPeriodoActual);
-  redsomPullItems(redsomPeriodoActual);
+  var varios = sel.length > 1;
+  var items = redsomCargarVarios(sel);
+  sel.forEach(function(k) { redsomPull('redsom_imp_' + k); });
   // Mezclados quedarían agrupados por mes (cada período viene ya ordenado por
   // profesional). Para leer "todo lo de fulano" conviene al revés.
-  if (todos) {
+  if (varios) {
     items.sort(function(a, b) {
       return String(a.prof || '').localeCompare(String(b.prof || ''))
         || redsomOrdenDe(a).localeCompare(redsomOrdenDe(b))
@@ -134,16 +175,26 @@ function renderSeguimientoRedsom(periodo) {
     });
   }
 
+  // Encabezado del reporte: en papel hay que poder ver qué meses entraron.
+  // En el orden de guardados (el mismo de los chips), no alfabético: ordenar
+  // el nombre del mes pondría julio antes que junio y mayo.
+  var selOrdenada = guardados.filter(function(p) { return sel.indexOf(p) !== -1; });
+  html += '<div style="margin-bottom:12px;padding-bottom:9px;border-bottom:1px solid rgba(32,36,31,.15)">'
+    + '<div style="font-size:.95rem;font-weight:800;letter-spacing:.04em">REDSOM · Reporte</div>'
+    + '<div style="font-size:.68rem;color:rgba(32,36,31,.5);margin-top:2px">'
+    + (varios ? selOrdenada.length + ' períodos: ' + selOrdenada.join(', ') : 'Período ' + selOrdenada[0])
+    + ' · generado ' + new Date().toLocaleDateString('es-AR') + '</div></div>';
+
   var porProf = {};
   items.forEach(function(it) { porProf[it.prof || '—'] = (porProf[it.prof || '—'] || 0) + (it.imp || 0); });
   var profs = Object.keys(porProf).sort(function(a, b) { return porProf[b] - porProf[a]; });
   var total = items.reduce(function(s, it) { return s + (it.imp || 0); }, 0);
 
   html += '<div class="deb-stats">'
-    + (todos ? '<div class="deb-stat"><div class="deb-stat-lbl">Períodos</div><div class="deb-stat-val">' + guardados.length + '</div></div>' : '')
+    + (varios ? '<div class="deb-stat"><div class="deb-stat-lbl">Períodos</div><div class="deb-stat-val">' + sel.length + '</div></div>' : '')
     + '<div class="deb-stat"><div class="deb-stat-lbl">Registros</div><div class="deb-stat-val">' + items.length + '</div></div>'
     + '<div class="deb-stat"><div class="deb-stat-lbl">Profesionales</div><div class="deb-stat-val">' + profs.length + '</div></div>'
-    + '<div class="deb-stat"><div class="deb-stat-lbl">' + (todos ? 'Total acumulado' : 'Total facturado') + '</div><div class="deb-stat-val">' + fmtImp(total) + '</div></div>'
+    + '<div class="deb-stat"><div class="deb-stat-lbl">' + (varios ? 'Total acumulado' : 'Total facturado') + '</div><div class="deb-stat-val">' + fmtImp(total) + '</div></div>'
     + '</div>';
 
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-bottom:14px">'
@@ -185,6 +236,76 @@ function renderSeguimientoRedsom(periodo) {
   html += '</tbody></table></div>';
 
   document.getElementById('adm-content').innerHTML = html;
+}
+
+// ── Cargar histórico desde un JSON ────────────────────────────────
+// Para meter períodos que el importador nunca vio. Hace falta porque
+// guardarRedsomImportados() le pone UNA sola clave de período a todo el
+// archivo (la mayoritaria), y los .txt viejos de la clínica traen
+// prestaciones de varios meses mezcladas: el de agosto/2026 tiene 07, 06 y
+// 05, y las 85 filas terminarían contadas como julio. El JSON ya viene
+// partido por el P.PERIO real de cada fila.
+//
+// Escribe SOLO claves de REDSOM: no toca débitos, fondo de ayudantía ni
+// liquidación, que es lo que sí recalcularía reimportar el archivo entero.
+// El índice se FUSIONA con lo que ya haya: un período que no venga en el
+// JSON queda como estaba.
+function redsomCargarHistorico() {
+  var inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.json,application/json';
+  inp.onchange = function() {
+    var file = inp.files && inp.files[0];
+    if (!file) return;
+    var fr = new FileReader();
+    fr.onload = function(ev) {
+      var d;
+      try { d = JSON.parse(ev.target.result); } catch (e) { alert('Ese archivo no es un JSON válido.'); return; }
+      redsomAplicarHistorico(d);
+    };
+    fr.onerror = function() { alert('No se pudo leer el archivo.'); };
+    fr.readAsText(file, 'UTF-8');
+  };
+  inp.click();
+}
+
+// Valida y guarda el contenido ya parseado. Separado de redsomCargarHistorico
+// para poder ejercitarlo sin pasar por el selector de archivos.
+// Devuelve { ok, filas, total, periodos } o { ok:false, motivo }.
+function redsomAplicarHistorico(d) {
+  var claves = Object.keys(d || {}).filter(function(k) { return k.indexOf('redsom_imp_') === 0 && Array.isArray(d[k]); });
+  if (!claves.length || !Array.isArray(d.redsom_guardados)) {
+    alert('El archivo no tiene el formato esperado.\n\nTiene que traer "redsom_guardados" y una clave "redsom_imp_<período>" por mes.');
+    return { ok: false, motivo: 'formato' };
+  }
+  var filas = 0, total = 0;
+  claves.forEach(function(k) { d[k].forEach(function(it) { filas++; total += (it.imp || 0); }); });
+  var periodos = claves.map(function(k) { return k.replace('redsom_imp_', ''); });
+  var yaEstaban = redsomGetGuardados().filter(function(p) { return periodos.indexOf(p) !== -1; });
+  var aviso = 'Se van a cargar ' + filas + ' registro(s) por ' + fmtImp(total) + '.\n\n'
+    + 'Períodos: ' + periodos.join(', ') + '\n\n'
+    + (yaEstaban.length ? '⚠ Estos ya estaban cargados y se reemplazan: ' + yaEstaban.join(', ') + '\n\n' : '')
+    + 'El resto de lo que tengas guardado no se toca.\n\n¿Seguimos?';
+  if (!confirm(aviso)) return { ok: false, motivo: 'cancelado' };
+  try {
+    claves.forEach(function(k) {
+      localStorage.setItem(k, JSON.stringify(d[k]));
+      if (typeof syncPush === 'function') syncPush(k);
+    });
+    var union = redsomGetGuardados();
+    d.redsom_guardados.forEach(function(p) { if (union.indexOf(p) === -1) union.push(p); });
+    localStorage.setItem(REDSOM_GUARD_KEY, JSON.stringify(union));
+    if (typeof syncPush === 'function') syncPush(REDSOM_GUARD_KEY);
+    // Lo que se acaba de escribir no hay que volver a pedirlo: un syncPull
+    // en camino podría llegar con el valor viejo y pisarlo.
+    claves.concat([REDSOM_GUARD_KEY]).forEach(function(k) { _redsomPulled[k] = true; });
+  } catch (e) {
+    alert('No se pudo guardar: ' + e.message);
+    return { ok: false, motivo: e.message };
+  }
+  renderSeguimientoRedsom(REDSOM_TODOS);
+  alert('Listo: ' + filas + ' registro(s) cargados.\n\nQuedó abierto en "Todos los períodos".');
+  return { ok: true, filas: filas, total: total, periodos: periodos };
 }
 
 function imprimirRedsom() { window.print(); }
