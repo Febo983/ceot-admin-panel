@@ -40,6 +40,53 @@ function redsomCargarPeriodo(key) {
   try { return JSON.parse(localStorage.getItem('redsom_imp_' + key) || '[]') || []; } catch (e) { return []; }
 }
 
+// ── Todo lo liquidado, no un mes a la vez ─────────────────────────
+// REDSOM_TODOS no es un período guardado: es el valor que toman el select del
+// admin y la píldora del portal para juntar todos los períodos importados.
+// Cada fila se queda con `_periodoKey` (la clave guardada, que siempre está)
+// porque el campo `periodo` que viene del archivo puede faltar.
+// ⚠️ Esto solo acumula lo que REALMENTE se importó: el extractor de REDSOM
+// existe desde el 02/10/2026, así que los meses anteriores no están hasta
+// que se vuelva a subir su CEOT.xlsx (reimportar un período es idempotente,
+// reemplaza su entrada entera).
+var REDSOM_TODOS = '__todos';
+
+function redsomCargarTodo() {
+  var out = [];
+  redsomGetGuardados().forEach(function(k) {
+    redsomCargarPeriodo(k).forEach(function(it) {
+      var copia = Object.assign({}, it);
+      copia._periodoKey = k;
+      out.push(copia);
+    });
+  });
+  return out;
+}
+
+function redsomCargarItems(key) {
+  return key === REDSOM_TODOS ? redsomCargarTodo() : redsomCargarPeriodo(key);
+}
+
+// Con "todos" hay que traerse cada período, no uno. redsomPull ya ignora la
+// clave que ya pidió, así que llamarlo de más no cuesta nada.
+function redsomPullItems(key) {
+  if (key === REDSOM_TODOS) redsomGetGuardados().forEach(function(k) { redsomPull('redsom_imp_' + k); });
+  else redsomPull('redsom_imp_' + key);
+}
+
+function redsomEsTodos(key) { return key === REDSOM_TODOS; }
+
+// Etiqueta del período de una fila, para cuando se muestran mezclados.
+function redsomPeriodoDe(it) { return it.periodo || it._periodoKey || '—'; }
+
+// Para ORDENAR no sirve la etiqueta: "12/2026" y "01/2027" comparados como
+// texto quedan al revés, y justo el acumulado es la vista que cruza de año.
+// `pperioRaw` es el AAAAMM crudo del archivo (lo guarda
+// extraerRedsomDeRegistros), que ordena solo.
+function redsomOrdenDe(it) {
+  return String(it.pperioRaw || '') || String(redsomPeriodoDe(it));
+}
+
 function renderSeguimientoRedsom(periodo) {
   cerrarAdmSidenav();
   admDesactivarSidebar();
@@ -50,13 +97,15 @@ function renderSeguimientoRedsom(periodo) {
 
   var guardados = redsomGetGuardados();
   if (periodo) redsomPeriodoActual = periodo;
-  if (!redsomPeriodoActual || guardados.indexOf(redsomPeriodoActual) === -1) {
+  if (!redsomPeriodoActual || (!redsomEsTodos(redsomPeriodoActual) && guardados.indexOf(redsomPeriodoActual) === -1)) {
     redsomPeriodoActual = guardados[0] || '';
   }
 
   var html = '<div class="deb-toolbar" id="redsomScreenRoot" style="flex-wrap:wrap;gap:6px">'
     + (guardados.length
         ? '<select class="deb-mes-sel" id="redsomMesSel" onchange="renderSeguimientoRedsom(this.value)">'
+          + '<option value="' + REDSOM_TODOS + '"' + (redsomEsTodos(redsomPeriodoActual) ? ' selected' : '') + '>'
+          + 'Todos los períodos (' + guardados.length + ')</option>'
           + guardados.map(function(g) {
               return '<option value="' + g + '"' + (g === redsomPeriodoActual ? ' selected' : '') + '>' + g + '</option>';
             }).join('')
@@ -72,8 +121,18 @@ function renderSeguimientoRedsom(periodo) {
     return;
   }
 
-  var items = redsomCargarPeriodo(redsomPeriodoActual);
-  redsomPull('redsom_imp_' + redsomPeriodoActual);
+  var todos = redsomEsTodos(redsomPeriodoActual);
+  var items = redsomCargarItems(redsomPeriodoActual);
+  redsomPullItems(redsomPeriodoActual);
+  // Mezclados quedarían agrupados por mes (cada período viene ya ordenado por
+  // profesional). Para leer "todo lo de fulano" conviene al revés.
+  if (todos) {
+    items.sort(function(a, b) {
+      return String(a.prof || '').localeCompare(String(b.prof || ''))
+        || redsomOrdenDe(a).localeCompare(redsomOrdenDe(b))
+        || String(a.paciente || '').localeCompare(String(b.paciente || ''));
+    });
+  }
 
   var porProf = {};
   items.forEach(function(it) { porProf[it.prof || '—'] = (porProf[it.prof || '—'] || 0) + (it.imp || 0); });
@@ -81,9 +140,10 @@ function renderSeguimientoRedsom(periodo) {
   var total = items.reduce(function(s, it) { return s + (it.imp || 0); }, 0);
 
   html += '<div class="deb-stats">'
+    + (todos ? '<div class="deb-stat"><div class="deb-stat-lbl">Períodos</div><div class="deb-stat-val">' + guardados.length + '</div></div>' : '')
     + '<div class="deb-stat"><div class="deb-stat-lbl">Registros</div><div class="deb-stat-val">' + items.length + '</div></div>'
     + '<div class="deb-stat"><div class="deb-stat-lbl">Profesionales</div><div class="deb-stat-val">' + profs.length + '</div></div>'
-    + '<div class="deb-stat"><div class="deb-stat-lbl">Total facturado</div><div class="deb-stat-val">' + fmtImp(total) + '</div></div>'
+    + '<div class="deb-stat"><div class="deb-stat-lbl">' + (todos ? 'Total acumulado' : 'Total facturado') + '</div><div class="deb-stat-val">' + fmtImp(total) + '</div></div>'
     + '</div>';
 
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-bottom:14px">'
@@ -108,7 +168,7 @@ function renderSeguimientoRedsom(periodo) {
     html += '<tr>'
       + '<td style="color:rgba(32,36,31,.35);text-align:center;font-size:0.67rem">' + (i + 1) + '</td>'
       + '<td style="font-family:monospace;color:rgba(32,36,31,.6);white-space:nowrap;font-size:0.67rem">' + (it.factura || '—') + '</td>'
-      + '<td style="color:rgba(32,36,31,.6);white-space:nowrap">' + (it.periodo || '—') + '</td>'
+      + '<td style="color:rgba(32,36,31,.6);white-space:nowrap">' + redsomPeriodoDe(it) + '</td>'
       + '<td style="color:#20241f;white-space:nowrap">' + (it.prof || '—') + '</td>'
       + '<td style="color:rgba(32,36,31,.45);font-size:0.67rem">' + (it.rol || '') + '</td>'
       + '<td style="font-family:monospace;color:rgba(32,36,31,.5);font-size:0.67rem">' + (it.dni || '') + '</td>'
@@ -142,7 +202,7 @@ var redsomProfPeriodo = '';
 function redsomFilasDe(doctor, periodoKey) {
   if (!doctor || !doctor.apellido) return [];
   var ap = String(doctor.apellido).toUpperCase();
-  return redsomCargarPeriodo(periodoKey).filter(function(it) {
+  return redsomCargarItems(periodoKey).filter(function(it) {
     if (typeof normDocImp === 'function' && normDocImp(it.prof) === doctor.apellido) return true;
     // Red de seguridad: normDocImp solo mira el primer token, asi que un
     // nombre con un codigo adelante ("0123 BRUNI") le da null y la fila
@@ -171,10 +231,20 @@ function renderRedsomProf(doctor) {
     pane.innerHTML = '<div class="hist-empty">Todavía no hay liquidaciones de REDSOM cargadas.</div>';
     return;
   }
-  if (guardados.indexOf(redsomProfPeriodo) === -1) redsomProfPeriodo = guardados[0];
-  redsomPull('redsom_imp_' + redsomProfPeriodo);
+  if (!redsomEsTodos(redsomProfPeriodo) && guardados.indexOf(redsomProfPeriodo) === -1) {
+    redsomProfPeriodo = guardados[0];
+  }
+  redsomPullItems(redsomProfPeriodo);
 
+  var todos = redsomEsTodos(redsomProfPeriodo);
   var filas = redsomFilasDe(doctor, redsomProfPeriodo);
+  // Acumulado: lo más viejo arriba, para leerlo como una cuenta corriente.
+  if (todos) {
+    filas.sort(function(a, b) {
+      return redsomOrdenDe(a).localeCompare(redsomOrdenDe(b))
+        || String(a.paciente || '').localeCompare(String(b.paciente || ''));
+    });
+  }
   var hon = 0, deb = 0, gas = 0, pacientes = {};
   filas.forEach(function(it) {
     if (it.tipo === 'DÉBITO') deb += (it.imp || 0);
@@ -191,28 +261,34 @@ function renderRedsomProf(doctor) {
     + '<div class="hist-masthead-sub">Lo que te liquidó REDSOM · ' + doctor.nombre + '</div>'
     + '</div>';
 
+  // Con un solo período importado el selector no aporta nada: la píldora
+  // "Todo" mostraría exactamente lo mismo que ese mes.
   if (guardados.length > 1) {
+    var opciones = [{ k: REDSOM_TODOS, lbl: 'Todo' }].concat(guardados.map(function(g) { return { k: g, lbl: g }; }));
     html += '<div style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding:9px 13px;border-bottom:1px solid rgba(32,36,31,.1)">'
-      + guardados.map(function(g) {
-          var on = g === redsomProfPeriodo;
-          return '<span onclick="redsomProfIrA(this)" data-periodo="' + g + '"'
+      + opciones.map(function(o) {
+          var on = o.k === redsomProfPeriodo;
+          return '<span onclick="redsomProfIrA(this)" data-periodo="' + o.k + '"'
             + ' style="flex-shrink:0;cursor:pointer;font-size:0.6rem;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;border:1px solid '
             + (on ? '#1f3a2e;background:#1f3a2e;color:#fff' : 'rgba(32,36,31,.2);background:transparent;color:rgba(32,36,31,.5)')
-            + '">' + g + '</span>';
+            + '">' + o.lbl + '</span>';
         }).join('')
       + '</div>';
   }
 
   html += '<div class="hist-period-section">'
-    + '<div class="hist-period-headline"><span>' + redsomProfPeriodo + '</span>'
+    + '<div class="hist-period-headline"><span>' + (todos ? 'Todo lo liquidado' : redsomProfPeriodo) + '</span>'
     + '<span class="hist-period-badge">' + filas.length + (filas.length === 1 ? ' registro' : ' registros') + '</span></div>';
 
   if (!filas.length) {
-    html += '<div class="hist-dline"><span class="hist-dline-lbl">No figurás en la liquidación de este período.</span></div>';
+    html += '<div class="hist-dline"><span class="hist-dline-lbl">'
+      + (todos ? 'No figurás en ninguna liquidación cargada.' : 'No figurás en la liquidación de este período.')
+      + '</span></div>';
   } else {
     filas.forEach(function(it) {
       var neg = it.tipo === 'DÉBITO' || (it.imp || 0) < 0;
-      var sub = [it.practica, it.rol, (it.tipo !== 'HONORARIOS' ? it.tipo : '')].filter(Boolean).join(' · ');
+      // Mezclados hace falta saber de qué mes es cada fila.
+      var sub = [(todos ? redsomPeriodoDe(it) : ''), it.practica, it.rol, (it.tipo !== 'HONORARIOS' ? it.tipo : '')].filter(Boolean).join(' · ');
       html += '<div class="hist-dline">'
         + '<span class="hist-dline-lbl">' + (it.paciente || '—')
         + (sub ? '<span style="display:block;font-size:.6rem;opacity:.65">' + sub + '</span>' : '')
@@ -224,7 +300,7 @@ function renderRedsomProf(doctor) {
   html += '</div>';
 
   html += '<div class="hist-total-section">'
-    + '<div class="hist-total-headline">Total del período</div>'
+    + '<div class="hist-total-headline">' + (todos ? 'Total acumulado · ' + guardados.length + ' períodos' : 'Total del período') + '</div>'
     + (hon ? '<div class="hist-total-dline"><span>Honorarios</span><span>' + fmtImp(hon) + '</span></div>' : '')
     + (deb ? '<div class="hist-total-dline"><span>Débitos</span><span>' + fmtImp(deb) + '</span></div>' : '')
     + (gas ? '<div class="hist-total-dline"><span>Gastos</span><span>' + fmtImp(gas) + '</span></div>' : '')
