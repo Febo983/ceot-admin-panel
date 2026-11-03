@@ -20,6 +20,9 @@ function redsomPull(clave) {
   _redsomPulled[clave] = true;
   syncPull(clave, function() {
     if (document.getElementById('redsomScreenRoot')) renderSeguimientoRedsom();
+    if (document.getElementById('redsomProfRoot') && typeof doctorActual !== 'undefined' && doctorActual) {
+      renderRedsomProf(doctorActual);
+    }
   });
 }
 
@@ -125,3 +128,109 @@ function renderSeguimientoRedsom(periodo) {
 }
 
 function imprimirRedsom() { window.print(); }
+
+// ══════ Solapa del portal del profesional ════════════════════════
+// La misma data que ve el admin, recortada a las filas propias. El match es
+// normDocImp(prof) === doctor.apellido: en el archivo de la clínica el
+// profesional viene como venga ("BRUNI, Maximiliano", "0123 DE LA COLINA…")
+// y normDocImp ya sabe reducirlo al apellido canónico que usa el portal.
+// Leer el guardado compartido no pide ser admin —syncPull sale con cualquier
+// sesión válida— así que el profesional ve lo que el admin importó desde su
+// PC sin ningún paso extra. Se llega por el tile REDSOM de la home.
+var redsomProfPeriodo = '';
+
+function redsomFilasDe(doctor, periodoKey) {
+  if (!doctor || !doctor.apellido) return [];
+  var ap = String(doctor.apellido).toUpperCase();
+  return redsomCargarPeriodo(periodoKey).filter(function(it) {
+    if (typeof normDocImp === 'function' && normDocImp(it.prof) === doctor.apellido) return true;
+    // Red de seguridad: normDocImp solo mira el primer token, asi que un
+    // nombre con un codigo adelante ("0123 BRUNI") le da null y la fila
+    // desapareceria de la vista del profesional sin que nadie se entere.
+    // Buscar el apellido dentro del texto la recupera. Ningun apellido de
+    // DOCTORES es parte de otro, asi que esto no puede robarle una fila a
+    // otro profesional.
+    return String(it.prof || '').toUpperCase().indexOf(ap) !== -1;
+  });
+}
+
+// El período viaja en data-periodo de la píldora, así el onclick no necesita
+// comillas adentro (mismo criterio que redsomDesdeImport).
+function redsomProfIrA(el) {
+  redsomProfPeriodo = (el && el.getAttribute('data-periodo')) || '';
+  if (typeof doctorActual !== 'undefined' && doctorActual) renderRedsomProf(doctorActual);
+}
+
+function renderRedsomProf(doctor) {
+  var pane = document.getElementById('pane-redsom');
+  if (!pane || !doctor) return;
+
+  redsomPull(REDSOM_GUARD_KEY);
+  var guardados = redsomGetGuardados();
+  if (!guardados.length) {
+    pane.innerHTML = '<div class="hist-empty">Todavía no hay liquidaciones de REDSOM cargadas.</div>';
+    return;
+  }
+  if (guardados.indexOf(redsomProfPeriodo) === -1) redsomProfPeriodo = guardados[0];
+  redsomPull('redsom_imp_' + redsomProfPeriodo);
+
+  var filas = redsomFilasDe(doctor, redsomProfPeriodo);
+  var hon = 0, deb = 0, gas = 0, pacientes = {};
+  filas.forEach(function(it) {
+    if (it.tipo === 'DÉBITO') deb += (it.imp || 0);
+    else if (it.tipo === 'GASTOS') gas += (it.imp || 0);
+    else hon += (it.imp || 0);
+    if (it.paciente) pacientes[it.paciente] = 1;
+  });
+  var total = hon + deb + gas;
+  var nPac = Object.keys(pacientes).length;
+
+  var html = '<div class="hist-newspaper" id="redsomProfRoot">'
+    + '<div class="hist-masthead">'
+    + '<div class="hist-masthead-title">REDSOM</div>'
+    + '<div class="hist-masthead-sub">Lo que te liquidó REDSOM · ' + doctor.nombre + '</div>'
+    + '</div>';
+
+  if (guardados.length > 1) {
+    html += '<div style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding:9px 13px;border-bottom:1px solid rgba(32,36,31,.1)">'
+      + guardados.map(function(g) {
+          var on = g === redsomProfPeriodo;
+          return '<span onclick="redsomProfIrA(this)" data-periodo="' + g + '"'
+            + ' style="flex-shrink:0;cursor:pointer;font-size:0.6rem;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;border:1px solid '
+            + (on ? '#1f3a2e;background:#1f3a2e;color:#fff' : 'rgba(32,36,31,.2);background:transparent;color:rgba(32,36,31,.5)')
+            + '">' + g + '</span>';
+        }).join('')
+      + '</div>';
+  }
+
+  html += '<div class="hist-period-section">'
+    + '<div class="hist-period-headline"><span>' + redsomProfPeriodo + '</span>'
+    + '<span class="hist-period-badge">' + filas.length + (filas.length === 1 ? ' registro' : ' registros') + '</span></div>';
+
+  if (!filas.length) {
+    html += '<div class="hist-dline"><span class="hist-dline-lbl">No figurás en la liquidación de este período.</span></div>';
+  } else {
+    filas.forEach(function(it) {
+      var neg = it.tipo === 'DÉBITO' || (it.imp || 0) < 0;
+      var sub = [it.practica, it.rol, (it.tipo !== 'HONORARIOS' ? it.tipo : '')].filter(Boolean).join(' · ');
+      html += '<div class="hist-dline">'
+        + '<span class="hist-dline-lbl">' + (it.paciente || '—')
+        + (sub ? '<span style="display:block;font-size:.6rem;opacity:.65">' + sub + '</span>' : '')
+        + '</span>'
+        + '<span class="hist-dline-val' + (neg ? ' neg' : '') + '">' + fmtImp(it.imp) + '</span>'
+        + '</div>';
+    });
+  }
+  html += '</div>';
+
+  html += '<div class="hist-total-section">'
+    + '<div class="hist-total-headline">Total del período</div>'
+    + (hon ? '<div class="hist-total-dline"><span>Honorarios</span><span>' + fmtImp(hon) + '</span></div>' : '')
+    + (deb ? '<div class="hist-total-dline"><span>Débitos</span><span>' + fmtImp(deb) + '</span></div>' : '')
+    + (gas ? '<div class="hist-total-dline"><span>Gastos</span><span>' + fmtImp(gas) + '</span></div>' : '')
+    + '<div class="hist-total-neto"><span>' + nPac + (nPac === 1 ? ' paciente' : ' pacientes') + '</span><span>' + fmtImp(total) + '</span></div>'
+    + '</div>';
+
+  html += '</div>' + (typeof DISCLAIMER === 'string' ? DISCLAIMER : '');
+  pane.innerHTML = html;
+}
