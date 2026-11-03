@@ -552,7 +552,7 @@ async function reabrirMesAporteCeot(periodo) {
 }
 
 // Préstamos Casa 14 de julio 2067 — cada préstamo real (CPSM/banco) tiene su
-// propio calendario de 48 cuotas, arrancando el mes real en que empezó a
+// propio calendario de cuotas, arrancando el mes real en que empezó a
 // descontársele a quien lo sacó — NO se fuerza a que coincidan entre sí.
 // Lógica (misma para todos los préstamos, confirmada con Marcelo 18/09/2026):
 // el monto de cuota que paga de bolsillo/CPSM quien lo sacó se reparte en
@@ -598,6 +598,14 @@ const PRESTAMOS_CASA_BASE = [
     cuotaPersonal: 378000,
     inicio: { mes: "octubre", anio: 2026 },  // cuota 1 = Oct 2026, cuota 48 = Sep 2030
     cuotas: 48
+  },
+  {
+    id: "mazzola",
+    tag: "Mazzola",
+    socios: ["MAZZOLA"],
+    cuotaPersonal: 980000,                   // crédito de $18.000.000 en 24 cuotas de $980.000
+    inicio: { mes: "diciembre", anio: 2026 },// cuota 1 = Dic 2026, cuota 24 = Nov 2028
+    cuotas: 24
   }
 ];
 
@@ -661,20 +669,36 @@ function prestamosCasaGuardar(lista) {
   syncPush(PRESTAMOS_CASA_KEY);
 }
 
-// Vuelve a los dos préstamos que viven en el código — red de seguridad por si
+// Vuelve a los préstamos que viven en el código — red de seguridad por si
 // una edición desde el panel deja la lista mal.
 function prestamosCasaRestaurarBase() {
   prestamosCasaGuardar(PRESTAMOS_CASA_BASE);
 }
 
-// Número de cuota de `p` en el período `pid` (nombre de mes) del año `anio`,
-// o 0 si ese mes cae fuera del préstamo.
+// Un período puede llegar como "diciembre" (se asume PERIODOS_ANIO_BASE) o con
+// el año pegado: "enero2027", "enero-2027", "enero 2027". Así, el día que el
+// motor pase a claves con año, los préstamos siguen calculando bien sin tocar
+// nada acá. Devuelve { idx, anio } o null si no reconoce el mes.
+function prestamoPeriodoParse(pid, anio) {
+  var m = /^([a-z\u00e1\u00e9\u00ed\u00f3\u00fa\u00f1]+)[\s_-]*((?:19|20)\d{2})?$/.exec(String(pid == null ? '' : pid).trim().toLowerCase());
+  var idx = m ? MESES_ORD_PRESTAMO.indexOf(m[1]) : -1;
+  if (idx === -1) {
+    // Antes esto devolvía 0 en silencio y el préstamo dejaba de descontarse sin aviso.
+    if (typeof console !== 'undefined') console.warn('[préstamos] período no reconocido, no se calcula cuota:', pid);
+    return null;
+  }
+  // Prioridad: año pasado explícito > año pegado al período > PERIODOS_ANIO_BASE.
+  return { idx: idx, anio: anio || (m[2] ? parseInt(m[2], 10) : PERIODOS_ANIO_BASE) };
+}
+
+// Número de cuota de `p` en el período `pid` (mes, con o sin año) o 0 si ese
+// mes cae fuera del préstamo.
 function prestamoCuotaNro(p, pid, anio) {
-  var idx = MESES_ORD_PRESTAMO.indexOf(pid);
-  if (idx === -1) return 0;
+  var per = prestamoPeriodoParse(pid, anio);
+  if (!per) return 0;
   var iMes = MESES_ORD_PRESTAMO.indexOf(p.inicio.mes);
   if (iMes === -1) return 0;
-  var n = ((anio || PERIODOS_ANIO_BASE) * 12 + idx) - (p.inicio.anio * 12 + iMes) + 1;
+  var n = (per.anio * 12 + per.idx) - (p.inicio.anio * 12 + iMes) + 1;
   return (n >= 1 && n <= (p.cuotas || PRESTAMO_CASA_TOTAL_CUOTAS)) ? n : 0;
 }
 // Neto + etiqueta de cuota(s) de TODOS los préstamos activos en `pid` para
