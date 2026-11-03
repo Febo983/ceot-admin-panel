@@ -429,7 +429,18 @@ const APORTE_CEOT_DESDE = ["agosto","septiembre","octubre","noviembre","diciembr
 // Ganancias de arriba (ese se aplica sobre los honorarios propios de cada uno;
 // este es la proporción de participación societaria de cada uno sobre CUALQUIER
 // monto a repartir, suma 100%). Datos provistos por Marcelo (25/08/2026).
-// GARMENDIA no tiene % asignado todavía (se sumó como socia en agosto 2026).
+//
+// DE DONDE SALEN: son el promedio de los meses pasados de cada socio. El
+// 03/11/2026 se compararon contra la planilla del contador ("NETO FINAL A
+// PERCIBIR", dic-2025 a ago-2026), que da otros porcentajes — Bruni 11,92% en
+// vez de 13,16%, Deganutti 26,70% en vez de 21,95% — porque toma una ventana
+// mas corta. Sobre el reparto del fondo de Ganancias esa diferencia le movia
+// 10 millones a Deganutti. Marcelo decidio mantener estos: no son la planilla
+// del contador desactualizada, son otra base. Si alguien vuelve a encontrar la
+// diferencia, ya esta mirada.
+//
+// GARMENDIA no participa de este reparto: entra solo en los anticipos de
+// Ganancias 2027, con INCIDENCIA_GARMENDIA_ANT_PCT (ver abajo).
 const INCIDENCIA_FONDO_PCT = {
   "BRUNI":        0.1316,
   "CORELICH":     0.0910,
@@ -442,6 +453,24 @@ const INCIDENCIA_FONDO_PCT = {
   "SOULE":        0.0601,
   "TRIVELLINI":   0.1165,
 };
+
+// La Dra. Garmendia entra SOLO en los anticipos de Ganancias 2027 (decisión de
+// Marcelo, 03/11/2026): el plan de facilidades y los dividendos son de un
+// ejercicio anterior a su alta (agosto 2026), así que de esos dos no participa.
+// Su % sale de comparar su neto promedio mensual (nov+dic 2026: 19.621.000 / 2)
+// contra el promedio mensual del grupo (764.025.029 / 9 meses, dic-2025 a
+// ago-2026) = 10,3593%. Los otros diez se diluyen a prorrata sobre los
+// anticipos, conservando su peso relativo entre sí, para que los once den 100%.
+const INCIDENCIA_GARMENDIA_ANT_PCT = 0.103593;
+function incidenciaAnticipoPct(apellido) {
+  if (apellido === "GARMENDIA") return INCIDENCIA_GARMENDIA_ANT_PCT;
+  return (INCIDENCIA_FONDO_PCT[apellido] || 0) * (1 - INCIDENCIA_GARMENDIA_ANT_PCT);
+}
+// Apellidos del reparto del fondo: los diez del plan, más Garmendia al final
+// (solo anticipos).
+function incidenciaApellidos() {
+  return Object.keys(INCIDENCIA_FONDO_PCT).concat(["GARMENDIA"]);
+}
 
 // Devuelve el % de Retención Ganancias vigente para un apellido: usa el override
 // editado a mano en el panel admin si existe, si no cae al default de arriba.

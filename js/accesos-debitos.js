@@ -1512,7 +1512,15 @@ var INCIDENCIA_TOTAL_KEY = "ceot_incidencia_total";
 // así que se cargan los cuatro valores y el total pasa a ser la suma.
 // "meses" es en cuántos meses se quiere cubrir lo que falta.
 var INCIDENCIA_PLAN_KEY = "ceot_incidencia_plan";
-var INCIDENCIA_PLAN_DEF = { inm: 13795859, d30: 44917035, cuota: 12330965, nc: 6, meses: 6 };
+// v2 (03/11/2026): importes reales del plan de facilidades W874454 consolidado
+// el 02/11/2026 — antes estaban los estimados previos a la consolidación — y se
+// suman los 9 anticipos de Ganancias 2027 (ant/na), que hasta ahora quedaban
+// afuera del reparto. Los anticipos NO son impuesto nuevo: son deducibles como
+// pagos a cuenta del impuesto que se determine en 2027, pero hay que ponerlos
+// igual, así que entran al calendario y al total. "meses" pasó de 6 a 9 para
+// que la retención se estire a todo el calendario (nov/26 a jul/27).
+var INCIDENCIA_PLAN_DEF = { v: 2, inm: 13845803.28, d30: 44917035, cuota: 12375605.87, nc: 6, ant: 9723672.54, na: 9, meses: 9 };
+var INCIDENCIA_PLAN_V = 2;
 var _incidenciaTotalPulled = false;
 function incidenciaPlanCargar() {
   if (!_incidenciaTotalPulled) {
@@ -1524,16 +1532,54 @@ function incidenciaPlanCargar() {
   var plan = null;
   try { plan = JSON.parse(localStorage.getItem(INCIDENCIA_PLAN_KEY) || "null"); } catch (e) { plan = null; }
   if (!plan) plan = {};
+  // Un plan guardado antes de v2 tiene los importes estimados y ningún
+  // anticipo: mezclarlo con los defaults nuevos daría un híbrido (cuota vieja
+  // + anticipos nuevos) que no es el plan de nadie. Se descarta entero y se
+  // arranca de los valores reales; si Marcelo los edita, se vuelve a guardar
+  // ya con v2.
+  if (plan.v !== INCIDENCIA_PLAN_V) plan = {};
   return {
+    v:     INCIDENCIA_PLAN_V,
     inm:   plan.inm   != null ? plan.inm   : INCIDENCIA_PLAN_DEF.inm,
     d30:   plan.d30   != null ? plan.d30   : INCIDENCIA_PLAN_DEF.d30,
     cuota: plan.cuota != null ? plan.cuota : INCIDENCIA_PLAN_DEF.cuota,
     nc:    plan.nc    != null ? plan.nc    : INCIDENCIA_PLAN_DEF.nc,
+    ant:   plan.ant   != null ? plan.ant   : INCIDENCIA_PLAN_DEF.ant,
+    na:    plan.na    != null ? plan.na    : INCIDENCIA_PLAN_DEF.na,
     meses: plan.meses != null ? plan.meses : INCIDENCIA_PLAN_DEF.meses
   };
 }
+
+// Calendario real del plan, mes a mes, para un profesional (o para el total si
+// se le pasan los importes del grupo). Mes 1: pago a cuenta + anticipo 1.
+// Mes 2: dividendos + cuota 1 + anticipo 2. De ahí en adelante, cuota y
+// anticipo hasta que se acaban. Devuelve un importe por mes.
+function incidenciaCalendario(inm, d30, cuota, nc, ant, na) {
+  var meses = Math.max(nc + 1, na);
+  var out = [];
+  for (var k = 1; k <= meses; k++) {
+    var m = 0;
+    if (k === 1) m += inm;
+    if (k === 2) m += d30;
+    if (k >= 2 && (k - 1) <= nc) m += cuota;
+    if (k <= na) m += ant;
+    out.push(m);
+  }
+  return out;
+}
+
+// Cuántos meses enteros del calendario paga el fondo acumulado antes de
+// agotarse.
+function incidenciaMesesQueCubre(acum, cal) {
+  var saldo = acum, n = 0;
+  for (var i = 0; i < cal.length; i++) {
+    if (saldo >= cal[i]) { saldo -= cal[i]; n++; } else break;
+  }
+  return n;
+}
 function incidenciaPlanTotal(plan) {
-  return (plan.inm || 0) + (plan.d30 || 0) + (plan.cuota || 0) * (plan.nc || 0);
+  return (plan.inm || 0) + (plan.d30 || 0) + (plan.cuota || 0) * (plan.nc || 0)
+       + (plan.ant || 0) * (plan.na || 0);
 }
 function incidenciaPlanGuardar(plan) {
   try { localStorage.setItem(INCIDENCIA_PLAN_KEY, JSON.stringify(plan)); } catch (e) {}
@@ -1569,8 +1615,10 @@ function getAporteCeotAcumuladoPorApellido(apellidos) {
 function incidenciaFondoWrapHtml(plan) {
   var total = incidenciaPlanTotal(plan);
   var nc    = plan.nc || 0;
+  var na    = plan.na || 0;
   var meses = plan.meses || 1;
-  var apellidos = Object.keys(INCIDENCIA_FONDO_PCT);
+  var mesesCal = Math.max(nc + 1, na);
+  var apellidos = incidenciaApellidos();
   var acumulado = getAporteCeotAcumuladoPorApellido(apellidos);
   // Suma los intereses ya generados por los plazos fijos de "Inversiones"
   // (invAcumuladoProfesionalData, en index.html) — así "Acumulado"/"Falta" acá
@@ -1581,32 +1629,42 @@ function incidenciaFondoWrapHtml(plan) {
   var invData = (typeof invAcumuladoProfesionalData === "function") ? invAcumuladoProfesionalData() : { acum: {}, totInt: 0 };
 
   var ROJO = "#b13a2c", VERDE = "#1d6b62";
-  var T = { monto:0, acum:0, inm:0, d30:0, cuota:0, resto:0, falta:0, retener:0 };
+  var T = { monto:0, acum:0, inm:0, d30:0, cuota:0, ant:0, falta:0, retener:0 };
 
   var filas = apellidos.map(function(ap) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
-    var pct = INCIDENCIA_FONDO_PCT[ap];
-    var monto = Math.round(total * pct);
+    // Dos repartos distintos: el plan y los dividendos van con el % de
+    // incidencia de siempre (Garmendia no participa, le da 0); los anticipos
+    // van con el % propio de anticipos, donde sí entra.
+    var pct    = INCIDENCIA_FONDO_PCT[ap] || 0;
+    var pctAnt = incidenciaAnticipoPct(ap);
     var acum  = (acumulado[ap] || 0) + ((invData.acum[ap] || {}).interes || 0);
     var inm   = Math.round((plan.inm   || 0) * pct);
     var d30   = Math.round((plan.d30   || 0) * pct);
     var cuota = Math.round((plan.cuota || 0) * pct);
-    // Lo que le queda del fondo una vez pagados los dos primeros tramos, y
-    // cuántas cuotas enteras cubre con eso.
-    var resto = acum - inm - d30;
-    var cubre = (cuota > 0 && resto > 0) ? Math.min(nc, Math.floor(resto / cuota)) : 0;
+    var ant   = Math.round((plan.ant   || 0) * pctAnt);
+    // El importe es la suma de los dos repartos, no un % sobre el total: con
+    // dos bases distintas ya no hay un único % que aplicar.
+    var monto = inm + d30 + cuota * nc + ant * na;
+    // Hasta qué mes del calendario (pago a cuenta, dividendos, cuotas y
+    // anticipos en el orden en que vencen) le alcanza el fondo acumulado.
+    var cubre = incidenciaMesesQueCubre(acum, incidenciaCalendario(inm, d30, cuota, nc, ant, na));
     var falta = monto - acum;
     var retener = falta > 0 ? Math.round(falta / meses) : 0;
     T.monto += monto; T.acum += acum; T.inm += inm; T.d30 += d30; T.cuota += cuota;
-    T.resto += resto; T.falta += falta; T.retener += retener;
+    T.ant += ant; T.falta += falta; T.retener += retener;
+    var pctTxt = function(x) {
+      return x ? (Math.round(x * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' : '—';
+    };
     return '<tr><td>' + (doc ? doc.nombre : ap) + '</td>'
-      + '<td>' + (Math.round(pct * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%</td>'
+      + '<td>' + pctTxt(pct) + '</td>'
+      + '<td>' + pctTxt(pctAnt) + '</td>'
       + '<td>' + fmt(acum) + '</td>'
       + '<td>' + fmt(inm) + '</td>'
       + '<td>' + fmt(d30) + '</td>'
-      + '<td style="color:' + (resto >= 0 ? VERDE : ROJO) + '">' + fmt(resto) + '</td>'
       + '<td>' + fmt(cuota) + '</td>'
-      + '<td style="font-weight:700;color:' + (cubre >= nc ? VERDE : ROJO) + '">' + cubre + ' de ' + nc + '</td>'
+      + '<td>' + fmt(ant) + '</td>'
+      + '<td style="font-weight:700;color:' + (cubre >= mesesCal ? VERDE : ROJO) + '">' + cubre + ' de ' + mesesCal + '</td>'
       + '<td style="color:' + (falta > 0 ? ROJO : VERDE) + '">' + fmt(falta > 0 ? falta : -falta) + (falta > 0 ? '' : ' a favor') + '</td>'
       + '<td style="color:' + (retener > 0 ? ROJO : VERDE) + '">' + (retener > 0 ? fmt(retener) : '—') + '</td>'
       + '<td style="font-weight:700">' + fmt(monto)
@@ -1617,21 +1675,24 @@ function incidenciaFondoWrapHtml(plan) {
 
   window._incidenciaTexto = apellidos.map(function(ap) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
-    return (doc ? doc.nombre : ap) + '\t' + numParaPegar(Math.round(total * INCIDENCIA_FONDO_PCT[ap]));
+    var p = INCIDENCIA_FONDO_PCT[ap] || 0, pa = incidenciaAnticipoPct(ap);
+    var monto = Math.round((plan.inm || 0) * p) + Math.round((plan.d30 || 0) * p)
+              + Math.round((plan.cuota || 0) * p) * nc + Math.round((plan.ant || 0) * pa) * na;
+    return (doc ? doc.nombre : ap) + '\t' + numParaPegar(monto);
   }).join('\n');
 
   return '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-    + '<th>Profesional</th><th>% de incidencia</th><th>Acumulado</th>'
-    + '<th>Inmediato</th><th>A 30 días</th><th>Queda tras 30 días</th>'
-    + '<th>Cuota (c/u)</th><th>Cuotas que cubre</th>'
+    + '<th>Profesional</th><th>% plan y dividendos</th><th>% anticipos</th><th>Acumulado</th>'
+    + '<th>Pago a cuenta</th><th>Dividendos</th>'
+    + '<th>Cuota (c/u)</th><th>Anticipo (c/u)</th><th>Meses que cubre</th>'
     + '<th>Falta</th><th>A retener por mes</th><th>Importe a pagar</th>'
     + '</tr></thead><tbody>' + filas
-    + '<tr class="adm-totals"><td>TOTAL</td><td>100,00%</td>'
+    + '<tr class="adm-totals"><td>TOTAL</td><td>100,00%</td><td>100,00%</td>'
     +   '<td>' + fmt(T.acum) + '</td>'
     +   '<td>' + fmt(T.inm) + '</td>'
     +   '<td>' + fmt(T.d30) + '</td>'
-    +   '<td style="color:' + (T.resto >= 0 ? VERDE : ROJO) + '">' + fmt(T.resto) + '</td>'
-    +   '<td>' + fmt(T.cuota) + '</td><td>—</td>'
+    +   '<td>' + fmt(T.cuota) + '</td>'
+    +   '<td>' + fmt(T.ant) + '</td><td>—</td>'
     +   '<td style="color:' + (T.falta > 0 ? ROJO : VERDE) + '">' + fmt(T.falta > 0 ? T.falta : -T.falta) + (T.falta > 0 ? '' : ' a favor') + '</td>'
     +   '<td style="color:' + (T.retener > 0 ? ROJO : VERDE) + '">' + (T.retener > 0 ? fmt(T.retener) : '—') + '</td>'
     +   '<td>' + fmt(T.monto) + '</td></tr>'
@@ -1651,7 +1712,10 @@ function incidenciaFondoRecalcular() {
     d30:   incidenciaPlanLeerInput("incidencia-plan-d30"),
     cuota: incidenciaPlanLeerInput("incidencia-plan-cuota"),
     nc:    Math.max(0, Math.round(incidenciaPlanLeerInput("incidencia-plan-nc"))),
-    meses: Math.max(1, Math.round(incidenciaPlanLeerInput("incidencia-plan-meses")) || 1)
+    ant:   incidenciaPlanLeerInput("incidencia-plan-ant"),
+    na:    Math.max(0, Math.round(incidenciaPlanLeerInput("incidencia-plan-na"))),
+    meses: Math.max(1, Math.round(incidenciaPlanLeerInput("incidencia-plan-meses")) || 1),
+    v:     INCIDENCIA_PLAN_V
   };
   var wrap = document.getElementById("incidencia-fondo-wrap");
   if (wrap) wrap.innerHTML = incidenciaFondoWrapHtml(plan);
@@ -1678,17 +1742,20 @@ function incidenciaFondoHtml() {
   var plan = incidenciaPlanCargar();
   return '<div class="adm-sec-title" style="margin-top:20px">Reparto del fondo — Impuesto a las Ganancias y Dividendos</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
-    +   'Cada socio paga según su % de incidencia fija (no cambia con el % de Retención Ganancias de arriba). Cargá los tramos del plan y los importes se acomodan solos; el total es la suma de los tres. '
+    +   'Son dos repartos distintos: el plan y los dividendos se dividen entre los 10 socios con el % de incidencia de siempre, y los 9 anticipos de Ganancias 2027 entre 11, porque la Dra. Garmendia entra solo en esos (su alta es de agosto 2026 y el plan es de ejercicio anterior). El importe de cada uno es la suma de lo que le toca de cada reparto. '
     +   '"Acumulado" incluye los intereses ya generados por los plazos fijos de Inversiones. '
-    +   '"Queda tras 30 días" es lo que le sobra del fondo después de pagar el inmediato y el de 30 días, y "Cuotas que cubre" cuántas cuotas enteras paga con eso. '
-    +   '"A retener por mes" es lo que le falta repartido en los meses que pongas.'
+    +   '"Meses que cubre" es hasta qué mes del calendario le alcanza el fondo, tomando los vencimientos en orden: pago a cuenta + anticipo 1 el primer mes, dividendos + cuota 1 + anticipo 2 el segundo, y después cuota + anticipo hasta que se terminan. '
+    +   '"A retener por mes" es lo que le falta repartido en los meses que pongas. '
+    +   'Los anticipos de Ganancias 2027 no son impuesto nuevo: son deducibles como pagos a cuenta del impuesto que se determine en 2027, pero hay que ponerlos igual, así que entran al total.'
     + '</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px">'
-    +   incidenciaPlanCampoHtml("incidencia-plan-inm",   "Pago inmediato",  plan.inm,   "150px")
-    +   incidenciaPlanCampoHtml("incidencia-plan-d30",   "A 30 días",       plan.d30,   "150px")
-    +   incidenciaPlanCampoHtml("incidencia-plan-cuota", "Valor de cuota",  plan.cuota, "150px")
-    +   incidenciaPlanCampoHtml("incidencia-plan-nc",    "Cant. de cuotas", plan.nc,    "90px")
-    +   incidenciaPlanCampoHtml("incidencia-plan-meses", "Meses para juntar", plan.meses, "90px")
+    +   incidenciaPlanCampoHtml("incidencia-plan-inm",   "Pago a cuenta",       plan.inm,   "150px")
+    +   incidenciaPlanCampoHtml("incidencia-plan-d30",   "Dividendos",          plan.d30,   "150px")
+    +   incidenciaPlanCampoHtml("incidencia-plan-cuota", "Valor de cuota",      plan.cuota, "150px")
+    +   incidenciaPlanCampoHtml("incidencia-plan-nc",    "Cant. de cuotas",     plan.nc,    "90px")
+    +   incidenciaPlanCampoHtml("incidencia-plan-ant",   "Valor de anticipo",   plan.ant,   "150px")
+    +   incidenciaPlanCampoHtml("incidencia-plan-na",    "Cant. de anticipos",  plan.na,    "90px")
+    +   incidenciaPlanCampoHtml("incidencia-plan-meses", "Meses para juntar",   plan.meses, "90px")
     +   '<div style="padding-bottom:7px"><span style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Total a repartir</span>'
     +     '<span id="incidencia-plan-total" style="font-size:1.05rem;font-weight:800;color:#1f3a2e">' + fmt(incidenciaPlanTotal(plan)) + '</span></div>'
     + '</div>'
