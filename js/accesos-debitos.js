@@ -1618,7 +1618,7 @@ function incidenciaFondoWrapHtml(plan) {
   var na    = plan.na || 0;
   var meses = plan.meses || 1;
   var mesesCal = Math.max(nc + 1, na);
-  var apellidos = Object.keys(INCIDENCIA_FONDO_PCT);
+  var apellidos = incidenciaApellidos();
   var acumulado = getAporteCeotAcumuladoPorApellido(apellidos);
   // Suma los intereses ya generados por los plazos fijos de "Inversiones"
   // (invAcumuladoProfesionalData, en index.html) — así "Acumulado"/"Falta" acá
@@ -1633,13 +1633,19 @@ function incidenciaFondoWrapHtml(plan) {
 
   var filas = apellidos.map(function(ap) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
-    var pct = INCIDENCIA_FONDO_PCT[ap];
-    var monto = Math.round(total * pct);
+    // Dos repartos distintos: el plan y los dividendos van con el % de
+    // incidencia de siempre (Garmendia no participa, le da 0); los anticipos
+    // van con el % propio de anticipos, donde sí entra.
+    var pct    = INCIDENCIA_FONDO_PCT[ap] || 0;
+    var pctAnt = incidenciaAnticipoPct(ap);
     var acum  = (acumulado[ap] || 0) + ((invData.acum[ap] || {}).interes || 0);
     var inm   = Math.round((plan.inm   || 0) * pct);
     var d30   = Math.round((plan.d30   || 0) * pct);
     var cuota = Math.round((plan.cuota || 0) * pct);
-    var ant   = Math.round((plan.ant   || 0) * pct);
+    var ant   = Math.round((plan.ant   || 0) * pctAnt);
+    // El importe es la suma de los dos repartos, no un % sobre el total: con
+    // dos bases distintas ya no hay un único % que aplicar.
+    var monto = inm + d30 + cuota * nc + ant * na;
     // Hasta qué mes del calendario (pago a cuenta, dividendos, cuotas y
     // anticipos en el orden en que vencen) le alcanza el fondo acumulado.
     var cubre = incidenciaMesesQueCubre(acum, incidenciaCalendario(inm, d30, cuota, nc, ant, na));
@@ -1647,8 +1653,12 @@ function incidenciaFondoWrapHtml(plan) {
     var retener = falta > 0 ? Math.round(falta / meses) : 0;
     T.monto += monto; T.acum += acum; T.inm += inm; T.d30 += d30; T.cuota += cuota;
     T.ant += ant; T.falta += falta; T.retener += retener;
+    var pctTxt = function(x) {
+      return x ? (Math.round(x * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' : '—';
+    };
     return '<tr><td>' + (doc ? doc.nombre : ap) + '</td>'
-      + '<td>' + (Math.round(pct * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%</td>'
+      + '<td>' + pctTxt(pct) + '</td>'
+      + '<td>' + pctTxt(pctAnt) + '</td>'
       + '<td>' + fmt(acum) + '</td>'
       + '<td>' + fmt(inm) + '</td>'
       + '<td>' + fmt(d30) + '</td>'
@@ -1665,16 +1675,19 @@ function incidenciaFondoWrapHtml(plan) {
 
   window._incidenciaTexto = apellidos.map(function(ap) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
-    return (doc ? doc.nombre : ap) + '\t' + numParaPegar(Math.round(total * INCIDENCIA_FONDO_PCT[ap]));
+    var p = INCIDENCIA_FONDO_PCT[ap] || 0, pa = incidenciaAnticipoPct(ap);
+    var monto = Math.round((plan.inm || 0) * p) + Math.round((plan.d30 || 0) * p)
+              + Math.round((plan.cuota || 0) * p) * nc + Math.round((plan.ant || 0) * pa) * na;
+    return (doc ? doc.nombre : ap) + '\t' + numParaPegar(monto);
   }).join('\n');
 
   return '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-    + '<th>Profesional</th><th>% de incidencia</th><th>Acumulado</th>'
+    + '<th>Profesional</th><th>% plan y dividendos</th><th>% anticipos</th><th>Acumulado</th>'
     + '<th>Pago a cuenta</th><th>Dividendos</th>'
     + '<th>Cuota (c/u)</th><th>Anticipo (c/u)</th><th>Meses que cubre</th>'
     + '<th>Falta</th><th>A retener por mes</th><th>Importe a pagar</th>'
     + '</tr></thead><tbody>' + filas
-    + '<tr class="adm-totals"><td>TOTAL</td><td>100,00%</td>'
+    + '<tr class="adm-totals"><td>TOTAL</td><td>100,00%</td><td>100,00%</td>'
     +   '<td>' + fmt(T.acum) + '</td>'
     +   '<td>' + fmt(T.inm) + '</td>'
     +   '<td>' + fmt(T.d30) + '</td>'
@@ -1729,7 +1742,7 @@ function incidenciaFondoHtml() {
   var plan = incidenciaPlanCargar();
   return '<div class="adm-sec-title" style="margin-top:20px">Reparto del fondo — Impuesto a las Ganancias y Dividendos</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
-    +   'Cada socio paga según su % de incidencia fija (no cambia con el % de Retención Ganancias de arriba). Cargá los tramos del plan y los importes se acomodan solos; el total es la suma de todo. '
+    +   'Son dos repartos distintos: el plan y los dividendos se dividen entre los 10 socios con el % de incidencia de siempre, y los 9 anticipos de Ganancias 2027 entre 11, porque la Dra. Garmendia entra solo en esos (su alta es de agosto 2026 y el plan es de ejercicio anterior). El importe de cada uno es la suma de lo que le toca de cada reparto. '
     +   '"Acumulado" incluye los intereses ya generados por los plazos fijos de Inversiones. '
     +   '"Meses que cubre" es hasta qué mes del calendario le alcanza el fondo, tomando los vencimientos en orden: pago a cuenta + anticipo 1 el primer mes, dividendos + cuota 1 + anticipo 2 el segundo, y después cuota + anticipo hasta que se terminan. '
     +   '"A retener por mes" es lo que le falta repartido en los meses que pongas. '
