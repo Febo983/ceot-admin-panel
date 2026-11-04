@@ -155,6 +155,7 @@ function renderSeguimientoRedsom(periodo) {
     + '<div class="deb-toolbar redsom-no-print" id="redsomScreenRoot" style="flex-wrap:wrap;gap:6px">'
     + '<button class="deb-btn' + (esInforme ? '' : ' deb-btn-pri') + '" onclick="redsomVerDetalle()">📋 Detalle</button>'
     + '<button class="deb-btn' + (esInforme ? ' deb-btn-pri' : '') + '" onclick="redsomVerInforme()" title="Mes a mes y total hasta la fecha, sobre todos los períodos cargados">📊 Informe</button>'
+    + (esInforme ? '<button class="deb-btn deb-btn-pri" onclick="redsomDescargarInformePdf()" title="Baja el informe como PDF: mes a mes y total hasta la fecha">⬇ Descargar PDF</button>' : '')
     + '<button class="deb-btn" onclick="redsomImportarPdf()" style="margin-left:4px" title="DPR9042P&lt;AAAAMM&gt;.pdf — el detalle de prácticas que manda la clínica">📄 Sumar PDF de la clínica</button>'
     + '<button class="deb-btn" onclick="redsomCargarHistorico()" title="Cargar un JSON con períodos que el importador nunca vio">⬆ Cargar histórico</button>'
     + '<button class="deb-btn" onclick="actionFeedback(this); imprimirRedsom()">🖨 Imprimir</button>'
@@ -714,12 +715,13 @@ function redsomTablaHtml(titulo, col1, grupos, lbl, tot) {
     + '<td style="text-align:right">100%</td></tr></tbody></table></div>';
 }
 
-function redsomInformeHtml() {
+// Todo lo que muestra el informe, ya calculado. La pantalla (redsomInformeHtml)
+// y el PDF (redsomInformePdfDoc) salen de acá, así nunca pueden mostrar
+// números distintos. `lbl` es texto plano; `lblHtml` (opcional) es la versión
+// con formato para la pantalla.
+function redsomInformeDatos() {
   var filas = redsomCargarVarios(redsomGetGuardados());
-  if (!filas.length) {
-    return '<div style="padding:20px;text-align:center;color:rgba(32,36,31,.45);font-style:italic">'
-      + 'No hay registros cargados todavía.</div>';
-  }
+  if (!filas.length) return null;
   var tot = redsomResumir(filas);
   var sinProf = filas.filter(function(it) { return (it.prof || REDSOM_SIN_PROF) === REDSOM_SIN_PROF; }).length;
 
@@ -751,21 +753,42 @@ function redsomInformeHtml() {
                                if (ca !== cb) return ca ? -1 : 1;
                                return String(a.clave).localeCompare(String(b.clave));
                              });
-  var practLbl = function(cod) {
+  var practDesc = function(cod) {
     var n = nombres[cod] || {};
-    var d = Object.keys(n).sort(function(a, b) { return n[b] - n[a]; })[0] || '—';
-    return /^\d{6}$/.test(cod) ? (d + ' <span style="color:rgba(32,36,31,.4)">· ' + cod + '</span>') : d;
+    return Object.keys(n).sort(function(a, b) { return n[b] - n[a]; })[0] || '—';
   };
   var idem = function(k) { return k; };
+
+  return {
+    tot: tot, sinProf: sinProf, nMeses: meses.length,
+    tablas: [
+      { titulo: 'Mes a mes (por período de la práctica)', col1: 'Mes', grupos: meses, lbl: redsomMesLbl },
+      { titulo: 'Por profesional (acumulado)', col1: 'Profesional', grupos: profs, lbl: idem },
+      { titulo: 'Por práctica (acumulado)', col1: 'Práctica', grupos: practs,
+        lbl: function(cod) { return /^\d{6}$/.test(cod) ? (practDesc(cod) + ' · ' + cod) : practDesc(cod); },
+        lblHtml: function(cod) {
+          return /^\d{6}$/.test(cod) ? (practDesc(cod) + ' <span style="color:rgba(32,36,31,.4)">· ' + cod + '</span>') : practDesc(cod);
+        } }
+    ]
+  };
+}
+
+function redsomInformeHtml() {
+  var d = redsomInformeDatos();
+  if (!d) {
+    return '<div style="padding:20px;text-align:center;color:rgba(32,36,31,.45);font-style:italic">'
+      + 'No hay registros cargados todavía.</div>';
+  }
+  var tot = d.tot;
 
   var html = '<div style="margin-bottom:12px;padding-bottom:9px;border-bottom:1px solid rgba(32,36,31,.15)">'
     + '<div style="font-size:.95rem;font-weight:800;letter-spacing:.04em">REDSOM · Informe</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.5);margin-top:2px">'
-    + meses.length + ' mes(es) con movimiento · todo lo cargado hasta '
+    + d.nMeses + ' mes(es) con movimiento · todo lo cargado hasta '
     + new Date().toLocaleDateString('es-AR') + '</div></div>';
 
   html += '<div class="deb-stats">'
-    + '<div class="deb-stat"><div class="deb-stat-lbl">Meses</div><div class="deb-stat-val">' + meses.length + '</div></div>'
+    + '<div class="deb-stat"><div class="deb-stat-lbl">Meses</div><div class="deb-stat-val">' + d.nMeses + '</div></div>'
     + '<div class="deb-stat"><div class="deb-stat-lbl">Registros</div><div class="deb-stat-val">' + tot.n + '</div></div>'
     + '<div class="deb-stat"><div class="deb-stat-lbl">Honorarios</div><div class="deb-stat-val">' + fmtImp(tot.hon) + '</div></div>'
     + (tot.gas ? '<div class="deb-stat"><div class="deb-stat-lbl">Gastos de equipo</div><div class="deb-stat-val">' + fmtImp(tot.gas) + '</div></div>' : '')
@@ -773,17 +796,156 @@ function redsomInformeHtml() {
     + '<div class="deb-stat"><div class="deb-stat-lbl">Total hasta la fecha</div><div class="deb-stat-val">' + fmtImp(tot.total) + '</div></div>'
     + '</div>';
 
-  if (sinProf) {
+  if (d.sinProf) {
     html += '<div style="background:#fef3c7;border:1px solid #92610f;border-radius:7px;padding:8px 10px;'
-      + 'margin:0 0 12px;font-size:.72rem;color:#92610f">⚠ ' + sinProf + ' de los ' + tot.n
+      + 'margin:0 0 12px;font-size:.72rem;color:#92610f">⚠ ' + d.sinProf + ' de los ' + tot.n
       + ' registros vienen del PDF de la clínica, que no trae el nombre del profesional: '
       + 'suman al total del mes pero quedan en «' + REDSOM_SIN_PROF + '».</div>';
   }
 
-  html += redsomTablaHtml('Mes a mes (por período de la práctica)', 'Mes', meses, redsomMesLbl, tot);
-  html += redsomTablaHtml('Por profesional (acumulado)', 'Profesional', profs, idem, tot);
-  html += redsomTablaHtml('Por práctica (acumulado)', 'Práctica', practs, practLbl, tot);
+  d.tablas.forEach(function(t) {
+    html += redsomTablaHtml(t.titulo, t.col1, t.grupos, t.lblHtml || t.lbl, tot);
+  });
   return html;
+}
+
+// ── Informe en PDF ────────────────────────────────────────────────
+// jsPDF sin autotable, dibujado a mano como el resto de los PDF del panel
+// (ver gcExportPDF). Apaisado: la columna de práctica es larga y son siete
+// columnas. Devuelve el documento sin guardarlo, para poder probarlo.
+function redsomInformePdfDoc() {
+  var d = redsomInformeDatos();
+  if (!d) return null;
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  var W = 297, H = 210, LM = 12, RM = 285, TOPE = H - 16;
+  var tot = d.tot;
+  var hoyStr = new Date().toLocaleDateString('es-AR');
+  // Importe sin símbolo de moneda en las tablas (ahorra ancho), con "$" en los
+  // totales. Los vacíos van con guion: la raya larga no sale en todas las
+  // fuentes estándar de jsPDF.
+  var num = function(n) { return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
+  var cel = function(n) { return n ? (n < 0 ? '-' + num(-n) : num(n)) : '-'; };
+  var pct = function(v) { return tot.total ? (v / tot.total * 100).toFixed(1).replace('.', ',') + '%' : '-'; };
+
+  // Posiciones de las columnas, alineadas a la derecha.
+  var X = { reg: RM - 138, hon: RM - 108, gas: RM - 78, deb: RM - 48, tot: RM - 16, pct: RM };
+
+  var y = 0;
+  var pie = function() {
+    var n = doc.internal.getNumberOfPages();
+    for (var p = 1; p <= n; p++) {
+      doc.setPage(p);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(120, 120, 120);
+      doc.text('REDSOM · Informe · emitido ' + hoyStr, LM, H - 8);
+      doc.text('Página ' + p + ' de ' + n, RM, H - 8, { align: 'right' });
+    }
+    doc.setTextColor(0, 0, 0);
+  };
+
+  // Encabezado
+  doc.setFillColor(31, 58, 46);
+  doc.rect(LM, 10, RM - LM, 16, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+  doc.text('REDSOM - INFORME', W / 2, 17, { align: 'center' });
+  doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+  doc.text('CEOT · ' + d.nMeses + ' mes(es) con movimiento · todo lo cargado hasta ' + hoyStr, W / 2, 22.5, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+
+  // Cifras principales
+  y = 35;
+  var cifras = [['Registros', String(tot.n)], ['Honorarios', '$ ' + num(tot.hon)]];
+  if (tot.gas) cifras.push(['Gastos de equipo', '$ ' + num(tot.gas)]);
+  if (tot.deb) cifras.push(['Débitos', '$ ' + cel(tot.deb)]);
+  cifras.push(['TOTAL HASTA LA FECHA', '$ ' + num(tot.total)]);
+  var anchoC = (RM - LM) / cifras.length;
+  cifras.forEach(function(c, i) {
+    var x = LM + anchoC * i;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(110, 110, 110);
+    doc.text(c[0].toUpperCase(), x, y);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(0, 0, 0);
+    doc.text(c[1], x, y + 6);
+  });
+  y += 14;
+
+  if (d.sinProf) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(146, 97, 15);
+    var aviso = 'Atención: ' + d.sinProf + ' de los ' + tot.n + ' registros vienen del PDF de la clínica, que no trae el nombre '
+      + 'del profesional: suman al total del mes pero figuran como "' + REDSOM_SIN_PROF + '".';
+    doc.text(doc.splitTextToSize(aviso, RM - LM), LM, y);
+    doc.setTextColor(0, 0, 0);
+    y += 8;
+  }
+
+  var cabecera = function(col1) {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(0, 0, 0);
+    doc.setFillColor(238, 236, 228);
+    doc.rect(LM, y - 4, RM - LM, 6, 'F');
+    doc.text(col1, LM + 1.5, y);
+    doc.text('Reg.', X.reg, y, { align: 'right' });
+    doc.text('Honorarios', X.hon, y, { align: 'right' });
+    doc.text('Gastos eq.', X.gas, y, { align: 'right' });
+    doc.text('Débitos', X.deb, y, { align: 'right' });
+    doc.text('Total', X.tot, y, { align: 'right' });
+    doc.text('%', X.pct - 1.5, y, { align: 'right' });
+    y += 6;
+  };
+
+  d.tablas.forEach(function(t) {
+    // Que el título no quede solo al pie de una hoja.
+    if (y > TOPE - 28) { doc.addPage(); y = 18; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(31, 58, 46);
+    doc.text(t.titulo.toUpperCase(), LM, y);
+    doc.setTextColor(0, 0, 0);
+    y += 6;
+    cabecera(t.col1);
+    doc.setFontSize(7.5);
+    var cebra = false;
+    t.grupos.forEach(function(g) {
+      if (y > TOPE) { doc.addPage(); y = 18; cabecera(t.col1); doc.setFontSize(7.5); cebra = false; }
+      if (cebra) { doc.setFillColor(248, 247, 243); doc.rect(LM, y - 3.6, RM - LM, 5, 'F'); }
+      cebra = !cebra;
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
+      doc.text(doc.splitTextToSize(String(t.lbl(g.clave)), X.reg - LM - 12)[0], LM + 1.5, y);
+      doc.setTextColor(110, 110, 110);
+      doc.text(String(g.n), X.reg, y, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      doc.text(cel(g.hon), X.hon, y, { align: 'right' });
+      doc.text(cel(g.gas), X.gas, y, { align: 'right' });
+      if (g.deb) doc.setTextColor(177, 58, 44);
+      doc.text(cel(g.deb), X.deb, y, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'bold');
+      doc.text(num(g.total), X.tot, y, { align: 'right' });
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(110, 110, 110);
+      doc.text(pct(g.total), X.pct - 1.5, y, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      y += 5;
+    });
+    // Fila de total
+    if (y > TOPE) { doc.addPage(); y = 18; }
+    doc.setDrawColor(31, 58, 46); doc.line(LM, y - 3.6, RM, y - 3.6);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL', LM + 1.5, y);
+    doc.text(String(tot.n), X.reg, y, { align: 'right' });
+    doc.text(cel(tot.hon), X.hon, y, { align: 'right' });
+    doc.text(cel(tot.gas), X.gas, y, { align: 'right' });
+    doc.text(cel(tot.deb), X.deb, y, { align: 'right' });
+    doc.text(num(tot.total), X.tot, y, { align: 'right' });
+    doc.text('100%', X.pct - 1.5, y, { align: 'right' });
+    y += 12;
+  });
+
+  pie();
+  return doc;
+}
+
+function redsomDescargarInformePdf() {
+  if (!window.jspdf) { alert('La librería PDF aún se está cargando. Esperá un segundo y volvé a intentar.'); return; }
+  var doc = redsomInformePdfDoc();
+  if (!doc) { alert('No hay registros de REDSOM cargados todavía.'); return; }
+  doc.save('REDSOM_Informe_' + new Date().toISOString().slice(0, 10) + '.pdf');
 }
 
 
