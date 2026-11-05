@@ -1551,21 +1551,81 @@ function incidenciaPlanCargar() {
 }
 
 // Calendario real del plan, mes a mes, para un profesional (o para el total si
-// se le pasan los importes del grupo). Mes 1: pago a cuenta + anticipo 1.
-// Mes 2: dividendos + cuota 1 + anticipo 2. De ahí en adelante, cuota y
-// anticipo hasta que se acaban. Devuelve un importe por mes.
+// se le pasan los importes del grupo). Mes 1: pago a cuenta + 2° pago del plan
+// + anticipo 1. De ahí en adelante, cuota y anticipo hasta que se acaban.
+// Devuelve un importe por mes.
+//
+// El 2° pago (d30) estaba en el mes 2 porque se creía que vencía "a los 30
+// días". El 05/11/2026 Marcelo confirmó que hay que pagarlo ya, todo junto con
+// el pago a cuenta, así que pasó al mes 1.
 function incidenciaCalendario(inm, d30, cuota, nc, ant, na) {
   var meses = Math.max(nc + 1, na);
   var out = [];
   for (var k = 1; k <= meses; k++) {
     var m = 0;
-    if (k === 1) m += inm;
-    if (k === 2) m += d30;
+    if (k === 1) m += inm + d30;
     if (k >= 2 && (k - 1) <= nc) m += cuota;
     if (k <= na) m += ant;
     out.push(m);
   }
   return out;
+}
+
+// El calendario arranca en noviembre de 2026. Se usa solo para rotular las
+// columnas de la tabla de retenciones mes a mes.
+var INCIDENCIA_MES1 = { anio: 2026, mes: 11 };
+function incidenciaMesCorto(i) {
+  var m = (INCIDENCIA_MES1.mes - 1 + i) % 12;
+  var a = INCIDENCIA_MES1.anio + Math.floor((INCIDENCIA_MES1.mes - 1 + i) / 12);
+  return MESES_CPSM[m].slice(0, 3) + "/" + String(a).slice(2);
+}
+
+// Retención mes a mes, lo más pareja posible.
+//
+// En cada mes toma la tasa plana más baja que todavía llega a todos los
+// vencimientos que faltan, y nunca menos que repartir en partes iguales lo que
+// queda. Da un importe fijo todos los meses y un último mes más chico, en vez
+// de meses en cero seguidos de picos — que es lo que daba el criterio viejo
+// (falta ÷ meses a mano) y dejaba a 8 de los 10 socios en rojo entre marzo y
+// mayo de 2027.
+//
+// Son cal.length - 1 retenciones, no una por mes: la de un mes sale de la
+// liquidación que se cobra ese mes y termina de entrar a fin de mes, así que
+// paga el vencimiento del mes SIGUIENTE. Una retención en el último mes
+// llegaría después del último vencimiento.
+function incidenciaRetenciones(acum, cal) {
+  var n = cal.length, nret = n - 1, total = 0, i, k;
+  for (i = 0; i < n; i++) total += cal[i];
+  var falta = total - acum;
+  if (falta <= 0) { var cero = []; for (i = 0; i < n; i++) cero.push(0); return cero; }
+
+  var ret = [], cum = 0;
+  for (var j = 1; j <= nret; j++) {
+    var tasa = 0, acumPagos = 0;
+    for (k = 1; k <= n; k++) {
+      acumPagos += cal[k - 1];
+      if (k <= j) continue;
+      var L = acumPagos - acum - cum;           // lo que falta juntar para ese mes
+      if (L > 0) tasa = Math.max(tasa, L / (k - j));
+    }
+    var parejo = (falta - cum) / (n - j);       // lo que queda, en partes iguales
+    var r = Math.max(0, Math.min(Math.max(tasa, parejo), falta - cum));
+    ret.push(r); cum += r;
+  }
+  ret.push(0);
+
+  // Redondeo hacia arriba, y el último mes con plata absorbe la diferencia
+  // para que la suma dé exactamente lo que falta. Hacia arriba y no al más
+  // cercano a propósito: redondear para abajo deja algún mes corto por un
+  // peso y el saldo de ese mes queda en negativo.
+  var red = ret.map(function(x) { return Math.ceil(x - 1e-9); });
+  var ult = -1, suma = 0;
+  for (i = 0; i < nret; i++) if (red[i] > 0) ult = i;
+  if (ult >= 0) {
+    for (i = 0; i < red.length; i++) if (i !== ult) suma += red[i];
+    red[ult] = Math.round(falta) - suma;
+  }
+  return red;
 }
 
 // Cuántos meses enteros del calendario paga el fondo acumulado antes de
@@ -1616,8 +1676,10 @@ function incidenciaFondoWrapHtml(plan) {
   var total = incidenciaPlanTotal(plan);
   var nc    = plan.nc || 0;
   var na    = plan.na || 0;
-  var meses = plan.meses || 1;
   var mesesCal = Math.max(nc + 1, na);
+  // Las retenciones son una menos que los meses del calendario: la del último
+  // mes entraría después del último vencimiento (ver incidenciaRetenciones).
+  var nret = Math.max(1, mesesCal - 1);
   var apellidos = incidenciaApellidos();
   var acumulado = getAporteCeotAcumuladoPorApellido(apellidos);
   // Suma los intereses ya generados por los plazos fijos de "Inversiones"
@@ -1629,7 +1691,8 @@ function incidenciaFondoWrapHtml(plan) {
   var invData = (typeof invAcumuladoProfesionalData === "function") ? invAcumuladoProfesionalData() : { acum: {}, totInt: 0 };
 
   var ROJO = "#b13a2c", VERDE = "#1d6b62";
-  var T = { monto:0, acum:0, inm:0, d30:0, cuota:0, ant:0, falta:0, retener:0 };
+  var T = { monto:0, acum:0, inm:0, d30:0, cuota:0, ant:0, falta:0, retener:0, ultimo:0 };
+  var detalle = [];          // {nombre, ret[]} para la tabla mes a mes
 
   var filas = apellidos.map(function(ap) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
@@ -1648,11 +1711,16 @@ function incidenciaFondoWrapHtml(plan) {
     var monto = inm + d30 + cuota * nc + ant * na;
     // Hasta qué mes del calendario (pago a cuenta, dividendos, cuotas y
     // anticipos en el orden en que vencen) le alcanza el fondo acumulado.
-    var cubre = incidenciaMesesQueCubre(acum, incidenciaCalendario(inm, d30, cuota, nc, ant, na));
+    var calProf = incidenciaCalendario(inm, d30, cuota, nc, ant, na);
+    var cubre = incidenciaMesesQueCubre(acum, calProf);
     var falta = monto - acum;
-    var retener = falta > 0 ? Math.round(falta / meses) : 0;
+    // Retención mes a mes: un importe fijo y un último mes que ajusta.
+    var ret = incidenciaRetenciones(acum, calProf);
+    var retener = ret[0] || 0;
+    var ultimo  = ret[nret - 1] || 0;
+    detalle.push({ nombre: doc ? doc.nombre : ap, ret: ret });
     T.monto += monto; T.acum += acum; T.inm += inm; T.d30 += d30; T.cuota += cuota;
-    T.ant += ant; T.falta += falta; T.retener += retener;
+    T.ant += ant; T.falta += falta; T.retener += retener; T.ultimo += ultimo;
     var pctTxt = function(x) {
       return x ? (Math.round(x * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' : '—';
     };
@@ -1667,6 +1735,7 @@ function incidenciaFondoWrapHtml(plan) {
       + '<td style="font-weight:700;color:' + (cubre >= mesesCal ? VERDE : ROJO) + '">' + cubre + ' de ' + mesesCal + '</td>'
       + '<td style="color:' + (falta > 0 ? ROJO : VERDE) + '">' + fmt(falta > 0 ? falta : -falta) + (falta > 0 ? '' : ' a favor') + '</td>'
       + '<td style="color:' + (retener > 0 ? ROJO : VERDE) + '">' + (retener > 0 ? fmt(retener) : '—') + '</td>'
+      + '<td style="color:' + (ultimo > 0 ? ROJO : VERDE) + '">' + (ultimo > 0 ? fmt(ultimo) : '—') + '</td>'
       + '<td style="font-weight:700">' + fmt(monto)
       +   ' <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(monto) + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.68rem;padding:1px 4px;vertical-align:middle">📋</button>'
       + '</td>'
@@ -1682,10 +1751,10 @@ function incidenciaFondoWrapHtml(plan) {
   }).join('\n');
 
   return '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-    + '<th>Profesional</th><th>% plan y dividendos</th><th>% anticipos</th><th>Acumulado</th>'
-    + '<th>Pago a cuenta</th><th>Dividendos</th>'
+    + '<th>Profesional</th><th>% plan</th><th>% anticipos</th><th>Acumulado</th>'
+    + '<th>Pago a cuenta</th><th>2° pago del plan</th>'
     + '<th>Cuota (c/u)</th><th>Anticipo (c/u)</th><th>Meses que cubre</th>'
-    + '<th>Falta</th><th>A retener por mes</th><th>Importe a pagar</th>'
+    + '<th>Falta</th><th>A retener por mes</th><th>Último mes</th><th>Importe a pagar</th>'
     + '</tr></thead><tbody>' + filas
     + '<tr class="adm-totals"><td>TOTAL</td><td>100,00%</td><td>100,00%</td>'
     +   '<td>' + fmt(T.acum) + '</td>'
@@ -1695,7 +1764,67 @@ function incidenciaFondoWrapHtml(plan) {
     +   '<td>' + fmt(T.ant) + '</td><td>—</td>'
     +   '<td style="color:' + (T.falta > 0 ? ROJO : VERDE) + '">' + fmt(T.falta > 0 ? T.falta : -T.falta) + (T.falta > 0 ? '' : ' a favor') + '</td>'
     +   '<td style="color:' + (T.retener > 0 ? ROJO : VERDE) + '">' + (T.retener > 0 ? fmt(T.retener) : '—') + '</td>'
+    +   '<td style="color:' + (T.ultimo > 0 ? ROJO : VERDE) + '">' + (T.ultimo > 0 ? fmt(T.ultimo) : '—') + '</td>'
     +   '<td>' + fmt(T.monto) + '</td></tr>'
+    + '</tbody></table></div>'
+    + incidenciaRetencionesTablaHtml(detalle, nret);
+}
+
+// Tabla de retenciones mes a mes: una fila por profesional, una columna por
+// mes del calendario en el que se retiene. Es lo que se le pasa a quien hace
+// la liquidación, así que lleva su propio botón para copiarla entera.
+//
+// El texto a copiar va en window._incidenciaRetTexto y no incrustado en el
+// onclick: son importes con comas y nombres con apóstrofes, y escaparlos
+// dentro del atributo es pedir que algo se rompa.
+function incidenciaRetencionesTablaHtml(detalle, nret) {
+  var TAB = String.fromCharCode(9), NL = String.fromCharCode(10);
+  var i, cols = '';
+  for (i = 0; i < nret; i++) cols += '<th>' + incidenciaMesCorto(i) + '</th>';
+
+  var tot = [], sumaTot = 0;
+  for (i = 0; i < nret; i++) tot.push(0);
+
+  var filas = detalle.map(function(d) {
+    var suma = 0, celdas = '';
+    for (var k = 0; k < nret; k++) {
+      var v = d.ret[k] || 0;
+      suma += v; tot[k] += v;
+      celdas += '<td>' + (v > 0 ? fmt(v) : '—') + '</td>';
+    }
+    sumaTot += suma;
+    return '<tr><td>' + d.nombre + '</td>' + celdas
+      + '<td style="font-weight:700">' + fmt(suma) + '</td></tr>';
+  }).join("");
+
+  var celdasTot = '';
+  for (i = 0; i < nret; i++) celdasTot += '<td>' + fmt(tot[i]) + '</td>';
+
+  // Para pegar en una planilla: encabezado + una fila por profesional.
+  var lineas = ['Profesional'];
+  for (i = 0; i < nret; i++) lineas[0] += TAB + incidenciaMesCorto(i);
+  detalle.forEach(function(d) {
+    var f = d.nombre;
+    for (var k = 0; k < nret; k++) f += TAB + numParaPegar(d.ret[k] || 0);
+    lineas.push(f);
+  });
+  window._incidenciaRetTexto = lineas.join(NL);
+
+  return '<div class="adm-sec-title" style="margin-top:20px">Retenciones mes a mes'
+    +   ' <button type="button" title="Copiar la tabla entera"'
+    +     ' onclick="copiarTexto(window._incidenciaRetTexto, this)"'
+    +     ' style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.7rem;padding:2px 6px;vertical-align:middle">📋 copiar</button>'
+    + '</div>'
+    + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
+    +   'Lo que hay que descontarle a cada uno en la liquidación de cada mes. Es un importe fijo y el último mes ajusta. '
+    +   'La retención de un mes sale de la liquidación que se cobra ese mes y queda completa a fin de mes, así que paga el vencimiento del mes siguiente: '
+    +   'por eso son ' + nret + ' retenciones y no ' + (nret + 1) + ', y en el último mes del calendario ya no se retiene.'
+    + '</div>'
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+    +   '<th>Profesional</th>' + cols + '<th>Total</th>'
+    + '</tr></thead><tbody>' + filas
+    + '<tr class="adm-totals"><td>TOTAL</td>' + celdasTot
+    +   '<td>' + fmt(sumaTot) + '</td></tr>'
     + '</tbody></table></div>';
 }
 
@@ -1707,6 +1836,7 @@ function incidenciaPlanLeerInput(id) {
 }
 
 function incidenciaFondoRecalcular() {
+  var plan0 = incidenciaPlanCargar();
   var plan = {
     inm:   incidenciaPlanLeerInput("incidencia-plan-inm"),
     d30:   incidenciaPlanLeerInput("incidencia-plan-d30"),
@@ -1714,7 +1844,7 @@ function incidenciaFondoRecalcular() {
     nc:    Math.max(0, Math.round(incidenciaPlanLeerInput("incidencia-plan-nc"))),
     ant:   incidenciaPlanLeerInput("incidencia-plan-ant"),
     na:    Math.max(0, Math.round(incidenciaPlanLeerInput("incidencia-plan-na"))),
-    meses: Math.max(1, Math.round(incidenciaPlanLeerInput("incidencia-plan-meses")) || 1),
+    meses: plan0.meses,          // ya no se edita; se conserva por compatibilidad
     v:     INCIDENCIA_PLAN_V
   };
   var wrap = document.getElementById("incidencia-fondo-wrap");
@@ -1742,20 +1872,20 @@ function incidenciaFondoHtml() {
   var plan = incidenciaPlanCargar();
   return '<div class="adm-sec-title" style="margin-top:20px">Reparto del fondo — Impuesto a las Ganancias y Dividendos</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
-    +   'Son dos repartos distintos: el plan y los dividendos se dividen entre los 10 socios con el % de incidencia de siempre, y los 9 anticipos de Ganancias 2027 entre 11, porque la Dra. Garmendia entra solo en esos (su alta es de agosto 2026 y el plan es de ejercicio anterior). El importe de cada uno es la suma de lo que le toca de cada reparto. '
+    +   'Son dos repartos distintos: el plan se divide entre los 10 socios con el % de incidencia de siempre, y los 9 anticipos de Ganancias 2027 entre 11, porque la Dra. Garmendia entra solo en esos (su alta es de agosto 2026 y el plan es de ejercicio anterior). El importe de cada uno es la suma de lo que le toca de cada reparto. '
     +   '"Acumulado" incluye los intereses ya generados por los plazos fijos de Inversiones. '
-    +   '"Meses que cubre" es hasta qué mes del calendario le alcanza el fondo, tomando los vencimientos en orden: pago a cuenta + anticipo 1 el primer mes, dividendos + cuota 1 + anticipo 2 el segundo, y después cuota + anticipo hasta que se terminan. '
-    +   '"A retener por mes" es lo que le falta repartido en los meses que pongas. '
+    +   '"Meses que cubre" es hasta qué mes del calendario le alcanza el fondo, tomando los vencimientos en orden: pago a cuenta + 2° pago del plan + anticipo 1 el primer mes, y después cuota + anticipo hasta que se terminan. '
+    +   '"A retener por mes" es el importe fijo que hay que descontarle cada mes, y "Último mes" el que ajusta al final; el detalle está en la tabla de abajo. '
+    +   'El "2° pago del plan" son los $ 44.917.035 que antes figuraban como dividendos: es el segundo tramo del plan, no un pago aparte, y va junto con el pago a cuenta. '
     +   'Los anticipos de Ganancias 2027 no son impuesto nuevo: son deducibles como pagos a cuenta del impuesto que se determine en 2027, pero hay que ponerlos igual, así que entran al total.'
     + '</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px">'
     +   incidenciaPlanCampoHtml("incidencia-plan-inm",   "Pago a cuenta",       plan.inm,   "150px")
-    +   incidenciaPlanCampoHtml("incidencia-plan-d30",   "Dividendos",          plan.d30,   "150px")
+    +   incidenciaPlanCampoHtml("incidencia-plan-d30",   "2° pago del plan",    plan.d30,   "150px")
     +   incidenciaPlanCampoHtml("incidencia-plan-cuota", "Valor de cuota",      plan.cuota, "150px")
     +   incidenciaPlanCampoHtml("incidencia-plan-nc",    "Cant. de cuotas",     plan.nc,    "90px")
     +   incidenciaPlanCampoHtml("incidencia-plan-ant",   "Valor de anticipo",   plan.ant,   "150px")
     +   incidenciaPlanCampoHtml("incidencia-plan-na",    "Cant. de anticipos",  plan.na,    "90px")
-    +   incidenciaPlanCampoHtml("incidencia-plan-meses", "Meses para juntar",   plan.meses, "90px")
     +   '<div style="padding-bottom:7px"><span style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">Total a repartir</span>'
     +     '<span id="incidencia-plan-total" style="font-size:1.05rem;font-weight:800;color:#1f3a2e">' + fmt(incidenciaPlanTotal(plan)) + '</span></div>'
     + '</div>'
