@@ -1519,12 +1519,16 @@ var INCIDENCIA_PLAN_KEY = "ceot_incidencia_plan";
 // pagos a cuenta del impuesto que se determine en 2027, pero hay que ponerlos
 // igual, así que entran al calendario y al total. "meses" pasó de 6 a 9 para
 // que la retención se estire a todo el calendario (nov/26 a jul/27).
-var INCIDENCIA_PLAN_DEF = { v: 2, inm: 13845803.28, d30: 44917035, cuota: 12375605.87, nc: 6, ant: 9723672.54, na: 9, meses: 9 };
+var INCIDENCIA_PLAN_DEF = { v: 3, inm: 13845803.28, d30: 44917035, cuota: 12375605.87, nc: 6, ant: 9723672.54, na: 9, meses: 9 };
 // 06/11/2026: el VEP real del 2° pago salió por $ 41.223.946,47 (el 44.917.035
 // era el estimado del mensaje del contador).
 INCIDENCIA_PLAN_DEF.d30 = 41223946.47;
 var INCIDENCIA_PLAN_D30_VIEJO = 44917035;
-var INCIDENCIA_PLAN_V = 2;
+// v3 (06/11/2026): el campo mostraba los importes con punto decimal (13845803.28)
+// y al editar cualquier campo el lector los tomaba como miles (x100) y los
+// guardaba rotos. Se descartan los planes guardados en v2 y los campos pasan a
+// mostrarse en formato argentino (coma decimal).
+var INCIDENCIA_PLAN_V = 3;
 var _incidenciaTotalPulled = false;
 function incidenciaPlanCargar() {
   if (!_incidenciaTotalPulled) {
@@ -1868,7 +1872,7 @@ function renderIncidenciaFondo() {
 
 function incidenciaPlanCampoHtml(id, label, valor, ancho) {
   return '<div><label for="' + id + '" style="font-size:.68rem;color:rgba(32,36,31,.5);display:block;margin-bottom:3px">' + label + '</label>'
-    + '<input type="text" id="' + id + '" value="' + (valor || "") + '" oninput="incidenciaFondoRecalcular()" '
+    + '<input type="text" id="' + id + '" value="' + (valor ? String(valor).replace(".", ",") : "") + '" oninput="incidenciaFondoRecalcular()" '
     + 'style="width:' + ancho + ';padding:7px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit;font-size:.85rem;text-align:right"></div>';
 }
 
