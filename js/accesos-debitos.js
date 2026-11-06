@@ -1520,6 +1520,10 @@ var INCIDENCIA_PLAN_KEY = "ceot_incidencia_plan";
 // igual, así que entran al calendario y al total. "meses" pasó de 6 a 9 para
 // que la retención se estire a todo el calendario (nov/26 a jul/27).
 var INCIDENCIA_PLAN_DEF = { v: 2, inm: 13845803.28, d30: 44917035, cuota: 12375605.87, nc: 6, ant: 9723672.54, na: 9, meses: 9 };
+// 06/11/2026: el VEP real del 2° pago salió por $ 41.223.946,47 (el 44.917.035
+// era el estimado del mensaje del contador).
+INCIDENCIA_PLAN_DEF.d30 = 41223946.47;
+var INCIDENCIA_PLAN_D30_VIEJO = 44917035;
 var INCIDENCIA_PLAN_V = 2;
 var _incidenciaTotalPulled = false;
 function incidenciaPlanCargar() {
@@ -1541,7 +1545,7 @@ function incidenciaPlanCargar() {
   return {
     v:     INCIDENCIA_PLAN_V,
     inm:   plan.inm   != null ? plan.inm   : INCIDENCIA_PLAN_DEF.inm,
-    d30:   plan.d30   != null ? plan.d30   : INCIDENCIA_PLAN_DEF.d30,
+    d30:   (plan.d30 != null && plan.d30 !== INCIDENCIA_PLAN_D30_VIEJO) ? plan.d30 : INCIDENCIA_PLAN_DEF.d30,
     cuota: plan.cuota != null ? plan.cuota : INCIDENCIA_PLAN_DEF.cuota,
     nc:    plan.nc    != null ? plan.nc    : INCIDENCIA_PLAN_DEF.nc,
     ant:   plan.ant   != null ? plan.ant   : INCIDENCIA_PLAN_DEF.ant,
@@ -1876,7 +1880,7 @@ function incidenciaFondoHtml() {
     +   '"Acumulado" incluye los intereses ya generados por los plazos fijos de Inversiones. '
     +   '"Meses que cubre" es hasta qué mes del calendario le alcanza el fondo, tomando los vencimientos en orden: pago a cuenta + 2° pago del plan + anticipo 1 el primer mes, y después cuota + anticipo hasta que se terminan. '
     +   '"A retener por mes" es el importe fijo que hay que descontarle cada mes, y "Último mes" el que ajusta al final; el detalle está en la tabla de abajo. '
-    +   'El "2° pago del plan" son los $ 44.917.035 que antes figuraban como dividendos: es el segundo tramo del plan, no un pago aparte, y va junto con el pago a cuenta. '
+    +   'El "2° pago del plan" son los $ 41.223.946,47 del VEP (antes figuraban como $ 44.917.035 "dividendos", el estimado): es el segundo tramo del plan, no un pago aparte, y va junto con el pago a cuenta. '
     +   'Los anticipos de Ganancias 2027 no son impuesto nuevo: son deducibles como pagos a cuenta del impuesto que se determine en 2027, pero hay que ponerlos igual, así que entran al total.'
     + '</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px">'
