@@ -113,22 +113,22 @@ var GC_RUBRO_COLOR = {
 };
 
 // ═══════ APORTES DE CAPITAL — espejo de la grilla "APORTES PARA 14 DE JULIO 2067" ═══════
-// primer/segundo/tercer en pesos; Garmendia tiene primerUsd (dólares) en vez de primer.
+// primer/segundo/tercer/cuarto en pesos (segundoCpsm = el 2º aporte se financió con un préstamo CPSM, ver PRESTAMOS_CASA en datos.js); Garmendia tiene primerUsd (dólares) en vez de primer.
 // total NO se deriva solo — se toma tal cual la columna TOTAL del Sheet (a veces no
 // cierra con la suma de las 3 columnas, ej. Deganutti $39.865.431 vs 10+20+10=40M;
 // Trivellini $30.000.000 vs 10+20+5=35M) — el Sheet manda, se puede editar acá.
 var GC_APORTES_SEED = [
-  { k: "BRUNI",        n: "Bruni, Maximiliano E.",   primer: 10000000, segundo: 20000000, tercer: 0,        total: 30000000 },
-  { k: "CORELICH",     n: "Corelich, Daniel O.",     primer: 10000000, segundo: 20000000, tercer: 5000000,  total: 35000000 },
-  { k: "DE LA COLINA", n: "De la Colina, Juan P.",   primer: 5000000,  segundo: 0,        tercer: 0,        total: 5000000 },
-  { k: "DEGANUTTI",    n: "Deganutti, Cristian G.",  primer: 10000000, segundo: 20000000, tercer: 10000000, total: 39865431 },
-  { k: "LABAYEN",      n: "Labayen, Daniel G.",      primer: 10000000, segundo: 20000000, tercer: 6000000,  total: 36000000 },
-  { k: "LEON",         n: "León, Joaquín E.",        primer: 5000000,  segundo: 0,        tercer: 0,        total: 5000000 },
-  { k: "MAZZOLA",      n: "Mazzola, Maximiliano T.", primer: 5000000,  segundo: 0,        tercer: 0,        total: 5000000 },
-  { k: "PERLASCO",     n: "Perlasco, Camilo N.",     primer: 6800000,  segundo: 0,        tercer: 0,        total: 6800000 },
-  { k: "SOULE",        n: "Soule, Iván",             primer: 5000000,  segundo: 0,        tercer: 0,        total: 5000000 },
-  { k: "TRIVELLINI",   n: "Trivellini, Amilcar",     primer: 10000000, segundo: 20000000, tercer: 5000000,  total: 30000000 },
-  { k: "GARMENDIA",    n: "Garmendia, Valeria",      primerUsd: 12680, segundo: 3740000,  tercer: 0,        total: 22189400 }
+  { k: "BRUNI",        n: "Bruni, Maximiliano E.",   primer: 10000000, segundo: 20000000, segundoCpsm: true,  tercer: 0,       cuarto: 0,        total: 30000000 },
+  { k: "CORELICH",     n: "Corelich, Daniel O.",     primer: 10000000, segundo: 20000000, segundoCpsm: true,  tercer: 5000000, cuarto: 2000000,  total: 37000000 },
+  { k: "DE LA COLINA", n: "De la Colina, Juan P.",   primer: 5000000,  segundo: 0,        segundoCpsm: false, tercer: 2000000, cuarto: 0,        total: 7000000 },
+  { k: "DEGANUTTI",    n: "Deganutti, Cristian G.",  primer: 10000000, segundo: 20000000, segundoCpsm: true,  tercer: 10000000, cuarto: 10034358, total: 50034358 },
+  { k: "LABAYEN",      n: "Labayen, Daniel G.",      primer: 10000000, segundo: 20000000, segundoCpsm: true,  tercer: 6000000, cuarto: 0,        total: 36000000 },
+  { k: "LEON",         n: "León, Joaquín E.",        primer: 5000000,  segundo: 15000000, segundoCpsm: true,  tercer: 0,       cuarto: 0,        total: 20000000 },
+  { k: "MAZZOLA",      n: "Mazzola, Maximiliano T.", primer: 5000000,  segundo: 18000000, segundoCpsm: true,  tercer: 0,       cuarto: 0,        total: 23000000 },
+  { k: "PERLASCO",     n: "Perlasco, Camilo N.",     primer: 6800000,  segundo: 0,        segundoCpsm: false, tercer: 0,       cuarto: 0,        total: 6800000 },
+  { k: "SOULE",        n: "Soule, Iván",             primer: 5000000,  segundo: 0,        segundoCpsm: false, tercer: 0,       cuarto: 0,        total: 5000000 },
+  { k: "TRIVELLINI",   n: "Trivellini, Amilcar",     primer: 10000000, segundo: 20000000, segundoCpsm: true,  tercer: 5000000, cuarto: 2000000,  total: 37000000 },
+  { k: "GARMENDIA",    n: "Garmendia, Valeria",      primerUsd: 12680, segundo: 3740000,  segundoCpsm: false, tercer: 4599000, cuarto: 0,        total: 26725000 }
 ];
 
 // ── Diccionario de autocompletado ─────────────────────────────────
@@ -344,7 +344,7 @@ function gcGuardar(arr) {
 function gcAportesLeer() {
   try {
     var v = JSON.parse(localStorage.getItem(GC_K_APORTES));
-    if (Array.isArray(v) && v.length && v.every(function (r) { return r && r.k; })) return v;
+    if (Array.isArray(v) && v.length && v.every(function (r) { return r && r.k && ("cuarto" in r); })) return v;
   } catch (e) {}
   var seed = GC_APORTES_SEED.map(function (r) { return Object.assign({}, r); });
   gcAportesGuardar(seed);
@@ -389,14 +389,16 @@ function gcCalcular() {
 // ── cálculo de aportes de capital ───────────────────────────────────
 function gcCalcularAportes() {
   var filas = gcAportesLeer();
-  var totPrimerArs = 0, totSegundo = 0, totTercer = 0, totTotal = 0;
+  var totPrimerArs = 0, totSegundo = 0, totTercer = 0, totCuarto = 0, totCpsm = 0, totTotal = 0;
   filas.forEach(function (r) {
     if (r.primer) totPrimerArs += gcNum(r.primer);
     totSegundo += gcNum(r.segundo);
     totTercer += gcNum(r.tercer);
+    totCuarto += gcNum(r.cuarto);
+    if (r.segundoCpsm) totCpsm += gcNum(r.segundo);
     totTotal += gcNum(r.total);
   });
-  return { filas: filas, totPrimerArs: totPrimerArs, totSegundo: totSegundo, totTercer: totTercer, totTotal: totTotal };
+  return { filas: filas, totPrimerArs: totPrimerArs, totSegundo: totSegundo, totTercer: totTercer, totCuarto: totCuarto, totCpsm: totCpsm, totTotal: totTotal };
 }
 
 // ── comparación contra el "Saldo Actual" que declaraba el Sheet ─────
@@ -458,18 +460,24 @@ function renderGastosCasa() {
     return '<tr>' +
       '<td>' + gcEsc(r.n) + '</td>' +
       '<td style="text-align:right">' + primerCell + '</td>' +
-      '<td style="text-align:right"><input value="' + gcNum(r.segundo) + '" onchange="gcAporteSet(\'' + r.k + '\',\'segundo\',this.value)" style="width:110px;text-align:right"></td>' +
+      '<td style="text-align:right"><input value="' + gcNum(r.segundo) + '" onchange="gcAporteSet(\'' + r.k + '\',\'segundo\',this.value)" style="width:110px;text-align:right"> ' +
+        '<label title="El 2º aporte se financió con un préstamo CPSM" style="font-size:.6rem;font-weight:700;color:#1d6b62;cursor:pointer"><input type="checkbox"' + (r.segundoCpsm ? ' checked' : '') + ' onchange="gcAporteCpsm(\'' + r.k + '\',this.checked)"> CPSM</label></td>' +
       '<td style="text-align:right"><input value="' + gcNum(r.tercer) + '" onchange="gcAporteSet(\'' + r.k + '\',\'tercer\',this.value)" style="width:110px;text-align:right"></td>' +
+      '<td style="text-align:right"><input value="' + gcNum(r.cuarto) + '" onchange="gcAporteSet(\'' + r.k + '\',\'cuarto\',this.value)" style="width:110px;text-align:right"></td>' +
       '<td style="text-align:right"><input value="' + gcNum(r.total) + '" onchange="gcAporteSet(\'' + r.k + '\',\'total\',this.value)" style="width:120px;text-align:right;font-weight:700"></td>' +
       '</tr>';
   }).join("");
   var tablaAportes =
     '<div class="adm-sec-title" style="margin-top:6px">Aportes de capital</div>' +
-    '<div style="font-size:.68rem;color:rgba(32,36,31,.45);margin-bottom:8px">Igual que la grilla "APORTES PARA 14 DE JULIO 2067" del Sheet — un renglón por profesional, editable. Garmendia aportó en dólares (US$ 12.680) + $3.740.000, valuado al ' + gcNum(GC_TC_USD).toLocaleString("es-AR") + ' del día. El Total es el que declara la planilla — no siempre es la suma exacta de las 3 columnas.</div>' +
+    '<div style="font-size:.68rem;color:rgba(32,36,31,.45);margin-bottom:8px">Igual que la grilla "APORTES PARA 14 DE JULIO 2067" del Sheet — un renglón por profesional, editable. Garmendia aportó en dólares (US$ 12.680) + $3.740.000, valuado al ' + gcNum(GC_TC_USD).toLocaleString("es-AR") + ' del día. La marca CPSM indica que ese 2º aporte se financió con un préstamo CPSM (se devuelve por las cuotas del módulo Préstamos). Los demás aportes todavía no tienen criterio de devolución definido.</div>' +
     '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>' +
-    '<th>Profesional</th><th style="text-align:right">Primer aporte</th><th style="text-align:right">Segundo aporte</th><th style="text-align:right">Tercer aporte</th><th style="text-align:right">Total</th>' +
+    '<th>Profesional</th><th style="text-align:right">Primer aporte</th><th style="text-align:right">Segundo aporte</th><th style="text-align:right">Tercer aporte</th><th style="text-align:right">4º aporte</th><th style="text-align:right">Total</th>' +
     '</tr></thead><tbody>' + filasAp + '</tbody><tfoot><tr class="adm-totals">' +
-    '<td style="text-align:right;font-weight:800">Total general</td><td></td><td></td><td></td>' +
+    '<td style="text-align:right;font-weight:800">Total general</td>' +
+    '<td style="text-align:right;font-weight:800">' + gcFmt(ap.totPrimerArs) + ' + US$</td>' +
+    '<td style="text-align:right;font-weight:800">' + gcFmt(ap.totSegundo) + '<div style="font-size:.6rem;font-weight:600;color:#1d6b62">CPSM ' + gcFmt(ap.totCpsm) + '</div></td>' +
+    '<td style="text-align:right;font-weight:800">' + gcFmt(ap.totTercer) + '</td>' +
+    '<td style="text-align:right;font-weight:800">' + gcFmt(ap.totCuarto) + '</td>' +
     '<td style="text-align:right;font-weight:800">' + gcFmt(ap.totTotal) + '</td>' +
     '</tr></tfoot></table></div>';
 
@@ -853,6 +861,15 @@ function gcAporteSet(k, campo, val) {
   renderGastosCasa();
 }
 
+function gcAporteCpsm(k, on) {
+  var arr = gcAportesLeer();
+  for (var i = 0; i < arr.length; i++) {
+    if (arr[i].k === k) { arr[i].segundoCpsm = !!on; break; }
+  }
+  gcAportesGuardar(arr);
+  renderGastosCasa();
+}
+
 // ── export Excel (SheetJS) ────────────────────────────────────────
 function gcExportExcel() {
   if (typeof XLSX === "undefined") { alert("La librería de Excel aún se está cargando."); return; }
@@ -860,11 +877,11 @@ function gcExportExcel() {
   var ap = gcCalcularAportes();
   var wb = XLSX.utils.book_new();
 
-  var apSheet = [["Profesional", "Primer aporte", "Segundo aporte", "Tercer aporte", "Total"]];
+  var apSheet = [["Profesional", "Primer aporte", "Segundo aporte", "2º con CPSM", "Tercer aporte", "4º aporte", "Total"]];
   ap.filas.forEach(function (r) {
-    apSheet.push([r.n, r.k === "GARMENDIA" ? ("US$ " + (r.primerUsd || 0)) : gcNum(r.primer), gcNum(r.segundo), gcNum(r.tercer), gcNum(r.total)]);
+    apSheet.push([r.n, r.k === "GARMENDIA" ? ("US$ " + (r.primerUsd || 0)) : gcNum(r.primer), gcNum(r.segundo), r.segundoCpsm ? "SÍ" : "", gcNum(r.tercer), gcNum(r.cuarto), gcNum(r.total)]);
   });
-  apSheet.push(["TOTAL", "", "", "", ap.totTotal]);
+  apSheet.push(["TOTAL", "", ap.totSegundo, ap.totCpsm, ap.totTercer, ap.totCuarto, ap.totTotal]);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(apSheet), "Aportes de capital");
 
   var mov = [["Fecha", "Concepto", "Tipo", "Socio", "Rubro", "Método", "Alias/CBU", "Factura", "Moneda", "Importe", "Saldo (recalculado)", "Saldo planilla (referencia)"]];
@@ -922,10 +939,12 @@ function gcExportPDF() {
   ap.filas.forEach(function (s) {
     doc.text(s.n, LM, y);
     doc.text("1º " + (s.k === "GARMENDIA" ? ("US$" + (s.primerUsd || 0)) : gcFmtPDF(s.primer)), LM + 55, y);
-    doc.text("2º " + gcFmtPDF(s.segundo), LM + 100, y);
-    doc.text("3º " + gcFmtPDF(s.tercer), LM + 135, y);
+    doc.text("2º " + gcFmtPDF(s.segundo), LM + 95, y);
+    doc.text("3º " + gcFmtPDF(s.tercer), LM + 130, y);
+    doc.text("4º " + gcFmtPDF(s.cuarto), LM + 155, y);
+    if (s.segundoCpsm) doc.text("CPSM", LM + 125 - 12, y + 3);
     doc.setFont("helvetica", "bold");
-    doc.text("Total " + gcFmtPDF(s.total), LM + 175, y);
+    doc.text("Total " + gcFmtPDF(s.total), LM + 190, y);
     doc.setFont("helvetica", "normal");
     y += 5;
   });
