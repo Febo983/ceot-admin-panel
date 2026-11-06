@@ -2230,24 +2230,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/portal-render.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/admin-home.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/gastos-obra.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/presentacion.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/sueldo-b.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/redsom.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/nun-data.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/accesos-debitos.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/estadisticas.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/estadisticas-export.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/gastos-casa.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/faq-asistente.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/asistente.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
-<script src="js/correos.js?v=2026-11-06-aportes-cuarto-cpsm"></script>
+<script src="js/datos.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/portal-render.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/admin-home.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/gastos-obra.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/presentacion.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/sueldo-b.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/redsom.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/nun-data.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/accesos-debitos.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/estadisticas.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/estadisticas-export.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/gastos-casa.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/faq-asistente.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/asistente.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/correos.js?v=2026-11-06-prestamos-desglose-completo"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -6505,16 +6505,21 @@ function prestSubFilasHtml(p) {
   if (!p.socios || p.socios.length < 2) return '';
   var reparte = p.reparteEntre || TOTAL_SOCIOS_CASA;
   var justa = p.cuotaPersonal / reparte;
+  var activo = prestamoCuotaNro(p, adminPeriodoAct);
   var td = 'style="font-size:.68rem;color:rgba(32,36,31,.7);background:rgba(32,36,31,.025)"';
   return p.socios.map(function(ap) {
     return '<tr>'
       + '<td ' + td + '>&nbsp;&nbsp;&nbsp;↳ ' + (p.tag || 'Principal') + '</td>'
       + '<td ' + td + '>' + ap + '</td>'
       + '<td class="ipt-num" ' + td + '>' + fmt(p.cuotaPersonal) + '</td>'
-      + '<td ' + td + ' colspan="4"></td>'
+      + '<td ' + td + '><span style="text-transform:capitalize">' + p.inicio.mes + ' ' + p.inicio.anio + '</span></td>'
+      + '<td ' + td + '><span style="text-transform:capitalize">' + prestFin(p) + '</span></td>'
+      + '<td ' + td + '>' + p.cuotas + '</td>'
+      + '<td ' + td + '>' + reparte + '</td>'
       + '<td class="ipt-num" style="font-size:.68rem;background:rgba(32,36,31,.025);color:#b13a2c">' + fmt(justa) + '</td>'
       + '<td class="ipt-num" style="font-size:.68rem;background:rgba(32,36,31,.025);color:#1d6b62">' + fmt(p.cuotaPersonal - justa) + '</td>'
-      + '<td ' + td + ' colspan="2"></td>'
+      + '<td ' + td + '>' + (activo ? 'cuota ' + activo : '—') + '</td>'
+      + '<td ' + td + '></td>'
       + '</tr>';
   }).join('');
 }
@@ -7776,7 +7781,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-06-aportes-cuarto-cpsm';
+  var CURRENT_BUILD = '2026-11-06-prestamos-desglose-completo';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
