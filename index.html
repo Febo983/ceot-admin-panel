@@ -1572,6 +1572,29 @@ body { background: var(--iv0); color: var(--ink); }
 .ga-det-head::-webkit-details-marker { display:none; }
 .ga-det-head::before { content:"\2630"; font-size:.68rem; color:rgba(32,36,31,.4); }
 .ga-det-body { padding-top:6px; }
+.sd-eyebrow { font-size:.66rem; font-weight:700; color:rgba(32,36,31,.5); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px; }
+.sd-form { margin-top:4px; }
+.sd-form > summary { cursor:pointer; list-style:none; display:inline-block; font-size:.7rem; color:rgba(32,36,31,.6); border:1px dashed rgba(32,36,31,.3); border-radius:6px; padding:3px 10px; user-select:none; }
+.sd-form > summary::-webkit-details-marker { display:none; }
+.sd-form[open] > summary { border-style:solid; margin-bottom:6px; }
+.sd-form-row { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.sd-card { margin-bottom:8px; border:1px solid rgba(32,36,31,.14); border-radius:10px; background:var(--co-card,#fbf8f0); overflow:hidden; }
+.sd-card > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 14px; user-select:none; }
+.sd-card > summary::-webkit-details-marker { display:none; }
+.sd-card > summary::before { content:"\25B8"; font-size:1.1rem; color:rgba(32,36,31,.45); transition:transform .15s; width:10px; }
+.sd-card[open] > summary::before { transform:rotate(90deg); }
+.sd-card[open] > summary { border-bottom:1px solid rgba(32,36,31,.12); }
+.sd-card-body { padding:10px 14px 12px; }
+.sd-nm { font-weight:700; font-size:.95rem; min-width:90px; }
+.sd-sub { font-size:.74rem; color:rgba(32,36,31,.6); flex:1; min-width:140px; }
+.sd-pill { border-radius:6px; padding:3px 9px; font-size:.7rem; font-weight:700; white-space:nowrap; }
+.sd-chip { display:inline-block; font-size:.66rem; padding:1px 8px; border-radius:6px; background:rgba(31,58,46,.1); color:#1f3a2e; font-weight:600; margin:0 4px 3px 0; }
+.sd-chk { font-size:.72rem; color:rgba(32,36,31,.6); display:inline-flex; align-items:center; gap:5px; cursor:pointer; white-space:nowrap; }
+.sd-tbl { width:100%; }
+.sd-tbl th { font-size:.66rem; }
+.sd-fsub { font-size:.62rem; color:rgba(32,36,31,.5); font-weight:400; margin-top:2px; }
+.tf-add { opacity:.4; }
+tr:hover .tf-add { opacity:1; }
 .obra-add { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0 14px; }
 .obra-add select, .obra-add input { padding:6px 8px; border:1px solid rgba(32,36,31,.2); background:#fff; font:inherit; font-size:.8rem; box-sizing:border-box; }
 .obra-add select { min-width:200px; max-width:280px; }
@@ -4121,10 +4144,6 @@ function transfDerivBoxHtml(periodo, doc, netosPorFecha) {
     var falta = Math.max(0, e.importe - totalTick);
     var dividendos = Math.max(0, totalTick - e.importe);
 
-    var btnCopiarCbu = e.aliasCbu
-      ? '<button type="button" title="Copiar alias/CBU" onclick="copiarTexto(\'' + escAttr(e.aliasCbu).replace(/'/g, "\\'") + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.6rem;padding:1px 4px;vertical-align:middle;margin-left:4px">📋</button>'
-      : '';
-
     var checklistHtml = fechas.length
       ? fechas.map(function(f) {
           var checked = tickadas.indexOf(f) !== -1;
@@ -4151,10 +4170,9 @@ function transfDerivBoxHtml(periodo, doc, netosPorFecha) {
       ? '<a href="javascript:void(0)" onclick="transfFamToggleTransferido(\'' + pkEsc + '\',' + famIdx + ')" style="font-size:.6rem;text-decoration:underline;margin-right:8px;' + (hecho ? 'color:#16a34a;font-weight:700' : 'color:#1f3a2e') + '">' + (hecho ? '✓ transferido' : 'marcar transferido') + '</a>'
       : '';
 
-    return '<div style="margin-bottom:6px;padding:5px 7px;background:rgba(31,58,46,.06);border-radius:5px">'
+    return '<div style="margin-bottom:6px;padding:6px 8px;border:1px solid rgba(32,36,31,.12);border-radius:6px">'
       +   '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
-      +     '<div><div style="font-weight:600;font-size:.72rem">' + escAttr(e.nombre) + ' — ' + fmt(e.importe) + '</div>'
-      +       (e.aliasCbu ? '<div style="font-size:.62rem;color:rgba(32,36,31,.55)">' + escAttr(e.aliasCbu) + btnCopiarCbu + '</div>' : '') + '</div>'
+      +     '<div><div style="font-weight:600;font-size:.76rem">' + escAttr(e.nombre) + ' — ' + fmt(e.importe) + '</div></div>'
       +     '<div style="white-space:nowrap;flex-shrink:0">'
       +       '<a href="javascript:void(0)" onclick="transfDerivEditar(\'' + aEsc + '\',' + i + ')" style="font-size:.6rem;color:#1f3a2e;text-decoration:underline;margin-right:6px">editar</a>'
       +       '<a href="javascript:void(0)" onclick="transfDerivQuitar(\'' + aEsc + '\',' + i + ')" style="font-size:.6rem;color:#b13a2c;text-decoration:underline">quitar</a>'
@@ -4165,16 +4183,19 @@ function transfDerivBoxHtml(periodo, doc, netosPorFecha) {
       + '</div>';
   }).join('');
 
-  return '<div style="margin-bottom:8px;padding:7px 8px;border:1px dashed rgba(32,36,31,.3);border-radius:6px;background:rgba(255,247,214,.5)">'
-    + '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">📝 Anotaciones sobre transferencias derivadas</div>'
-    + (filas || '<div style="font-size:.68rem;color:rgba(32,36,31,.45);font-style:italic;margin-bottom:5px">Todavía no cargaste ninguna.</div>')
-    + '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:4px">'
-    +   '<input type="text" id="tdNombre_' + safeId + '" placeholder="Nombre y apellido" style="flex:1;min-width:110px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
-    +   '<input type="text" id="tdAlias_' + safeId + '" placeholder="Alias/CBU (opcional)" style="flex:1;min-width:110px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
-    +   '<input type="text" inputmode="decimal" id="tdImporte_' + safeId + '" placeholder="Importe $" style="width:90px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
-    +   '<button type="button" onclick="transfDerivAgregar(\'' + aEsc + '\')" style="font-size:.64rem;padding:3px 8px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">+ agregar</button>'
-    +   '</div>'
-    + '<div style="border-top:1px solid rgba(32,36,31,.2);margin:9px 0 7px"></div>'
+  var formBtn = 'font-size:.66rem;padding:3px 8px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer';
+  var inp = 'font-size:.7rem;padding:4px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit';
+  var formAnot = '<details class="sd-form"><summary>+ anotación</summary>'
+    + '<div class="sd-form-row">'
+    +   '<input type="text" id="tdNombre_' + safeId + '" placeholder="Nombre y apellido" style="flex:1;min-width:120px;' + inp + '">'
+    +   '<input type="text" inputmode="decimal" id="tdImporte_' + safeId + '" placeholder="Importe $" style="width:100px;' + inp + '">'
+    +   '<button type="button" onclick="transfDerivAgregar(\'' + aEsc + '\')" style="' + formBtn + '">Agregar</button>'
+    + '</div></details>';
+  return '<div style="margin-bottom:10px;padding:8px 10px;border:1px solid rgba(32,36,31,.12);border-radius:8px">'
+    + '<div class="sd-eyebrow">Anotaciones</div>'
+    + (filas || '<div style="font-size:.7rem;color:rgba(32,36,31,.45);margin-bottom:6px">Sin anotaciones este mes.</div>')
+    + formAnot
+    + '<div style="border-top:1px solid rgba(32,36,31,.12);margin:10px 0 8px"></div>'
     + movLibroSeccionHtml(periodo, doc, netosPorFecha)
     + '</div>';
 }
@@ -4224,7 +4245,7 @@ function transfDerivAgregar(apellido) {
   var aliasEl = document.getElementById('tdAlias_' + safeId);
   var importeEl = document.getElementById('tdImporte_' + safeId);
   var nombre = (nombreEl.value || '').trim();
-  var alias = (aliasEl.value || '').trim();
+  var alias = aliasEl ? (aliasEl.value || '').trim() : '';
   var importe = parseFloat((importeEl.value || '').replace(/\./g, '').replace(',', '.'));
   if (!nombre || !importe) { alert('Nombre e importe son obligatorios.'); return; }
   if (!TRANSF_DERIV[apellido]) TRANSF_DERIV[apellido] = [];
@@ -4238,8 +4259,7 @@ function transfDerivEditar(apellido, idx) {
   if (!item) return;
   var nuevoNombre = prompt('Nombre y apellido:', item.nombre);
   if (nuevoNombre === null) return;
-  var nuevoAlias = prompt('Alias/CBU (dejar vacío si no tiene):', item.aliasCbu || '');
-  if (nuevoAlias === null) return;
+  var nuevoAlias = item.aliasCbu || '';
   var nuevoImporteTxt = prompt('Importe:', item.importe);
   if (nuevoImporteTxt === null) return;
   var nuevoImporte = parseFloat((nuevoImporteTxt || '').toString().replace(/\./g, '').replace(',', '.'));
@@ -4328,7 +4348,7 @@ function movLibroSeccionHtml(periodo, doc, netosPorFecha) {
   }).join('');
 
   var saldoFinalStyle = saldo < 0 ? 'color:#b13a2c' : 'color:#1f3a2e';
-  return '<div style="font-size:.68rem;font-weight:700;color:#8a6423;text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">📒 Movimientos aplicados</div>'
+  return '<div class="sd-eyebrow">Movimientos aplicados</div>'
     + '<div style="display:flex;justify-content:space-between;padding:4px 7px;font-size:.74rem;font-weight:700">'
     +   '<span>Acreditado hasta ahora</span><span>' + fmt(acreditado) + '</span>'
     + '</div>'
@@ -4336,12 +4356,13 @@ function movLibroSeccionHtml(periodo, doc, netosPorFecha) {
     + '<div style="display:flex;justify-content:space-between;padding:6px 7px;margin-top:2px;border-top:1px solid rgba(32,36,31,.25);font-size:.78rem;font-weight:800;' + saldoFinalStyle + '">'
     +   '<span>Saldo</span><span>' + fmt(saldo) + '</span>'
     + '</div>'
-    + '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:6px">'
-    +   '<input type="text" id="mlFecha_' + safeId + '" placeholder="Fecha (opcional)" style="width:100px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
-    +   '<input type="text" id="mlConcepto_' + safeId + '" placeholder="Concepto" style="flex:1;min-width:120px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
-    +   '<input type="text" inputmode="decimal" id="mlImporte_' + safeId + '" placeholder="Importe $" style="width:90px;font-size:.68rem;padding:3px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
-    +   '<button type="button" onclick="movLibroAgregar(\'' + kEsc + '\')" style="font-size:.64rem;padding:3px 8px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">Aplicar</button>'
-    +   '</div>';
+    + '<details class="sd-form"><summary>+ movimiento</summary>'
+    + '<div class="sd-form-row">'
+    +   '<input type="text" id="mlFecha_' + safeId + '" placeholder="Fecha (opcional)" style="width:100px;font-size:.7rem;padding:4px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
+    +   '<input type="text" id="mlConcepto_' + safeId + '" placeholder="Concepto" style="flex:1;min-width:120px;font-size:.7rem;padding:4px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
+    +   '<input type="text" inputmode="decimal" id="mlImporte_' + safeId + '" placeholder="Importe $" style="width:100px;font-size:.7rem;padding:4px 6px;border:1px solid rgba(32,36,31,.2);border-radius:4px;font-family:inherit">'
+    +   '<button type="button" onclick="movLibroAgregar(\'' + kEsc + '\')" style="font-size:.66rem;padding:3px 8px;border:none;border-radius:4px;background:#1f3a2e;color:#fff;cursor:pointer">Aplicar</button>'
+    + '</div></details>';
 }
 
 function movLibroAgregar(key) {
@@ -5910,7 +5931,7 @@ function transfFamResumenMesHtml(periodo) {
   TRANSF_FAM_RESUMEN_PEND = pendientes.length;
 
   var rows = filas.map(function(f) {
-    var linea2 = [f.e.aliasCbu, f.e.concepto].filter(Boolean).join(' · ');
+    var linea2 = f.e.concepto || '';
     return '<tr' + (f.hecho ? ' style="opacity:.5"' : '') + '>'
       + '<td>' + escAttr(f.apellido) + '</td>'
       + '<td>' + f.fecha + '</td>'
@@ -6012,7 +6033,7 @@ function transfFamCeldaHtml(periodo, apellido, fecha, netoCheque, netosPorFecha,
       if (d.cheques.indexOf(fecha) === -1) return;
       var yaRegistrado = todasEntries.some(function(e2) { return e2.nombre === d.nombre; });
       if (yaRegistrado) return;
-      derivHints += '<div style="font-size:.6rem;color:#8a6423;margin-bottom:3px">↳ va para <b>' + escAttr(d.nombre) + '</b> (ver Anotaciones arriba)</div>';
+      derivHints += '<span class="sd-chip" title="Va para ' + escAttr(d.nombre) + ' (ver Anotaciones)">→ ' + escAttr(d.nombre.split(' ')[0]) + '</span>';
     });
   }
 
@@ -6037,10 +6058,8 @@ function transfFamCeldaHtml(periodo, apellido, fecha, netoCheque, netosPorFecha,
         + '</div>';
     }
 
-    var linea2 = [e.aliasCbu, e.concepto].filter(Boolean).join(' · ');
-    var btnCopiarCbu = e.aliasCbu
-      ? '<button type="button" title="Copiar alias/CBU" onclick="copiarTexto(\'' + escAttr(e.aliasCbu).replace(/'/g, "\\'") + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.6rem;padding:1px 4px;vertical-align:middle;margin-left:4px">📋</button>'
-      : '';
+    var linea2 = e.concepto || '';
+    var btnCopiarCbu = '';
 
     var tagCombinada = combinada
       ? '<div style="font-size:.6rem;color:#8a6423;font-weight:700">🔗 sumá también ' + e.cheques.filter(function(f) { return f !== fecha; }).join(' + ') + '</div>'
@@ -6108,8 +6127,8 @@ function transfFamCeldaHtml(periodo, apellido, fecha, netoCheque, netosPorFecha,
       + '</div>';
   }
 
-  return '<td style="min-width:150px;white-space:normal">' + derivHints + filas + moverHtml
-    + '<button type="button" onclick="transfFamAbrirModal(\'' + kEsc + '\', undefined, \'' + fecha + '\')" style="border:1px dashed rgba(32,36,31,.3);background:none;border-radius:5px;cursor:pointer;font-size:.62rem;padding:2px 6px;color:rgba(32,36,31,.55);margin-top:4px">+ transferencia</button>'
+  return '<td style="min-width:130px;white-space:normal">' + derivHints + filas + moverHtml
+    + '<button type="button" class="tf-add" title="Agregar transferencia a este cheque" onclick="transfFamAbrirModal(\'' + kEsc + '\', undefined, \'' + fecha + '\')" style="border:1px dashed rgba(32,36,31,.3);background:none;border-radius:5px;cursor:pointer;font-size:.66rem;padding:0 7px;color:rgba(32,36,31,.55);margin-top:2px">+</button>'
     + '</td>';
 }
 
@@ -6293,8 +6312,8 @@ function sueldoDirectorTabHtml(periodo) {
     var detRows = s.detalle.map(function(d, i, arr) {
       if (d.pendiente) {
         return '<tr style="opacity:.65"><td style="font-style:italic">' + d.fecha + '</td>'
-          + '<td colspan="5" style="text-align:center;color:#8a6423;font-size:.68rem">⏳ Pendiente — todavía no cargado en el Sheet</td>'
-          + '<td>' + fmt(d.acumulado) + '</td></tr>';
+          + '<td colspan="2" style="text-align:center;color:#8a6423;font-size:.68rem">Pendiente — todavía no cargado en el Sheet</td>'
+          + '<td style="text-align:right">' + fmt(d.acumulado) + '</td></tr>';
       }
       var extra = [];
       if (d.prestamo) extra.push(d.prestamo > 0 ? '−' + fmt(d.prestamo) + ' préstamo' : '+' + fmt(Math.abs(d.prestamo)) + ' préstamo (crédito)');
@@ -6306,10 +6325,7 @@ function sueldoDirectorTabHtml(periodo) {
       var nextKey = (next && !next.pendiente) ? transfFamKey(periodo, doc.apellido, next.fecha) : null;
       var nextNetoOriginal = (next && !next.pendiente) ? next.neto : null;
       return '<tr' + (esCorte ? ' style="background:rgba(201,147,58,.15)"' : '') + '>'
-        + '<td>' + d.fecha + '</td>'
-        + '<td>' + fmt(d.bruto) + '</td>'
-        + '<td>−' + fmt(d.retencion) + ' <span style="font-size:.6rem;color:rgba(32,36,31,.4)">' + Math.round((s.pctAporte || 0) * 100) + '%</span></td>'
-        + '<td style="font-size:.62rem;color:rgba(32,36,31,.5)">' + (extra.join('<br>') || '—') + '</td>'
+        + '<td>' + d.fecha + '<div class="sd-fsub">bruto ' + fmt(d.bruto) + ' · ret. ' + Math.round((s.pctAporte || 0) * 100) + '% −' + fmt(d.retencion) + (extra.length ? ' · ' + extra.join(' · ') : '') + '</div></td>'
         + netoChequeCeldaHtml(keyFam, d.neto, nextKey, nextNetoOriginal)
         + transfFamCeldaHtml(periodo, doc.apellido, d.fecha, netoEfectivo(keyFam, d.neto), netosPorFecha, derivCalc)
         + '<td style="' + (esCorte ? 'font-weight:700;color:#8a6423' : (d.acumulado < 0 ? 'color:#b13a2c' : '')) + '">' + fmt(d.acumulado) + (esCorte ? ' ✓ $4M' : '') + '</td>'
@@ -6317,33 +6333,28 @@ function sueldoDirectorTabHtml(periodo) {
     }).join('');
 
     var totalNetoMesStyle = s.totalNetoMes < 0 ? 'color:#b13a2c' : '';
-    return '<div style="margin-bottom:12px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:10px;padding:12px 14px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
-      +   '<div><b>' + doc.apellido + '</b> — ' + estadoFecha + '</div>'
-      +   '<div style="display:flex;gap:14px;align-items:center;font-size:.8rem">'
-      +     '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + colores.chipFg + ';border-radius:6px;padding:5px 10px;font-weight:700">'
-      +       fmt(s.monto) + ' · ' + colores.txt
-      +       '<button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.monto) + '\', this)" style="border:none;background:rgba(255,255,255,.35);border-radius:4px;cursor:pointer;font-size:.72rem;padding:1px 4px;vertical-align:middle">📋</button>'
-      +     '</span>'
-      +     (s.alcanza
-              ? '<label style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;color:rgba(32,36,31,.6);cursor:pointer;white-space:nowrap">'
-                + '<input type="checkbox"' + (sueldoDirectorEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="sueldoDirectorToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">'
-                + 'Sueldo ya transferido</label>'
-              : '')
+    return '<details class="sd-card"' + (DETALLE_CHEQUES_OPEN[doc.apellido] ? ' open' : '') + ' ontoggle="DETALLE_CHEQUES_OPEN[\'' + doc.apellido + '\']=this.open">'
+      + '<summary>'
+      +   '<span class="sd-nm">' + doc.apellido + '</span>'
+      +   '<span class="sd-sub">' + estadoFecha + '</span>'
+      +   '<span class="sd-pill" style="background:' + colores.chipBg + ';color:' + colores.chipFg + '">' + fmt(s.monto) + ' · ' + colores.txt + '</span>'
+      +   (s.alcanza
+            ? '<label class="sd-chk"><input type="checkbox"' + (sueldoDirectorEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="sueldoDirectorToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">ya transferido</label>'
+            : '')
+      + '</summary>'
+      + '<div class="sd-card-body">'
+      +   '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:.78rem;margin-bottom:10px">'
       +     '<span>Total neto mes <b style="' + totalNetoMesStyle + '">' + fmt(s.totalNetoMes) + '</b></span>'
-      +     '<span>Saldo tras sueldo <b style="' + saldoStyle + '">' + fmt(s.saldoFinal) + '</b> <button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(s.saldoFinal) + '\', this)" style="border:none;background:none;cursor:pointer;font-size:.72rem;padding:0 2px;vertical-align:middle">📋</button></span>'
+      +     '<span>Saldo tras sueldo <b style="' + saldoStyle + '">' + fmt(s.saldoFinal) + '</b></span>'
+      +     '<button type="button" title="Copiar sueldo" onclick="copiarTexto(\'' + numParaPegar(s.monto) + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.7rem;padding:1px 8px">copiar sueldo</button>'
+      +     '<button type="button" title="Copiar saldo" onclick="copiarTexto(\'' + numParaPegar(s.saldoFinal) + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.7rem;padding:1px 8px">copiar saldo</button>'
       +   '</div>'
+      +   transfDerivBoxHtml(periodo, doc, netosPorFecha)
+      +   '<div class="adm-table-wrap"><table class="adm-table sd-tbl"><thead><tr>'
+      +     '<th style="width:30%">Cheque</th><th>Neto</th><th>Va para</th><th>Acumulado</th>'
+      +   '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
       + '</div>'
-      + '<details class="ga-det-acc"' + (DETALLE_CHEQUES_OPEN[doc.apellido] ? ' open' : '') + ' ontoggle="DETALLE_CHEQUES_OPEN[\'' + doc.apellido + '\']=this.open">'
-      +   '<summary class="ga-det-head">Detalle de cheques</summary>'
-      +   '<div class="ga-det-body">'
-      +     transfDerivBoxHtml(periodo, doc, netosPorFecha)
-      +     '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-      +       '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
-      +     '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
-      +   '</div>'
-      + '</details>'
-      + '</div>';
+      + '</details>';
   }).join("");
 
   window._sueldoDirTexto = filas.filter(function(f) { return f.s; }).map(function(f) {
@@ -6400,8 +6411,8 @@ function restoProfesionalesTabHtml(periodo) {
     var detRows = base.detalle.map(function(d, i, arr) {
       if (d.pendiente) {
         return '<tr style="opacity:.65"><td style="font-style:italic">' + d.fecha + '</td>'
-          + '<td colspan="5" style="text-align:center;color:#8a6423;font-size:.68rem">⏳ Pendiente — todavía no cargado en el Sheet</td>'
-          + '<td>' + fmt(d.acumulado) + '</td></tr>';
+          + '<td colspan="2" style="text-align:center;color:#8a6423;font-size:.68rem">Pendiente — todavía no cargado en el Sheet</td>'
+          + '<td style="text-align:right">' + fmt(d.acumulado) + '</td></tr>';
       }
       var extra = [];
       if (d.prestamo) extra.push(d.prestamo > 0 ? '−' + fmt(d.prestamo) + ' préstamo' : '+' + fmt(Math.abs(d.prestamo)) + ' préstamo (crédito)');
@@ -6413,10 +6424,7 @@ function restoProfesionalesTabHtml(periodo) {
       var nextNetoOriginal = (next && !next.pendiente) ? next.neto : null;
       var esCorteBbva = sBbva && sBbva.alcanza && d.fecha === sBbva.fechaCompleta;
       return '<tr' + (esCorteBbva ? ' style="background:rgba(201,147,58,.15)"' : '') + '>'
-        + '<td>' + d.fecha + '</td>'
-        + '<td>' + fmt(d.bruto) + '</td>'
-        + '<td>−' + fmt(d.retencion) + ' <span style="font-size:.6rem;color:rgba(32,36,31,.4)">' + Math.round((base.pctAporte || 0) * 100) + '%</span></td>'
-        + '<td style="font-size:.62rem;color:rgba(32,36,31,.5)">' + (extra.join('<br>') || '—') + '</td>'
+        + '<td>' + d.fecha + '<div class="sd-fsub">bruto ' + fmt(d.bruto) + ' · ret. ' + Math.round((base.pctAporte || 0) * 100) + '% −' + fmt(d.retencion) + (extra.length ? ' · ' + extra.join(' · ') : '') + '</div></td>'
         + netoChequeCeldaHtml(keyFam, d.neto, nextKey, nextNetoOriginal)
         + transfFamCeldaHtml(periodo, doc.apellido, d.fecha, netoEfectivo(keyFam, d.neto), netosPorFecha, derivCalc)
         + '<td' + (d.acumulado < 0 ? ' style="color:#b13a2c"' : (esCorteBbva ? ' style="font-weight:700;color:#8a6423"' : '')) + '>' + fmt(d.acumulado) + (esCorteBbva ? ' ✓ $300k BBVA' : '') + '</td>'
@@ -6444,28 +6452,22 @@ function restoProfesionalesTabHtml(periodo) {
         + '</div>';
     }
 
-    return '<div style="margin-bottom:12px;border:1.5px solid ' + colores.borde + ';background:' + colores.fondo + ';border-radius:10px;padding:12px 14px">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'
-      +   '<div><b>' + doc.apellido + '</b>' + pendTxt + '</div>'
-      +   '<span style="display:inline-flex;align-items:center;gap:6px;background:' + colores.chipBg + ';color:' + totalNetoMesChipStyle + ';border-radius:6px;padding:5px 10px;font-weight:700;font-size:.8rem">'
-      +     fmt(base.totalNetoMes) + ' · ' + colores.txt
-      +     '<button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(base.totalNetoMes) + '\', this)" style="border:none;background:rgba(255,255,255,.35);border-radius:4px;cursor:pointer;font-size:.72rem;padding:1px 4px;vertical-align:middle">📋</button>'
-      +   '</span>'
-      +   '<label style="display:inline-flex;align-items:center;gap:4px;font-size:.7rem;color:rgba(32,36,31,.6);cursor:pointer;white-space:nowrap">'
-      +     '<input type="checkbox"' + (restoProfEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="restoProfToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">'
-      +     'Transferencia ya hecha</label>'
+    return '<details class="sd-card"' + (DETALLE_CHEQUES_OPEN[doc.apellido] ? ' open' : '') + ' ontoggle="DETALLE_CHEQUES_OPEN[\'' + doc.apellido + '\']=this.open">'
+      + '<summary>'
+      +   '<span class="sd-nm">' + doc.apellido + '</span>'
+      +   '<span class="sd-sub">' + pendTxt + '</span>'
+      +   '<span class="sd-pill" style="background:' + colores.chipBg + ';color:' + totalNetoMesChipStyle + '">' + fmt(base.totalNetoMes) + ' · ' + colores.txt + '</span>'
+      +   '<label class="sd-chk"><input type="checkbox"' + (restoProfEstaHecho(periodo, doc.apellido) ? ' checked' : '') + ' onchange="restoProfToggleHecho(\'' + periodo + '\',\'' + doc.apellido + '\')">ya transferido</label>'
+      + '</summary>'
+      + '<div class="sd-card-body">'
+      +   '<div style="margin-bottom:8px"><button type="button" title="Copiar importe" onclick="copiarTexto(\'' + numParaPegar(base.totalNetoMes) + '\', this)" style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.7rem;padding:1px 8px">copiar importe</button></div>'
+      +   bbvaLineaHtml
+      +   transfDerivBoxHtml(periodo, doc, netosPorFecha)
+      +   '<div class="adm-table-wrap"><table class="adm-table sd-tbl"><thead><tr>'
+      +     '<th style="width:30%">Cheque</th><th>Neto</th><th>Va para</th><th>Acumulado</th>'
+      +   '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
       + '</div>'
-      + bbvaLineaHtml
-      + '<details class="ga-det-acc"' + (DETALLE_CHEQUES_OPEN[doc.apellido] ? ' open' : '') + ' ontoggle="DETALLE_CHEQUES_OPEN[\'' + doc.apellido + '\']=this.open">'
-      +   '<summary class="ga-det-head">Detalle de cheques</summary>'
-      +   '<div class="ga-det-body">'
-      +     transfDerivBoxHtml(periodo, doc, netosPorFecha)
-      +     '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-      +       '<th>Fecha</th><th>Cheque bruto</th><th>Retención</th><th>Otros descuentos/créditos</th><th>Neto cheque</th><th>Transferencia a derivados</th><th>Acumulado</th>'
-      +     '</tr></thead><tbody>' + detRows + '</tbody></table></div>'
-      +   '</div>'
-      + '</details>'
-      + '</div>';
+      + '</details>';
   }).join("");
 
   window._restoProfTexto = filas.filter(function(f) { return f.base; }).map(function(f) {
