@@ -2230,24 +2230,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/portal-render.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/admin-home.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/gastos-obra.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/presentacion.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/sueldo-b.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/redsom.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/nun-data.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/accesos-debitos.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/estadisticas.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/estadisticas-export.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/gastos-casa.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/faq-asistente.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/asistente.js?v=2026-11-06-prestamos-desglose-completo"></script>
-<script src="js/correos.js?v=2026-11-06-prestamos-desglose-completo"></script>
+<script src="js/datos.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/portal-render.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/admin-home.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/gastos-obra.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/presentacion.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/sueldo-b.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/redsom.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/nun-data.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/accesos-debitos.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/estadisticas.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/estadisticas-export.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/gastos-casa.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/faq-asistente.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/asistente.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/correos.js?v=2026-11-06-prestamos-resumen-aportes"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -6524,6 +6524,59 @@ function prestSubFilasHtml(p) {
   }).join('');
 }
 
+// Resumen de TODOS los aportes de capital (1º a 4º) debajo de los préstamos,
+// para tener la foto completa en una sola pantalla. Solo lectura: se edita en
+// Gastos Casa. NO usa gcAportesLeer() porque esa función siembra y hace
+// syncPush si no hay nada local, y acá no queremos pisar el servidor.
+var _prestAportesPulled = false;
+function prestAportesLeerSoloLectura() {
+  try {
+    var v = JSON.parse(localStorage.getItem('ceot_gastos_casa_aportes'));
+    if (Array.isArray(v) && v.length && v.every(function (r) { return r && r.k && ('cuarto' in r); })) return v;
+  } catch (e) {}
+  return (typeof GC_APORTES_SEED !== 'undefined') ? GC_APORTES_SEED : [];
+}
+function prestAportesResumenHtml() {
+  if (!_prestAportesPulled && typeof syncPull === 'function') {
+    _prestAportesPulled = true;
+    syncPull('ceot_gastos_casa_aportes', function () { prestRepintar(); });
+  }
+  var filas = prestAportesLeerSoloLectura();
+  if (!filas.length) return '';
+  var n = function (x) { return Number(x) || 0; };
+  var tot = { p: 0, s: 0, c: 0, t: 0, q: 0, T: 0 };
+  var th = 'style="text-align:right"';
+  var rows = filas.map(function (r) {
+    var primer = r.k === 'GARMENDIA' ? Math.round(n(r.primerUsd) * 1450) : n(r.primer);
+    tot.p += primer; tot.s += n(r.segundo); tot.t += n(r.tercer); tot.q += n(r.cuarto); tot.T += n(r.total);
+    if (r.segundoCpsm) tot.c += n(r.segundo);
+    var dev = [];
+    dev.push(r.k === 'GARMENDIA' ? '1º entrada (sin devolución)' : '1º sin definir');
+    if (n(r.segundo)) dev.push(r.segundoCpsm ? '2º por cuotas CPSM' : '2º sin definir');
+    if (n(r.tercer)) dev.push('3º sin definir');
+    if (n(r.cuarto)) dev.push('4º sin definir');
+    return '<tr><td style="font-weight:700">' + r.n + '</td>'
+      + '<td class="ipt-num">' + fmt(primer) + '</td>'
+      + '<td class="ipt-num">' + (n(r.segundo) ? fmt(r.segundo) + (r.segundoCpsm ? ' <span style="font-size:.6rem;font-weight:700;color:#1d6b62">CPSM</span>' : '') : '—') + '</td>'
+      + '<td class="ipt-num">' + (n(r.tercer) ? fmt(r.tercer) : '—') + '</td>'
+      + '<td class="ipt-num">' + (n(r.cuarto) ? fmt(r.cuarto) : '—') + '</td>'
+      + '<td class="ipt-num" style="font-weight:800">' + fmt(r.total) + '</td>'
+      + '<td style="font-size:.66rem;color:rgba(32,36,31,.65)">' + dev.join(' · ') + '</td></tr>';
+  }).join('');
+  return '<div style="margin-top:22px;font-weight:700;font-size:.85rem">Aportes de capital — resumen completo</div>'
+    + '<div style="font-size:.68rem;color:rgba(32,36,31,.5);margin:3px 0 8px">Solo lectura; se editan en Gastos Casa. La marca CPSM es el 2º aporte financiado con préstamo, que se devuelve por las cuotas de arriba. El resto todavía no tiene criterio de devolución.</div>'
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+    +   '<th>Profesional</th><th ' + th + '>1er aporte</th><th ' + th + '>2º aporte</th><th ' + th + '>3er aporte</th><th ' + th + '>4º aporte</th><th ' + th + '>Total</th><th>Devolución</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody><tfoot><tr class="adm-totals">'
+    +   '<td style="text-align:right;font-weight:800">Total general</td>'
+    +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.p) + '</td>'
+    +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.s) + '<div style="font-size:.6rem;color:#1d6b62">CPSM ' + fmt(tot.c) + '</div></td>'
+    +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.t) + '</td>'
+    +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.q) + '</td>'
+    +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.T) + '</td><td></td>'
+    + '</tr></tfoot></table></div>';
+}
+
 function prestamosCasaSectionHtml() {
   var filas = PRESTAMOS_CASA.map(function(p, i) {
     var justa = p.cuotaPersonal * p.socios.length / (p.reparteEntre || TOTAL_SOCIOS_CASA);
@@ -6558,7 +6611,8 @@ function prestamosCasaSectionHtml() {
     + '<div class="cpsm-btn-row" style="gap:10px;flex-wrap:wrap;margin-top:10px">'
     +   '<button class="cpsm-calc-btn" style="background:#1f3a2e;color:#fff" onclick="prestEditar(-1)">+ Agregar préstamo</button>'
     +   '<button class="cpsm-calc-btn" onclick="prestRestaurar()">↺ Restaurar los del código</button>'
-    + '</div>';
+    + '</div>'
+    + prestAportesResumenHtml();
 }
 
 function prestRepintar() {
@@ -7781,7 +7835,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-06-prestamos-desglose-completo';
+  var CURRENT_BUILD = '2026-11-06-prestamos-resumen-aportes';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
