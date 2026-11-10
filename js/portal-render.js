@@ -253,7 +253,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
       if (gaFaltanteSC) gaResumenSC += '  ·  resto ' + fmt(gaFaltanteSC);
       html += '<div style="margin:4px 0 2px;padding:7px 10px;background:rgba(146,97,15,.10);border-radius:8px;font-size:.66rem;color:#92610f;line-height:1.5">'
         + 'Se cubre con: ' + gaResumenSC
-        + '<br><span style="opacity:.8">Se descuenta este mes para cubrir ' + ((sigMesNombreSC[periodo] || 'el mes siguiente').toLowerCase()) + '.</span>'
+        + '<br><span style="opacity:.8">Se descuenta este mes para cubrir ' + ((periodoSigLabel(periodo) || 'el mes siguiente').toLowerCase()) + '.</span>'
         + '</div>';
     } else {
       html += '<div style="font-size:.62rem;color:rgba(32,36,31,.35);padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
@@ -447,7 +447,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     if (gaFaltante) gaResumen += '  ·  resto ' + fmt(gaFaltante);
     html += '<div style="margin:4px 0 2px;padding:7px 10px;background:rgba(146,97,15,.10);border-radius:8px;font-size:.66rem;color:#92610f;line-height:1.5">'
       + 'Se cubre con: ' + gaResumen
-      + '<br><span style="opacity:.8">Se descuenta este mes para cubrir ' + ((sigMesNombre[periodo] || 'el mes siguiente').toLowerCase()) + '.</span>'
+      + '<br><span style="opacity:.8">Se descuenta este mes para cubrir ' + ((periodoSigLabel(periodo) || 'el mes siguiente').toLowerCase()) + '.</span>'
       + '</div>';
   } else {
     html += '<div style="font-size:.62rem;color:rgba(32,36,31,.35);padding:2px 0 6px 8px">⚑ Los Gastos A se descuentan del cheque actual para cubrir el mes siguiente</div>';
