@@ -744,11 +744,6 @@ function prestamosCasaCargar(onDone) {
     syncPull(PRESTAMOS_CASA_KEY, function() {
       prestamosCasaLeerLocal();
       if (typeof prestRepintar === 'function') prestRepintar();
-      // Portal del profesional: ya pintó con la lista del código; repintar con la guardada.
-      if (typeof doctorActual !== 'undefined' && doctorActual) {
-        if (typeof rerenderPortalMeses === 'function') rerenderPortalMeses();
-        if (typeof renderMiPanel === 'function') renderMiPanel(doctorActual);
-      }
       if (typeof renderSueldoDirector === 'function' && document.getElementById('sueldoDirectorScreenRoot')) {
         renderSueldoDirector();
       }
