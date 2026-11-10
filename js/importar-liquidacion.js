@@ -255,7 +255,7 @@ function gastoEquipoSectionHtml() {
     : '<div style="font-size:.72rem;color:rgba(32,36,31,.45);font-style:italic;padding:6px 0">Todavía no hay ningún mes registrado — se completa solo al correr el import, o cargalo a mano abajo.</div>';
 
   var mesOpts = MESES_IMP_ORD.map(function(m) {
-    return '<option value="' + m + '">' + m.charAt(0).toUpperCase() + m.slice(1) + '</option>';
+    return '<option value="' + m + '">' + periodoNombre(m) + '</option>';
   }).join('');
 
   return '<div style="font-size:.65rem;color:rgba(32,36,31,.5);margin-bottom:8px">'
@@ -278,7 +278,7 @@ function gastoEquipoSectionHtml() {
 function gastoEquipoAbrirForm(periodo) {
   document.getElementById('gastoEquipoForm').style.display = 'block';
   var e = periodo ? GASTO_EQUIPO_HIST[periodo] : null;
-  document.getElementById('geFormMes').value = periodo || MESES_IMP_ORD[new Date().getMonth()];
+  document.getElementById('geFormMes').value = periodo || periodoDeFecha(new Date());
   document.getElementById('geFormGasto').value = e ? e.gasto : '';
   document.getElementById('geFormRecuperado').value = e ? ((e.recuperadoOsde || 0) + (e.recuperadoDif || 0)) : '';
 }
@@ -351,8 +351,7 @@ function impChequesRestaurarPeriodo(periodoKey) {
 // que cambia "Mes a importar" — evita escribir con fechas de depósito reales
 // (ej. septiembre) en la pestaña del mes facturado (julio), que no tiene esas
 // columnas y termina escribiendo 0 celdas en silencio.
-const MESES_IMP_ORD = ['enero','febrero','marzo','abril','mayo','junio','julio',
-                        'agosto','septiembre','octubre','noviembre','diciembre'];
+const MESES_IMP_ORD = PERIODOS_TODOS;   // incluye ene–jun 2027 (ids "enero2027" …)
 // ── Mes CM: elegirlo solo y decir en palabras qué se está cargando ──
 // El CEM se guarda indexado por el mes en que el Centro Médico ACREDITA la
 // plata, no por el mes de la liquidación: lo que se carga a fin de octubre es
@@ -362,7 +361,9 @@ const MESES_IMP_ORD = ['enero','febrero','marzo','abril','mayo','junio','julio',
 // Ahora se posiciona por la fecha de hoy y el aviso nombra los dos meses.
 var CM_MES_PREV = {
   mayo:"Abril", junio:"Mayo", julio:"Junio", agosto:"Julio",
-  septiembre:"Agosto", octubre:"Septiembre", noviembre:"Octubre", diciembre:"Noviembre"
+  septiembre:"Agosto", octubre:"Septiembre", noviembre:"Octubre", diciembre:"Noviembre",
+  enero2027:"Diciembre", febrero2027:"Enero", marzo2027:"Febrero",
+  abril2027:"Marzo", mayo2027:"Abril", junio2027:"Mayo"
 };
 
 // Mes de acreditación que corresponde a lo que se carga hoy: pasada la mitad
@@ -370,8 +371,8 @@ var CM_MES_PREV = {
 // que viene); antes del 15 todavía se carga la del mes anterior.
 function cmMesAcreditacionHoy() {
   var hoy = new Date();
-  var idx = hoy.getDate() >= 15 ? hoy.getMonth() + 1 : hoy.getMonth();
-  return MESES_IMP_ORD[idx % 12];
+  if (hoy.getDate() >= 15) hoy = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1);
+  return periodoDeFecha(hoy);
 }
 
 function cmAvisoActualizar() {
@@ -380,7 +381,7 @@ function cmAvisoActualizar() {
   if (!sel || !el) return;
   var acred = sel.value;
   var prev  = CM_MES_PREV[acred];
-  var cap   = acred.charAt(0).toUpperCase() + acred.slice(1);
+  var cap   = periodoNombre(acred);
   if (!prev) { el.textContent = ''; return; }
   el.innerHTML = 'Estás cargando la <b>liquidación de ' + prev + '</b>. '
     + 'El Centro Médico la acredita en <b>' + cap + '</b>, así que va a figurar '
@@ -399,7 +400,8 @@ function actualizarMesColonAuto() {
   var mesSel = document.getElementById('impMes').value;
   var idx = MESES_IMP_ORD.indexOf(mesSel);
   if (idx === -1) return;
-  var mesColon = MESES_IMP_ORD[(idx + 2) % 12];
+  var mesColon = MESES_IMP_ORD[idx + 2];   // se deposita ~2 meses después (puede cruzar a 2027)
+  if (!mesColon) return;
   var sel = document.getElementById('impMesColon');
   if (sel && sel.querySelector('option[value="' + mesColon + '"]')) sel.value = mesColon;
 }
@@ -1048,7 +1050,9 @@ async function procesarArchivosImport() {
     var mesSel = document.getElementById('impMes');
     var regConPeriodo = registros.find(function(r) { return /^\d{6}$/.test(r.pPerio); });
     var yr = regConPeriodo ? regConPeriodo.pPerio.slice(0, 4) : String(new Date().getFullYear());
-    var periodoHint = mesSel && mesSel.value ? (mesSel.value + '-' + yr) : '';
+    var infSel = mesSel && mesSel.value ? periodoInfo(mesSel.value) : null;
+    // Los ids de 2027 ya traen su año; los de 2026 lo toman del archivo (como siempre).
+    var periodoHint = infSel ? (infSel.nombre + '-' + (infSel.anio !== PERIODOS_ANIO_BASE ? infSel.anio : yr)) : '';
     var periodoKeyArchivo = periodoHint;
     if (!/^[a-zñ]+-\d{4}$/i.test(periodoKeyArchivo)) {
       var cuentaPPerio = {};

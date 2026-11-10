@@ -2289,24 +2289,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/portal-render.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/admin-home.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/gastos-obra.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/presentacion.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/sueldo-b.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/redsom.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/nun-data.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/accesos-debitos.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/estadisticas.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/estadisticas-export.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/gastos-casa.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/faq-asistente.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/asistente.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
-<script src="js/correos.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/datos.js?v=2026-11-10-importador-2027"></script>
+<script src="js/portal-render.js?v=2026-11-10-importador-2027"></script>
+<script src="js/admin-home.js?v=2026-11-10-importador-2027"></script>
+<script src="js/gastos-obra.js?v=2026-11-10-importador-2027"></script>
+<script src="js/presentacion.js?v=2026-11-10-importador-2027"></script>
+<script src="js/sueldo-b.js?v=2026-11-10-importador-2027"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-10-importador-2027"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-10-importador-2027"></script>
+<script src="js/redsom.js?v=2026-11-10-importador-2027"></script>
+<script src="js/nun-data.js?v=2026-11-10-importador-2027"></script>
+<script src="js/accesos-debitos.js?v=2026-11-10-importador-2027"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-10-importador-2027"></script>
+<script src="js/estadisticas.js?v=2026-11-10-importador-2027"></script>
+<script src="js/estadisticas-export.js?v=2026-11-10-importador-2027"></script>
+<script src="js/gastos-casa.js?v=2026-11-10-importador-2027"></script>
+<script src="js/faq-asistente.js?v=2026-11-10-importador-2027"></script>
+<script src="js/asistente.js?v=2026-11-10-importador-2027"></script>
+<script src="js/correos.js?v=2026-11-10-importador-2027"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -7617,6 +7617,12 @@ async function restaurarAporteCeotPct() {
           <option value="octubre">Octubre 2026</option>
           <option value="noviembre">Noviembre 2026</option>
           <option value="diciembre">Diciembre 2026</option>
+          <option value="enero2027">Enero 2027</option>
+          <option value="febrero2027">Febrero 2027</option>
+          <option value="marzo2027">Marzo 2027</option>
+          <option value="abril2027">Abril 2027</option>
+          <option value="mayo2027">Mayo 2027</option>
+          <option value="junio2027">Junio 2027</option>
         </select>
       </div>
 
@@ -7708,6 +7714,12 @@ async function restaurarAporteCeotPct() {
             <option value="octubre">Octubre 2026</option>
             <option value="noviembre">Noviembre 2026</option>
             <option value="diciembre">Diciembre 2026</option>
+            <option value="enero2027">Enero 2027</option>
+            <option value="febrero2027">Febrero 2027</option>
+            <option value="marzo2027">Marzo 2027</option>
+            <option value="abril2027">Abril 2027</option>
+            <option value="mayo2027">Mayo 2027</option>
+            <option value="junio2027">Junio 2027</option>
           </select>
         </div>
         <button class="imp-btn-gray" onclick="calcularDistribucionFinal()">Calcular distribución ▸</button>
@@ -7743,6 +7755,12 @@ async function restaurarAporteCeotPct() {
           <option value="octubre">Liquid. Septiembre &rarr; acredita Octubre 2026</option>
           <option value="noviembre">Liquid. Octubre &rarr; acredita Noviembre 2026</option>
           <option value="diciembre">Liquid. Noviembre &rarr; acredita Diciembre 2026</option>
+          <option value="enero2027">Liquid. Diciembre &rarr; acredita Enero 2027</option>
+          <option value="febrero2027">Liquid. Enero &rarr; acredita Febrero 2027</option>
+          <option value="marzo2027">Liquid. Febrero &rarr; acredita Marzo 2027</option>
+          <option value="abril2027">Liquid. Marzo &rarr; acredita Abril 2027</option>
+          <option value="mayo2027">Liquid. Abril &rarr; acredita Mayo 2027</option>
+          <option value="junio2027">Liquid. Mayo &rarr; acredita Junio 2027</option>
         </select>
       </div>
       <div id="impCMAviso" style="font-size:.7rem;line-height:1.45;color:#1f3a2e;background:rgba(29,107,98,.08);border-left:3px solid #1d6b62;border-radius:0 4px 4px 0;padding:7px 10px;margin:-2px 0 10px 0"></div>
@@ -7897,7 +7915,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-10-periodos-hasta-jun-2027-b';
+  var CURRENT_BUILD = '2026-11-10-importador-2027';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
