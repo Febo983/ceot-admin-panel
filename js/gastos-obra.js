@@ -46,7 +46,7 @@ function gpEstado(metodo, importe) {
   return "pagado";
 }
 function gpParse(rows) {
-  var MESES_RE = /^(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+2026/i;
+  var MESES_RE = /^(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(2026|2027)/i;
   var meses = [], porMes = {}, cur = null;
   rows.forEach(function (r) {
     var c = r.c || [];
@@ -54,7 +54,7 @@ function gpParse(rows) {
     var a = v(0);
     var mm = a.match(MESES_RE);
     if (mm) {
-      cur = mm[1].toLowerCase();
+      cur = mm[1].toLowerCase() + (mm[2] === "2027" ? "2027" : "");   // mismo formato de id que el registro de períodos
       if (!porMes[cur]) { porMes[cur] = { filas: [], total: null, emp: [], sec: {} }; meses.push(cur); }
       return;
     }
@@ -229,7 +229,7 @@ function gpRender(mes) {
     }
   }
   _gpMesAct = mes;
-  var cap = function (s) { return s.charAt(0).toUpperCase() + s.slice(1); };
+  var cap = function (s) { var i = periodoInfo(s); return i ? (i.anio === PERIODOS_ANIO_BASE ? i.largo : i.labelLargo) : s.charAt(0).toUpperCase() + s.slice(1); };
   var chips = meses.map(function (m) {
     var on = m === mes;
     return '<button onclick="gpRender(\'' + m + '\')" style="flex-shrink:0;font-size:.72rem;padding:4px 12px;border-radius:20px;border:1px solid ' +
@@ -298,7 +298,7 @@ function gpRender(mes) {
 function renderFacturas() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
-  ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  PERIODOS_TODOS.forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });
@@ -478,7 +478,7 @@ function renderLicencias() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
   admSubtabs("licencias", "licencias");
-  ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  PERIODOS_TODOS.forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });

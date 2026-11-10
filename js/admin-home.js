@@ -500,7 +500,7 @@ function renderAdmHome() {
   if (sn) sn.style.display = "none";
   var hbg = document.getElementById("admHamburgerBtn");
   if (hbg) hbg.style.display = "none";
-  ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  PERIODOS_TODOS.forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });
@@ -520,9 +520,10 @@ function renderAdmHome() {
   var saludo = h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
   var mesAct = tabMesActual();
   var garmNota = admHomeGarmendiaNota();
-  var MESES_CORTO = {enero:"Ene",febrero:"Feb",marzo:"Mar",abril:"Abr",mayo:"May",junio:"Jun",julio:"Jul",agosto:"Ago",septiembre:"Sep",octubre:"Oct",noviembre:"Nov",diciembre:"Dic"};
+  var MESES_CORTO = {};
+  PERIODOS_TODOS.forEach(function(id) { var i = periodoInfo(id); MESES_CORTO[id] = i.anio === PERIODOS_ANIO_BASE ? i.corto : i.corto + " " + String(i.anio).slice(2); });
 
-  var mesStrip = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].map(function(m) {
+  var mesStrip = PERIODOS_TODOS.map(function(m) {
     var act = m === mesAct;
     var chipClass = retro ? "adm-home-mes-chip-retro" : "adm-home-mes-chip";
     var style = retro
@@ -980,7 +981,7 @@ function renderChecklist() {
   checklistSincronizar();
   cerrarAdmSidenav();
   admDesactivarSidebar();
-  ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  PERIODOS_TODOS.forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });
@@ -1022,17 +1023,17 @@ function renderChecklistBody() {
 function renderPendientes() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
-  ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  PERIODOS_TODOS.forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });
   var sp = document.getElementById("adm-sidenav-pendientes");
   if (sp) sp.className = "adm-sidenav-btn active";
 
-  var periodos = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-  var labels   = {enero:"Ene",febrero:"Feb",marzo:"Mar",abril:"Abr",mayo:"Mayo",junio:"Jun",julio:"Jul",agosto:"Ago",septiembre:"Sep",octubre:"Oct",noviembre:"Nov",diciembre:"Dic"};
+  var periodos = PERIODOS_TODOS;
   var rawMap   = {febrero:FEBRERO_RAW,marzo:MARZO_RAW,abril:ABRIL_RAW,mayo:MAYO_RAW,junio:JUNIO_RAW,julio:JULIO_RAW,agosto:AGOSTO_RAW,
-                  septiembre:SEPTIEMBRE_RAW,octubre:OCTUBRE_RAW,noviembre:NOVIEMBRE_RAW,diciembre:DICIEMBRE_RAW};
+                  septiembre:SEPTIEMBRE_RAW,octubre:OCTUBRE_RAW,noviembre:NOVIEMBRE_RAW,diciembre:DICIEMBRE_RAW,
+                  enero2027:ENERO2027_RAW,febrero2027:FEBRERO2027_RAW,marzo2027:MARZO2027_RAW,abril2027:ABRIL2027_RAW,mayo2027:MAYO2027_RAW,junio2027:JUNIO2027_RAW};
 
   function cel(ok, txt) {
     return ok
@@ -1071,7 +1072,7 @@ function renderPendientes() {
     var tieneGA    = GASTOS_A[pid] != null;
     var todo       = tieneColon && colonN >= ref && osdeN >= ref && cmN >= ref && tieneIIBB && tieneCPSM && tieneGA;
     html += '<tr' + (todo ? ' style="background:rgba(74,222,128,.08)"' : '') + '>';
-    html += '<td style="font-weight:700">' + labels[pid] + ' 2026</td>';
+    html += '<td style="font-weight:700">' + periodoInfo(pid).label + '</td>';
     html += cel3(colonN, ref) + cel3(osdeN, ref) + cel3(cmN, ref) + cel(tieneIIBB) + cel(tieneCPSM) + cel(tieneGA);
     html += '</tr>';
   });

@@ -283,7 +283,7 @@ body {
 .period-tab.act-septiembre,
 .period-tab.act-octubre,
 .period-tab.act-noviembre,
-.period-tab.act-diciembre,
+.period-tab.act-diciembre, .period-tab.act-enero2027, .period-tab.act-febrero2027, .period-tab.act-marzo2027, .period-tab.act-abril2027, .period-tab.act-mayo2027, .period-tab.act-junio2027,
 .period-tab.act-historial,
 .period-tab.act-redsom { color: #1a1a1a; border-bottom-color: #1a1a1a; }
 .tbadge {
@@ -864,7 +864,7 @@ body {
 .period-tab.act-septiembre .tab-neto,
 .period-tab.act-octubre .tab-neto,
 .period-tab.act-noviembre .tab-neto,
-.period-tab.act-diciembre .tab-neto { color: #1a1a1a; }
+.period-tab.act-diciembre .tab-neto, .period-tab.act-enero2027 .tab-neto, .period-tab.act-febrero2027 .tab-neto, .period-tab.act-marzo2027 .tab-neto, .period-tab.act-abril2027 .tab-neto, .period-tab.act-mayo2027 .tab-neto, .period-tab.act-junio2027 .tab-neto { color: #1a1a1a; }
 
 /* ── BOTÓN ACTUALIZAR ── */
 .btn-refresh {
@@ -1384,7 +1384,7 @@ body { background: var(--iv0); color: var(--ink); }
 .period-tab:hover { color: rgba(32,36,31,0.7) !important; }
 .period-tab.act-abril,.period-tab.act-mayo,.period-tab.act-junio,.period-tab.act-julio,
 .period-tab.act-agosto,.period-tab.act-septiembre,.period-tab.act-octubre,
-.period-tab.act-noviembre,.period-tab.act-diciembre,.period-tab.act-historial,
+.period-tab.act-noviembre,.period-tab.act-diciembre, .period-tab.act-enero2027, .period-tab.act-febrero2027, .period-tab.act-marzo2027, .period-tab.act-abril2027, .period-tab.act-mayo2027, .period-tab.act-junio2027,.period-tab.act-historial,
 .period-tab.act-mipanel { color: var(--ink) !important; border-bottom-color: var(--ink) !important; }
 .tab-neto { color: rgba(32,36,31,0.4) !important; }
 
@@ -1727,7 +1727,7 @@ body.adm-dark-invert #importModal {
 [data-theme="dark"] .tabs-older-toggle { color: #a39c88 !important; }
 [data-theme="dark"] .tabs-older-toggle:hover { color: #c9c3b0 !important; }
 [data-theme="dark"] .sync-indicator { background: #241f18 !important; color: #8f8873 !important; border-bottom: 1px solid #332f24 !important; }
-[data-theme="dark"] .period-tab.act-abril, .period-tab.act-mayo, .period-tab.act-junio, .period-tab.act-julio, .period-tab.act-agosto, .period-tab.act-septiembre, .period-tab.act-octubre, .period-tab.act-noviembre, .period-tab.act-diciembre, .period-tab.act-historial { color: #f1ede2 !important ; border-bottom-color: #f1ede2 !important; }
+[data-theme="dark"] .period-tab.act-abril, .period-tab.act-mayo, .period-tab.act-junio, .period-tab.act-julio, .period-tab.act-agosto, .period-tab.act-septiembre, .period-tab.act-octubre, .period-tab.act-noviembre, .period-tab.act-diciembre, .period-tab.act-enero2027, .period-tab.act-febrero2027, .period-tab.act-marzo2027, .period-tab.act-abril2027, .period-tab.act-mayo2027, .period-tab.act-junio2027, .period-tab.act-historial { color: #f1ede2 !important ; border-bottom-color: #f1ede2 !important; }
 [data-theme="dark"] .tbadge { border: 1px solid #3a362c !important; }
 [data-theme="dark"] .tb-act { background: #26221a !important ; color: #4ade80 !important ; border-color: #1f6b3d !important; }
 [data-theme="dark"] .tb-ind { background: #26221a !important ; color: #c9c3b0 !important ; border-color: #3a362c !important; }
@@ -1830,7 +1830,7 @@ body.adm-dark-invert #importModal {
 [data-theme="dark"] .cl-status-icon { color: #4ade80 !important; }
 [data-theme="dark"] .cl-row.cl-pendiente .cl-date { color: #8f8873 !important; }
 [data-theme="dark"] .tab-neto { color: #a39c88 !important; }
-[data-theme="dark"] .period-tab.act-mayo .tab-neto, .period-tab.act-junio .tab-neto, .period-tab.act-julio .tab-neto, .period-tab.act-agosto .tab-neto, .period-tab.act-septiembre .tab-neto, .period-tab.act-octubre .tab-neto, .period-tab.act-noviembre .tab-neto, .period-tab.act-diciembre .tab-neto { color: #f1ede2 !important; }
+[data-theme="dark"] .period-tab.act-mayo .tab-neto, .period-tab.act-junio .tab-neto, .period-tab.act-julio .tab-neto, .period-tab.act-agosto .tab-neto, .period-tab.act-septiembre .tab-neto, .period-tab.act-octubre .tab-neto, .period-tab.act-noviembre .tab-neto, .period-tab.act-diciembre .tab-neto, .period-tab.act-enero2027 .tab-neto, .period-tab.act-febrero2027 .tab-neto, .period-tab.act-marzo2027 .tab-neto, .period-tab.act-abril2027 .tab-neto, .period-tab.act-mayo2027 .tab-neto, .period-tab.act-junio2027 .tab-neto { color: #f1ede2 !important; }
 [data-theme="dark"] .field input::placeholder { color: rgba(241,237,226,0.3) !important; }
 [data-theme="dark"] .tab-pane { background: #241f18 !important; }
 [data-theme="dark"] .portal-card { border-color: #2f5744 !important; }
@@ -2024,6 +2024,30 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
           <span class="tab-top">Dic 2026 <span class="tbadge tb-ant" id="badge-diciembre">anterior</span></span>
           <span class="tab-neto" id="tabneto-diciembre"></span>
         </button>
+        <button class="period-tab" id="tab-enero2027" data-tab="enero2027">
+          <span class="tab-top">Ene 2027 <span class="tbadge tb-ant" id="badge-enero2027">anterior</span></span>
+          <span class="tab-neto" id="tabneto-enero2027"></span>
+        </button>
+        <button class="period-tab" id="tab-febrero2027" data-tab="febrero2027">
+          <span class="tab-top">Feb 2027 <span class="tbadge tb-ant" id="badge-febrero2027">anterior</span></span>
+          <span class="tab-neto" id="tabneto-febrero2027"></span>
+        </button>
+        <button class="period-tab" id="tab-marzo2027" data-tab="marzo2027">
+          <span class="tab-top">Mar 2027 <span class="tbadge tb-ant" id="badge-marzo2027">anterior</span></span>
+          <span class="tab-neto" id="tabneto-marzo2027"></span>
+        </button>
+        <button class="period-tab" id="tab-abril2027" data-tab="abril2027">
+          <span class="tab-top">Abr 2027 <span class="tbadge tb-ant" id="badge-abril2027">anterior</span></span>
+          <span class="tab-neto" id="tabneto-abril2027"></span>
+        </button>
+        <button class="period-tab" id="tab-mayo2027" data-tab="mayo2027">
+          <span class="tab-top">May 2027 <span class="tbadge tb-ant" id="badge-mayo2027">anterior</span></span>
+          <span class="tab-neto" id="tabneto-mayo2027"></span>
+        </button>
+        <button class="period-tab" id="tab-junio2027" data-tab="junio2027">
+          <span class="tab-top">Jun 2027 <span class="tbadge tb-ant" id="badge-junio2027">anterior</span></span>
+          <span class="tab-neto" id="tabneto-junio2027"></span>
+        </button>
       </div>
       </div>
 
@@ -2039,6 +2063,12 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
       <div class="tab-pane" id="pane-octubre"></div>
       <div class="tab-pane" id="pane-noviembre"></div>
       <div class="tab-pane" id="pane-diciembre"></div>
+      <div class="tab-pane" id="pane-enero2027"></div>
+      <div class="tab-pane" id="pane-febrero2027"></div>
+      <div class="tab-pane" id="pane-marzo2027"></div>
+      <div class="tab-pane" id="pane-abril2027"></div>
+      <div class="tab-pane" id="pane-mayo2027"></div>
+      <div class="tab-pane" id="pane-junio2027"></div>
       <div class="tab-pane" id="pane-historial"></div>
       <div class="tab-pane" id="pane-estadisticas"></div>
       <div class="tab-pane" id="pane-redsom"></div>
@@ -2136,6 +2166,12 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
           <button class="adm-tab" id="adm-tab-octubre"    onclick="renderAdminPanelPage('octubre')">Oct</button>
           <button class="adm-tab" id="adm-tab-noviembre"  onclick="renderAdminPanelPage('noviembre')">Nov</button>
           <button class="adm-tab" id="adm-tab-diciembre"  onclick="renderAdminPanelPage('diciembre')">Dic</button>
+          <button class="adm-tab" id="adm-tab-enero2027" onclick="renderAdminPanelPage('enero2027')">Ene 27</button>
+          <button class="adm-tab" id="adm-tab-febrero2027" onclick="renderAdminPanelPage('febrero2027')">Feb 27</button>
+          <button class="adm-tab" id="adm-tab-marzo2027" onclick="renderAdminPanelPage('marzo2027')">Mar 27</button>
+          <button class="adm-tab" id="adm-tab-abril2027" onclick="renderAdminPanelPage('abril2027')">Abr 27</button>
+          <button class="adm-tab" id="adm-tab-mayo2027" onclick="renderAdminPanelPage('mayo2027')">May 27</button>
+          <button class="adm-tab" id="adm-tab-junio2027" onclick="renderAdminPanelPage('junio2027')">Jun 27</button>
         </div>
         <div id="adm-subtabs"></div>
         <div class="adm-body" id="adm-content">
@@ -2253,24 +2289,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/portal-render.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/admin-home.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/gastos-obra.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/presentacion.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/sueldo-b.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/redsom.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/nun-data.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/accesos-debitos.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/estadisticas.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/estadisticas-export.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/gastos-casa.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/faq-asistente.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/asistente.js?v=2026-11-06-prestamos-resumen-aportes"></script>
-<script src="js/correos.js?v=2026-11-06-prestamos-resumen-aportes"></script>
+<script src="js/datos.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/portal-render.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/admin-home.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/gastos-obra.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/presentacion.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/sueldo-b.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/redsom.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/nun-data.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/accesos-debitos.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/estadisticas.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/estadisticas-export.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/gastos-casa.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/faq-asistente.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/asistente.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
+<script src="js/correos.js?v=2026-11-10-periodos-hasta-jun-2027-b"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -2396,7 +2432,7 @@ function voiceBuscarMes(t) {
 
 function voiceResponderNeto(doc, mes) {
   var c = calcularNetoLocal(mes, doc);
-  var mesLabel = mes.charAt(0).toUpperCase() + mes.slice(1);
+  var mesLabel = periodoNombre(mes);
   if (!c) {
     voiceHablar("No hay datos de " + coTitleCase(doc.apellido) + " en " + mesLabel);
     voiceMostrarEstado('🎙️ Sin datos de ' + coTitleCase(doc.apellido) + ' en ' + mesLabel);
@@ -2731,9 +2767,9 @@ function coTitleCase(str) {
 }
 
 function renderHome(doctor) {
-  var MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-  var MESES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-  var MESES_DISP = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var MESES = PERIODOS_TODOS;
+  var MESES_CORTO = PERIODOS_TODOS.map(function(id) { var i = periodoInfo(id); return i.anio === PERIODOS_ANIO_BASE ? i.corto : i.corto + " " + String(i.anio).slice(2); });
+  var MESES_DISP = PERIODOS_TODOS;
   var mesAct = tabMesActual();
   var mesIdx = MESES.indexOf(mesAct);
 
@@ -2758,7 +2794,7 @@ function renderHome(doctor) {
   document.querySelectorAll(".home-mod").forEach(function(el) { el.classList.remove("home-mod-highlighted"); });
 
   // Tarjeta unificada: mes + tu neto por fuera → lleva al mes actual
-  var mesLabel = mesAct ? (mesAct.charAt(0).toUpperCase() + mesAct.slice(1) + " 2026") : "—";
+  var mesLabel = mesAct ? periodoInfo(mesAct).labelLargo : "—";
   var cn = calcularNetoLocal(mesAct, doctor);
   var netoBig, netoSub;
   if (cn && cn.neto) {
@@ -2778,7 +2814,7 @@ function renderHome(doctor) {
 // Por defecto solo se muestran los meses de la ventana [actual-2 .. actual+1];
 // el resto queda detrás de "▾ meses anteriores". Al entrar a un mes fuera de
 // esa ventana (desde Historial / Home) se expande solo.
-var MESES_TABS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+var MESES_TABS = PERIODOS_TODOS;
 var _tabsOlderExpanded = false;
 
 function mesesVisiblesPorDefecto() {
@@ -2896,27 +2932,33 @@ function chequeAcreditado(fechaDDMM) {
   if (!fechaDDMM || fechaDDMM === "—") return false;
   var p = fechaDDMM.split("/");
   if (p.length < 2) return false;
-  var acred = new Date(new Date().getFullYear(), parseInt(p[1])-1, parseInt(p[0])+2);
-  return new Date() >= acred;
+  var hoy = new Date();
+  var acred = new Date(hoy.getFullYear(), parseInt(p[1])-1, parseInt(p[0])+2);
+  // La fecha viene sin año. Un cheque nunca está a más de ~6 meses en el futuro:
+  // si con el año de hoy cae más lejos que eso, es del año anterior (p.ej. un
+  // cheque del 31/12 mirado en enero), y ya está acreditado.
+  if (acred - hoy > 183 * 86400000) acred = new Date(hoy.getFullYear() - 1, parseInt(p[1])-1, parseInt(p[0])+2);
+  return hoy >= acred;
 }
 
 // ── Tab del mes actual ──────────────────────────────────────
 function tabMesActual() {
-  var m = new Date().getMonth() + 1;
-  var map = {4:"abril",5:"mayo",6:"junio",7:"julio",8:"agosto",9:"septiembre",10:"octubre",11:"noviembre",12:"diciembre"};
-  return map[m] || (m < 4 ? "abril" : "diciembre");
+  // Mes calendario real → id de período (incluye 2027). Antes de abril 2026
+  // el panel no tiene pestañas útiles, así que ahí queda en abril.
+  var id = periodoDeFecha(new Date());
+  return PERIODOS_TODOS.indexOf(id) < PERIODOS_TODOS.indexOf("abril") ? "abril" : id;
 }
 
 // ── Actualiza badges y neto estimado en tabs ───────────────
 function actualizarTabsNeto(doctor) {
   var act = tabMesActual();
-  ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(t) {
+  PERIODOS_TODOS.forEach(function(t) {
     var b = document.getElementById("badge-"+t);
     if (!b) return;
     b.className = (t===act) ? "tbadge tb-act" : "tbadge tb-ant";
     b.textContent = (t===act) ? "actual" : "anterior";
   });
-  ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(pid) {
+  PERIODOS_TODOS.forEach(function(pid) {
     var el = document.getElementById("tabneto-"+pid);
     if (!el) return;
     var c = calcularNetoLocal(pid, doctor);
@@ -2957,7 +2999,7 @@ function renderTotalCeot() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
   admSubtabs("liquidaciones", "totalceot");
-  ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  PERIODOS_TODOS.forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });
@@ -2971,7 +3013,7 @@ function renderTotalCeot() {
     return;
   }
 
-  var MESES_ORD = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var MESES_ORD = PERIODOS_TODOS;
   var meses = MESES_ORD.filter(function(m){ return tc[m]; });
   // GARMENDIA se suma acá desde su alta (ago-2026): sin ella, este cuadro
   // dejaba sus importes afuera del total y de los % (08/10/2026).
@@ -2996,7 +3038,7 @@ function renderTotalCeot() {
     + '<div style="overflow-x:auto;padding:0 2px 16px">'
     + '<table class="adm-table" style="min-width:600px;width:100%">'
     + '<thead><tr><th style="text-align:left">Profesional</th>';
-  meses.forEach(function(m){ html += '<th>' + m.charAt(0).toUpperCase()+m.slice(1) + '</th>' + thPct; });
+  meses.forEach(function(m){ html += '<th>' + periodoNombre(m) + '</th>' + thPct; });
   html += '<th>Total</th><th style="color:rgba(32,36,31,.55)">% del Total</th></tr></thead><tbody>';
 
   SOCIOS.forEach(function(ap) {
@@ -3067,14 +3109,15 @@ function renderAdminPanel(periodo) {
   adminPeriodoAct = periodo;
   admDesactivarSidebar();
   admSubtabs("liquidaciones", "liquidaciones");
-  ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  PERIODOS_TODOS.forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab" + (p === periodo ? " adm-tab-act" : "");
   });
 
   var container = document.getElementById("adm-content");
   var rawMap = { febrero:FEBRERO_RAW, marzo:MARZO_RAW, abril:ABRIL_RAW, mayo:MAYO_RAW, junio:JUNIO_RAW, julio:JULIO_RAW, agosto:AGOSTO_RAW,
-                 septiembre:SEPTIEMBRE_RAW, octubre:OCTUBRE_RAW, noviembre:NOVIEMBRE_RAW, diciembre:DICIEMBRE_RAW };
+                 septiembre:SEPTIEMBRE_RAW, octubre:OCTUBRE_RAW, noviembre:NOVIEMBRE_RAW, diciembre:DICIEMBRE_RAW,
+                 enero2027:ENERO2027_RAW, febrero2027:FEBRERO2027_RAW, marzo2027:MARZO2027_RAW, abril2027:ABRIL2027_RAW, mayo2027:MAYO2027_RAW, junio2027:JUNIO2027_RAW };
   if (!rawMap[periodo] || rawMap[periodo].length === 0) {
     container.innerHTML = '<div style="padding:20px;text-align:center;color:rgba(32,36,31,.35)">Sin datos individuales para este período.</div>';
     return;
@@ -3149,7 +3192,7 @@ function renderAdminPanel(periodo) {
   html += '<div class="adm-breakdown">';
   html += '<div class="adm-br-row" style="background:rgba(220,38,38,.1)"><span class="adm-br-lbl">IIBB (3,5%)</span><span class="adm-br-val" style="color:#b13a2c">− ' + fmt(totIIBB) + '</span></div>';
   html += '<div class="adm-br-row" style="background:rgba(234,88,12,.1)"><span class="adm-br-lbl">CPSM (5%) · Labayen exento</span><span class="adm-br-val" style="color:#c2410c">− ' + fmt(totCPSM) + '</span></div>';
-  var sigMesNombreAdm = {"febrero":"Marzo","marzo":"Abril","abril":"Mayo","mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre"};
+  var sigMesNombreAdm = {"febrero":"Marzo","marzo":"Abril","abril":"Mayo","mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre","diciembre":"Enero","enero2027":"Febrero","febrero2027":"Marzo","marzo2027":"Abril","abril2027":"Mayo","mayo2027":"Junio"};
   var gaLabelMesAdm = sigMesNombreAdm[periodo] ? " · cubre " + sigMesNombreAdm[periodo] : "";
   if (totGA > 0) {
     html += '<div class="adm-br-row" style="background:rgba(202,138,4,.1)"><span class="adm-br-lbl">Gastos A (÷ 13)<span style="font-size:.68rem;color:rgba(32,36,31,.4);font-weight:400">' + gaLabelMesAdm + '</span></span><span class="adm-br-val" style="color:#92610f">− ' + fmt(totGA) + '</span></div>';
@@ -3171,7 +3214,7 @@ function renderAdminPanel(periodo) {
   // mismo: este desglose es donde el monto se ve por primera vez.
   html += cemDuplicadoAvisoHtml(periodo);
   if (totGA > 0) {
-    var periodoCap = periodo.charAt(0).toUpperCase() + periodo.slice(1);
+    var periodoCap = periodoNombre(periodo);
     html += '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:4px 2px 0 2px">⚑ Los Gastos A de ' + periodoCap + ' se descuentan de este cheque para cubrir ' + (sigMesNombreAdm[periodo] || 'el mes siguiente') + '.</div>';
   }
 
@@ -3197,7 +3240,7 @@ function renderAdminPanel(periodo) {
   html += '<th>IIBB</th><th>CPSM</th><th>Gtos A</th>';
   if (tieneAporte) html += '<th>Ret. Gan.</th>';
   html += '<th>NETO</th>';
-  var prevPeriodoMap = {junio:"mayo",julio:"junio",agosto:"julio",septiembre:"agosto",octubre:"septiembre",noviembre:"octubre",diciembre:"noviembre"};
+  var prevPeriodoMap = {junio:"mayo",julio:"junio",agosto:"julio",septiembre:"agosto",octubre:"septiembre",noviembre:"octubre",diciembre:"noviembre",enero2027:"diciembre",febrero2027:"enero2027",marzo2027:"febrero2027",abril2027:"marzo2027",mayo2027:"abril2027",junio2027:"mayo2027"};
   var prevPeriodo = prevPeriodoMap[periodo];
   var prevNetoMap = {};
   if (prevPeriodo) {
@@ -3275,7 +3318,7 @@ function renderAdminPanel(periodo) {
   html += '</tbody></table></div>';
 
   // ── Botón PDF ──
-  var periodoLabel = periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' 2026';
+  var periodoLabel = periodoInfo(periodo).labelLargo;
   html += '<div style="text-align:right;margin-top:14px" class="no-print">'
     + '<button onclick="admDescargarPDF(\'' + periodo + '\')" style="background:#1f3a2e;color:#fff;border:none;padding:7px 16px;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:inherit">⬇ Descargar PDF</button>'
     + '</div>';
@@ -3322,7 +3365,7 @@ function admDescargarPDF(periodo) {
   var clone = container.cloneNode(true);
   var noPrint = clone.querySelectorAll('.no-print');
   noPrint.forEach(function(el){ el.remove(); });
-  var periodoLabel = periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' 2026';
+  var periodoLabel = periodoInfo(periodo).labelLargo;
   admAbrirVentanaImpresion('CEOT · Distribución ' + periodoLabel, clone.innerHTML);
 }
 
@@ -3491,6 +3534,12 @@ async function entrarConSesion(resp, esRestauracion) {
   renderIndividual(OCTUBRE_RAW,     OCTUBRE_FECHAS,     "octubre",     "pane-octubre",     doctor);
   renderIndividual(NOVIEMBRE_RAW,   NOVIEMBRE_FECHAS,   "noviembre",   "pane-noviembre",   doctor);
   renderIndividual(DICIEMBRE_RAW,   DICIEMBRE_FECHAS,   "diciembre",   "pane-diciembre",   doctor);
+  renderIndividual(ENERO2027_RAW, ENERO2027_FECHAS, "enero2027", "pane-enero2027", doctor);
+  renderIndividual(FEBRERO2027_RAW, FEBRERO2027_FECHAS, "febrero2027", "pane-febrero2027", doctor);
+  renderIndividual(MARZO2027_RAW, MARZO2027_FECHAS, "marzo2027", "pane-marzo2027", doctor);
+  renderIndividual(ABRIL2027_RAW, ABRIL2027_FECHAS, "abril2027", "pane-abril2027", doctor);
+  renderIndividual(MAYO2027_RAW, MAYO2027_FECHAS, "mayo2027", "pane-mayo2027", doctor);
+  renderIndividual(JUNIO2027_RAW, JUNIO2027_FECHAS, "junio2027", "pane-junio2027", doctor);
   renderHistorial(doctor);
   renderMiPanel(doctor);
   if (typeof renderRedsomProf === "function") renderRedsomProf(doctor);
@@ -3522,7 +3571,7 @@ function handleLogout() {
   document.getElementById("portalView").style.display = "none";
   document.getElementById("loginView").style.display  = "block";
   ["pane-abril","pane-mayo","pane-junio","pane-julio","pane-agosto",
-   "pane-septiembre","pane-octubre","pane-noviembre","pane-diciembre","pane-historial","homeMiPanel"].forEach(function(id){
+   "pane-septiembre","pane-octubre","pane-noviembre","pane-diciembre","pane-enero2027","pane-febrero2027","pane-marzo2027","pane-abril2027","pane-mayo2027","pane-junio2027","pane-historial","homeMiPanel"].forEach(function(id){
     var el = document.getElementById(id); if (el) el.innerHTML = "";
   });
   var nb = document.getElementById("notifBanner"); if (nb) nb.style.display = "none";
@@ -3540,6 +3589,12 @@ function rerenderPortalMeses() {
   renderIndividual(OCTUBRE_RAW,     OCTUBRE_FECHAS,     "octubre",     "pane-octubre",     doctorActual);
   renderIndividual(NOVIEMBRE_RAW,   NOVIEMBRE_FECHAS,   "noviembre",   "pane-noviembre",   doctorActual);
   renderIndividual(DICIEMBRE_RAW,   DICIEMBRE_FECHAS,   "diciembre",   "pane-diciembre",   doctorActual);
+  renderIndividual(ENERO2027_RAW, ENERO2027_FECHAS, "enero2027", "pane-enero2027", doctorActual);
+  renderIndividual(FEBRERO2027_RAW, FEBRERO2027_FECHAS, "febrero2027", "pane-febrero2027", doctorActual);
+  renderIndividual(MARZO2027_RAW, MARZO2027_FECHAS, "marzo2027", "pane-marzo2027", doctorActual);
+  renderIndividual(ABRIL2027_RAW, ABRIL2027_FECHAS, "abril2027", "pane-abril2027", doctorActual);
+  renderIndividual(MAYO2027_RAW, MAYO2027_FECHAS, "mayo2027", "pane-mayo2027", doctorActual);
+  renderIndividual(JUNIO2027_RAW, JUNIO2027_FECHAS, "junio2027", "pane-junio2027", doctorActual);
 }
 
 document.getElementById("loginBtn").addEventListener("click", handleLogin);
@@ -3564,6 +3619,12 @@ async function refrescarDatosPortalProfesional() {
     renderIndividual(OCTUBRE_RAW,    OCTUBRE_FECHAS,    "octubre",    "pane-octubre",    doctorActual);
     renderIndividual(NOVIEMBRE_RAW,  NOVIEMBRE_FECHAS,  "noviembre",  "pane-noviembre",  doctorActual);
     renderIndividual(DICIEMBRE_RAW,  DICIEMBRE_FECHAS,  "diciembre",  "pane-diciembre",  doctorActual);
+    renderIndividual(ENERO2027_RAW, ENERO2027_FECHAS, "enero2027", "pane-enero2027", doctorActual);
+    renderIndividual(FEBRERO2027_RAW, FEBRERO2027_FECHAS, "febrero2027", "pane-febrero2027", doctorActual);
+    renderIndividual(MARZO2027_RAW, MARZO2027_FECHAS, "marzo2027", "pane-marzo2027", doctorActual);
+    renderIndividual(ABRIL2027_RAW, ABRIL2027_FECHAS, "abril2027", "pane-abril2027", doctorActual);
+    renderIndividual(MAYO2027_RAW, MAYO2027_FECHAS, "mayo2027", "pane-mayo2027", doctorActual);
+    renderIndividual(JUNIO2027_RAW, JUNIO2027_FECHAS, "junio2027", "pane-junio2027", doctorActual);
     renderHistorial(doctorActual);
     actualizarTabsNeto(doctorActual);
     aplicarColapsoMeses();
@@ -3731,7 +3792,7 @@ async function renderAporteCeot() {
       // aclaración: sus montos son parciales, van a seguir subiendo a medida
       // que el banco acredite el resto de los cheques del mes. Pedido de
       // Marcelo, 11/09/2026, después de ver Septiembre con montos parciales.
-      var labelPeriodo = p.charAt(0).toUpperCase() + p.slice(1)
+      var labelPeriodo = periodoNombre(p)
         + (p === mesActualAporte ? ' <span style="font-weight:400;font-size:.65rem;color:rgba(32,36,31,.45)">(Corresponde a liquidaciones hasta el día de hoy)</span>' : '');
       return '<tr><td>' + labelPeriodo + '</td>' + cells + totCell + estadoCell + '</tr>';
     }).join("");
@@ -3888,7 +3949,7 @@ function renderSueldoDirector() {
   var html = '<div id="sueldoDirectorScreenRoot" style="padding:16px">'
     + licHonBannerHtml()
     + sueldoDirectorPeriodoSelectorHtml(periodo)
-    + sdAcc('resumen', '📊 Resumen sueldos directores — ' + periodo.charAt(0).toUpperCase() + periodo.slice(1), sueldoDirectorResumenHtml(periodo))
+    + sdAcc('resumen', '📊 Resumen sueldos directores — ' + periodoNombre(periodo), sueldoDirectorResumenHtml(periodo))
     + sdAccSiHay('transffam', transfFamHtml, '🏠 Transferencias a familiares' + (TRANSF_FAM_RESUMEN_PEND ? ' — ' + TRANSF_FAM_RESUMEN_PEND + ' pendiente' + (TRANSF_FAM_RESUMEN_PEND === 1 ? '' : 's') : ''))
     + sdAcc('sd', '🏦 Sueldo Director', sueldoDirectorTabHtml(periodo))
     + sdAcc('resto', '💳 Resto de profesionales', restoProfesionalesTabHtml(periodo))
@@ -4421,7 +4482,7 @@ function movLibroQuitar(key, idx) {
 var LICENCIAS_HON = [];
 var _licHonPulled = false;
 var LIC_HON_PALETTE = ["#b13a2c", "#1d4ed8", "#6d28d9", "#c9933a", "#0f766e", "#be185d"];
-var LIC_HON_MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+var LIC_HON_MESES = PERIODOS_TODOS;
 
 function licHonCargar() {
   try {
@@ -4515,7 +4576,7 @@ function licHonResumen(lic) {
 function licHonTablaHtml(lic) {
   var res = licHonResumen(lic);
   if (!res.fechas.length) {
-    return '<div class="adm-pend" style="font-size:.72rem;padding:6px 0">Todavía no hay cheques de ' + lic.periodo + ' cargados dentro de este rango de fechas.</div>';
+    return '<div class="adm-pend" style="font-size:.72rem;padding:6px 0">Todavía no hay cheques de ' + periodoNombre(lic.periodo) + ' cargados dentro de este rango de fechas.</div>';
   }
   var filas = res.filas.map(function (f) {
     var celdas = f.valores.map(function (v) {
@@ -4546,7 +4607,7 @@ function licHonExportExcel(id) {
   if (!res.fechas.length) { alert("Todavía no hay cheques cargados en este rango de fechas."); return; }
   var aoa = [
     ["Licencia " + lic.titular],
-    ["Período " + lic.periodo + " · " + licHonFechaCorta(lic.desde) + " al " + licHonFechaCorta(lic.hasta)],
+    ["Período " + periodoNombre(lic.periodo) + " · " + licHonFechaCorta(lic.desde) + " al " + licHonFechaCorta(lic.hasta)],
     []
   ];
   aoa.push(["Profesional"].concat(res.fechas, ["Total"]));
@@ -4595,7 +4656,7 @@ function licHonExportPDF(id) {
   doc.setFont("helvetica", "bold"); doc.setFontSize(13);
   doc.text("LICENCIA " + lic.titular.toUpperCase() + " — HONORARIOS", (LM + RM) / 2, 19.5, { align: "center" });
   doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
-  doc.text("Período " + lic.periodo + " · " + licHonFechaCorta(lic.desde) + " al " + licHonFechaCorta(lic.hasta) + " · emitido " + hoyStr, (LM + RM) / 2, 25, { align: "center" });
+  doc.text("Período " + periodoNombre(lic.periodo) + " · " + licHonFechaCorta(lic.desde) + " al " + licHonFechaCorta(lic.hasta) + " · emitido " + hoyStr, (LM + RM) / 2, 25, { align: "center" });
   doc.setTextColor(0, 0, 0);
 
   var y = 38;
@@ -4775,7 +4836,7 @@ function licHonExportHtml(id) {
     + '@media print{body{background:#fff;padding:0}.card{box-shadow:none;border-color:#ccc}}'
     + '</style></head><body><div class="wrap"><div class="card">'
     + '<h1>✈️ Licencia ' + escAttr(lic.titular) + ' <span class="estado">' + estadoTxt + '</span></h1>'
-    + '<div class="meta">' + licHonFechaCorta(lic.desde) + ' → ' + licHonFechaCorta(lic.hasta) + ' · período ' + escAttr(lic.periodo) + '</div>'
+    + '<div class="meta">' + licHonFechaCorta(lic.desde) + ' → ' + licHonFechaCorta(lic.hasta) + ' · período ' + escAttr(periodoNombre(lic.periodo)) + '</div>'
     + '<div class="tbl-wrap"><table><thead><tr><th>Profesional</th>' + res.fechas.map(function (f) { return '<th>' + f + '</th>'; }).join('') + '<th>Total</th></tr></thead>'
     + '<tbody>' + filasHtml + '</tbody>'
     + '<tfoot><tr><td>Total</td>' + totalesHtml + '<td>' + fmt(res.granTotal) + '</td></tr></tfoot></table></div>'
@@ -4867,7 +4928,7 @@ function licHonCardHtml(lic) {
     + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">'
     + '<div><div style="font-weight:700;font-size:1.02rem;color:' + color + '">✈️ Licencia ' + escAttr(lic.titular) + '</div>'
     + '<div style="font-size:.78rem;color:rgba(32,36,31,.6)">' + licHonFechaCorta(lic.desde) + ' → ' + licHonFechaCorta(lic.hasta)
-    +   ' · período ' + lic.periodo + ' · ' + estadoTxt + '</div></div>'
+    +   ' · período ' + periodoNombre(lic.periodo) + ' · ' + estadoTxt + '</div></div>'
     + '<div style="display:flex;gap:6px;align-items:center">'
     +   '<button onclick="licHonExportExcel(\'' + lic.id + '\')" title="Descargar Excel" style="background:none;border:1px solid rgba(32,36,31,.2);border-radius:6px;color:rgba(32,36,31,.6);font-size:.68rem;cursor:pointer;padding:4px 8px">⬇ Excel</button>'
     +   '<button onclick="licHonExportPDF(\'' + lic.id + '\')" title="Descargar PDF" style="background:none;border:1px solid rgba(32,36,31,.2);border-radius:6px;color:rgba(32,36,31,.6);font-size:.68rem;cursor:pointer;padding:4px 8px">📄 PDF</button>'
@@ -4907,7 +4968,7 @@ function licHonAbrirForm() {
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     + '<label style="font-size:.72rem">Titular (quién se va)<br><input id="licHonInTitular" type="text" placeholder="Ej. Marcelo" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit"></label>'
     + '<label style="font-size:.72rem">Período (Transferencias del Mes)<br><select id="licHonInPeriodo" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit">'
-    +   LIC_HON_MESES.map(function (m) { return '<option value="' + m + '"' + (m === periodoDefault ? ' selected' : '') + '>' + m.charAt(0).toUpperCase() + m.slice(1) + '</option>'; }).join('')
+    +   LIC_HON_MESES.map(function (m) { return '<option value="' + m + '"' + (m === periodoDefault ? ' selected' : '') + '>' + periodoNombre(m) + '</option>'; }).join('')
     + '</select></label>'
     + '<label style="font-size:.72rem">Desde<br><input id="licHonInDesde" type="date" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit"></label>'
     + '<label style="font-size:.72rem">Hasta<br><input id="licHonInHasta" type="date" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid rgba(32,36,31,.2);border-radius:6px;font-family:inherit"></label>'
@@ -5174,10 +5235,8 @@ function gastosANetoPorFecha(periodo) {
   // arma acá una clave "Adelanto CEM" separada con el MISMO importe real que
   // ya cargó por el importador para el mes siguiente, para que aparezca como
   // un chip tildable más, este mes.
-  var MESES_ORD_GA = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-  var idxMesGA = MESES_ORD_GA.indexOf(periodo);
-  var mesSig = (idxMesGA !== -1 && idxMesGA < MESES_ORD_GA.length - 1) ? MESES_ORD_GA[idxMesGA + 1] : null;
-  var mesSigLabel = mesSig ? mesSig.charAt(0).toUpperCase() + mesSig.slice(1) : null;
+  var mesSig = periodoSiguiente(periodo);
+  var mesSigLabel = mesSig ? periodoInfo(mesSig).largo : null;
   var claveAdelanto = mesSig ? "🔜 Adelantar CEM (" + mesSigLabel + ")" : null;
 
   TODOS_SOCIOS_INVERSION.forEach(function(apellido) {
@@ -5949,7 +6008,7 @@ function transfFamResumenMesHtml(periodo) {
   }).join('\n');
 
   return '<div class="cpsm-header" style="margin-top:12px">'
-    +   '<div><div class="cpsm-title">🏠 Transferencias a familiares — ' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + '</div>'
+    +   '<div><div class="cpsm-title">🏠 Transferencias a familiares — ' + periodoNombre(periodo) + '</div>'
     +   '<div class="cpsm-subtitle">' + pendientes.length + ' pendiente' + (pendientes.length === 1 ? '' : 's') + ' de ' + filas.length + '</div></div>'
     + '</div>'
     + '<div class="adm-table-wrap" style="margin-bottom:10px"><table class="adm-table"><thead><tr>'
@@ -6149,9 +6208,10 @@ function transfFamDefBadgeHtml(apellido) {
 }
 
 function sueldoDirectorPeriodoSelectorHtml(periodoAct) {
-  var meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var meses = PERIODOS_TODOS;
   var opts = meses.map(function(m) {
-    return '<option value="' + m + '"' + (m === periodoAct ? ' selected' : '') + '>' + m.charAt(0).toUpperCase() + m.slice(1) + '</option>';
+    var inf = periodoInfo(m);
+    return '<option value="' + m + '"' + (m === periodoAct ? ' selected' : '') + '>' + (inf.anio === PERIODOS_ANIO_BASE ? inf.largo : inf.labelLargo) + '</option>';
   }).join('');
   return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
     + '<label style="font-size:.75rem;color:rgba(32,36,31,.5);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Período</label>'
@@ -6162,7 +6222,7 @@ function sueldoDirectorPeriodoSelectorHtml(periodoAct) {
 
 function sueldoDirectorCambiarPeriodo(periodo) {
   adminPeriodoAct = periodo;
-  ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  PERIODOS_TODOS.forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab" + (p === periodo ? " adm-tab-act" : "");
   });
@@ -6186,7 +6246,7 @@ function sueldoDirectorFechaPaso(fechaStr) {
 // estado con los de sueldoDirectorTabHtml (mismo sueldoDirectorToggleHecho).
 function sueldoDirectorResumenHtml(periodo) {
   var monto  = SUELDO_DIRECTOR_MONTO;
-  var mesTit = periodo.charAt(0).toUpperCase() + periodo.slice(1);
+  var mesTit = periodoNombre(periodo);
 
   var filas = SUELDO_DIRECTOR_LISTA.map(function(apellido) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === apellido; })[0];
@@ -6363,7 +6423,7 @@ function sueldoDirectorTabHtml(periodo) {
 
   return '<div class="cpsm-header">'
     +   '<div><div class="cpsm-title">🏦 Sueldo Director</div>'
-    +   '<div class="cpsm-subtitle">' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' · monto objetivo ' + fmt(monto) + ' · Bruni, Corelich, Deganutti, Labayen y Trivellini</div></div>'
+    +   '<div class="cpsm-subtitle">' + periodoNombre(periodo) + ' · monto objetivo ' + fmt(monto) + ' · Bruni, Corelich, Deganutti, Labayen y Trivellini</div></div>'
     + '</div>'
     + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:0 2px 10px 2px">⚑ La Retención Ganancias sale de cada cheque a medida que entra (no se puede reservar el bruto para el sueldo). El Préstamo Casa sale del cheque 1, IIBB del cheque 4 y CPSM del cheque 5 — igual que lo maneja el contador. La fila resaltada es donde el acumulado neto llega a ' + fmt(monto) + '.</div>'
     + bloques
@@ -6476,7 +6536,7 @@ function restoProfesionalesTabHtml(periodo) {
 
   return '<div class="cpsm-header">'
     +   '<div><div class="cpsm-title">💳 Resto de profesionales</div>'
-    +   '<div class="cpsm-subtitle">' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' · Garmendia, De la Colina, Soulé, León, Perlasco y Mazzola · transferencia normal del mes</div></div>'
+    +   '<div class="cpsm-subtitle">' + periodoNombre(periodo) + ' · Garmendia, De la Colina, Soulé, León, Perlasco y Mazzola · transferencia normal del mes</div></div>'
     + '</div>'
     + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:0 2px 10px 2px">⚑ Mismo criterio que Sueldo Director: retención por cheque, préstamo en el 1ro, IIBB en el 4to, CPSM en el 5to. Acá el préstamo es descuento (no crédito). "Neto final del mes" en verde = ya pasó la fecha del último cheque; en ámbar todavía puede sumar más. OSDE/CEM aparte, se ajustan cuando dejen de estar pendientes. De la Colina y Mazzola además tienen sueldo BBVA ' + fmt(SUELDO_BBVA_MONTO) + ' aparte (sale de la misma plata) — el resto es dividendos, marcado abajo de cada uno.</div>'
     + bloques
@@ -7271,7 +7331,7 @@ function inversionesSectionHtml(periodo) {
   var tiposOpts = invTiposCargar().map(function(t) { return '<option value="' + escAttr(t) + '">' + escAttr(t) + '</option>'; }).join('');
 
   var formHtml = '<div class="adm-sec-title" style="margin-top:20px">Registrar nueva inversión</div>'
-    + '<div style="font-size:.68rem;color:rgba(32,36,31,.4);padding:0 2px 10px 2px">Elegí los cheques de ' + periodo.charAt(0).toUpperCase() + periodo.slice(1) + ' que forman esta inversión — suma la Retención Ganancias de esos cheques, por profesional (Director + Resto).</div>'
+    + '<div style="font-size:.68rem;color:rgba(32,36,31,.4);padding:0 2px 10px 2px">Elegí los cheques de ' + periodoNombre(periodo) + ' que forman esta inversión — suma la Retención Ganancias de esos cheques, por profesional (Director + Resto).</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">' + (chipsFechas || '<span style="font-size:.75rem;color:rgba(32,36,31,.4)">Sin cheques con retención cargados para ' + periodo + '.</span>') + '</div>'
     + '<div id="inv-aportantes-wrap" style="margin-bottom:12px"></div>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:6px">'
@@ -7837,7 +7897,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-06-prestamos-resumen-aportes';
+  var CURRENT_BUILD = '2026-11-10-periodos-hasta-jun-2027-b';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');

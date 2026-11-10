@@ -177,8 +177,7 @@ var DISCLAIMER = '<div class="disclaimer">'
 
 function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var container = document.getElementById(containerId);
-  var mesLabels = { febrero:"Febrero 2026", marzo:"Marzo 2026", abril:"Abril 2026", junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026", septiembre:"Septiembre 2026", octubre:"Octubre 2026", noviembre:"Noviembre 2026", diciembre:"Diciembre 2026" };
-  var mes = mesLabels[periodo] || (periodo.charAt(0).toUpperCase() + periodo.slice(1) + " 2026");
+  var mes = (periodoInfo(periodo) || { labelLargo: periodo }).labelLargo;
   var valCls = "ind-" + periodo;
   var tagClsMap = { junio:"chtag-teal", julio:"chtag-violet", agosto:"chtag-violet" };
   var tagCls = tagClsMap[periodo] || "chtag-violet";
@@ -210,15 +209,14 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
     if (osdeValSC) subPartesSC.push("OSDE");
     if (cmValSC)   subPartesSC.push("CEM");
     var pctApSC = APORTE_CEOT_DESDE.indexOf(periodo) !== -1 ? getAporteCeotPctPeriodo(periodo, doctor.apellido) : null;
-    var _gaSigMesSC = {febrero:"marzo",marzo:"abril",abril:"mayo",mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
+    var _gaSigMesSC = PERIODO_SIG;
     var gaTotalSC = GASTOS_A[_gaSigMesSC[periodo]] !== undefined ? GASTOS_A[_gaSigMesSC[periodo]] : null;
     var gaPPSC    = gaTotalSC ? Math.round(gaTotalSC / 13) : null;
     var gaPubSC   = (typeof gastosAPublicadoCargar === "function") ? gastosAPublicadoCargar(periodo) : null;
     var gaProfSC  = (gaPubSC && gaPubSC.porProfesional && gaPubSC.porProfesional[doctor.apellido]) || null;
     var gaPartesSC = gaProfSC && gaProfSC.partes && gaProfSC.partes.length ? gaProfSC.partes : null;
     var gaFaltanteSC = gaProfSC ? (gaProfSC.faltante || 0) : 0;
-    var sigMesNombreSC = {"febrero":"Marzo","marzo":"Abril","abril":"Mayo","mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre"};
-    var gaLabelMesSC = sigMesNombreSC[periodo] ? " · " + sigMesNombreSC[periodo] + " 2026" : "";
+    var gaLabelMesSC = periodoSigLabel(periodo) ? " · " + periodoSigLabel(periodo) : "";
     function gaChipForSC(clave) {
       if (!gaPartesSC) return '';
       if (!gaPartesSC.filter(function(p){ return p.clave === clave; })[0]) return '';
@@ -269,7 +267,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var vals = [row.f1, row.f2, row.f3, row.f4, row.f5];
   var total = vals.reduce(function(a,b){return a+b;}, 0);
   // Gastos A: se descuentan del cheque actual para cubrir el mes siguiente
-  var _gaSigMes = {febrero:"marzo",marzo:"abril",abril:"mayo",mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
+  var _gaSigMes = PERIODO_SIG;
   var gaTotal = GASTOS_A[_gaSigMes[periodo]] !== undefined ? GASTOS_A[_gaSigMes[periodo]] : null;
   var gaPP    = gaTotal ? Math.round(gaTotal / 13) : null;
   var osdeExt = getExtra(periodo, "osde", doctor.apellido);
@@ -422,13 +420,12 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var osdeValAnot = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
   html += extraRow("OSDE", osdeExt, retencionExtraAnotHtml(osdeValAnot, pctApCheq), gaChipFor("Cheque OSDE"));
   // Centro Médico — liquidación del mes anterior, acreditado 1ra semana del mes actual
-  var prevMesNombre = {"mayo":"Abril","junio":"Mayo","julio":"Junio","agosto":"Julio","septiembre":"Agosto","octubre":"Sep","noviembre":"Oct","diciembre":"Nov"};
+  var prevMesNombre = {"mayo":"Abril","junio":"Mayo","julio":"Junio","agosto":"Julio","septiembre":"Agosto","octubre":"Sep","noviembre":"Oct","diciembre":"Nov","enero2027":"Diciembre","febrero2027":"Enero","marzo2027":"Febrero","abril2027":"Marzo","mayo2027":"Abril","junio2027":"Mayo"};
   var cmLabel = "Centro Médico" + (prevMesNombre[periodo] ? " · Liquid. " + prevMesNombre[periodo] : "");
   var cmValAnot = (!cmExt.pendiente && cmExt.val) ? cmExt.val : 0;
   html += extraRow(cmLabel, cmExt, retencionExtraAnotHtml(cmValAnot, pctApCheq), gaChipFor("Acreditación CEM"));
   // Gastos A — se descuenta del cheque actual para cubrir gastos del mes siguiente
-  var sigMesNombre = {"febrero":"Marzo","marzo":"Abril","abril":"Mayo","mayo":"Junio","junio":"Julio","julio":"Agosto","agosto":"Septiembre","septiembre":"Octubre","octubre":"Noviembre","noviembre":"Diciembre"};
-  var gaLabelMes = sigMesNombre[periodo] ? " · " + sigMesNombre[periodo] + " 2026" : "";
+  var gaLabelMes = periodoSigLabel(periodo) ? " · " + periodoSigLabel(periodo) : "";
   if (gaPP) {
     html += '<div class="cl-row cl-sep-row cl-neg">'
       + '<span class="cl-date">—</span>'
@@ -554,11 +551,14 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
 // Calcula neto desde datos locales hardcodeados (no depende del API remoto)
 function calcularNetoLocal(pid, doc) {
   var rawMap   = { febrero:FEBRERO_RAW, marzo:MARZO_RAW, abril:ABRIL_RAW, mayo:MAYO_RAW, junio:JUNIO_RAW, julio:JULIO_RAW, agosto:AGOSTO_RAW,
-                   septiembre:SEPTIEMBRE_RAW, octubre:OCTUBRE_RAW, noviembre:NOVIEMBRE_RAW, diciembre:DICIEMBRE_RAW };
+                   septiembre:SEPTIEMBRE_RAW, octubre:OCTUBRE_RAW, noviembre:NOVIEMBRE_RAW, diciembre:DICIEMBRE_RAW,
+                   enero2027:ENERO2027_RAW, febrero2027:FEBRERO2027_RAW, marzo2027:MARZO2027_RAW, abril2027:ABRIL2027_RAW, mayo2027:MAYO2027_RAW, junio2027:JUNIO2027_RAW };
   var fechasMap = { febrero:FEBRERO_FECHAS, marzo:MARZO_FECHAS, abril:ABRIL_FECHAS, mayo:MAYO_FECHAS, junio:JUNIO_FECHAS, julio:JULIO_FECHAS, agosto:AGOSTO_FECHAS,
-                    septiembre:SEPTIEMBRE_FECHAS, octubre:OCTUBRE_FECHAS, noviembre:NOVIEMBRE_FECHAS, diciembre:DICIEMBRE_FECHAS };
+                    septiembre:SEPTIEMBRE_FECHAS, octubre:OCTUBRE_FECHAS, noviembre:NOVIEMBRE_FECHAS, diciembre:DICIEMBRE_FECHAS,
+                    enero2027:ENERO2027_FECHAS, febrero2027:FEBRERO2027_FECHAS, marzo2027:MARZO2027_FECHAS, abril2027:ABRIL2027_FECHAS, mayo2027:MAYO2027_FECHAS, junio2027:JUNIO2027_FECHAS };
   var labelMap = { febrero:"Febrero 2026", marzo:"Marzo 2026", abril:"Abril 2026", mayo:"Mayo 2026", junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026",
-                   septiembre:"Septiembre 2026", octubre:"Octubre 2026", noviembre:"Noviembre 2026", diciembre:"Diciembre 2026" };
+                   septiembre:"Septiembre 2026", octubre:"Octubre 2026", noviembre:"Noviembre 2026", diciembre:"Diciembre 2026",
+                   enero2027:"Enero 2027", febrero2027:"Febrero 2027", marzo2027:"Marzo 2027", abril2027:"Abril 2027", mayo2027:"Mayo 2027", junio2027:"Junio 2027" };
   var raw = rawMap[pid];
   if (!raw) return null;
 
@@ -604,7 +604,7 @@ function calcularNetoLocal(pid, doc) {
                : (cpsmData === null || cpsmData[doc.apellido] == null
                   ? 0
                   : Math.round(cpsmData[doc.apellido] || 0));
-  var _gaSig = {febrero:"marzo",marzo:"abril",abril:"mayo",mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
+  var _gaSig = PERIODO_SIG;
   var gaT   = GASTOS_A[_gaSig[pid]] !== undefined ? GASTOS_A[_gaSig[pid]] : null;
   var ga    = gaT ? Math.round(gaT / 13) : 0;
   // Retención Ganancias — aplica desde Julio 2026; base = Colón + OSDE + CEM
@@ -876,7 +876,7 @@ function renderHistorial(doctor) {
   if (!pane) return;
 
   // Períodos con datos locales disponibles
-  var meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var meses = PERIODOS_TODOS;
   var resultados = [];
 
   meses.forEach(function(pid) {
@@ -1044,14 +1044,9 @@ function renderMiPanel(doctor) {
   // Extendido hasta Dic-2026 (13/08/2026, pedido de Marcelo) — Oct/Nov/Dic
   // sincronizan solos con el sheet (ver cargarLiquidacionRemota). Dic se
   // habilitó el 29/10/2026, cuando se cargó la pestaña Dic-2026.
-  // ⚠️ NO se pudo extender hasta Jun-2027 como se pidió originalmente: el
-  // sistema entero identifica los períodos solo por nombre de mes SIN año
-  // (calcularNetoLocal, PERIODO_IIBB, PERIODO_CPSM, GASTOS_A...) — "febrero"
-  // ya está tomado por Febrero-2026 (FEBRERO_RAW, con datos reales cargados).
-  // Reutilizar esas claves para 2027 mostraría honorarios de 2026 con la
-  // etiqueta de 2027. Para llegar a 2027 hace falta agregar claves con año
-  // (ej. "enero2027") en todo el motor de cálculo, no solo acá — pendiente,
-  // se le preguntó a Marcelo cómo prefiere encararlo y no contestó todavía.
+  // Extendido hasta Jun-2027 (10/11/2026): los períodos de 2027 llevan el año
+  // pegado ("enero2027" … "junio2027", ver registro de períodos en datos.js) para
+  // no chocar con los de 2026, que siguen sin año.
   var PERIODOS_HON = [
     { label:'Abr', raw:null,           key:'abril' },
     { label:'May', raw:MAYO_RAW,       key:'mayo' },
@@ -1062,6 +1057,12 @@ function renderMiPanel(doctor) {
     { label:'Oct', raw:OCTUBRE_RAW,    key:'octubre' },
     { label:'Nov', raw:NOVIEMBRE_RAW,  key:'noviembre' },
     { label:'Dic', raw:DICIEMBRE_RAW,  key:'diciembre' },
+    { label:'Ene 27', raw:ENERO2027_RAW, key:'enero2027' },
+    { label:'Feb 27', raw:FEBRERO2027_RAW, key:'febrero2027' },
+    { label:'Mar 27', raw:MARZO2027_RAW, key:'marzo2027' },
+    { label:'Abr 27', raw:ABRIL2027_RAW, key:'abril2027' },
+    { label:'May 27', raw:MAYO2027_RAW, key:'mayo2027' },
+    { label:'Jun 27', raw:JUNIO2027_RAW, key:'junio2027' },
   ];
   var honorarios = PERIODOS_HON.map(function(p) {
     var val = 0;
@@ -1099,7 +1100,7 @@ function renderMiPanel(doctor) {
     + '<div class="mp-totals">'
     + '<div><div style="font-size:0.6rem;color:rgba(32,36,31,.45);">Este mes</div>'
     + '<div style="font-size:1.3rem;font-weight:800;">' + (honActual.val ? fmt(honActual.val) : '<span style="font-weight:600;color:rgba(32,36,31,.4)">Sin datos aún</span>') + '</div></div>'
-    + '<div style="text-align:right;"><div style="font-size:0.6rem;color:rgba(32,36,31,.45);">Acumulado 2026</div>'
+    + '<div style="text-align:right;"><div style="font-size:0.6rem;color:rgba(32,36,31,.45);">Acumulado</div>'
     + '<div style="font-size:1.05rem;font-weight:700;color:#1f3a2e;">' + (honAcum ? fmt(honAcum) : '<span style="font-weight:600;color:rgba(32,36,31,.4);font-size:0.7rem">Sin datos aún</span>') + '</div></div>'
     + '</div></div>';
 
@@ -1223,6 +1224,12 @@ function mostrarNotificaciones(doctor) {
     { label:'Oct',       raw:OCTUBRE_RAW,    fechas:OCTUBRE_FECHAS,    key:doctor.apellido },
     { label:'Nov',       raw:NOVIEMBRE_RAW,  fechas:NOVIEMBRE_FECHAS,  key:doctor.apellido },
     { label:'Dic',       raw:DICIEMBRE_RAW,  fechas:DICIEMBRE_FECHAS,  key:doctor.apellido },
+    { label:'Ene 27', raw:ENERO2027_RAW, fechas:ENERO2027_FECHAS, key:doctor.apellido },
+    { label:'Feb 27', raw:FEBRERO2027_RAW, fechas:FEBRERO2027_FECHAS, key:doctor.apellido },
+    { label:'Mar 27', raw:MARZO2027_RAW, fechas:MARZO2027_FECHAS, key:doctor.apellido },
+    { label:'Abr 27', raw:ABRIL2027_RAW, fechas:ABRIL2027_FECHAS, key:doctor.apellido },
+    { label:'May 27', raw:MAYO2027_RAW, fechas:MAYO2027_FECHAS, key:doctor.apellido },
+    { label:'Jun 27', raw:JUNIO2027_RAW, fechas:JUNIO2027_FECHAS, key:doctor.apellido },
   ];
 
   periodos.forEach(function(p) {
@@ -1304,7 +1311,7 @@ function avisoTransfChequear(doctor) {
     monto = base ? base.totalNetoMes : null;
   }
 
-  var mesLabel = periodo.charAt(0).toUpperCase() + periodo.slice(1);
+  var mesLabel = periodoNombre(periodo);
   var sub = document.getElementById('avisoTransfSub');
   if (sub) sub.textContent = mesLabel + (monto != null ? ' · ' + fmt(monto) : '');
   banner.dataset.avisoKey = avisoKey;

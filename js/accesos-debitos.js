@@ -271,14 +271,12 @@ function accGuardarTodo() {
 // ══════ WA GASTOS A ══════════════════════════════════════════
 
 function abrirWAGastosA(periodo) {
-  var _gaSig = {febrero:"marzo",marzo:"abril",abril:"mayo",mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
+  var _gaSig = PERIODO_SIG;
   var gaTotal = GASTOS_A[_gaSig[periodo]] || null;
   if (!gaTotal) { alert("No hay datos de Gastos A para " + periodo + "."); return; }
   var gaInd = Math.round(gaTotal / 13);
-  var mesLabel = periodo.charAt(0).toUpperCase() + periodo.slice(1) + " 2026";
-  var sigMes = { mayo:"Junio", junio:"Julio", julio:"Agosto", agosto:"Septiembre",
-                 septiembre:"Octubre", octubre:"Noviembre", noviembre:"Diciembre" };
-  var gaLabel = (sigMes[periodo] || mesLabel) + " 2026";
+  var mesLabel = periodoInfo(periodo).labelLargo;
+  var gaLabel = periodoSigLabel(periodo) || mesLabel;
 
   var sub = document.getElementById("waModalSub");
   if (sub) sub.textContent = "OSDE " + mesLabel + " · Gastos A " + gaLabel + " · $" + fmt(gaInd) + " p/persona";
@@ -347,6 +345,7 @@ function cerrarWAModal() {
 // ══════ DÉBITOS ══════════════════════════════════════════════
 
 const DEBITOS = {
+  "junio-2027": [], "mayo-2027": [], "abril-2027": [], "marzo-2027": [], "febrero-2027": [], "enero-2027": [],
   "diciembre-2026": [], "noviembre-2026": [], "octubre-2026": [],
   "septiembre-2026": [], "agosto-2026": [], "julio-2026": [],
   "junio-2026": [
@@ -427,7 +426,7 @@ function renderDebitos(mes) {
   if (mes) debMesActual = mes;
   cerrarAdmSidenav();
   // desactivar tabs de período y activar sidebar
-  ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(p) {
+  PERIODOS_TODOS.forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
   });

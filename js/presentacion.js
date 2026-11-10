@@ -8,7 +8,7 @@
 
 var presChartInstances = {};
 
-var PRES_GA_SIG = {febrero:"marzo",marzo:"abril",abril:"mayo",mayo:"junio",junio:"julio",julio:"agosto",agosto:"septiembre",septiembre:"octubre",octubre:"noviembre",noviembre:"diciembre"};
+var PRES_GA_SIG = PERIODO_SIG;
 function presGastosATotal(mes) {
   var v = GASTOS_A[PRES_GA_SIG[mes]];
   return (v === undefined || v === null) ? null : v;
@@ -218,7 +218,8 @@ function presRenderCxCard(mes) {
   var canvas = document.getElementById("presChartCx");
   var loadingEl = document.getElementById("presChartCxLoading");
   if (!canvas || !presCxRows) return;
-  var ym = "2026-" + PRES_MES_NUM[mes];
+  var infMes = periodoInfo(mes);
+  var ym = infMes.anio + "-" + PRES_MES_NUM[infMes.nombre];
   var counts = {};
   presCxRows.forEach(function(r) {
     if (!r.fecha || r.fecha.indexOf(ym) !== 0) return;
@@ -1051,7 +1052,7 @@ function renderPresentacion(mes) {
   // cargado todavía si nunca se visitó la pestaña Estadísticas CEOT en esta
   // sesión — lo trae acá y repinta solo ese bloque cuando llegue.
   if (typeof estCargar === "function") estCargar(presPerfilRepintar);
-  var MESES_ORD = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var MESES_ORD = PERIODOS_TODOS;
   MESES_ORD.forEach(function(p) {
     var t = document.getElementById("adm-tab-" + p);
     if (t) t.className = "adm-tab";
@@ -1063,7 +1064,7 @@ function renderPresentacion(mes) {
   // El mes calendario en curso se agrega igual aunque todavía no haya cheques
   // Colón importados (datos financieros) — así se puede ver el avance de
   // cirugías del mes (parcial, día a día) sin esperar al cierre financiero.
-  var mesReal = MESES_ORD[new Date().getMonth()];
+  var mesReal = periodoDeFecha(new Date());
   if (!disponibles.some(function(x) { return x.mes === mesReal; })) {
     disponibles.push({ mes: mesReal, tt: null });
   }
@@ -1097,7 +1098,7 @@ function renderPresentacion(mes) {
 
   var html = "";
   html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
-    + '<div class="adm-sec-title" style="margin:0;border:none;padding:0">📊 Presentación · ' + cap(mes) + ' 2026</div>'
+    + '<div class="adm-sec-title" style="margin:0;border:none;padding:0">📊 Presentación · ' + periodoInfo(mes).labelLargo + '</div>'
     + '<div style="display:flex;gap:6px">' + prevBtn + nextBtn + '</div>'
     + '</div>';
 

@@ -22,6 +22,71 @@ const DOCTORES = [
   { user:"garmendia",  nombre:"DRA. GARMENDIA",    ini:"VG", apellido:"GARMENDIA",    junioKey:"GARMENDIA, Valeria",        wapp:"5492268636272" },
 ];
 
+// ── Registro de períodos ─────────────────────────────────────────────────
+// Los 12 períodos de 2026 se identifican por nombre de mes SIN año ("octubre"
+// = octubre 2026). Los de 2027 llevan el año pegado ("enero2027" … "junio2027"):
+// es el mismo formato que ya reconoce prestamoPeriodoParse(). Para ampliar el
+// calendario (p.ej. hasta diciembre 2027) alcanza con sumar ids a PERIODOS_2027
+// y sus pares RAW/FECHAS más abajo. NO escribir listas de meses a mano en otros
+// archivos: usar PERIODOS_TODOS / periodoInfo() / periodoSiguiente().
+const PERIODOS_ANIO_BASE = 2026;   // año de los ids sin año ("octubre" = octubre 2026)
+var MESES_NOMBRES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+var MESES_CORTOS  = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+var PERIODOS_2026 = MESES_NOMBRES.slice();
+var PERIODOS_2027 = ["enero2027","febrero2027","marzo2027","abril2027","mayo2027","junio2027"];
+var PERIODOS_TODOS = PERIODOS_2026.concat(PERIODOS_2027);
+
+// id → { id, nombre ("enero"), idx (0-11), anio, corto ("Ene"), largo ("Enero"),
+//        label ("Ene 2027"), labelLargo ("Enero 2027") } o null si no existe.
+function periodoInfo(id) {
+  var m = /^([a-z]+)((?:19|20)\d{2})?$/.exec(String(id == null ? '' : id).trim().toLowerCase());
+  if (!m) return null;
+  var idx = MESES_NOMBRES.indexOf(m[1]);
+  if (idx === -1) return null;
+  var anio = m[2] ? parseInt(m[2], 10) : PERIODOS_ANIO_BASE;
+  var largo = m[1].charAt(0).toUpperCase() + m[1].slice(1);
+  return { id: id, nombre: m[1], idx: idx, anio: anio, corto: MESES_CORTOS[idx],
+           largo: largo, label: MESES_CORTOS[idx] + ' ' + anio, labelLargo: largo + ' ' + anio };
+}
+// (anio, idx 0-11) → id de período ("octubre", "enero2027") o null si el panel no lo cubre.
+function periodoIdDe(anio, idx) {
+  var id = anio === PERIODOS_ANIO_BASE ? MESES_NOMBRES[idx] : MESES_NOMBRES[idx] + anio;
+  return PERIODOS_TODOS.indexOf(id) !== -1 ? id : null;
+}
+// Nombre para mostrar: "Octubre" (2026, sin año como siempre) o "Enero 2027".
+function periodoNombre(id) {
+  var i = periodoInfo(id);
+  if (!i) return String(id).charAt(0).toUpperCase() + String(id).slice(1);
+  return i.anio === PERIODOS_ANIO_BASE ? i.largo : i.labelLargo;
+}
+function periodoSiguiente(id) {
+  var i = PERIODOS_TODOS.indexOf(id);
+  return (i === -1 || i === PERIODOS_TODOS.length - 1) ? null : PERIODOS_TODOS[i + 1];
+}
+function periodoAnterior(id) {
+  var i = PERIODOS_TODOS.indexOf(id);
+  return i > 0 ? PERIODOS_TODOS[i - 1] : null;
+}
+// Período de una fecha (por defecto hoy). Antes del primer mes cubierto devuelve
+// el primero, después del último devuelve el último.
+// Mes siguiente de cada período (febrero→marzo … diciembre→enero2027). Lo usan
+// los Gastos A, que se descuentan de un mes para cubrir el siguiente. "enero"
+// queda afuera a propósito (así era antes: enero 2026 no tiene Gastos A).
+var PERIODO_SIG = {};
+PERIODOS_TODOS.forEach(function(id, i) {
+  if (id !== "enero" && PERIODOS_TODOS[i + 1]) PERIODO_SIG[id] = PERIODOS_TODOS[i + 1];
+});
+// "Marzo 2026" del mes siguiente a `id`, o "" si no hay.
+function periodoSigLabel(id) {
+  return PERIODO_SIG[id] ? periodoInfo(PERIODO_SIG[id]).labelLargo : "";
+}
+function periodoDeFecha(d) {
+  d = d || new Date();
+  var id = periodoIdDe(d.getFullYear(), d.getMonth());
+  if (id) return id;
+  return d.getFullYear() < PERIODOS_ANIO_BASE ? PERIODOS_TODOS[0] : PERIODOS_TODOS[PERIODOS_TODOS.length - 1];
+}
+
 // ── Nómina — override remoto de nombre/WhatsApp (pantalla "Nómina" del Home) ──
 // No cubre altas/bajas ni pertenencia a grupos (Sueldo Director, Préstamo
 // Casa, Retención Ganancias, exención CPSM) — eso sigue en DOCTORES/los
@@ -282,6 +347,17 @@ const PERIOD_EXTRAS = {
   },
 };
 
+// OSDE/CEM de los períodos 2027: mismo calendario que el resto (CEM la 1ra semana
+// del mes, OSDE ~3ra semana del mes siguiente).
+PERIODOS_2027.forEach(function(pid) {
+  var info = periodoInfo(pid);
+  var sig = MESES_CORTOS[(info.idx + 1) % 12];
+  PERIOD_EXTRAS[pid] = {
+    osde: { pendiente: true, fecha: "~3ra sem. de " + sig,  m: {} },
+    cm:   { pendiente: true, fecha: "1ra sem. de " + info.corto, m: {} },
+  };
+});
+
 function getExtra(periodo, tipo, apellido) {
   var p = PERIOD_EXTRAS[periodo];
   if (!p || !p[tipo]) return { val: null, pendiente: true, fecha: "" };
@@ -366,6 +442,14 @@ var SEPTIEMBRE_RAW    = []; var SEPTIEMBRE_FECHAS    = [];
 var OCTUBRE_RAW       = []; var OCTUBRE_FECHAS       = [];
 var NOVIEMBRE_RAW     = []; var NOVIEMBRE_FECHAS     = [];
 var DICIEMBRE_RAW     = []; var DICIEMBRE_FECHAS     = [];
+// 2027 — mismo patrón (ids con año: ENERO2027_RAW, …). Los llena el endpoint cuando
+// existan las pestañas "Ene-2027" … del Sheet de liquidaciones.
+var ENERO2027_RAW     = []; var ENERO2027_FECHAS     = [];
+var FEBRERO2027_RAW   = []; var FEBRERO2027_FECHAS   = [];
+var MARZO2027_RAW     = []; var MARZO2027_FECHAS     = [];
+var ABRIL2027_RAW     = []; var ABRIL2027_FECHAS     = [];
+var MAYO2027_RAW      = []; var MAYO2027_FECHAS      = [];
+var JUNIO2027_RAW     = []; var JUNIO2027_FECHAS     = [];
 
 // ── Cheques diferidos Colón Mayo 2026 — importes individuales por profesional ──
 const MAYO_RAW = [
@@ -400,6 +484,12 @@ const GASTOS_A = {
   junio: 23868442.00,
   julio: null, agosto: null, septiembre: null, octubre: null, noviembre: null, diciembre: null,
 };
+// Períodos 2027: sin dato todavía (se completan solos al cargar cada mes).
+PERIODOS_2027.forEach(function(pid) {
+  GASTOS_A[pid] = null;
+  PERIODO_IIBB[pid] = null;
+  PERIODO_CPSM[pid] = null;
+});
 
 // Retención Ganancias — aplica desde Agosto 2026 en adelante
 // Base de cálculo: bruto total (cheques Colón + OSDE + CEM)
@@ -422,7 +512,7 @@ const APORTE_CEOT_PCT = {
   "GUILERA":      null,
   "GARMENDIA":    0.15,
 };
-const APORTE_CEOT_DESDE = ["agosto","septiembre","octubre","noviembre","diciembre"]; // desde Agosto 2026 en adelante
+const APORTE_CEOT_DESDE = ["agosto","septiembre","octubre","noviembre","diciembre"].concat(PERIODOS_2027); // desde Agosto 2026 en adelante
 
 // % de incidencia fija de cada socio para repartir un monto total cualquiera
 // (p.ej. el fondo acumulado de Retención Ganancias) — NO es el % de Retención
@@ -513,7 +603,7 @@ function getAporteCeotPctPeriodo(periodo, apellido) {
 }
 
 async function cerrarMesAporteCeot(periodo) {
-  var label = periodo.charAt(0).toUpperCase() + periodo.slice(1);
+  var label = periodoNombre(periodo);
   if (!confirm('¿Cerrar ' + label + '? Se guarda el % actual de cada profesional para este mes — si después cambiás los porcentajes, los montos de ' + label + ' ya no se van a mover.')) return;
   var stPre = document.getElementById("aporte-ceot-status");
   if (stPre) stPre.textContent = "Cerrando " + label + "…";
@@ -536,7 +626,7 @@ async function cerrarMesAporteCeot(periodo) {
 }
 
 async function reabrirMesAporteCeot(periodo) {
-  var label = periodo.charAt(0).toUpperCase() + periodo.slice(1);
+  var label = periodoNombre(periodo);
   if (!confirm('¿Reabrir ' + label + '? Vuelve a usar el % vigente actual en vez del que quedó guardado al cerrarlo.')) return;
   var cerrados = Object.assign({}, APORTE_CERRADOS_REMOTO);
   delete cerrados[periodo];
@@ -570,7 +660,6 @@ const PRESTAMO_CASA_SOCIOS_A = ["BRUNI", "CORELICH", "DEGANUTTI", "TRIVELLINI", 
 // períodos por nombre de mes SIN año ("octubre" = Octubre 2026), así que el
 // año se asume acá; el día que los períodos lleven año propio, esta constante
 // deja de hacer falta y prestamoCuotaNro() recibe el año de verdad.
-const PERIODOS_ANIO_BASE = 2026;
 const MESES_ORD_PRESTAMO = ["enero","febrero","marzo","abril","mayo","junio",
                             "julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
@@ -958,8 +1047,7 @@ async function cargarGastosARemoto() {
       if (tokenUsado) marcarEndpointStatus("gastosA", false, data.error);
       return;
     }
-    ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre",
-     "enero","febrero","marzo","abril"].forEach(function(m) {
+    PERIODOS_TODOS.forEach(function(m) {
       if ((m in data) && data[m] !== null) GASTOS_A[m] = data[m];
     });
     console.log("Gastos A actualizados desde el sheet ✓");
@@ -1022,7 +1110,7 @@ async function cargarLiquidacionRemota() {
     // sus 5 cheques. Dic-2025 no la pisa: su tabla de distribución no tiene
     // fechas, así que parsearHoja la descarta, y además Dic-2026 va después
     // en el orden de pestañas, con lo cual gana aunque algún día se complete.
-    ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].forEach(function(pid) {
+    ["mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"].concat(PERIODOS_2027).forEach(function(pid) {
       if (!data[pid] || !data[pid].cheques) return;
       var cheques = data[pid].cheques;
 
@@ -1139,6 +1227,12 @@ async function cargarLiquidacionRemota() {
       octubre:    { RAW: OCTUBRE_RAW,    FECHAS: OCTUBRE_FECHAS    },
       noviembre:  { RAW: NOVIEMBRE_RAW,  FECHAS: NOVIEMBRE_FECHAS  },
       diciembre:  { RAW: DICIEMBRE_RAW,  FECHAS: DICIEMBRE_FECHAS  },
+      enero2027:    { RAW: ENERO2027_RAW,    FECHAS: ENERO2027_FECHAS    },
+      febrero2027:  { RAW: FEBRERO2027_RAW,  FECHAS: FEBRERO2027_FECHAS  },
+      marzo2027:    { RAW: MARZO2027_RAW,    FECHAS: MARZO2027_FECHAS    },
+      abril2027:    { RAW: ABRIL2027_RAW,    FECHAS: ABRIL2027_FECHAS    },
+      mayo2027:     { RAW: MAYO2027_RAW,     FECHAS: MAYO2027_FECHAS     },
+      junio2027:    { RAW: JUNIO2027_RAW,    FECHAS: JUNIO2027_FECHAS    },
     };
     Object.keys(mesesDin).forEach(function(pid) {
       if (!data[pid] || !data[pid].cheques) return;
