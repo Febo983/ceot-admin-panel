@@ -237,9 +237,12 @@ function estBloqueImport() {
     var opts = "";
     for (var i = 0; i < 12; i++) {
       var ym = "2026-" + String(i + 1).padStart(2, "0");
-      opts += '<option value="' + ym + '"' + (ym === p.ym ? " selected" : "") + '>' + estCap(EST_MESES[i]) + " 2026</option>";
+      opts += '<option value="' + ym + '"' + (ym === p.ym ? " selected" : "") + '>' + estCap(EST_MESES[i]) + " 26</option>";
     }
-    opts += '<option value="2027-01"' + (p.ym === "2027-01" ? " selected" : "") + '>Enero 2027</option>';
+    for (var j = 0; j < 12; j++) {
+      var ym27 = "2027-" + String(j + 1).padStart(2, "0");
+      opts += '<option value="' + ym27 + '"' + (ym27 === p.ym ? " selected" : "") + '>' + estCap(EST_MESES[j]) + " 27</option>";
+    }
     var filasHtml = p.filas.map(function (f) {
       return '<tr' + (f.ok ? "" : ' style="background:rgba(220,38,38,.08)"') + '>'
         + '<td style="padding:3px 8px">' + f.raw + '</td>'

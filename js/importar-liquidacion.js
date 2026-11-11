@@ -351,7 +351,7 @@ function impChequesRestaurarPeriodo(periodoKey) {
 // que cambia "Mes a importar" — evita escribir con fechas de depósito reales
 // (ej. septiembre) en la pestaña del mes facturado (julio), que no tiene esas
 // columnas y termina escribiendo 0 celdas en silencio.
-const MESES_IMP_ORD = PERIODOS_TODOS;   // incluye ene–jun 2027 (ids "enero2027" …)
+const MESES_IMP_ORD = PERIODOS_TODOS;   // incluye ene–dic 2027 (ids "enero2027" …)
 // ── Mes CM: elegirlo solo y decir en palabras qué se está cargando ──
 // El CEM se guarda indexado por el mes en que el Centro Médico ACREDITA la
 // plata, no por el mes de la liquidación: lo que se carga a fin de octubre es
@@ -363,7 +363,8 @@ var CM_MES_PREV = {
   mayo:"Abril", junio:"Mayo", julio:"Junio", agosto:"Julio",
   septiembre:"Agosto", octubre:"Septiembre", noviembre:"Octubre", diciembre:"Noviembre",
   enero2027:"Diciembre", febrero2027:"Enero", marzo2027:"Febrero",
-  abril2027:"Marzo", mayo2027:"Abril", junio2027:"Mayo"
+  abril2027:"Marzo", mayo2027:"Abril", junio2027:"Mayo",
+  julio2027:"Junio", agosto2027:"Julio", septiembre2027:"Agosto", octubre2027:"Septiembre", noviembre2027:"Octubre", diciembre2027:"Noviembre"
 };
 
 // Mes de acreditación que corresponde a lo que se carga hoy: pasada la mitad

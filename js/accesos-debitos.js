@@ -345,7 +345,7 @@ function cerrarWAModal() {
 // ══════ DÉBITOS ══════════════════════════════════════════════
 
 const DEBITOS = {
-  "junio-2027": [], "mayo-2027": [], "abril-2027": [], "marzo-2027": [], "febrero-2027": [], "enero-2027": [],
+  "diciembre-2027": [], "noviembre-2027": [], "octubre-2027": [], "septiembre-2027": [], "agosto-2027": [], "julio-2027": [], "junio-2027": [], "mayo-2027": [], "abril-2027": [], "marzo-2027": [], "febrero-2027": [], "enero-2027": [],
   "diciembre-2026": [], "noviembre-2026": [], "octubre-2026": [],
   "septiembre-2026": [], "agosto-2026": [], "julio-2026": [],
   "junio-2026": [

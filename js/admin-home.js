@@ -660,7 +660,7 @@ function renderAdmHome() {
   var mesAct = tabMesActual();
   var garmNota = admHomeGarmendiaNota();
   var MESES_CORTO = {};
-  PERIODOS_TODOS.forEach(function(id) { var i = periodoInfo(id); MESES_CORTO[id] = i.anio === PERIODOS_ANIO_BASE ? i.corto : i.corto + " " + String(i.anio).slice(2); });
+  PERIODOS_TODOS.forEach(function(id) { var i = periodoInfo(id); MESES_CORTO[id] = i.corto + " " + String(i.anio).slice(2); });
 
   var mesStrip = PERIODOS_TODOS.map(function(m) {
     var act = m === mesAct;
@@ -1162,7 +1162,7 @@ function renderPendientes() {
   var periodos = PERIODOS_TODOS;
   var rawMap   = {febrero:FEBRERO_RAW,marzo:MARZO_RAW,abril:ABRIL_RAW,mayo:MAYO_RAW,junio:JUNIO_RAW,julio:JULIO_RAW,agosto:AGOSTO_RAW,
                   septiembre:SEPTIEMBRE_RAW,octubre:OCTUBRE_RAW,noviembre:NOVIEMBRE_RAW,diciembre:DICIEMBRE_RAW,
-                  enero2027:ENERO2027_RAW,febrero2027:FEBRERO2027_RAW,marzo2027:MARZO2027_RAW,abril2027:ABRIL2027_RAW,mayo2027:MAYO2027_RAW,junio2027:JUNIO2027_RAW};
+                  enero2027:ENERO2027_RAW,febrero2027:FEBRERO2027_RAW,marzo2027:MARZO2027_RAW,abril2027:ABRIL2027_RAW,mayo2027:MAYO2027_RAW,junio2027:JUNIO2027_RAW,julio2027:JULIO2027_RAW,agosto2027:AGOSTO2027_RAW,septiembre2027:SEPTIEMBRE2027_RAW,octubre2027:OCTUBRE2027_RAW,noviembre2027:NOVIEMBRE2027_RAW,diciembre2027:DICIEMBRE2027_RAW};
 
   function cel(ok, txt) {
     return ok

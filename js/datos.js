@@ -24,20 +24,20 @@ const DOCTORES = [
 
 // ── Registro de períodos ─────────────────────────────────────────────────
 // Los 12 períodos de 2026 se identifican por nombre de mes SIN año ("octubre"
-// = octubre 2026). Los de 2027 llevan el año pegado ("enero2027" … "junio2027"):
+// = octubre 2026). Los de 2027 llevan el año pegado ("enero2027" … "diciembre2027"):
 // es el mismo formato que ya reconoce prestamoPeriodoParse(). Para ampliar el
-// calendario (p.ej. hasta diciembre 2027) alcanza con sumar ids a PERIODOS_2027
+// calendario (hoy llega hasta diciembre 2027) alcanza con sumar ids a PERIODOS_2027
 // y sus pares RAW/FECHAS más abajo. NO escribir listas de meses a mano en otros
 // archivos: usar PERIODOS_TODOS / periodoInfo() / periodoSiguiente().
 const PERIODOS_ANIO_BASE = 2026;   // año de los ids sin año ("octubre" = octubre 2026)
 var MESES_NOMBRES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 var MESES_CORTOS  = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 var PERIODOS_2026 = MESES_NOMBRES.slice();
-var PERIODOS_2027 = ["enero2027","febrero2027","marzo2027","abril2027","mayo2027","junio2027"];
+var PERIODOS_2027 = ["enero2027","febrero2027","marzo2027","abril2027","mayo2027","junio2027","julio2027","agosto2027","septiembre2027","octubre2027","noviembre2027","diciembre2027"];
 var PERIODOS_TODOS = PERIODOS_2026.concat(PERIODOS_2027);
 
 // id → { id, nombre ("enero"), idx (0-11), anio, corto ("Ene"), largo ("Enero"),
-//        label ("Ene 2027"), labelLargo ("Enero 2027") } o null si no existe.
+//        label ("Ene 27"), labelLargo ("Enero 27") } o null si no existe.
 function periodoInfo(id) {
   var m = /^([a-z]+)((?:19|20)\d{2})?$/.exec(String(id == null ? '' : id).trim().toLowerCase());
   if (!m) return null;
@@ -46,18 +46,18 @@ function periodoInfo(id) {
   var anio = m[2] ? parseInt(m[2], 10) : PERIODOS_ANIO_BASE;
   var largo = m[1].charAt(0).toUpperCase() + m[1].slice(1);
   return { id: id, nombre: m[1], idx: idx, anio: anio, corto: MESES_CORTOS[idx],
-           largo: largo, label: MESES_CORTOS[idx] + ' ' + anio, labelLargo: largo + ' ' + anio };
+           largo: largo, label: MESES_CORTOS[idx] + ' ' + String(anio).slice(2), labelLargo: largo + ' ' + String(anio).slice(2) };
 }
 // (anio, idx 0-11) → id de período ("octubre", "enero2027") o null si el panel no lo cubre.
 function periodoIdDe(anio, idx) {
   var id = anio === PERIODOS_ANIO_BASE ? MESES_NOMBRES[idx] : MESES_NOMBRES[idx] + anio;
   return PERIODOS_TODOS.indexOf(id) !== -1 ? id : null;
 }
-// Nombre para mostrar: "Octubre" (2026, sin año como siempre) o "Enero 2027".
+// Nombre para mostrar con año corto: "Octubre 26", "Enero 27".
 function periodoNombre(id) {
   var i = periodoInfo(id);
   if (!i) return String(id).charAt(0).toUpperCase() + String(id).slice(1);
-  return i.anio === PERIODOS_ANIO_BASE ? i.largo : i.labelLargo;
+  return i.labelLargo;
 }
 function periodoSiguiente(id) {
   var i = PERIODOS_TODOS.indexOf(id);
@@ -450,6 +450,12 @@ var MARZO2027_RAW     = []; var MARZO2027_FECHAS     = [];
 var ABRIL2027_RAW     = []; var ABRIL2027_FECHAS     = [];
 var MAYO2027_RAW      = []; var MAYO2027_FECHAS      = [];
 var JUNIO2027_RAW     = []; var JUNIO2027_FECHAS     = [];
+var JULIO2027_RAW       = []; var JULIO2027_FECHAS       = [];
+var AGOSTO2027_RAW      = []; var AGOSTO2027_FECHAS      = [];
+var SEPTIEMBRE2027_RAW  = []; var SEPTIEMBRE2027_FECHAS  = [];
+var OCTUBRE2027_RAW     = []; var OCTUBRE2027_FECHAS     = [];
+var NOVIEMBRE2027_RAW   = []; var NOVIEMBRE2027_FECHAS   = [];
+var DICIEMBRE2027_RAW   = []; var DICIEMBRE2027_FECHAS   = [];
 
 // ── Cheques diferidos Colón Mayo 2026 — importes individuales por profesional ──
 const MAYO_RAW = [
@@ -1238,6 +1244,12 @@ async function cargarLiquidacionRemota() {
       abril2027:    { RAW: ABRIL2027_RAW,    FECHAS: ABRIL2027_FECHAS    },
       mayo2027:     { RAW: MAYO2027_RAW,     FECHAS: MAYO2027_FECHAS     },
       junio2027:    { RAW: JUNIO2027_RAW,    FECHAS: JUNIO2027_FECHAS    },
+      julio2027: { RAW: JULIO2027_RAW, FECHAS: JULIO2027_FECHAS },
+      agosto2027: { RAW: AGOSTO2027_RAW, FECHAS: AGOSTO2027_FECHAS },
+      septiembre2027: { RAW: SEPTIEMBRE2027_RAW, FECHAS: SEPTIEMBRE2027_FECHAS },
+      octubre2027: { RAW: OCTUBRE2027_RAW, FECHAS: OCTUBRE2027_FECHAS },
+      noviembre2027: { RAW: NOVIEMBRE2027_RAW, FECHAS: NOVIEMBRE2027_FECHAS },
+      diciembre2027: { RAW: DICIEMBRE2027_RAW, FECHAS: DICIEMBRE2027_FECHAS },
     };
     Object.keys(mesesDin).forEach(function(pid) {
       if (!data[pid] || !data[pid].cheques) return;

@@ -420,7 +420,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   var osdeValAnot = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
   html += extraRow("OSDE", osdeExt, retencionExtraAnotHtml(osdeValAnot, pctApCheq), gaChipFor("Cheque OSDE"));
   // Centro Médico — liquidación del mes anterior, acreditado 1ra semana del mes actual
-  var prevMesNombre = {"mayo":"Abril","junio":"Mayo","julio":"Junio","agosto":"Julio","septiembre":"Agosto","octubre":"Sep","noviembre":"Oct","diciembre":"Nov","enero2027":"Diciembre","febrero2027":"Enero","marzo2027":"Febrero","abril2027":"Marzo","mayo2027":"Abril","junio2027":"Mayo"};
+  var prevMesNombre = {"mayo":"Abril","junio":"Mayo","julio":"Junio","agosto":"Julio","septiembre":"Agosto","octubre":"Sep","noviembre":"Oct","diciembre":"Nov","enero2027":"Diciembre","febrero2027":"Enero","marzo2027":"Febrero","abril2027":"Marzo","mayo2027":"Abril","junio2027":"Mayo","julio2027":"Junio","agosto2027":"Julio","septiembre2027":"Agosto","octubre2027":"Septiembre","noviembre2027":"Octubre","diciembre2027":"Noviembre"};
   var cmLabel = "Centro Médico" + (prevMesNombre[periodo] ? " · Liquid. " + prevMesNombre[periodo] : "");
   var cmValAnot = (!cmExt.pendiente && cmExt.val) ? cmExt.val : 0;
   html += extraRow(cmLabel, cmExt, retencionExtraAnotHtml(cmValAnot, pctApCheq), gaChipFor("Acreditación CEM"));
@@ -552,13 +552,13 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
 function calcularNetoLocal(pid, doc) {
   var rawMap   = { febrero:FEBRERO_RAW, marzo:MARZO_RAW, abril:ABRIL_RAW, mayo:MAYO_RAW, junio:JUNIO_RAW, julio:JULIO_RAW, agosto:AGOSTO_RAW,
                    septiembre:SEPTIEMBRE_RAW, octubre:OCTUBRE_RAW, noviembre:NOVIEMBRE_RAW, diciembre:DICIEMBRE_RAW,
-                   enero2027:ENERO2027_RAW, febrero2027:FEBRERO2027_RAW, marzo2027:MARZO2027_RAW, abril2027:ABRIL2027_RAW, mayo2027:MAYO2027_RAW, junio2027:JUNIO2027_RAW };
+                   enero2027:ENERO2027_RAW, febrero2027:FEBRERO2027_RAW, marzo2027:MARZO2027_RAW, abril2027:ABRIL2027_RAW, mayo2027:MAYO2027_RAW, junio2027:JUNIO2027_RAW, julio2027:JULIO2027_RAW, agosto2027:AGOSTO2027_RAW, septiembre2027:SEPTIEMBRE2027_RAW, octubre2027:OCTUBRE2027_RAW, noviembre2027:NOVIEMBRE2027_RAW, diciembre2027:DICIEMBRE2027_RAW };
   var fechasMap = { febrero:FEBRERO_FECHAS, marzo:MARZO_FECHAS, abril:ABRIL_FECHAS, mayo:MAYO_FECHAS, junio:JUNIO_FECHAS, julio:JULIO_FECHAS, agosto:AGOSTO_FECHAS,
                     septiembre:SEPTIEMBRE_FECHAS, octubre:OCTUBRE_FECHAS, noviembre:NOVIEMBRE_FECHAS, diciembre:DICIEMBRE_FECHAS,
-                    enero2027:ENERO2027_FECHAS, febrero2027:FEBRERO2027_FECHAS, marzo2027:MARZO2027_FECHAS, abril2027:ABRIL2027_FECHAS, mayo2027:MAYO2027_FECHAS, junio2027:JUNIO2027_FECHAS };
+                    enero2027:ENERO2027_FECHAS, febrero2027:FEBRERO2027_FECHAS, marzo2027:MARZO2027_FECHAS, abril2027:ABRIL2027_FECHAS, mayo2027:MAYO2027_FECHAS, junio2027:JUNIO2027_FECHAS, julio2027:JULIO2027_FECHAS, agosto2027:AGOSTO2027_FECHAS, septiembre2027:SEPTIEMBRE2027_FECHAS, octubre2027:OCTUBRE2027_FECHAS, noviembre2027:NOVIEMBRE2027_FECHAS, diciembre2027:DICIEMBRE2027_FECHAS };
   var labelMap = { febrero:"Febrero 2026", marzo:"Marzo 2026", abril:"Abril 2026", mayo:"Mayo 2026", junio:"Junio 2026", julio:"Julio 2026", agosto:"Agosto 2026",
                    septiembre:"Septiembre 2026", octubre:"Octubre 2026", noviembre:"Noviembre 2026", diciembre:"Diciembre 2026",
-                   enero2027:"Enero 2027", febrero2027:"Febrero 2027", marzo2027:"Marzo 2027", abril2027:"Abril 2027", mayo2027:"Mayo 2027", junio2027:"Junio 2027" };
+                   enero2027:"Enero 27", febrero2027:"Febrero 27", marzo2027:"Marzo 27", abril2027:"Abril 27", mayo2027:"Mayo 27", junio2027:"Junio 27", julio2027:"Julio 27", agosto2027:"Agosto 27", septiembre2027:"Septiembre 27", octubre2027:"Octubre 27", noviembre2027:"Noviembre 27", diciembre2027:"Diciembre 27" };
   var raw = rawMap[pid];
   if (!raw) return null;
 
@@ -1045,7 +1045,7 @@ function renderMiPanel(doctor) {
   // sincronizan solos con el sheet (ver cargarLiquidacionRemota). Dic se
   // habilitó el 29/10/2026, cuando se cargó la pestaña Dic-2026.
   // Extendido hasta Jun-2027 (10/11/2026): los períodos de 2027 llevan el año
-  // pegado ("enero2027" … "junio2027", ver registro de períodos en datos.js) para
+  // pegado ("enero2027" … "diciembre2027", ver registro de períodos en datos.js) para
   // no chocar con los de 2026, que siguen sin año.
   var PERIODOS_HON = [
     { label:'Abr', raw:null,           key:'abril' },
@@ -1063,6 +1063,12 @@ function renderMiPanel(doctor) {
     { label:'Abr 27', raw:ABRIL2027_RAW, key:'abril2027' },
     { label:'May 27', raw:MAYO2027_RAW, key:'mayo2027' },
     { label:'Jun 27', raw:JUNIO2027_RAW, key:'junio2027' },
+    { label:'Jul 27', raw:JULIO2027_RAW, key:'julio2027' },
+    { label:'Ago 27', raw:AGOSTO2027_RAW, key:'agosto2027' },
+    { label:'Sep 27', raw:SEPTIEMBRE2027_RAW, key:'septiembre2027' },
+    { label:'Oct 27', raw:OCTUBRE2027_RAW, key:'octubre2027' },
+    { label:'Nov 27', raw:NOVIEMBRE2027_RAW, key:'noviembre2027' },
+    { label:'Dic 27', raw:DICIEMBRE2027_RAW, key:'diciembre2027' },
   ];
   var honorarios = PERIODOS_HON.map(function(p) {
     var val = 0;
@@ -1230,6 +1236,12 @@ function mostrarNotificaciones(doctor) {
     { label:'Abr 27', raw:ABRIL2027_RAW, fechas:ABRIL2027_FECHAS, key:doctor.apellido },
     { label:'May 27', raw:MAYO2027_RAW, fechas:MAYO2027_FECHAS, key:doctor.apellido },
     { label:'Jun 27', raw:JUNIO2027_RAW, fechas:JUNIO2027_FECHAS, key:doctor.apellido },
+    { label:'Jul 27', raw:JULIO2027_RAW, fechas:JULIO2027_FECHAS, key:doctor.apellido },
+    { label:'Ago 27', raw:AGOSTO2027_RAW, fechas:AGOSTO2027_FECHAS, key:doctor.apellido },
+    { label:'Sep 27', raw:SEPTIEMBRE2027_RAW, fechas:SEPTIEMBRE2027_FECHAS, key:doctor.apellido },
+    { label:'Oct 27', raw:OCTUBRE2027_RAW, fechas:OCTUBRE2027_FECHAS, key:doctor.apellido },
+    { label:'Nov 27', raw:NOVIEMBRE2027_RAW, fechas:NOVIEMBRE2027_FECHAS, key:doctor.apellido },
+    { label:'Dic 27', raw:DICIEMBRE2027_RAW, fechas:DICIEMBRE2027_FECHAS, key:doctor.apellido },
   ];
 
   periodos.forEach(function(p) {
