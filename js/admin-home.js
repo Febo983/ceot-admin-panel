@@ -565,6 +565,15 @@ function admHomeChecklistToggle(itemId) {
   admHomeHudRender();
 }
 
+// Cantidad de socios activos: se cuenta de la nómina (los DOCTORES con % de
+// aporte a CEOT, igual que en "Retención Ganancias") en vez de estar escrita a
+// mano — decía "10" fijo y quedó viejo cuando se sumó Garmendia.
+function admHomeSociosActivos() {
+  try {
+    return DOCTORES.filter(function(d) { return APORTE_CEOT_PCT[d.apellido] !== null; }).length;
+  } catch (e) { return "—"; }
+}
+
 function renderAdmHome() {
   admDesactivarSidebar();
   var hb = document.getElementById("admHomeBtn");
@@ -638,7 +647,7 @@ function renderAdmHome() {
       +   '</div>'
       +   '<div class="adm-home-hud-cell" onclick="renderPendientes()" style="cursor:pointer">'
       +     '<div class="adm-home-hud-lab">Socios activos</div>'
-      +     '<span style="font-size:1.2rem;font-weight:800;color:#1c2b3a">10</span>'
+      +     '<span style="font-size:1.2rem;font-weight:800;color:#1c2b3a">' + admHomeSociosActivos() + '</span>'
       +     (garmNota ? '<div style="font-size:10.5px;color:#4d5b68;margin-top:2px">' + garmNota + '</div>' : '')
       +   '</div>'
       + '</div>'
@@ -674,7 +683,7 @@ function renderAdmHome() {
       + '</div>'
       + '<div style="background:rgba(32,36,31,0.05);border:0.5px solid rgba(32,36,31,0.1);border-radius:10px;padding:11px 12px">'
       + '<div style="font-size:9px;color:rgba(32,36,31,0.35);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Socios activos</div>'
-      + '<span style="font-size:1.2rem;font-weight:800;color:#20241f">10</span>'
+      + '<span style="font-size:1.2rem;font-weight:800;color:#20241f">' + admHomeSociosActivos() + '</span>'
       + (garmNota ? '<div style="font-size:9.5px;color:rgba(32,36,31,0.3);margin-top:2px">' + garmNota + '</div>' : '')
       + '</div>'
       + '</div>'
