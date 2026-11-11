@@ -81,6 +81,12 @@ function admHomeModulosEnHome() {
 var ADM_HOME_MODULOS = [
   { key:"liquidaciones",    ico:"bar-chart-3",     lbl:"Liquidaciones", cat:"mes", fn:"renderAdminPanelPage(tabMesActual())" },
   { key:"sueldodirector",   ico:"banknote",        lbl:"Transferencias del Mes", cat:"mes", fn:"abrirSueldoDirectorMesActual()" },
+  // Antes eran secciones plegables dentro de "Transferencias del Mes" (ver SD_VISTAS en index.html).
+  { key:"gastosa",          ico:"file-text",       lbl:"Gastos A",      cat:"mes", fn:"abrirSdVista('gastosa')" },
+  { key:"inv",              ico:"piggy-bank",      lbl:"Inversiones",   cat:"mes", fn:"abrirSdVista('inv')" },
+  { key:"prestamoscasa",    ico:"building-2",      lbl:"Préstamos Casa", cat:"casa", fn:"abrirSdVista('prestamos')" },
+  { key:"fondoceot",        ico:"landmark",        lbl:"Fondo CEOT",    cat:"mes", fn:"abrirSdVista('fondoceot')" },
+  { key:"gastoequipo",      ico:"settings",        lbl:"Gasto de Equipos", cat:"clinica", fn:"abrirSdVista('gastoequipo')" },
   { key:"aporteceot",       ico:"percent",         lbl:"Retención Ganancias",   cat:"mes", fn:"renderAporteCeot()" },
   { key:"cpsm",             ico:"landmark",        lbl:"CPSM",          cat:"mes", home:false, fn:"renderCpsm()" },
   { key:"redsom",           ico:"stethoscope",     lbl:"Seguimiento REDSOM", cat:"mes", home:false, fn:"renderSeguimientoRedsom()" },

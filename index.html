@@ -2212,6 +2212,11 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
       <button class="adm-sidenav-btn" id="adm-sidenav-cpsm"         onclick="renderCpsm()"><i data-lucide="landmark" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>CPSM</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-aporteceot"  onclick="renderAporteCeot()"><i data-lucide="percent" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Retención Ganancias</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-sueldodirector" onclick="abrirSueldoDirectorMesActual()"><i data-lucide="banknote" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Transferencias del Mes</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-gastosa" onclick="abrirSdVista('gastosa')"><i data-lucide="file-text" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Gastos A</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-inv" onclick="abrirSdVista('inv')"><i data-lucide="piggy-bank" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Inversiones</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-prestamos" onclick="abrirSdVista('prestamos')"><i data-lucide="building-2" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Préstamos Casa</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-fondoceot" onclick="abrirSdVista('fondoceot')"><i data-lucide="landmark" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Fondo CEOT</button>
+      <button class="adm-sidenav-btn" id="adm-sidenav-gastoequipo" onclick="abrirSdVista('gastoequipo')"><i data-lucide="settings" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Gasto de Equipos</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-licencias" onclick="renderLicencias()"><i data-lucide="calendar-heart" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Licencias</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-estadisticas" onclick="renderEstadisticasCeot()"><i data-lucide="line-chart" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Estadísticas CEOT</button>
       <button class="adm-sidenav-btn" id="adm-sidenav-gastoscasa" onclick="renderGastosCasa()"><i data-lucide="home" style="width:14px;height:14px;vertical-align:-3px;margin-right:5px" stroke-width="2"></i>Gastos Casa</button>
@@ -2366,24 +2371,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/portal-render.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/admin-home.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/gastos-obra.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/presentacion.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/sueldo-b.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/redsom.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/nun-data.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/accesos-debitos.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/estadisticas.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/estadisticas-export.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/gastos-casa.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/faq-asistente.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/asistente.js?v=2026-11-11-socios-activos-contados"></script>
-<script src="js/correos.js?v=2026-11-11-socios-activos-contados"></script>
+<script src="js/datos.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/portal-render.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/admin-home.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/gastos-obra.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/presentacion.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/sueldo-b.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/redsom.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/nun-data.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/accesos-debitos.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/estadisticas.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/estadisticas-export.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/gastos-casa.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/faq-asistente.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/asistente.js?v=2026-11-11-transferencias-separadas"></script>
+<script src="js/correos.js?v=2026-11-11-transferencias-separadas"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3152,7 +3157,7 @@ function renderTotalCeot() {
 function admDesactivarSidebar() {
   window.scrollTo(0, 0);
   if (typeof admSubtabsLimpiar === "function") admSubtabsLimpiar();
-  ["debitos","accesos","pendientes","gastospagos","facturas","totalceot","sueldob","cpsm","aporteceot","sueldodirector","licenciashon","licencias","estadisticas","gastoscasa","faqasistente","correos"].forEach(function(k) {
+  ["debitos","accesos","pendientes","gastospagos","facturas","totalceot","sueldob","cpsm","aporteceot","sueldodirector","gastosa","inv","prestamos","fondoceot","gastoequipo","licenciashon","licencias","estadisticas","gastoscasa","faqasistente","correos"].forEach(function(k) {
     var b = document.getElementById("adm-sidenav-" + k);
     if (b) b.className = "adm-sidenav-btn";
   });
@@ -4009,17 +4014,70 @@ function sdAcc(id, titulo, contenido) {
 // Marcelo, 15/09/2026 — antes heredaba el período de la última pantalla
 // que lo hubiera tocado, así que a veces abría en un mes viejo.
 function abrirSueldoDirectorMesActual() {
+  SD_VISTA = "transferencias";
   adminPeriodoAct = tabMesActual();
   renderSueldoDirector();
+}
+
+// ── Pantallas separadas ─────────────────────────────────────────────
+// "Transferencias del Mes" tenía 8 secciones plegables. Pedido de Marcelo,
+// 11/11/2026: solo quedan ahí las tres de transferencias (Resumen, Sueldo
+// Director, Resto de profesionales — más Transferencias a familiares cuando
+// hay); Gastos A, Inversiones, Préstamos Casa, Fondo CEOT y Gasto de Equipos
+// pasan a tener cada una su pantalla, su mosaico en el Inicio y su botón en
+// el menú lateral.
+// Todas siguen saliendo de renderSueldoDirector() y con el mismo
+// #sueldoDirectorScreenRoot: las ~40 funciones que repintan con
+// renderSueldoDirector() después de guardar algo vuelven a dibujar la pantalla
+// que está abierta (SD_VISTA), sin tener que tocar ninguna.
+var SD_VISTA = "transferencias";
+var SD_VISTAS = {
+  gastosa:     { periodo: true,  titulo: "" },
+  inv:         { periodo: true,  titulo: "" },
+  prestamos:   { periodo: false, titulo: "🏠 Préstamos Casa — cuotas y reparto" },
+  fondoceot:   { periodo: false, titulo: "🏛 Fondo CEOT — Ayudantía cruzada" },
+  gastoequipo: { periodo: false, titulo: "🔧 Gasto de Equipos (Storz) — Gasto vs. Recuperado" }
+};
+function abrirSdVista(vista) {
+  SD_VISTA = SD_VISTAS[vista] ? vista : "transferencias";
+  adminPeriodoAct = tabMesActual();
+  renderSueldoDirector();
+}
+function sdVistaContenidoHtml(vista, periodo) {
+  if (vista === "gastosa")     return gastosASectionHtml(periodo);
+  if (vista === "inv")         return inversionesSectionHtml(periodo);
+  if (vista === "prestamos")   return '<div id="prestamosCasaBody">' + prestamosCasaSectionHtml() + '</div>';
+  if (vista === "fondoceot")   return '<div id="fondoCeotAyudBody">' + fondoCeotAyudantiaSectionHtml() + '</div>';
+  if (vista === "gastoequipo") return '<div id="gastoEquipoBody">' + gastoEquipoSectionHtml() + '</div>';
+  return "";
 }
 
 function renderSueldoDirector() {
   cerrarAdmSidenav();
   admDesactivarSidebar();
-  var btn = document.getElementById("adm-sidenav-sueldodirector");
+  var vista = SD_VISTAS[SD_VISTA] ? SD_VISTA : "transferencias";
+  var btn = document.getElementById("adm-sidenav-" + (vista === "transferencias" ? "sueldodirector" : vista));
   if (btn) btn.className = "adm-sidenav-btn active";
 
   var periodo = adminPeriodoAct || tabMesActual();
+
+  // Pantalla separada: una sola sección, abierta, sin acordeón.
+  if (vista !== "transferencias") {
+    var cfg = SD_VISTAS[vista];
+    document.getElementById("adm-content").innerHTML = '<div id="sueldoDirectorScreenRoot" style="padding:16px">'
+      + (cfg.periodo ? sueldoDirectorPeriodoSelectorHtml(periodo, "cambia el mes de esta pantalla") : "")
+      + (cfg.titulo ? '<div class="adm-sec-title">' + cfg.titulo + '</div>' : "")
+      + sdVistaContenidoHtml(vista, periodo)
+      + '</div>';
+    if (vista === "gastosa") gastosARecalcularPreview();
+    if (vista === "inv") invRecalcularPreview();
+    prestamosCasaCargar();
+    ceotAyudCruzadaCargar(function() {
+      var el = document.getElementById('fondoCeotAyudBody');
+      if (el) el.innerHTML = fondoCeotAyudantiaSectionHtml();
+    });
+    return;
+  }
   // transfFamAutoAplicar(periodo) — se dejó de llamar, ver "Anotaciones sobre
   // transferencias derivadas" (transfDerivBoxHtml) más abajo, 22/09/2026.
 
@@ -4034,11 +4092,6 @@ function renderSueldoDirector() {
     + sdAccSiHay('transffam', transfFamHtml, '🏠 Transferencias a familiares' + (TRANSF_FAM_RESUMEN_PEND ? ' — ' + TRANSF_FAM_RESUMEN_PEND + ' pendiente' + (TRANSF_FAM_RESUMEN_PEND === 1 ? '' : 's') : ''))
     + sdAcc('sd', '🏦 Sueldo Director', sueldoDirectorTabHtml(periodo))
     + sdAcc('resto', '💳 Resto de profesionales', restoProfesionalesTabHtml(periodo))
-    + sdAcc('gastosa', '🧾 Gastos A — cheques + descuento', gastosASectionHtml(periodo))
-    + sdAcc('inv', '💰 Inversiones — fondo Retención Ganancias', inversionesSectionHtml(periodo))
-    + sdAcc('prestamos', '🏠 Préstamos Casa — cuotas y reparto', '<div id="prestamosCasaBody">' + prestamosCasaSectionHtml() + '</div>')
-    + sdAcc('fondoceot', '🏛 Fondo CEOT — Ayudantía cruzada', '<div id="fondoCeotAyudBody">' + fondoCeotAyudantiaSectionHtml() + '</div>')
-    + sdAcc('gastoequipo', '🔧 Gasto de Equipos (Storz) — Gasto vs. Recuperado', '<div id="gastoEquipoBody">' + gastoEquipoSectionHtml() + '</div>')
     + '</div>';
 
   document.getElementById("adm-content").innerHTML = html;
@@ -4048,8 +4101,8 @@ function renderSueldoDirector() {
       sdAccGuardarEstado();
     });
   });
-  gastosARecalcularPreview();
-  invRecalcularPreview();
+  // Gastos A, Inversiones, Préstamos Casa, Fondo CEOT y Gasto de Equipos ya no
+  // se dibujan acá (ver SD_VISTAS): sus previews no tienen DOM que recalcular.
   prestamosCasaCargar();
   ceotAyudCruzadaCargar(function() {
     var el = document.getElementById('fondoCeotAyudBody');
@@ -6288,7 +6341,7 @@ function transfFamDefBadgeHtml(apellido) {
   return ' <a href="javascript:void(0)" onclick="transfFamDefAbrirModal(\'' + aEsc + '\')" title="' + escAttr(tooltip) + '" style="font-size:.62rem;color:#1f3a2e;text-decoration:underline;margin-left:6px">' + resumen + '</a>';
 }
 
-function sueldoDirectorPeriodoSelectorHtml(periodoAct) {
+function sueldoDirectorPeriodoSelectorHtml(periodoAct, nota) {
   var meses = PERIODOS_TODOS;
   var opts = meses.map(function(m) {
     var inf = periodoInfo(m);
@@ -6297,7 +6350,7 @@ function sueldoDirectorPeriodoSelectorHtml(periodoAct) {
   return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
     + '<label style="font-size:.75rem;color:rgba(32,36,31,.5);font-weight:700;text-transform:uppercase;letter-spacing:.4px">Período</label>'
     + '<select onchange="sueldoDirectorCambiarPeriodo(this.value)" style="padding:6px 10px;border:1px solid rgba(32,36,31,.25);border-radius:6px;font-family:inherit;font-size:.85rem;font-weight:600;background:var(--co-card,#fbf8f0)">' + opts + '</select>'
-    + '<span style="font-size:.65rem;color:rgba(32,36,31,.4)">cambia Sueldo Director, Resto de profesionales e Inversiones juntos, sin salir de esta pantalla</span>'
+    + '<span style="font-size:.65rem;color:rgba(32,36,31,.4)">' + (nota || 'cambia Resumen, Sueldo Director y Resto de profesionales juntos, sin salir de esta pantalla') + '</span>'
     + '</div>';
 }
 
@@ -7996,7 +8049,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-11-socios-activos-contados';
+  var CURRENT_BUILD = '2026-11-11-transferencias-separadas';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
