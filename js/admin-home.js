@@ -1088,12 +1088,12 @@ function checklistActualizarBadge() {
   var offset = circ * (1 - pct);
 
   var retro = (typeof admHomeTheme !== "undefined") && admHomeTheme === "retro";
-  var ringColor  = vencidos > 0 ? (retro ? "#e05252" : "#b13a2c") : (retro ? "#2f7de0" : "#1f3a2e");
-  var trackColor = retro ? "rgba(15,28,40,.18)" : "rgba(31,58,46,.18)";
+  var ringColor  = vencidos > 0 ? (retro ? "#c0392b" : "#b13a2c") : (retro ? "#0f1c28" : "#1f3a2e");
+  var trackColor = retro ? "rgba(15,28,40,.25)" : "rgba(31,58,46,.18)";
   var textColor  = retro ? "#1c2b3a" : "#1f3a2e";
 
   if (retro) {
-    btn.style.cssText = "background:#fffaf1;color:" + textColor + ";border:2px solid #0f1c28;border-radius:8px;padding:5px 11px;font-weight:700;box-shadow:0 2px 0 #0f1c28;font-family:inherit;cursor:pointer";
+    btn.style.cssText = "background:#f5c542;color:" + textColor + ";border:2px solid #0f1c28;border-radius:16px;padding:4px 12px;font-weight:700;font-family:inherit;cursor:pointer";
   } else {
     btn.style.cssText = "background:#fbf8f0;color:" + textColor + ";border:none;border-radius:8px;padding:6px 12px;font-weight:500;font-family:inherit;cursor:pointer";
   }

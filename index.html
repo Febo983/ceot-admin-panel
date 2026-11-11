@@ -1714,6 +1714,18 @@ tr:hover .tf-add { opacity:1; }
 }
 /* En celular entran dos bloques por fila (el flex-basis va inline en el mosaico) */
 @media (max-width:520px) { .adm-home-tile-retro { flex-basis:140px !important; } }
+/* ── Barra superior del admin, estilo tablero retro (crema + marino + dorado) ── */
+.adm-header { background:#fffaf1; color:#1c2b3a; border:2.5px solid #0f1c28; border-radius:14px; box-shadow:0 4px 0 #0f1c28; margin:10px 12px 12px; padding:9px 14px; }
+.adm-header .ph-info p { color:#4d5b68; opacity:1; font-size:0.7rem; }
+.adm-header .adm-masthead-title { font-family:inherit; font-weight:800; font-size:0.95rem; letter-spacing:.4px; color:#1c2b3a; }
+.adm-header .ph-seal { background:#f5c542; border:2.5px solid #0f1c28; color:#0f1c28; font-family:inherit; font-weight:800; }
+.adm-header .adm-theme-btn, .adm-header .adm-hamburger { color:#1c2b3a; }
+.adm-header .adm-theme-btn { width:30px; height:30px; padding:0; border:2px solid #0f1c28; border-radius:50%; font-size:1rem; display:flex; align-items:center; justify-content:center; }
+.adm-header .btn-importar, .adm-header .btn-refresh, .adm-header .btn-logout { background:#fffaf1; color:#1c2b3a; border:2px solid #0f1c28; border-radius:16px; padding:5px 12px; font-size:0.74rem; font-weight:700; line-height:1.2; }
+.adm-header .btn-refresh { width:30px; height:30px; padding:0; border-radius:50%; font-size:1rem; display:flex; align-items:center; justify-content:center; }
+.adm-header .btn-importar:hover, .adm-header .btn-logout:hover, .adm-header .btn-refresh:hover { background:#f5c542; opacity:1; }
+.adm-header #adminLogoutBtn { background:#ef6fa2; }
+.adm-header #adminLogoutBtn:hover { background:#f48cb6; }
 /* ═══════════════════════════════════════════
    MODO OSCURO — Panel Admin (filtro, no paleta real)
    El admin tiene ~17 módulos sin dark CSS propio. En vez de escribir
@@ -1722,19 +1734,25 @@ tr:hover .tf-add { opacity:1; }
    Independiente del [data-theme] que usan Login/Portal Profesionales
    más abajo — no se pisan porque login/portal quedan display:none
    mientras el admin está visible.
-   El .adm-header queda afuera a propósito: ya es oscuro por diseño
-   propio, no por el filtro. Invertirlo y volver a invertirlo (doble
-   filtro) se probó y desatura todo el resto de la página por el
-   redondeo del hue-rotate encadenado — así que directamente no se lo
-   incluye en la lista de abajo, en vez de cancelarlo.
+   El .adm-header era oscuro por diseño y quedaba afuera; desde que es
+   crema (tablero retro) entra en la lista como cualquier otro bloque.
    ═══════════════════════════════════════════ */
+body.adm-dark-invert .adm-header,
 body.adm-dark-invert .adm-layout,
 body.adm-dark-invert #voiceFab,
 body.adm-dark-invert #voiceHandsFreeBtn,
 body.adm-dark-invert #voiceStatus,
 body.adm-dark-invert #importModal {
-  filter: invert(1) hue-rotate(180deg);
+  /* Inversión parcial (90%): el fondo queda gris carbón (~#1a1a1a) y el texto
+     gris claro (~#e5e5e5) en vez de negro y blanco puros — menos contraste
+     duro y menos encandilante. El fondo de #adminView se pinta igual, así no
+     asoma la franja crema alrededor de la barra. */
+  filter: invert(.9) hue-rotate(180deg);
 }
+body.adm-dark-invert, body.adm-dark-invert #adminView { background-color:#1c1e1b; background-image:none; }
+/* Cambio de tema con fundido, no de golpe */
+#adminView { transition: background-color .35s ease; }
+.adm-header, .adm-layout { transition: filter .35s ease; }
 
 /* ═══════════════════════════════════════════
    MODO OSCURO — Portal Profesionales
@@ -2371,24 +2389,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/portal-render.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/admin-home.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/gastos-obra.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/presentacion.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/sueldo-b.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/redsom.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/nun-data.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/accesos-debitos.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/estadisticas.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/estadisticas-export.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/gastos-casa.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/faq-asistente.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/asistente.js?v=2026-11-11-home-calendario-y-pendientes"></script>
-<script src="js/correos.js?v=2026-11-11-home-calendario-y-pendientes"></script>
+<script src="js/datos.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/portal-render.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/admin-home.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/gastos-obra.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/presentacion.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/sueldo-b.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/redsom.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/nun-data.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/accesos-debitos.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/estadisticas.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/estadisticas-export.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/gastos-casa.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/faq-asistente.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/asistente.js?v=2026-11-11-modo-oscuro-suave"></script>
+<script src="js/correos.js?v=2026-11-11-modo-oscuro-suave"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -8049,7 +8067,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-11-home-calendario-y-pendientes';
+  var CURRENT_BUILD = '2026-11-11-modo-oscuro-suave';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
