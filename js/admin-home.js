@@ -215,24 +215,24 @@ function admHomeTile(ico, lbl, colorRgba, opts) {
       + "</" + tag + ">";
   }
 
+  // Mosaico retro: bloque compacto y horizontal (ícono a la izquierda, nombre
+  // al lado). El contenedor es flex-wrap y cada bloque crece (flex:1 1 178px),
+  // así cada fila se llena entera y no queda ninguno suelto ni huecos al final.
   var boxBg      = "#fffaf1";
   var boxBgHover = "#ffffff";
   var border      = editing ? "2px dashed #b8447a" : "2px solid #0f1c28";
-  var boxShadow  = "box-shadow:0 3px 0 #0f1c28;";
-  var boxRadius  = "16px";
-  var icoRadius  = "12px";
-  var icoBorder  = "border:2px solid #0f1c28;";
-  var icoColor   = "#1c2b3a";
-  var labelStyle = "font-size:10.5px;color:#1c2b3a;text-align:center;font-weight:700;letter-spacing:0.2px;line-height:1.3;min-height:27px;display:flex;align-items:center;justify-content:center";
+  var labelStyle = "flex:1;min-width:0;font-size:12.5px;color:#1c2b3a;text-align:left;font-weight:700;line-height:1.25;overflow-wrap:break-word";
 
   var del = (editing && opts.delFn)
     ? '<div onclick="event.stopPropagation();' + opts.delFn + '" title="Eliminar" style="position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:4px;background:rgba(220,38,38,.85);color:#fff;font-size:9px;line-height:16px;text-align:center;cursor:pointer">✕</div>'
     : "";
-  var pencil = editing ? '<div style="position:absolute;top:3px;left:3px;font-size:9px;opacity:.6">✏</div>' : "";
-  return "<" + tag + attrs + " class=\"adm-home-tile-retro\" style=\"position:relative;text-decoration:none;background:" + boxBg + ";border:" + border + ";border-radius:" + boxRadius + ";" + boxShadow + "padding:22px 10px 16px;min-height:127px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;cursor:" + cursor + "\" onmouseover=\"this.style.background='" + boxBgHover + "'\" onmouseout=\"this.style.background='" + boxBg + "'\">"
+  var pencil = editing ? '<div style="position:absolute;top:2px;left:4px;font-size:9px;opacity:.6">✏</div>' : "";
+  var afuera = (opts.href && !editing) ? '<span aria-hidden="true" style="flex-shrink:0;font-size:12px;font-weight:700;color:rgba(28,43,58,.4)">↗</span>' : "";
+  return "<" + tag + attrs + " class=\"adm-home-tile-retro\" style=\"position:relative;flex:1 1 178px;min-width:0;text-decoration:none;background:" + boxBg + ";border:" + border + ";border-radius:12px;box-shadow:0 3px 0 #0f1c28;padding:8px 10px;min-height:54px;box-sizing:border-box;display:flex;align-items:center;gap:10px;cursor:" + cursor + "\" onmouseover=\"this.style.background='" + boxBgHover + "'\" onmouseout=\"this.style.background='" + boxBg + "'\">"
     + pencil + del
-    + '<div style="width:52px;height:52px;border-radius:' + icoRadius + ';background:' + colorRgba + ';' + icoBorder + 'display:flex;align-items:center;justify-content:center"><i data-lucide="' + ico + '" style="width:24px;height:24px;color:' + icoColor + '" stroke-width="1.75"></i></div>'
+    + '<div style="flex-shrink:0;width:36px;height:36px;border-radius:9px;background:' + colorRgba + ';border:2px solid #0f1c28;display:flex;align-items:center;justify-content:center"><i data-lucide="' + ico + '" style="width:18px;height:18px;color:#1c2b3a" stroke-width="1.9"></i></div>'
     + '<div style="' + labelStyle + '">' + lbl + '</div>'
+    + afuera
     + "</" + tag + ">";
 }
 
@@ -347,7 +347,7 @@ function admHomeRenderResults() {
 
   var retroChips = admHomeTheme === "retro";
   var tileWrap = retroChips
-    ? "display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px"
+    ? "display:flex;flex-wrap:wrap;gap:10px 9px"
     : "display:grid;grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:8px";
   var cats = ["Todos"].concat(ADM_HOME_CATS.map(function(x) { return x.k; }));
   var chips = cats.map(function(c) {
@@ -358,7 +358,7 @@ function admHomeRenderResults() {
     var offBg     = retroChips ? '#fffaf1' : 'rgba(32,36,31,.04)';
     var offText   = retroChips ? 'rgba(28,43,58,.6)' : 'rgba(32,36,31,.55)';
     var offBorder = retroChips ? '2px solid #0f1c28' : '1px solid rgba(32,36,31,.15)';
-    return '<span onclick="admHomeSetCat(\'' + c + '\')" style="flex-shrink:0;cursor:pointer;font-size:0.7rem;padding:5px 12px;border-radius:20px;border:' + (on ? onBorder : offBorder) + ';background:' + (on ? onBg : offBg) + ';color:' + (on ? onText : offText) + ';font-weight:700;white-space:nowrap">' + admHomeCatLabel(c) + '</span>';
+    return '<span onclick="admHomeSetCat(\'' + c + '\')" style="flex-shrink:0;cursor:pointer;font-size:0.74rem;padding:' + (retroChips ? '7px 13px' : '5px 12px') + ';border-radius:20px;border:' + (on ? onBorder : offBorder) + ';background:' + (on ? onBg : offBg) + ';color:' + (on ? onText : offText) + ';font-weight:700;white-space:nowrap">' + admHomeCatLabel(c) + '</span>';
   }).join("");
 
   // Buscar y filtrar por categoría miran TODOS los módulos, también los
@@ -375,7 +375,12 @@ function admHomeRenderResults() {
   }), function(a) { return "acc:" + a.id; });
 
   var flatMode = !!q || homeSearchCat !== "Todos";
-  var html = '<div class="adm-sf-wrap" id="admCatChipsWrap" style="margin-bottom:12px"><div id="admCatChipsScroll" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">' + chips + '</div></div>';
+  // En la home retro los filtros comparten fila con el buscador: van a
+  // #admHomeChips (lo arma renderAdmHome) y envuelven en vez de scrollear.
+  var chipsSlot = document.getElementById("admHomeChips");
+  var html = "";
+  if (chipsSlot) chipsSlot.innerHTML = chips;
+  else html = '<div class="adm-sf-wrap" id="admCatChipsWrap" style="margin-bottom:12px"><div id="admCatChipsScroll" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">' + chips + '</div></div>';
 
   if (homeEditMode) {
     html += '<div style="font-size:0.68rem;color:rgba(31,58,46,.85);margin-bottom:12px;padding:8px 10px;background:rgba(31,58,46,.08);border:1px solid rgba(31,58,46,.25);border-radius:8px">✏ Modo edición: tocá cualquier tile para renombrarlo' + (flatMode ? '' : ' o eliminarlo') + '.</div>';
@@ -449,7 +454,7 @@ function admHomeRenderResults() {
         return admHomeTile(ico, a.title, admHomeCatColor(a.cat), Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
       }));
       if (homeEditMode) {
-        tiles.push('<div onclick="admHomeNuevoAcceso(\'' + g.k + '\')" style="cursor:pointer;background:rgba(32,36,31,0.03);border:1px dashed rgba(32,36,31,.3);border-radius:10px;padding:12px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;min-height:64px">'
+        tiles.push('<div onclick="admHomeNuevoAcceso(\'' + g.k + '\')" style="flex:1 1 178px;cursor:pointer;background:rgba(32,36,31,0.03);border:1px dashed rgba(32,36,31,.3);border-radius:10px;padding:12px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;min-height:64px">'
           + '<i data-lucide="plus" style="width:18px;height:18px;color:rgba(31,58,46,.8)" stroke-width="1.75"></i>'
           + '<div style="font-size:11px;color:rgba(31,58,46,.8);font-weight:500">Nuevo</div>'
           + '</div>');
@@ -471,7 +476,7 @@ function admHomeRenderResults() {
       }
     } else {
       var ocultos = (admHomeModulosEnHome().length - destacados.length) + (ACCESOS_DATA.length - atajos.length);
-      html += '<div onclick="admHomeToggleVerTodo()" style="cursor:pointer;background:#fffaf1;border:2px solid #0f1c28;border-radius:16px;box-shadow:0 3px 0 #0f1c28;padding:13px;text-align:center;font-size:0.72rem;font-weight:700;color:#1c2b3a;margin-bottom:6px">Ver todo · ' + ocultos + ' más ▼</div>';
+      html += '<div onclick="admHomeToggleVerTodo()" style="cursor:pointer;background:#fffaf1;border:2px solid #0f1c28;border-radius:12px;box-shadow:0 3px 0 #0f1c28;padding:10px;text-align:center;font-size:0.76rem;font-weight:700;color:#1c2b3a;margin-bottom:6px">Ver todo · ' + ocultos + ' más ▼</div>';
     }
   }
 
@@ -490,6 +495,74 @@ function admHomeGarmendiaNota() {
   var n = (hoy.getFullYear() - GARMENDIA_ALTA.anio) * 12 + (hoy.getMonth() + 1 - GARMENDIA_ALTA.mes) + 1;
   if (n < 1 || n > 12) return "";
   return "Garmendia: " + (n === 1 ? "1er" : n + "º") + " mes";
+}
+
+// ── Tablero del mes en la home ──────────────────────────────────────
+// El checklist pasa a ser lo primero que se ve: hechas/total, un casillero por
+// tarea agrupado en los tres tramos (se prenden como monedas al tildar; en rojo
+// las atrasadas) y las próximas pendientes para tildar sin salir de la home.
+var ADM_HOME_HUD_PROX = 3;
+function admHomeHudEsc(t) {
+  return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function admHomeHudRender() {
+  var el = document.getElementById("admHomeHud");
+  if (!el) return;
+  var hoy = new Date(), dia = hoy.getDate();
+  var mesNombre = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"][hoy.getMonth()];
+  var total = CHECKLIST_ITEMS.length;
+  var done = CHECKLIST_ITEMS.filter(function(it) { return checklistItemDone(it.id); }).length;
+  var vencidos = checklistVencidos().length;
+
+  var tramoActual = null;
+  var tramos = Object.keys(CHECKLIST_RANGOS).map(function(rk) {
+    var r = CHECKLIST_RANGOS[rk];
+    var ahora = tramoActual === null && dia <= r.diaHasta;
+    if (ahora) tramoActual = rk;
+    var cells = CHECKLIST_ITEMS.filter(function(it) { return it.rango === rk; }).map(function(it) {
+      var ok = checklistItemDone(it.id);
+      var cls = ok ? " on" : (dia > r.diaHasta ? " late" : "");
+      return '<i class="adm-home-hud-c' + cls + '" title="' + admHomeHudEsc(it.texto) + '"></i>';
+    }).join("");
+    return '<div class="adm-home-hud-tramo' + (ahora ? ' now' : '') + '"><span>' + r.label.replace("Del ", "").replace(" al ", "–") + (ahora ? ' · ahora' : '') + '</span><div class="adm-home-hud-cells">' + cells + '</div></div>';
+  }).join("");
+
+  var prox = CHECKLIST_ITEMS.filter(function(it) { return !checklistItemDone(it.id); }).slice(0, ADM_HOME_HUD_PROX);
+  var proxHtml = prox.length
+    ? prox.map(function(it) {
+        return '<label class="adm-home-hud-task" title="' + admHomeHudEsc(it.texto) + '">'
+          + '<input type="checkbox" onchange="admHomeChecklistToggle(\'' + it.id + '\')">'
+          + '<span>' + admHomeHudEsc(it.texto) + '</span></label>';
+      }).join("")
+    : '<div style="font-size:0.82rem;font-weight:700;color:#1c2b3a">¡Todo listo este mes! 🎉</div>';
+
+  el.innerHTML =
+      '<div class="adm-home-hud-cell" onclick="renderChecklist()" style="cursor:pointer">'
+    +   '<div class="adm-home-hud-lab">Checklist · ' + mesNombre + '</div>'
+    +   '<div style="font-size:1.7rem;font-weight:800;line-height:1;color:#1c2b3a;font-variant-numeric:tabular-nums;white-space:nowrap">' + done + '/' + total + '</div>'
+    +   (vencidos ? '<div style="font-size:10.5px;font-weight:700;color:#c0392b;margin-top:3px">' + vencidos + ' atrasada' + (vencidos === 1 ? '' : 's') + '</div>' : '')
+    + '</div>'
+    + '<div class="adm-home-hud-cell">'
+    +   '<div class="adm-home-hud-lab">Avance por tramo</div>'
+    +   '<div class="adm-home-hud-tramos">' + tramos + '</div>'
+    + '</div>'
+    + '<div class="adm-home-hud-cell adm-home-hud-prox">'
+    +   '<div class="adm-home-hud-lab">Lo próximo</div>'
+    +   proxHtml
+    +   '<span onclick="renderChecklist()" style="cursor:pointer;font-size:0.74rem;font-weight:700;color:#1c2b3a;text-decoration:underline;text-underline-offset:3px;margin-top:3px;align-self:flex-start">Ver las ' + total + ' tareas</span>'
+    + '</div>';
+}
+// Tildar desde la home: mismo guardado que toggleChecklistItem(), pero sin
+// renderChecklistBody() — que pisa #adm-content con la pantalla del checklist.
+function admHomeChecklistToggle(itemId) {
+  var estado = checklistCargarEstado();
+  var mk = checklistMesKey();
+  if (!estado[mk]) estado[mk] = {};
+  estado[mk][itemId] = !estado[mk][itemId];
+  try { localStorage.setItem("ceot_checklist_done", JSON.stringify(estado)); } catch (e) {}
+  syncPush("ceot_checklist_done");
+  checklistActualizarBadge();
+  admHomeHudRender();
 }
 
 function renderAdmHome() {
@@ -548,61 +621,45 @@ function renderAdmHome() {
   var html;
 
   if (retro) {
+    // Una sola cabecera (la barra negra de arriba ya dice CEOT ADMIN y la tira
+    // de meses ya está en las pestañas): acá van el título, el tablero del mes
+    // (checklist + totales), buscador y filtros en una fila, los bloques y el piso.
     html = '<div class="adm-home-retro adm-home-retro-wrap"><canvas id="admHomeBg" aria-hidden="true"></canvas><div class="adm-home-retro-inner">'
-      + '<div id="admHeroCard" style="position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#fffaf1;border:3px solid #0f1c28;border-radius:18px;padding:12px 18px;box-shadow:0 5px 0 #0f1c28,0 10px 18px rgba(15,28,40,.18);margin-bottom:46px">'
-      +   '<div style="display:flex;align-items:center;gap:12px">'
-      +     '<div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(160deg,#2f7de0 0%,#1f5cab 100%);border:3px solid #0f1c28;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -4px 0 rgba(0,0,0,.18);flex-shrink:0">'
-      +       '<svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M12 3v18M3 12h18" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>'
-      +     '</div>'
-      +     '<div>'
-      +       '<div style="font-family:\'PixelDisplay\',monospace;font-size:11px;color:#1c2b3a;letter-spacing:.5px">CEOT ADMIN</div>'
-      +       '<div style="font-size:8.5px;color:#5b6b7a;margin-top:4px;letter-spacing:.3px">Ortopedia y Traumatología · Clínica Colón</div>'
-      +     '</div>'
+      + '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px 12px;flex-wrap:wrap;margin-bottom:10px">'
+      +   '<h1 style="font-size:20px;font-weight:800;letter-spacing:.2px;color:#1c2b3a;margin:0">Inicio</h1>'
+      +   '<div style="font-size:0.78rem;color:#4d5b68">' + saludo + ', Marcelo</div>'
+      + '</div>'
+
+      + '<div class="adm-home-hud" id="admHeroCard">'
+      +   '<div id="admHomeHud" style="display:contents"></div>'
+      +   '<div class="adm-home-hud-cell">'
+      +     '<div class="adm-home-hud-lab">Total CEOT · ' + mesAct + '</div>'
+      +     statNeto
       +   '</div>'
-      +   '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
-      +     '<div style="display:flex;align-items:center;gap:8px;background:rgba(63,151,201,.12);border:2px solid #0f1c28;border-radius:999px;padding:6px 12px 6px 6px">'
-      +       '<div style="width:26px;height:26px;border-radius:50%;background:#ef6fa2;border:2px solid #0f1c28;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#0f1c28">M</div>'
-      +       '<div><div style="font-size:12px;font-weight:700;color:#1c2b3a">MARCELO</div><div style="font-size:9.5px;color:#5b6b7a;text-transform:uppercase;letter-spacing:.4px">Administrador</div></div>'
-      +     '</div>'
-      +     toggleBtn
+      +   '<div class="adm-home-hud-cell" onclick="renderPendientes()" style="cursor:pointer">'
+      +     '<div class="adm-home-hud-lab">Socios activos</div>'
+      +     '<span style="font-size:1.2rem;font-weight:800;color:#1c2b3a">10</span>'
+      +     (garmNota ? '<div style="font-size:10.5px;color:#4d5b68;margin-top:2px">' + garmNota + '</div>' : '')
       +   '</div>'
       + '</div>'
 
-      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
-      +   '<h1 style="font-family:\'PixelDisplay\',monospace;font-size:15px;letter-spacing:1px;color:#1c2b3a;margin:0">DASH BOARD</h1>'
-      +   '<div style="font-size:0.72rem;color:#5b6b7a">' + saludo + ', Marcelo</div>'
-      + '</div>'
-
-      + '<div class="adm-sf-wrap" id="admMesStripWrap" style="margin-bottom:14px"><div id="admMesStripScroll" style="display:flex;gap:5px;overflow-x:auto;scrollbar-width:none">' + mesStrip + '</div></div>'
-
-      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'
-      +   '<div style="flex:1;display:flex;align-items:center;gap:10px;background:#fffaf1;border:2px solid #0f1c28;border-radius:14px;padding:10px 14px">'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
+      +   '<div style="flex:1 1 260px;min-width:0;display:flex;align-items:center;gap:10px;background:#fffaf1;border:2px solid #0f1c28;border-radius:12px;padding:9px 14px;box-shadow:0 3px 0 #0f1c28">'
       +     '<span style="opacity:.5">🔍</span>'
-      +     '<input id="admHomeSearchInput" oninput="admHomeBuscar(this.value)" placeholder="Buscar módulos, liquidaciones, accesos…" style="background:none;border:none;outline:none;color:#1c2b3a;font-size:0.85rem;font-family:inherit;flex:1">'
+      +     '<input id="admHomeSearchInput" oninput="admHomeBuscar(this.value)" placeholder="Buscar módulos, liquidaciones, accesos…" style="background:none;border:none;outline:none;color:#1c2b3a;font-size:16px;font-family:inherit;flex:1;min-width:0">'
       +   '</div>'
-      +   '<button id="admHomeEditBtn" onclick="admHomeToggleEdit()" style="flex-shrink:0;background:#fffaf1;border:2px solid #0f1c28;color:#1c2b3a;font-size:0.72rem;font-weight:700;padding:0 14px;border-radius:14px;cursor:pointer;font-family:inherit;height:41px">✏ Editar nombres</button>'
+      +   '<div id="admHomeChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>'
+      +   '<button id="admHomeEditBtn" onclick="admHomeToggleEdit()" style="flex-shrink:0;background:#fffaf1;border:2px solid #0f1c28;color:#1c2b3a;font-size:0.74rem;font-weight:700;padding:7px 13px;border-radius:20px;cursor:pointer;font-family:inherit">✏ Editar nombres</button>'
       + '</div>'
 
       + '<div id="admHomeDynamic"></div>'
 
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
-      +   '<div style="background:#fffaf1;border:2px solid #0f1c28;border-radius:14px;padding:12px 14px;box-shadow:0 3px 0 #0f1c28">'
-      +     '<div style="font-size:9px;color:#5b6b7a;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Total CEOT · ' + mesAct + '</div>'
-      +     statNeto
-      +   '</div>'
-      +   '<div onclick="renderPendientes()" style="background:#fffaf1;border:2px solid #0f1c28;border-radius:14px;padding:12px 14px;box-shadow:0 3px 0 #0f1c28;cursor:pointer">'
-      +     '<div style="font-size:9px;color:#5b6b7a;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Socios activos</div>'
-      +     '<span style="font-size:1.2rem;font-weight:800;color:#1c2b3a">10</span>'
-      +     (garmNota ? '<div style="font-size:9.5px;color:#5b6b7a;margin-top:2px">' + garmNota + '</div>' : '')
-      +   '</div>'
-      + '</div>'
-
-      + '<div style="display:flex;justify-content:space-between;font-size:9.5px;color:#5b6b7a;padding-top:10px;border-top:2px solid #0f1c28">'
+      + '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:#4d5b68;padding-top:10px;margin-top:8px">'
       +   '<span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#2f9e63;border:1.5px solid #0f1c28;margin-right:5px;vertical-align:1px"></span>Conectado</span>'
       +   '<span>Admin CEOT · 2026</span>'
       + '</div>'
 
-      + '</div></div>';
+      + '</div><div class="adm-home-ground" id="admHomeGround" aria-hidden="true"></div></div>';
   } else {
     html = '<div style="border-radius:0;padding:14px 16px 16px;min-height:200px">'
       + '<div style="max-width:1600px;margin:0 auto">'
@@ -639,6 +696,7 @@ function renderAdmHome() {
   }
 
   document.getElementById("adm-content").innerHTML = html;
+  admHomeHudRender();
   admHomeRenderResults();
   coInitScrollFade("admMesStripScroll", "admMesStripWrap");
   if (retro) initAdmHomeBg(); else stopAdmHomeBg();
@@ -702,6 +760,8 @@ function initAdmHomeBg() {
     }
   }
   function updateGroundY() {
+    var piso = document.getElementById("admHomeGround");
+    if (piso) { groundY = piso.getBoundingClientRect().top - canvas.getBoundingClientRect().top + 2; return; }
     var card = document.getElementById("admHeroCard");
     if (!card) { groundY = Math.min(120, height - 14); return; }
     var cy = card.getBoundingClientRect().bottom - canvas.getBoundingClientRect().top;
@@ -910,6 +970,7 @@ function checklistSincronizar() {
   _checklistSincronizado = true;
   syncPull("ceot_checklist_done", function() {
     checklistActualizarBadge();
+    admHomeHudRender();
     if (document.getElementById("adm-content") && document.querySelector("#adm-content .adm-sec-title") &&
         /Checklist mensual/.test(document.querySelector("#adm-content .adm-sec-title").textContent)) renderChecklistBody();
   });

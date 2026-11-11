@@ -1677,12 +1677,43 @@ tr:hover .tf-add { opacity:1; }
   font-style: normal;
   font-display: swap;
 }
-.adm-home-retro { font-family:'PixelDisplay', monospace; }
-.adm-home-retro-wrap { position:relative; margin:-18px -16px 0; padding:18px 16px 20px; min-height:200px; overflow:hidden;
+/* Letra de la home retro: redondeada y prolija (antes pixelada/monoespaciada).
+   Los bloques, bordes y colores siguen siendo los del tema; solo cambia la letra. */
+.adm-home-retro { font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+.adm-home-retro-wrap { position:relative; margin:-18px -16px 0; padding:14px 16px 0; min-height:200px; overflow:hidden;
   background: radial-gradient(circle at 15% 8%, rgba(255,255,255,.5) 0, transparent 40%), linear-gradient(180deg, #bfe4fb 0%, #9ed3f2 100%);
 }
 .adm-home-retro-inner { max-width:1600px; margin:0 auto; position:relative; }
 #admHomeBg { position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; }
+/* Tablero del mes (checklist + totales) */
+.adm-home-hud { position:relative; z-index:1; display:flex; flex-wrap:wrap; background:#fffaf1; border:2.5px solid #0f1c28; border-radius:14px; box-shadow:0 4px 0 #0f1c28; margin-bottom:14px; overflow:hidden; }
+.adm-home-hud-cell { flex:0 1 auto; min-width:0; padding:10px 16px; display:flex; flex-direction:column; justify-content:center; gap:4px; border-right:2px dashed rgba(15,28,40,.14); }
+.adm-home-hud > .adm-home-hud-cell:last-child { border-right:0; }
+.adm-home-hud-prox { flex:1 1 260px; }
+.adm-home-hud-lab { font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:#4d5b68; }
+.adm-home-hud-tramos { display:flex; flex-wrap:wrap; gap:6px 14px; }
+.adm-home-hud-tramo { display:flex; flex-direction:column; gap:4px; }
+.adm-home-hud-tramo span { font-size:11px; font-weight:600; color:#4d5b68; white-space:nowrap; }
+.adm-home-hud-tramo.now span { color:#1c2b3a; font-weight:800; }
+.adm-home-hud-cells { display:flex; gap:3px; }
+.adm-home-hud-c { width:14px; height:14px; box-sizing:border-box; border:2px solid #0f1c28; border-radius:4px; background:rgba(15,28,40,.1); transition:background-color .2s, transform .2s; }
+.adm-home-hud-c.on { background:#f5c542; transform:translateY(-2px); }
+.adm-home-hud-c.late { background:#f3a3a3; }
+.adm-home-hud-task { display:flex; align-items:center; gap:8px; font-size:0.82rem; color:#1c2b3a; cursor:pointer; min-width:0; }
+.adm-home-hud-task input { flex-shrink:0; width:16px; height:16px; margin:0; accent-color:#f5c542; }
+.adm-home-hud-task span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Piso del nivel: pasto + ladrillos, de borde a borde */
+.adm-home-ground { position:relative; height:44px; margin:14px -16px 0; border-top:3px solid #0f1c28;
+  background: linear-gradient(to bottom, #58c26f 0 9px, #36934f 9px 12px, transparent 12px),
+    repeating-linear-gradient(90deg, #8f5527 0 3px, transparent 3px 46px),
+    repeating-linear-gradient(to bottom, #8f5527 0 3px, #b9773f 3px 22px); }
+@media (max-width:700px) {
+  .adm-home-hud-cell { flex:1 1 100%; border-right:0; border-bottom:2px dashed rgba(15,28,40,.14); }
+  .adm-home-hud > .adm-home-hud-cell:last-child { border-bottom:0; }
+  .adm-home-hud-c { width:12px; height:12px; }
+}
+/* En celular entran dos bloques por fila (el flex-basis va inline en el mosaico) */
+@media (max-width:520px) { .adm-home-tile-retro { flex-basis:140px !important; } }
 /* ═══════════════════════════════════════════
    MODO OSCURO — Panel Admin (filtro, no paleta real)
    El admin tiene ~17 módulos sin dark CSS propio. En vez de escribir
@@ -2289,24 +2320,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/portal-render.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/admin-home.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/gastos-obra.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/presentacion.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/sueldo-b.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/redsom.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/nun-data.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/accesos-debitos.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/estadisticas.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/estadisticas-export.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/gastos-casa.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/faq-asistente.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/asistente.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
-<script src="js/correos.js?v=2026-11-10-prestamos-portal-de-nuevo"></script>
+<script src="js/datos.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/portal-render.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/admin-home.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/gastos-obra.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/presentacion.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/sueldo-b.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/redsom.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/nun-data.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/accesos-debitos.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/estadisticas.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/estadisticas-export.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/gastos-casa.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/faq-asistente.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/asistente.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/correos.js?v=2026-11-11-inicio-compacto"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -7919,7 +7950,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-10-prestamos-portal-de-nuevo';
+  var CURRENT_BUILD = '2026-11-11-inicio-compacto';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
