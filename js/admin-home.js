@@ -533,13 +533,15 @@ function admHomeHudRender() {
     return '<div class="adm-home-hud-tramo' + (ahora ? ' now' : '') + '"><span>' + r.label.replace("Del ", "").replace(" al ", "–") + (ahora ? ' · ahora' : '') + '</span><div class="adm-home-hud-cells">' + cells + '</div></div>';
   }).join("");
 
-  var prox = CHECKLIST_ITEMS.filter(function(it) { return !checklistItemDone(it.id); }).slice(0, ADM_HOME_HUD_PROX);
+  // Todas las pendientes (no solo las 3 primeras), en una lista con scroll.
+  var prox = CHECKLIST_ITEMS.filter(function(it) { return !checklistItemDone(it.id); });
   var proxHtml = prox.length
-    ? prox.map(function(it) {
+    ? '<div style="display:flex;flex-direction:column;gap:5px;max-height:170px;overflow-y:auto;padding-right:4px">'
+      + prox.map(function(it) {
         return '<label class="adm-home-hud-task" title="' + admHomeHudEsc(it.texto) + '">'
           + '<input type="checkbox" onchange="admHomeChecklistToggle(\'' + it.id + '\')">'
           + '<span>' + admHomeHudEsc(it.texto) + '</span></label>';
-      }).join("")
+      }).join("") + '</div>'
     : '<div style="font-size:0.82rem;font-weight:700;color:#1c2b3a">¡Todo listo este mes! 🎉</div>';
 
   el.innerHTML =
@@ -553,11 +555,60 @@ function admHomeHudRender() {
     +   '<div class="adm-home-hud-tramos">' + tramos + '</div>'
     + '</div>'
     + '<div class="adm-home-hud-cell adm-home-hud-prox">'
-    +   '<div class="adm-home-hud-lab">Lo próximo</div>'
+    +   '<div class="adm-home-hud-lab">Pendientes · ' + prox.length + '</div>'
     +   proxHtml
     +   '<span onclick="renderChecklist()" style="cursor:pointer;font-size:0.74rem;font-weight:700;color:#1c2b3a;text-decoration:underline;text-underline-offset:3px;margin-top:3px;align-self:flex-start">Ver las ' + total + ' tareas</span>'
     + '</div>';
 }
+// ── Google Calendar arriba de la home ───────────────────────────────
+// Calendario embebido (vista agenda). La cuenta/ID del calendario NO va escrita
+// en el código (el repo es público): se carga una vez con "Conectar" y queda en
+// ceot_gcal_src, que se sincroniza para verlo igual en cualquier PC. El embed
+// de un calendario privado solo se ve si en ese navegador estás con la sesión
+// de Google de esa cuenta iniciada.
+var GCAL_KEY = "ceot_gcal_src", GCAL_ABIERTO_KEY = "ceot_gcal_abierto";
+var _gcalPulled = false;
+function admHomeCalRender() {
+  var el = document.getElementById("admHomeCal");
+  if (!el) return;
+  if (!_gcalPulled) {
+    _gcalPulled = true;
+    syncPull(GCAL_KEY, function() { admHomeCalRender(); });
+  }
+  var src = "", abierto = true;
+  try { src = localStorage.getItem(GCAL_KEY) || ""; } catch (e) {}
+  try { abierto = localStorage.getItem(GCAL_ABIERTO_KEY) !== "0"; } catch (e) {}
+  var btn = "border:2px solid #0f1c28;background:#fffaf1;color:#1c2b3a;font-size:0.72rem;font-weight:700;padding:4px 11px;border-radius:16px;cursor:pointer;font-family:inherit";
+  var cab = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px">'
+    + '<div class="adm-home-hud-lab">Google Calendar</div><div style="display:flex;gap:6px">'
+    + (src ? '<button style="' + btn + '" onclick="admHomeCalToggle()">' + (abierto ? 'Ocultar' : 'Mostrar') + '</button>' : '')
+    + '<button style="' + btn + '" onclick="admHomeCalConfigurar()">' + (src ? 'Cambiar' : 'Conectar') + '</button>'
+    + '</div></div>';
+  var cuerpo = '';
+  if (!src) {
+    cuerpo = '<div style="padding:4px 14px 14px;font-size:0.82rem;color:#4d5b68">Conectá tu calendario para ver la agenda acá arriba.</div>';
+  } else if (abierto) {
+    var url = "https://calendar.google.com/calendar/embed?src=" + encodeURIComponent(src)
+      + "&mode=AGENDA&showTitle=0&showNav=0&showDate=0&showPrint=0&showTabs=0&showCalendars=0&showTz=0&hl=es&ctz=America%2FArgentina%2FBuenos_Aires";
+    cuerpo = '<iframe title="Google Calendar" src="' + url + '" style="width:100%;height:230px;border:0;border-top:2px dashed rgba(15,28,40,.14);display:block;background:#fff"></iframe>';
+  }
+  el.innerHTML = '<div class="adm-home-hud" style="display:block">' + cab + cuerpo + '</div>';
+}
+function admHomeCalToggle() {
+  var abierto = true;
+  try { abierto = localStorage.getItem(GCAL_ABIERTO_KEY) !== "0"; localStorage.setItem(GCAL_ABIERTO_KEY, abierto ? "0" : "1"); } catch (e) {}
+  admHomeCalRender();
+}
+function admHomeCalConfigurar() {
+  var actual = ""; try { actual = localStorage.getItem(GCAL_KEY) || ""; } catch (e) {}
+  var v = prompt("Mail de la cuenta de Google (o ID del calendario) que querés ver arriba.\nDejalo vacío para desconectar.", actual);
+  if (v === null) return;
+  v = v.trim();
+  try { if (v) localStorage.setItem(GCAL_KEY, v); else localStorage.removeItem(GCAL_KEY); } catch (e) {}
+  if (v) syncPush(GCAL_KEY);
+  admHomeCalRender();
+}
+
 // Tildar desde la home: mismo guardado que toggleChecklistItem(), pero sin
 // renderChecklistBody() — que pisa #adm-content con la pantalla del checklist.
 function admHomeChecklistToggle(itemId) {
@@ -645,6 +696,7 @@ function renderAdmHome() {
       +   '<div style="font-size:0.78rem;color:#4d5b68">' + saludo + ', Marcelo</div>'
       + '</div>'
 
+      + '<div id="admHomeCal" style="position:relative;z-index:1;margin-bottom:14px"></div>'
       + '<div class="adm-home-hud" id="admHeroCard">'
       +   '<div id="admHomeHud" style="display:contents"></div>'
       +   '<div class="adm-home-hud-cell">'
@@ -712,6 +764,7 @@ function renderAdmHome() {
 
   document.getElementById("adm-content").innerHTML = html;
   admHomeHudRender();
+  admHomeCalRender();
   admHomeRenderResults();
   coInitScrollFade("admMesStripScroll", "admMesStripWrap");
   if (retro) initAdmHomeBg(); else stopAdmHomeBg();
