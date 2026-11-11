@@ -148,6 +148,31 @@ function admHomeCargarUsage() {
   });
 }
 
+// ── Fijados ─────────────────────────────────────────────────────────
+// "Lo que más usás" sale solo del contador de aperturas, así que un módulo
+// nuevo (o uno que se abre poco pero importa) queda detrás de "Ver todo".
+// Con la estrella del modo edición se lo fija arriba a mano: los fijados van
+// primero y el resto de la franja se completa por uso. Se guarda como
+// { "mod:clave": 1, "acc:id": 1 } y se sincroniza igual que los nombres.
+var HOME_FIJADOS = {};
+function admHomeCargarFijados() {
+  try {
+    var raw = localStorage.getItem("ceot_home_fijados");
+    HOME_FIJADOS = raw ? (JSON.parse(raw) || {}) : {};
+  } catch (e) { HOME_FIJADOS = {}; }
+  syncPull("ceot_home_fijados", function() {
+    try { HOME_FIJADOS = JSON.parse(localStorage.getItem("ceot_home_fijados") || "{}") || {}; } catch (e) {}
+    admHomeRenderResults();
+  });
+}
+function admHomeEsFijado(key) { return !!HOME_FIJADOS[key]; }
+function admHomeToggleFijado(key) {
+  if (HOME_FIJADOS[key]) delete HOME_FIJADOS[key]; else HOME_FIJADOS[key] = 1;
+  try { localStorage.setItem("ceot_home_fijados", JSON.stringify(HOME_FIJADOS)); } catch (e) {}
+  syncPush("ceot_home_fijados");
+  admHomeRenderResults();
+}
+
 function admHomeRegistrarUso(key) {
   try {
     USAGE_COUNT[key] = (USAGE_COUNT[key] || 0) + 1;
@@ -233,11 +258,21 @@ function admHomeTile(ico, lbl, colorRgba, opts) {
     ? '<div onclick="event.stopPropagation();' + opts.delFn + '" title="Eliminar" style="position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:4px;background:rgba(220,38,38,.85);color:#fff;font-size:9px;line-height:16px;text-align:center;cursor:pointer">✕</div>'
     : "";
   var pencil = editing ? '<div style="position:absolute;top:2px;left:4px;font-size:9px;opacity:.6">✏</div>' : "";
+  // Estrella: en modo edición es el botón para fijar/soltar; fuera de él, una
+  // marca chica en los que están fijados.
+  var fijado = opts.usageKey && admHomeEsFijado(opts.usageKey);
+  var estrella = "";
+  if (editing && opts.usageKey) {
+    estrella = '<div onclick="event.stopPropagation();event.preventDefault();admHomeToggleFijado(\'' + opts.usageKey + '\')" title="' + (fijado ? 'Soltar de arriba' : 'Fijar arriba') + '" style="flex-shrink:0;width:26px;height:26px;border-radius:8px;border:2px solid #0f1c28;background:' + (fijado ? '#f5c542' : '#fffaf1') + ';color:#0f1c28;font-size:14px;line-height:22px;text-align:center;cursor:pointer;margin-right:' + (opts.delFn ? '14px' : '0') + '">' + (fijado ? '★' : '☆') + '</div>';
+  } else if (fijado) {
+    estrella = '<span aria-label="Fijado" title="Fijado arriba" style="flex-shrink:0;font-size:12px;color:#c9933a">★</span>';
+  }
   var afuera = (opts.href && !editing) ? '<span aria-hidden="true" style="flex-shrink:0;font-size:12px;font-weight:700;color:rgba(28,43,58,.4)">↗</span>' : "";
   return "<" + tag + attrs + " class=\"adm-home-tile-retro\" style=\"position:relative;flex:1 1 178px;min-width:0;text-decoration:none;background:" + boxBg + ";border:" + border + ";border-radius:12px;box-shadow:0 3px 0 #0f1c28;padding:8px 10px;min-height:54px;box-sizing:border-box;display:flex;align-items:center;gap:10px;cursor:" + cursor + "\" onmouseover=\"this.style.background='" + boxBgHover + "'\" onmouseout=\"this.style.background='" + boxBg + "'\">"
     + pencil + del
     + '<div style="flex-shrink:0;width:36px;height:36px;border-radius:9px;background:' + colorRgba + ';border:2px solid #0f1c28;display:flex;align-items:center;justify-content:center"><i data-lucide="' + ico + '" style="width:18px;height:18px;color:#1c2b3a" stroke-width="1.9"></i></div>'
     + '<div style="' + labelStyle + '">' + lbl + '</div>'
+    + estrella
     + afuera
     + "</" + tag + ">";
 }
@@ -331,9 +366,11 @@ function admHomeToggleVerTodo() {
 // de liquidaciones o Valores Convenios se abran más que varios módulos.
 var ADM_HOME_ATAJOS_N = 5;
 function admHomeAtajos() {
-  var conUso = ACCESOS_DATA.filter(function(a) { return (USAGE_COUNT["acc:" + a.id] || 0) > 0; });
-  if (conUso.length <= ADM_HOME_ATAJOS_N) return [];
-  return admHomeOrdenarPorUso(conUso, function(a) { return "acc:" + a.id; }).slice(0, ADM_HOME_ATAJOS_N);
+  var fijos = ACCESOS_DATA.filter(function(a) { return admHomeEsFijado("acc:" + a.id); });
+  var conUso = ACCESOS_DATA.filter(function(a) { return (USAGE_COUNT["acc:" + a.id] || 0) > 0 && !admHomeEsFijado("acc:" + a.id); });
+  var porUso = (conUso.length + fijos.length) <= ADM_HOME_ATAJOS_N ? []
+    : admHomeOrdenarPorUso(conUso, function(a) { return "acc:" + a.id; }).slice(0, Math.max(0, ADM_HOME_ATAJOS_N - fijos.length));
+  return fijos.concat(porUso);
 }
 
 // Los N módulos con más aperturas reales. Devuelve [] —y la home queda como
@@ -341,9 +378,13 @@ function admHomeAtajos() {
 // registrado: navegador nuevo, contador todavía sin llegar del Sheet, o tan
 // pocos módulos usados que separarlos no ordenaría nada.
 function admHomeDestacados() {
-  var conUso = admHomeModulosEnHome().filter(function(m) { return (USAGE_COUNT["mod:" + m.key] || 0) > 0; });
-  if (conUso.length <= ADM_HOME_DESTACADOS_N) return [];
-  return admHomeOrdenarPorUso(conUso, function(m) { return "mod:" + m.key; }).slice(0, ADM_HOME_DESTACADOS_N);
+  // Los fijados van siempre, primero y aunque no tengan uso (pueden ser
+  // home:false). El resto de la franja se completa por uso, como antes.
+  var fijos = ADM_HOME_MODULOS.filter(function(m) { return admHomeEsFijado("mod:" + m.key); });
+  var conUso = admHomeModulosEnHome().filter(function(m) { return (USAGE_COUNT["mod:" + m.key] || 0) > 0 && !admHomeEsFijado("mod:" + m.key); });
+  var porUso = (conUso.length + fijos.length) <= ADM_HOME_DESTACADOS_N ? []
+    : admHomeOrdenarPorUso(conUso, function(m) { return "mod:" + m.key; }).slice(0, Math.max(0, ADM_HOME_DESTACADOS_N - fijos.length));
+  return fijos.concat(porUso);
 }
 
 function admHomeRenderResults() {
@@ -389,7 +430,7 @@ function admHomeRenderResults() {
   else html = '<div class="adm-sf-wrap" id="admCatChipsWrap" style="margin-bottom:12px"><div id="admCatChipsScroll" style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none">' + chips + '</div></div>';
 
   if (homeEditMode) {
-    html += '<div style="font-size:0.68rem;color:rgba(31,58,46,.85);margin-bottom:12px;padding:8px 10px;background:rgba(31,58,46,.08);border:1px solid rgba(31,58,46,.25);border-radius:8px">✏ Modo edición: tocá cualquier tile para renombrarlo' + (flatMode ? '' : ' o eliminarlo') + '.</div>';
+    html += '<div style="font-size:0.68rem;color:rgba(31,58,46,.85);margin-bottom:12px;padding:8px 10px;background:rgba(31,58,46,.08);border:1px solid rgba(31,58,46,.25);border-radius:8px">✏ Modo edición: tocá cualquier bloque para renombrarlo' + (flatMode ? '' : ' o eliminarlo') + '. Con la ☆ lo fijás arriba, en "Lo que más usás".</div>';
   }
 
   if (flatMode) {
@@ -425,7 +466,8 @@ function admHomeRenderResults() {
         + '</div>';
     }
 
-    var atajos = (homeEditMode || !destacados.length) ? [] : admHomeAtajos();
+    var hayAccFijos = ACCESOS_DATA.some(function(a) { return admHomeEsFijado("acc:" + a.id); });
+    var atajos = (homeEditMode || (!destacados.length && !hayAccFijos)) ? [] : admHomeAtajos();
     var atajoIds = atajos.map(function(a) { return a.id; });
     if (atajos.length) {
       html += '<div style="display:flex;align-items:center;gap:7px;margin:0 0 7px">'
@@ -475,9 +517,10 @@ function admHomeRenderResults() {
     // El resto va plegado mientras haya franja de destacados: un botón en vez
     // de 37 tiles más abajo. El estado es por navegador (localStorage), no se
     // sincroniza — es una preferencia de pantalla, no un dato del panel.
-    if (!destacados.length || homeVerTodo) {
+    var hayFranja = destacados.length || atajos.length;
+    if (!hayFranja || homeVerTodo) {
       html += resto;
-      if (destacados.length) {
+      if (hayFranja) {
         html += '<div onclick="admHomeToggleVerTodo()" style="cursor:pointer;text-align:center;font-size:0.68rem;font-weight:700;color:rgba(32,36,31,.45);padding:9px;margin-bottom:6px">Ver menos ▲</div>';
       }
     } else {
@@ -540,7 +583,7 @@ function admHomeHudRender() {
       + prox.map(function(it) {
         return '<label class="adm-home-hud-task" title="' + admHomeHudEsc(it.texto) + '">'
           + '<input type="checkbox" onchange="admHomeChecklistToggle(\'' + it.id + '\')">'
-          + '<span>' + admHomeHudEsc(it.texto) + '</span></label>';
+          + '<span>' + admHomeHudEsc(it.texto) + '</span>' + checklistIrHtml(it.id) + '</label>';
       }).join("") + '</div>'
     : '<div style="font-size:0.82rem;font-weight:700;color:#1c2b3a">¡Todo listo este mes! 🎉</div>';
 
@@ -649,6 +692,7 @@ function renderAdmHome() {
   homeEditMode = false;
   admHomeCargarModLabels();
   admHomeCargarUsage();
+  admHomeCargarFijados();
   admHomeCargarTema();
   checklistSincronizar();
   checklistActualizarBadge();
@@ -1021,6 +1065,40 @@ var CHECKLIST_ITEMS = [
   { id:"r3-5", rango:"r3", texto:"Una vez cargadas todas las acreditaciones y calculado el % que guardamos para retenciones (después de la acreditación del cheque de OSDE)" }
 ];
 
+// ── Atajo de cada tarea al lugar donde se hace ──────────────────────
+// Una tarea del checklist dice QUÉ hay que hacer; esto dice DÓNDE: un botón al
+// lado que abre el módulo (fn) o el acceso externo (acc = título en
+// ACCESOS_DATA). Las tareas que se hacen fuera del panel (banco, estudio,
+// depósito de cheques) no llevan atajo. Si un acceso se renombra o se borra,
+// su atajo simplemente no se dibuja.
+var CHECKLIST_IR = {
+  "r1-2": { lbl: "Sueldo B",            fn: "renderSueldoB()" },
+  "r1-4": { lbl: "Importar",            fn: "abrirImportModal()" },
+  "r1-6": { lbl: "Facturas",            fn: "renderFacturas()" },
+  "r1-7": { lbl: "Débitos",             fn: "renderDebitos()" },
+  "r1-8": { lbl: "Transferencias",      fn: "abrirSueldoDirectorMesActual()" },
+  "r2-1": { lbl: "Valores Convenios",   acc: "Valores Convenios" },
+  "r2-2": { lbl: "Transferencias",      fn: "abrirSueldoDirectorMesActual()" },
+  "r2-5": { lbl: "Débitos",             fn: "renderDebitos()" },
+  "r2-6": { lbl: "CC Clínica Colón",    acc: "CC Clínica Colón" },
+  "r2-7": { lbl: "Importar",            fn: "abrirImportModal()" },
+  "r3-2": { lbl: "CPSM",                fn: "renderCpsm()" },
+  "r3-3": { lbl: "Transferencias",      fn: "abrirSueldoDirectorMesActual()" },
+  "r3-4": { lbl: "CC CEM MDP",          acc: "CC CEM MDP" },
+  "r3-5": { lbl: "Retención Ganancias", fn: "renderAporteCeot()" }
+};
+// Va adentro de un <label>: <button>/<a> son contenido interactivo, así que
+// tocarlos no tilda la tarea.
+function checklistIrHtml(itemId) {
+  var ir = CHECKLIST_IR[itemId];
+  if (!ir) return "";
+  var st = "flex-shrink:0;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;text-decoration:none;cursor:pointer;font-family:inherit;font-size:0.68rem;font-weight:700;line-height:1.2;padding:3px 9px;border-radius:12px;border:1.5px solid #0f1c28;background:#fffaf1;color:#1c2b3a";
+  if (ir.fn) return '<button type="button" class="chk-ir" onclick="event.stopPropagation();' + ir.fn + '" style="' + st + '">' + ir.lbl + ' →</button>';
+  var acc = (typeof ACCESOS_DATA !== "undefined" ? ACCESOS_DATA : []).filter(function(a) { return a.title === ir.acc && a.url; })[0];
+  if (!acc) return "";
+  return '<a class="chk-ir" href="' + acc.url + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="' + st + '">' + ir.lbl + ' ↗</a>';
+}
+
 function checklistMesKey(d) {
   d = d || new Date();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
@@ -1139,6 +1217,7 @@ function renderChecklistBody() {
         + '<input type="checkbox" ' + (done ? 'checked' : '') + ' onchange="toggleChecklistItem(\'' + it.id + '\')" style="margin-top:3px;flex-shrink:0">'
         + '<span style="flex:1;font-size:.85rem;' + (done ? 'text-decoration:line-through;color:rgba(32,36,31,.4)' : 'color:#20241f') + '">' + it.texto + '</span>'
         + (atrasada ? '<span style="font-size:.65rem;color:#b13a2c;font-weight:700;white-space:nowrap;flex-shrink:0">⚠ atrasada</span>' : '')
+        + checklistIrHtml(it.id)
         + '</label>';
     });
     html += '</div></div>';

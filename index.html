@@ -1727,6 +1727,28 @@ tr:hover .tf-add { opacity:1; }
 .adm-header #adminLogoutBtn { background:#ef6fa2; }
 .adm-header #adminLogoutBtn:hover { background:#f48cb6; }
 /* ═══════════════════════════════════════════
+   MÓDULOS POR DENTRO — mismo lenguaje que el Inicio y la barra de arriba:
+   letra redondeada, bordes navy gruesos, sombra dura y rosa para lo activo.
+   Solo marcos, títulos, pestañas y botones: las tablas y sus números no se
+   tocan. El modo oscuro del admin es un filtro, así que esto lo hereda solo.
+   ═══════════════════════════════════════════ */
+#adminView, #adminView .adm-tab { font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+#adminView .adm-tabs { border-bottom: 2.5px solid #0f1c28; }
+#adminView .adm-tab.adm-tab-act { color:#0f1c28; font-weight:800; background:#fffaf1; border-bottom-color:#ef6fa2; }
+#adm-content .adm-sec-title { display:flex; align-items:center; gap:7px; font-size:0.72rem; font-weight:800; letter-spacing:.7px; color:#1c2b3a; border-bottom:2px solid #0f1c28; padding-bottom:6px; margin:16px 0 10px; }
+#adm-content .adm-sec-title::before { content:""; flex-shrink:0; width:9px; height:9px; border-radius:3px; background:#ef6fa2; border:2px solid #0f1c28; }
+#adm-content .sd-acc { background:#fffaf1; border:2px solid #0f1c28; border-radius:12px; box-shadow:0 3px 0 #0f1c28; margin-bottom:14px; }
+#adm-content .sd-acc-head { color:#1c2b3a; }
+#adm-content .sd-acc[open] > .sd-acc-head { border-bottom:2px dashed rgba(15,28,40,.16); }
+#adm-content .adm-table-wrap { border:2px solid #0f1c28; border-radius:10px; }
+#adm-content .deb-stat, #adm-content .adm-kpi { background:#fffaf1; border:2px solid #0f1c28; border-radius:12px; box-shadow:0 3px 0 #0f1c28; }
+#adm-content .deb-btn, #adm-content .cpsm-calc-btn { border:2px solid #0f1c28; border-radius:10px; box-shadow:0 3px 0 #0f1c28; transition:transform .1s ease, box-shadow .1s ease, background .25s ease; }
+#adm-content .deb-btn { background:#fffaf1; color:#1c2b3a; }
+#adm-content .deb-btn:hover, #adm-content .cpsm-calc-btn:hover { opacity:1; transform:translateY(-1px); box-shadow:0 4px 0 #0f1c28; }
+#adm-content .deb-btn:active, #adm-content .cpsm-calc-btn:active { transform:translateY(2px); box-shadow:0 1px 0 #0f1c28; transition-duration:.04s; }
+#adm-content .deb-btn-pri { border-color:#0f1c28 !important; }
+#adm-content .chk-ir:hover { background:#f5c542 !important; }
+/* ═══════════════════════════════════════════
    MODO OSCURO — Panel Admin (filtro, no paleta real)
    El admin tiene ~17 módulos sin dark CSS propio. En vez de escribir
    una regla por componente, se invierte toda la página con un filtro
@@ -2425,24 +2447,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/portal-render.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/admin-home.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/gastos-obra.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/presentacion.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/sueldo-b.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/redsom.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/nun-data.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/accesos-debitos.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/estadisticas.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/estadisticas-export.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/gastos-casa.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/faq-asistente.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/asistente.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
-<script src="js/correos.js?v=2026-11-11-periodos-hasta-dic-2027-anio-corto"></script>
+<script src="js/datos.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/portal-render.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/admin-home.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/gastos-obra.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/presentacion.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/sueldo-b.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/redsom.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/nun-data.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/accesos-debitos.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/estadisticas.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/estadisticas-export.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/gastos-casa.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/faq-asistente.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/asistente.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
+<script src="js/correos.js?v=2026-11-11-atajos-fijados-estilo-modulos"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -8139,7 +8161,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-11-periodos-hasta-dic-2027-anio-corto';
+  var CURRENT_BUILD = '2026-11-11-atajos-fijados-estilo-modulos';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
