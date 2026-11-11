@@ -831,6 +831,8 @@ function guardarDebitosImportados(items, periodoHint) {
     try { guard = JSON.parse(localStorage.getItem('deb_guardados') || '[]'); } catch (e) {}
     if (guard.indexOf(periodoKey) === -1) { guard.unshift(periodoKey); localStorage.setItem('deb_guardados', JSON.stringify(guard)); }
   } catch (e) { return { n: 0, error: e.message }; }
+  // Guardado compartido (como REDSOM): claves separadas para no mandar todos los meses juntos.
+  try { if (typeof syncPush === 'function') { syncPush('deb_imp_' + periodoKey); syncPush('deb_guardados'); } } catch (e) {}
   var total = items.reduce(function(s, it) { return s + (it.imp || 0); }, 0);
   return { n: items.length, periodoKey: periodoKey, total: total };
 }

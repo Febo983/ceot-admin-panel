@@ -21,7 +21,7 @@ var USAGE_COUNT = {};
 // entero y no un tramo.
 var ADM_HOME_CATS = [
   { k:"mes",     t:"El mes",        c:"rgba(29,158,117,0.9)",  tile:"rgba(29,158,117,0.22)" },
-  { k:"gente",   t:"Gente",         c:"rgba(127,119,221,0.9)", tile:"rgba(127,119,221,0.22)" },
+  { k:"gente",   t:"Personal",        c:"rgba(127,119,221,0.9)", tile:"rgba(127,119,221,0.22)" },
   { k:"casa",    t:"Casa y gastos", c:"rgba(216,90,48,0.9)",   tile:"rgba(216,90,48,0.22)" },
   { k:"clinica", t:"Clínica",       c:"rgba(55,138,221,0.9)",  tile:"rgba(55,138,221,0.22)" },
   { k:"sistema", t:"Sistema",       c:"rgba(32,36,31,0.45)",   tile:"rgba(32,36,31,0.1)" }

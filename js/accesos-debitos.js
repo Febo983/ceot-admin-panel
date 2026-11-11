@@ -422,8 +422,38 @@ function debFmtPeriodo(p) {
 // extraerDebitosDeRegistros()/guardarDebitosImportados() en importar-liquidacion.js.
 // Subir el archivo ahí alcanza; no hace falta repetirlo acá.
 
+// Guardado compartido de los débitos importados: se traen una vez por sesión
+// (índice + detalle de cada período) y, si cambió algo, se repinta la pantalla.
+var _debPulled = {};
+function debPull(clave, alLlegar) {
+  if (_debPulled[clave] || typeof syncPull !== 'function') return;
+  _debPulled[clave] = true;
+  syncPull(clave, function() {
+    if (alLlegar) alLlegar();
+    if (document.getElementById('debMesSel')) renderDebitos();
+  });
+}
+function debPullTodo() {
+  debPull('deb_guardados', function() {
+    debGetGuardados().forEach(function(k) { debPull('deb_imp_' + k); });
+  });
+  debGetGuardados().forEach(function(k) { debPull('deb_imp_' + k); });
+}
+
+// Al entrar por primera vez en la sesión sin elegir mes, abre el último período guardado.
+var _debInicialHecho = false;
 function renderDebitos(mes) {
   if (mes) debMesActual = mes;
+  debPullTodo();
+  if (mes) _debInicialHecho = true;
+  if (!_debInicialHecho) {
+    var g0 = debGetGuardados();
+    if (g0.length) {
+      _debInicialHecho = true;
+      debMesActual = '__g__' + g0[0];
+      try { debImportData = JSON.parse(localStorage.getItem('deb_imp_' + g0[0]) || 'null'); } catch (e) { debImportData = null; }
+    }
+  }
   cerrarAdmSidenav();
   // desactivar tabs de período y activar sidebar
   PERIODOS_TODOS.forEach(function(p) {
@@ -616,6 +646,7 @@ function debGuardarImport() {
   localStorage.setItem('deb_imp_' + key, JSON.stringify(debImportData));
   var guardados = debGetGuardados();
   if (guardados.indexOf(key) === -1) { guardados.unshift(key); localStorage.setItem('deb_guardados', JSON.stringify(guardados)); }
+  if (typeof syncPush === 'function') { syncPush('deb_imp_' + key); syncPush('deb_guardados'); }
   debImportData = null;
   debMesActual = '__g__' + key;
   var msg = document.getElementById('debSavedMsg');
@@ -624,6 +655,7 @@ function debGuardarImport() {
 }
 
 function debSelMes(val) {
+  _debInicialHecho = true;
   debImportData = null;
   debMesActual = val;
   if (val.indexOf('__g__') === 0) {
@@ -638,6 +670,7 @@ function debEliminarGuardado(key) {
   localStorage.removeItem('deb_imp_' + key);
   var guardados = debGetGuardados().filter(function(g){ return g !== key; });
   localStorage.setItem('deb_guardados', JSON.stringify(guardados));
+  if (typeof syncPush === 'function') syncPush('deb_guardados');
   debImportData = null; debMesActual = '';
   renderDebitos();
 }
