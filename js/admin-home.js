@@ -674,6 +674,62 @@ function admHomeSociosActivos() {
   } catch (e) { return "—"; }
 }
 
+// ── Total CEOT con contexto ─────────────────────────────────────────
+// El recuadro mostraba el total del mes en curso y, hasta que se cargaba la
+// primera liquidación del mes, una raya. Ahora muestra el último mes que tiene
+// datos (el actual si ya los tiene) y cuánto se movió contra el mes con datos
+// anterior. Devuelve null solo si no hay ningún mes cargado.
+function admHomeTotalCeotMes(id) {
+  var tc = (typeof liquidacionData !== "undefined" && liquidacionData) ? liquidacionData.totalCeot : null;
+  if (!tc || !tc[id]) return 0;
+  var t = 0;
+  Object.values(tc[id]).forEach(function(v) { t += (v || 0); });
+  return t;
+}
+function admHomeTotalCeotInfo(mesAct) {
+  var desde = PERIODOS_TODOS.indexOf(mesAct);
+  if (desde === -1) desde = PERIODOS_TODOS.length - 1;
+  var info = null;
+  for (var i = desde; i >= 0; i--) {
+    var t = admHomeTotalCeotMes(PERIODOS_TODOS[i]);
+    if (!t) continue;
+    if (!info) info = { id: PERIODOS_TODOS[i], total: t, esActual: i === desde, prevId: null, prevTotal: 0 };
+    else { info.prevId = PERIODOS_TODOS[i]; info.prevTotal = t; break; }
+  }
+  return info;
+}
+function admHomeTotalCeotHtml(info, color) {
+  if (!info) return '<span style="font-size:1.2rem;color:rgba(32,36,31,0.3)">—</span><div style="font-size:10.5px;color:#4d5b68;margin-top:2px">todavía sin liquidaciones</div>';
+  var html = '<span style="font-size:1.2rem;font-weight:800;color:' + color + ';font-variant-numeric:tabular-nums;white-space:nowrap">' + fmt(info.total) + '</span>';
+  if (info.prevId && info.prevTotal) {
+    var pct = (info.total - info.prevTotal) / Math.abs(info.prevTotal) * 100;
+    var sube = pct >= 0;
+    html += '<div style="font-size:10.5px;font-weight:700;margin-top:2px;white-space:nowrap;color:' + (sube ? '#1d8a5f' : '#c0392b') + '">'
+      + (sube ? '▲ +' : '▼ −') + Math.abs(pct).toFixed(1).replace('.', ',') + '% <span style="font-weight:500;color:#4d5b68">vs ' + periodoInfo(info.prevId).label + '</span></div>';
+  }
+  if (!info.esActual) html += '<div style="font-size:10.5px;color:#4d5b68;margin-top:1px">último mes cargado</div>';
+  return html;
+}
+
+// ── Mes actual marcado en las pestañas ──────────────────────────────
+// Las pestañas resaltan el mes que se está MIRANDO (adm-tab-act); esto marca
+// además el mes de HOY con un punto, también en el Inicio, donde no hay
+// ninguno activo. Va como atributo (data-hoy) y no como clase porque todas las
+// pantallas reescriben className al cambiar de período.
+function admMarcarMesHoy(centrar) {
+  var hoy = tabMesActual(), tabHoy = null;
+  PERIODOS_TODOS.forEach(function(p) {
+    var t = document.getElementById("adm-tab-" + p);
+    if (!t) return;
+    if (p === hoy) { t.setAttribute("data-hoy", "1"); t.title = "Mes actual"; tabHoy = t; }
+    else t.removeAttribute("data-hoy");
+  });
+  if (centrar && tabHoy && tabHoy.parentElement) {
+    var caja = tabHoy.parentElement;
+    caja.scrollLeft = Math.max(0, tabHoy.offsetLeft - caja.clientWidth / 2 + tabHoy.offsetWidth / 2);
+  }
+}
+
 function renderAdmHome() {
   admDesactivarSidebar();
   var hb = document.getElementById("admHomeBtn");
@@ -723,8 +779,9 @@ function renderAdmHome() {
   if (tc && tc[mesAct]) {
     Object.values(tc[mesAct]).forEach(function(v){ totalMes += (v||0); });
   }
-  var statNetoColor = retro ? '#1c2b3a' : '#20241f';
-  var statNeto = totalMes ? ('<span style="font-size:1.2rem;font-weight:800;color:' + statNetoColor + '">' + fmt(totalMes) + '</span><div style="font-size:9px;color:rgba(29,158,117,0.85);margin-top:2px">total socios · ' + mesAct + '</div>') : ('<span style="font-size:1.2rem;color:rgba(32,36,31,0.3)">—</span>');
+  var tcInfo = admHomeTotalCeotInfo(mesAct);
+  var statNeto = admHomeTotalCeotHtml(tcInfo, retro ? '#1c2b3a' : '#20241f');
+  var statNetoLab = tcInfo ? periodoInfo(tcInfo.id).labelLargo : periodoInfo(mesAct).labelLargo;
 
   var toggleBtn = '';  // toggle de tema retirado — solo queda la vista retro
 
@@ -744,7 +801,7 @@ function renderAdmHome() {
       + '<div class="adm-home-hud" id="admHeroCard">'
       +   '<div id="admHomeHud" style="display:contents"></div>'
       +   '<div class="adm-home-hud-cell">'
-      +     '<div class="adm-home-hud-lab">Total CEOT · ' + mesAct + '</div>'
+      +     '<div class="adm-home-hud-lab">Total CEOT · ' + statNetoLab + '</div>'
       +     statNeto
       +   '</div>'
       +   '<div class="adm-home-hud-cell" onclick="renderPendientes()" style="cursor:pointer">'
@@ -767,7 +824,7 @@ function renderAdmHome() {
 
       + '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:#4d5b68;padding-top:10px;margin-top:8px">'
       +   '<span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#2f9e63;border:1.5px solid #0f1c28;margin-right:5px;vertical-align:1px"></span>Conectado</span>'
-      +   '<span>Admin CEOT · 2026</span>'
+      +   '<span>Admin CEOT · ' + new Date().getFullYear() + '</span>'
       + '</div>'
 
       + '</div><div class="adm-home-ground" id="admHomeGround" aria-hidden="true"></div></div>';
@@ -800,13 +857,14 @@ function renderAdmHome() {
       + '<div id="admHomeDynamic"></div>'
       + '<div style="display:flex;justify-content:space-between;font-size:9.5px;color:rgba(32,36,31,0.2);padding-top:8px;margin-top:2px;border-top:0.5px solid rgba(32,36,31,0.07)">'
       + '<span><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:rgba(29,158,117,.8);margin-right:4px;vertical-align:1px"></span>Conectado</span>'
-      + '<span>Admin CEOT · 2026</span>'
+      + '<span>Admin CEOT · ' + new Date().getFullYear() + '</span>'
       + '</div>'
       + '</div>'
       + '</div>';
   }
 
   document.getElementById("adm-content").innerHTML = html;
+  admMarcarMesHoy(true);
   admHomeHudRender();
   admHomeCalRender();
   admHomeRenderResults();
