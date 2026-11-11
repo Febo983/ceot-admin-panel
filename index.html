@@ -1885,6 +1885,52 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   transition: background-color .35s ease, border-color .35s ease, color .35s ease;
 }
 
+
+/* ═══════════════════════════════════════════
+   LOGIN — mismo lenguaje que el Inicio del admin: cielo, bloque con borde
+   grueso y sombra dura, letra redondeada, rosa para la acción y piso al pie.
+   Todo colgado de #loginView para no tocar otros .field de la app.
+   ═══════════════════════════════════════════ */
+#loginView { font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; padding-bottom: 44px; }
+#loginView::before { content:""; position:fixed; inset:0; pointer-events:none;
+  background: radial-gradient(circle at 15% 8%, rgba(255,255,255,.5) 0, transparent 40%), linear-gradient(180deg, #bfe4fb 0%, #9ed3f2 100%); }
+#loginView::after { content:""; position:fixed; left:0; right:0; bottom:0; height:44px; pointer-events:none; border-top:3px solid #0f1c28;
+  background: linear-gradient(to bottom, #58c26f 0 9px, #36934f 9px 12px, transparent 12px),
+    repeating-linear-gradient(90deg, #8f5527 0 3px, transparent 3px 46px),
+    repeating-linear-gradient(to bottom, #8f5527 0 3px, #b9773f 3px 22px); }
+#loginView .login-card { z-index:1; max-width:400px; padding:26px 22px 20px; background:#fffaf1 !important; border:2.5px solid #0f1c28 !important; border-radius:16px; box-shadow:0 5px 0 #0f1c28; }
+#loginView .logo-area { margin-bottom:20px; }
+#loginView .logo-icon { width:52px; height:52px; border-radius:13px; border:2.5px solid #0f1c28; background:linear-gradient(160deg,#2f7de0 0%,#1f5cab 100%); box-shadow:inset 0 -4px 0 rgba(0,0,0,.18); }
+#loginView .logo-area h2 { font-size:1.45rem; letter-spacing:.3px; color:#1c2b3a !important; }
+#loginView .logo-area p { font-size:0.9rem; color:#4d5b68 !important; }
+#loginView .field { margin-bottom:13px; }
+#loginView .field label { font-size:0.75rem; font-weight:700; letter-spacing:.6px; color:#4d5b68 !important; }
+#loginView .field input { padding:11px 14px; font-size:16px; background:#fff !important; color:#1c2b3a !important; border:2px solid #0f1c28 !important; border-radius:10px; transition:box-shadow .15s; }
+#loginView .field input::placeholder { color:rgba(28,43,58,.45) !important; }
+#loginView .field input:focus { box-shadow:0 0 0 3px #ef6fa2; }
+#loginView .btn-login { margin-top:6px; padding:12px; font-size:1rem; font-weight:800; background:#ef6fa2; color:#0f1c28; border:2px solid #0f1c28; border-radius:12px; box-shadow:0 4px 0 #0f1c28; transition:transform .1s ease, box-shadow .1s ease; }
+#loginView .btn-login:hover { opacity:1; transform:translateY(-2px); box-shadow:0 6px 0 #0f1c28; }
+#loginView .btn-login:active { transform:translateY(3px); box-shadow:0 1px 0 #0f1c28; transition-duration:.04s; }
+#loginView .btn-login:focus-visible { outline:3px solid #0f1c28; outline-offset:3px; }
+#loginView .login-error { border-width:2px; border-radius:10px; font-size:0.85rem; }
+#loginView .login-hint { font-size:0.8rem; color:#4d5b68 !important; }
+/* De noche (tema oscuro del portal): el mismo nivel, con cielo nocturno */
+[data-theme="dark"] #loginView::before { background: radial-gradient(circle at 80% 12%, rgba(255,248,231,.14) 0, transparent 30%), linear-gradient(180deg, #0b1330 0%, #243466 100%); }
+[data-theme="dark"] #loginView::after { border-top-color:#04070f;
+  background: linear-gradient(to bottom, #2f8f4c 0 9px, #1f6a37 9px 12px, transparent 12px),
+    repeating-linear-gradient(90deg, #55331a 0 3px, transparent 3px 46px),
+    repeating-linear-gradient(to bottom, #55331a 0 3px, #7a4c29 3px 22px); }
+[data-theme="dark"] #loginView .login-card { background:#222d52 !important; border:2.5px solid #04070f !important; box-shadow:0 5px 0 #04070f; }
+[data-theme="dark"] #loginView .logo-icon { border-color:#04070f; }
+[data-theme="dark"] #loginView .logo-area h2 { color:#f7f1de !important; }
+[data-theme="dark"] #loginView .logo-area p,
+[data-theme="dark"] #loginView .field label,
+[data-theme="dark"] #loginView .login-hint { color:#b4bcd6 !important; }
+[data-theme="dark"] #loginView .field input { background:#18203d !important; color:#f7f1de !important; border:2px solid #04070f !important; }
+[data-theme="dark"] #loginView .field input::placeholder { color:rgba(247,241,222,.45) !important; }
+[data-theme="dark"] #loginView .btn-login { border-color:#04070f; box-shadow:0 4px 0 #04070f; }
+[data-theme="dark"] #loginView .btn-login:hover { box-shadow:0 6px 0 #04070f; }
+[data-theme="dark"] #loginView .btn-login:focus-visible { outline-color:#f7f1de; }
 </style>
 </head>
 <body>
@@ -1897,13 +1943,13 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
     <canvas id="loginBg" aria-hidden="true"></canvas>
     <div class="login-card">
       <div class="logo-area">
-        <div class="logo-icon"><i data-lucide="stethoscope" style="width:24px;height:24px;color:#fff" stroke-width="1.75"></i></div>
+        <div class="logo-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true"><path d="M12 3v18M3 12h18" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg></div>
         <h2>CEOT</h2>
         <p>Portal de profesionales</p>
       </div>
       <div class="field">
         <label>Usuario</label>
-        <input type="text" id="usernameInput" placeholder="Tu apellido en minúscula" autocomplete="off">
+        <input type="text" id="usernameInput" placeholder="Tu apellido" autocomplete="off" autocapitalize="none" spellcheck="false">
       </div>
       <div class="field">
         <label>Matrícula</label>
@@ -2320,24 +2366,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/portal-render.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/admin-home.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/gastos-obra.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/presentacion.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/sueldo-b.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/redsom.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/nun-data.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/accesos-debitos.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/estadisticas.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/estadisticas-export.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/gastos-casa.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/faq-asistente.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/asistente.js?v=2026-11-11-inicio-compacto"></script>
-<script src="js/correos.js?v=2026-11-11-inicio-compacto"></script>
+<script src="js/datos.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/portal-render.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/admin-home.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/gastos-obra.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/presentacion.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/sueldo-b.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/redsom.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/nun-data.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/accesos-debitos.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/estadisticas.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/estadisticas-export.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/gastos-casa.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/faq-asistente.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/asistente.js?v=2026-11-11-inicio-y-login-retro"></script>
+<script src="js/correos.js?v=2026-11-11-inicio-y-login-retro"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -7844,8 +7890,8 @@ async function restaurarAporteCeotPct() {
 
   var reduceMotion = !window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
   var esOscuro = document.documentElement.getAttribute("data-theme") === "dark";
-  var GOLD = "201,147,58";   // --co-gold
-  var INK = esOscuro ? "241,237,226" : "31,58,46"; // ink clara en oscuro, si no verde logo-icon
+  var GOLD = "239,111,162";  // rosa del tema retro (mismo acento que el Inicio)
+  var INK = esOscuro ? "241,237,226" : "15,28,40"; // ink clara en oscuro, si no navy de los bordes
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var width = 0, height = 0, prevWidth = 0;
@@ -7950,7 +7996,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-11-inicio-compacto';
+  var CURRENT_BUILD = '2026-11-11-inicio-y-login-retro';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
