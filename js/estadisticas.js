@@ -615,7 +615,11 @@ function estAdminCirugias() {
 // Por profesional y por mes, más el total del servicio. Solo los meses que
 // tienen cargadas las DOS cosas (consultas y cirugías). Es un cociente entre
 // totales del mes: no sigue a cada paciente.
-function estTablaConversion() {
+// soloKey (opcional): clave de UN médico → versión del portal profesional:
+// solo su fila ("Mis números") y la del servicio como referencia. La fila
+// del servicio lleva data-est-skip para que no viaje en el PDF/JPG del
+// profesional. Devuelve "" si ese médico no tiene consultas cargadas.
+function estTablaConversion(soloKey) {
   var cons = estConsMatriz2026(), cx = estCxMatriz2026();
   var totC = estTotalPorMes(cons), totX = estTotalPorMes(cx);
   var meses = [];
@@ -634,12 +638,16 @@ function estTablaConversion() {
     var rc = cons[md.key] || [], rx = cx[md.key] || [];
     var sc = 0, sx = 0;
     meses.forEach(function (mm) { if (rc[mm]) { sc += rc[mm]; sx += rx[mm] || 0; } });
-    return { label: md.label, rc: rc, rx: rx, sc: sc, sx: sx };
-  }).filter(function (f) { return f.sc > 0 && f.sx > 0; })
+    return { key: md.key, label: md.label, rc: rc, rx: rx, sc: sc, sx: sx };
+  }).filter(function (f) { return soloKey ? (f.key === soloKey && f.sc > 0) : (f.sc > 0 && f.sx > 0); })
     .sort(function (a, b) { return b.sx / b.sc - a.sx / a.sc; });
+  if (soloKey) {
+    if (!filas.length) return "";
+    filas[0].label = "Mis números";
+  }
 
   var fijo = "position:sticky;left:0;background:var(--co-card,#fbf8f0)";
-  var th = '<th style="padding:5px 8px;text-align:left;' + fijo + '">Médico</th>';
+  var th = '<th style="padding:5px 8px;text-align:left;' + fijo + '">' + (soloKey ? "" : "Médico") + '</th>';
   meses.forEach(function (mm) { th += '<th style="padding:5px 8px;text-align:right">' + EST_MESES_CORTO[mm] + '</th>'; });
   th += '<th style="padding:5px 8px;text-align:right">Total 2026</th>';
 
@@ -659,9 +667,11 @@ function estTablaConversion() {
 
   return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.76rem">'
     + '<thead><tr style="background:rgba(32,36,31,.05)">' + th + '</tr></thead>'
-    + '<tbody>' + body + '<tr style="background:rgba(32,36,31,.05)">' + tot + '</tr></tbody></table></div>'
+    + '<tbody>' + body + '<tr' + (soloKey ? ' data-est-skip="1"' : '') + ' style="background:rgba(32,36,31,.05)">' + tot + '</tr></tbody></table></div>'
     + '<div style="margin-top:8px;font-size:0.72rem;color:var(--co-ink-dim,#6b6a5a);line-height:1.5">En cada celda: consultas y cirugías (cx) del mes, y qué porcentaje representan las cirugías. '
-    + 'En el período: ' + estN(gc) + ' consultas y ' + estN(gx) + ' cirugías (1 cada ' + Math.round(gc / gx) + ').<br>'
+    + (soloKey
+        ? (filas[0].sx ? 'En el período operaste 1 de cada ' + Math.round(filas[0].sc / filas[0].sx) + ' consultas.' : '')
+        : 'En el período: ' + estN(gc) + ' consultas y ' + estN(gx) + ' cirugías (1 cada ' + Math.round(gc / gx) + ').') + '<br>'
     + 'Ojo con el mes suelto: un paciente puede consultar a fin de un mes y operarse a principios del siguiente, así que esa cirugía cuenta en un mes distinto al de su consulta. El <b>Total 2026</b> compensa ese corrimiento y es el dato más representativo.</div>';
 }
 
@@ -967,6 +977,9 @@ function estPintarProf(doctor) {
     + estChartCard("Mis cirugías por mes · 2026 vs 2025", "estProfCx", 220)
     + estChartCard("Mi participación en el total del servicio · 2026", "estProfPart", 220, 'data-est-skip="1"')
     + '</div>';
+
+  var conv = estTablaConversion(apellido);
+  if (conv) html += '<div style="margin-top:14px">' + estCardWrap("Mis consultas que terminan en cirugía · 2026", conv) + '</div>';
 
   html += '<div data-est-skip="1" style="margin-top:12px;font-size:0.72rem;color:var(--co-ink-dim,#6b6a5a)">'
     + 'La barra <span style="color:' + EST_COL_2025 + ';font-weight:700">ámbar</span> es 2025, para comparar. Tus números se comparan contra el total de CEOT; el detalle individual del resto solo lo ve la administración.'
