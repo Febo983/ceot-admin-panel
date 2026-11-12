@@ -601,12 +601,60 @@ function estAdminCirugias() {
   html += '<div style="margin-top:14px">' + estCardWrap("Detalle por cirujano y mes · 2026",
     estTablaMatriz(mat, totMes, meses, EST_SEED.cirugias.porCirujano2025, meses.length)) + '</div>';
 
+  html += '<div style="margin-top:14px">' + estCardWrap("Consultas que terminan en cirugía · 2026", estTablaConversion()) + '</div>';
+
   html += '<div style="margin-top:14px">' + estCardWrap("Por obra social individual",
     '<div style="font-size:0.78rem;color:var(--co-ink-dim,#6b6a5a);line-height:1.5">'
     + 'Todavía no hay datos por obra social (OSDE, IOMA, PAMI, Swiss Medical…). '
     + 'El PDF actual solo trae ART / particular / resto agrupado. En cuanto el Excel mensual de cirugías incluya la columna de obra social, el desglose aparece acá automáticamente.'
     + '</div>') + '</div>';
   return html;
+}
+
+// ── Indicador: cirugías cada 100 consultas ──────────────────────
+// Por profesional y por mes, más el total del servicio. Solo los meses que
+// tienen cargadas las DOS cosas (consultas y cirugías). Es un cociente entre
+// totales del mes: no sigue a cada paciente.
+function estTablaConversion() {
+  var cons = estConsMatriz2026(), cx = estCxMatriz2026();
+  var totC = estTotalPorMes(cons), totX = estTotalPorMes(cx);
+  var meses = [];
+  for (var m = 0; m < 12; m++) if (totC[m] && totX[m] != null) meses.push(m);
+  if (!meses.length) return '<div style="font-size:0.78rem;color:var(--co-ink-dim,#6b6a5a)">Todavía no hay ningún mes con consultas y cirugías cargadas a la vez.</div>';
+
+  var pct = function (x, c) { return c ? estPct(x / c) : "—"; };
+  var filas = EST_MEDICOS.map(function (md) {
+    var rc = cons[md.key] || [], rx = cx[md.key] || [];
+    var sc = 0, sx = 0;
+    meses.forEach(function (mm) { if (rc[mm]) { sc += rc[mm]; sx += rx[mm] || 0; } });
+    return { label: md.label, rc: rc, rx: rx, sc: sc, sx: sx };
+  }).filter(function (f) { return f.sc > 0 && f.sx > 0; })
+    .sort(function (a, b) { return b.sx / b.sc - a.sx / a.sc; });
+
+  var fijo = "position:sticky;left:0;background:var(--co-card,#fbf8f0)";
+  var th = '<th style="padding:5px 8px;text-align:left;' + fijo + '">Médico</th>';
+  meses.forEach(function (mm) { th += '<th style="padding:5px 8px;text-align:right">' + EST_MESES_CORTO[mm] + '</th>'; });
+  th += '<th style="padding:5px 8px;text-align:right">Total 2026</th>';
+
+  var body = filas.map(function (f) {
+    var tds = '<td style="padding:4px 8px;font-weight:600;' + fijo + '">' + f.label + '</td>';
+    meses.forEach(function (mm) { tds += '<td style="padding:4px 8px;text-align:right">' + pct(f.rx[mm] || 0, f.rc[mm]) + '</td>'; });
+    return '<tr>' + tds + '<td style="padding:4px 8px;text-align:right;font-weight:700">' + pct(f.sx, f.sc) + '</td></tr>';
+  }).join("");
+
+  var gc = 0, gx = 0;
+  var tot = '<td style="padding:5px 8px;font-weight:800;position:sticky;left:0;background:rgba(32,36,31,.05)">TOTAL SERVICIO</td>';
+  meses.forEach(function (mm) {
+    gc += totC[mm]; gx += totX[mm];
+    tot += '<td style="padding:5px 8px;text-align:right;font-weight:800">' + pct(totX[mm], totC[mm]) + '</td>';
+  });
+  tot += '<td style="padding:5px 8px;text-align:right;font-weight:800">' + pct(gx, gc) + '</td>';
+
+  return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.76rem">'
+    + '<thead><tr style="background:rgba(32,36,31,.05)">' + th + '</tr></thead>'
+    + '<tbody>' + body + '<tr style="background:rgba(32,36,31,.05)">' + tot + '</tr></tbody></table></div>'
+    + '<div style="margin-top:8px;font-size:0.72rem;color:var(--co-ink-dim,#6b6a5a)">Cirugías cada 100 consultas del mismo mes ('
+    + estN(gx) + ' cirugías sobre ' + estN(gc) + ' consultas en el período: 1 cada ' + Math.round(gc / gx) + ').</div>';
 }
 
 // ── Tabla genérica médico × mes ─────────────────────────────────
