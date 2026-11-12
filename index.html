@@ -1712,8 +1712,8 @@ tr:hover .tf-add { opacity:1; }
   .adm-home-hud > .adm-home-hud-cell:last-child { border-bottom:0; }
   .adm-home-hud-c { width:12px; height:12px; }
 }
-/* En celular entran dos bloques por fila (el flex-basis va inline en el mosaico) */
-@media (max-width:520px) { .adm-home-tile-retro { flex-basis:140px !important; } }
+/* En celular entran dos bloques por fila (el ancho mínimo de columna de la grilla) */
+@media (max-width:520px) { .adm-home-retro { --adm-tile-min:140px; } }
 /* ── Barra superior del admin, estilo tablero retro (crema + marino + dorado) ── */
 .adm-header { background:#fffaf1; color:#1c2b3a; border:2.5px solid #0f1c28; border-radius:14px; box-shadow:0 4px 0 #0f1c28; margin:10px 12px 12px; padding:9px 14px; }
 .adm-header .ph-info p { color:#4d5b68; opacity:1; font-size:0.7rem; }
@@ -2450,24 +2450,24 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/portal-render.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/admin-home.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/gastos-obra.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/presentacion.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/sueldo-b.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/redsom.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/nun-data.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/accesos-debitos.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/estadisticas.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/estadisticas-export.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/gastos-casa.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/faq-asistente.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/asistente.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
-<script src="js/correos.js?v=2026-11-11-mes-hoy-total-ceot-contexto"></script>
+<script src="js/datos.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/portal-render.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/admin-home.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/gastos-obra.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/presentacion.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/sueldo-b.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/redsom.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/nun-data.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/accesos-debitos.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/estadisticas.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/estadisticas-export.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/gastos-casa.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/faq-asistente.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/asistente.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
+<script src="js/correos.js?v=2026-11-12-home-grilla-checklist-whatsapp"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -8167,7 +8167,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-11-mes-hoy-total-ceot-contexto';
+  var CURRENT_BUILD = '2026-11-12-home-grilla-checklist-whatsapp';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');

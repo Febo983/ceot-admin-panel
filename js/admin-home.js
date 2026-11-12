@@ -247,12 +247,14 @@ function admHomeTile(ico, lbl, colorRgba, opts) {
   }
 
   // Mosaico retro: bloque compacto y horizontal (ícono a la izquierda, nombre
-  // al lado). El contenedor es flex-wrap y cada bloque crece (flex:1 1 178px),
-  // así cada fila se llena entera y no queda ninguno suelto ni huecos al final.
+  // al lado). El contenedor es una grilla de columnas iguales (ver tileWrap en
+  // admHomeRenderResults) y cada bloque tiene alto fijo, así todos miden lo
+  // mismo en todas las secciones. El nombre corta a dos renglones; el completo
+  // queda en el title.
   var boxBg      = "#fffaf1";
   var boxBgHover = "#ffffff";
   var border      = editing ? "2px dashed #b8447a" : "2px solid #0f1c28";
-  var labelStyle = "flex:1;min-width:0;font-size:12.5px;color:#1c2b3a;text-align:left;font-weight:700;line-height:1.25;overflow-wrap:break-word";
+  var labelStyle = "flex:1;min-width:0;font-size:12.5px;color:#1c2b3a;text-align:left;font-weight:700;line-height:1.25;overflow-wrap:break-word;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden";
 
   var del = (editing && opts.delFn)
     ? '<div onclick="event.stopPropagation();' + opts.delFn + '" title="Eliminar" style="position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:4px;background:rgba(220,38,38,.85);color:#fff;font-size:9px;line-height:16px;text-align:center;cursor:pointer">✕</div>'
@@ -268,7 +270,7 @@ function admHomeTile(ico, lbl, colorRgba, opts) {
     estrella = '<span aria-label="Fijado" title="Fijado arriba" style="flex-shrink:0;font-size:12px;color:#c9933a">★</span>';
   }
   var afuera = (opts.href && !editing) ? '<span aria-hidden="true" style="flex-shrink:0;font-size:12px;font-weight:700;color:rgba(28,43,58,.4)">↗</span>' : "";
-  return "<" + tag + attrs + " class=\"adm-home-tile-retro\" style=\"position:relative;flex:1 1 178px;min-width:0;text-decoration:none;background:" + boxBg + ";border:" + border + ";border-radius:12px;box-shadow:0 3px 0 #0f1c28;padding:8px 10px;min-height:54px;box-sizing:border-box;display:flex;align-items:center;gap:10px;cursor:" + cursor + "\" onmouseover=\"this.style.background='" + boxBgHover + "'\" onmouseout=\"this.style.background='" + boxBg + "'\">"
+  return "<" + tag + attrs + " class=\"adm-home-tile-retro\" title=\"" + admHomeHudEsc(String(lbl).replace(/<[^>]*>/g, "")) + "\" style=\"position:relative;min-width:0;text-decoration:none;background:" + boxBg + ";border:" + border + ";border-radius:12px;box-shadow:0 3px 0 #0f1c28;padding:8px 10px;height:58px;box-sizing:border-box;display:flex;align-items:center;gap:10px;cursor:" + cursor + "\" onmouseover=\"this.style.background='" + boxBgHover + "'\" onmouseout=\"this.style.background='" + boxBg + "'\">"
     + pencil + del
     + '<div style="flex-shrink:0;width:36px;height:36px;border-radius:9px;background:' + colorRgba + ';border:2px solid #0f1c28;display:flex;align-items:center;justify-content:center"><i data-lucide="' + ico + '" style="width:18px;height:18px;color:#1c2b3a" stroke-width="1.9"></i></div>'
     + '<div style="' + labelStyle + '">' + lbl + '</div>'
@@ -394,7 +396,7 @@ function admHomeRenderResults() {
 
   var retroChips = admHomeTheme === "retro";
   var tileWrap = retroChips
-    ? "display:flex;flex-wrap:wrap;gap:10px 9px"
+    ? "display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--adm-tile-min,210px),1fr));gap:10px 9px"
     : "display:grid;grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:8px";
   var cats = ["Todos"].concat(ADM_HOME_CATS.map(function(x) { return x.k; }));
   var chips = cats.map(function(c) {
@@ -502,7 +504,7 @@ function admHomeRenderResults() {
         return admHomeTile(ico, a.title, admHomeCatColor(a.cat), Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
       }));
       if (homeEditMode) {
-        tiles.push('<div onclick="admHomeNuevoAcceso(\'' + g.k + '\')" style="flex:1 1 178px;cursor:pointer;background:rgba(32,36,31,0.03);border:1px dashed rgba(32,36,31,.3);border-radius:10px;padding:12px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;min-height:64px">'
+        tiles.push('<div onclick="admHomeNuevoAcceso(\'' + g.k + '\')" style="cursor:pointer;background:rgba(32,36,31,0.03);border:1px dashed rgba(32,36,31,.3);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;height:58px;box-sizing:border-box">'
           + '<i data-lucide="plus" style="width:18px;height:18px;color:rgba(31,58,46,.8)" stroke-width="1.75"></i>'
           + '<div style="font-size:11px;color:rgba(31,58,46,.8);font-weight:500">Nuevo</div>'
           + '</div>');
@@ -511,7 +513,7 @@ function admHomeRenderResults() {
         + '<span style="width:9px;height:9px;border-radius:3px;background:' + g.c + ';border:2px solid #0f1c28;flex-shrink:0"></span>'
         + '<span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.42)">' + g.t + ' <span style="color:rgba(32,36,31,.2);font-weight:500">· ' + (mods.length + accs.length) + '</span></span>'
         + '</div>';
-      resto += '<div style="' + tileWrap + ';margin-bottom:16px;border-left:3px solid ' + g.c + ';padding-left:10px">' + tiles.join("") + '</div>';
+      resto += '<div style="' + tileWrap + ';margin-bottom:16px">' + tiles.join("") + '</div>';
     });
 
     // El resto va plegado mientras haya franja de destacados: un botón en vez
@@ -554,6 +556,17 @@ var ADM_HOME_HUD_PROX = 3;
 function admHomeHudEsc(t) {
   return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
+// El checklist de la home se puede plegar (igual que el calendario): queda solo
+// el contador hechas/total. Preferencia de pantalla, por navegador.
+var HUD_CHECKLIST_ABIERTO_KEY = "ceot_home_checklist_abierto";
+function admHomeChecklistAbierto() {
+  try { return localStorage.getItem(HUD_CHECKLIST_ABIERTO_KEY) !== "0"; } catch (e) { return true; }
+}
+function admHomeChecklistPlegar(ev) {
+  if (ev) ev.stopPropagation();
+  try { localStorage.setItem(HUD_CHECKLIST_ABIERTO_KEY, admHomeChecklistAbierto() ? "0" : "1"); } catch (e) {}
+  admHomeHudRender();
+}
 function admHomeHudRender() {
   var el = document.getElementById("admHomeHud");
   if (!el) return;
@@ -562,6 +575,20 @@ function admHomeHudRender() {
   var total = CHECKLIST_ITEMS.length;
   var done = CHECKLIST_ITEMS.filter(function(it) { return checklistItemDone(it.id); }).length;
   var vencidos = checklistVencidos().length;
+  var plegarBtn = "border:2px solid #0f1c28;background:#fffaf1;color:#1c2b3a;font-size:0.72rem;font-weight:700;padding:4px 11px;border-radius:16px;cursor:pointer;font-family:inherit";
+
+  if (!admHomeChecklistAbierto()) {
+    el.innerHTML =
+        '<div class="adm-home-hud-cell" onclick="renderChecklist()" style="cursor:pointer">'
+      +   '<div class="adm-home-hud-lab">Checklist · ' + mesNombre + '</div>'
+      +   '<div style="display:flex;align-items:center;gap:10px">'
+      +     '<span style="font-size:1.2rem;font-weight:800;line-height:1;color:#1c2b3a;font-variant-numeric:tabular-nums;white-space:nowrap">' + done + '/' + total + '</span>'
+      +     (vencidos ? '<span style="font-size:10.5px;font-weight:700;color:#c0392b;white-space:nowrap">' + vencidos + ' atrasada' + (vencidos === 1 ? '' : 's') + '</span>' : '')
+      +     '<button style="' + plegarBtn + '" onclick="admHomeChecklistPlegar(event)">Mostrar</button>'
+      +   '</div>'
+      + '</div>';
+    return;
+  }
 
   var tramoActual = null;
   var tramos = Object.keys(CHECKLIST_RANGOS).map(function(rk) {
@@ -598,7 +625,10 @@ function admHomeHudRender() {
     +   '<div class="adm-home-hud-tramos">' + tramos + '</div>'
     + '</div>'
     + '<div class="adm-home-hud-cell adm-home-hud-prox">'
-    +   '<div class="adm-home-hud-lab">Pendientes · ' + prox.length + '</div>'
+    +   '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'
+    +     '<div class="adm-home-hud-lab">Pendientes · ' + prox.length + '</div>'
+    +     '<button style="' + plegarBtn + '" onclick="admHomeChecklistPlegar(event)">Ocultar</button>'
+    +   '</div>'
     +   proxHtml
     +   '<span onclick="renderChecklist()" style="cursor:pointer;font-size:0.74rem;font-weight:700;color:#1c2b3a;text-decoration:underline;text-underline-offset:3px;margin-top:3px;align-self:flex-start">Ver las ' + total + ' tareas</span>'
     + '</div>';
@@ -650,6 +680,22 @@ function admHomeCalConfigurar() {
   try { if (v) localStorage.setItem(GCAL_KEY, v); else localStorage.removeItem(GCAL_KEY); } catch (e) {}
   if (v) syncPush(GCAL_KEY);
   admHomeCalRender();
+}
+
+// ── WhatsApp Web al costado ─────────────────────────────────────────
+// WhatsApp no deja cargarse dentro de un iframe, así que se abre en una ventana
+// angosta pegada al borde derecho de la pantalla. La ventana tiene nombre: si
+// ya está abierta, el botón la trae al frente en vez de abrir otra. La sesión
+// es la del navegador (QR la primera vez); acá no se guarda ningún número.
+var WA_VENTANA_ANCHO = 480;
+function admHomeAbrirWhatsApp() {
+  var sw = screen.availWidth || 1440, sh = screen.availHeight || 900;
+  var sx = screen.availLeft || 0, sy = screen.availTop || 0;
+  var w = Math.min(WA_VENTANA_ANCHO, sw);
+  var win = window.open("https://web.whatsapp.com/", "ceotWhatsApp",
+    "popup=yes,width=" + w + ",height=" + sh + ",left=" + (sx + sw - w) + ",top=" + sy);
+  if (win) { try { win.focus(); } catch (e) {} }
+  else alert("El navegador bloqueó la ventana de WhatsApp. Permití las ventanas emergentes para este sitio y probá de nuevo.");
 }
 
 // Tildar desde la home: mismo guardado que toggleChecklistItem(), pero sin
@@ -817,6 +863,7 @@ function renderAdmHome() {
       +     '<input id="admHomeSearchInput" oninput="admHomeBuscar(this.value)" placeholder="Buscar módulos, liquidaciones, accesos…" style="background:none;border:none;outline:none;color:#1c2b3a;font-size:16px;font-family:inherit;flex:1;min-width:0">'
       +   '</div>'
       +   '<div id="admHomeChips" style="display:flex;gap:6px;flex-wrap:wrap"></div>'
+      +   '<button onclick="admHomeAbrirWhatsApp()" title="Abrir WhatsApp Web en una ventana al costado" style="flex-shrink:0;background:#d6f5df;border:2px solid #0f1c28;color:#1c2b3a;font-size:0.74rem;font-weight:700;padding:7px 13px;border-radius:20px;cursor:pointer;font-family:inherit">💬 WhatsApp</button>'
       +   '<button id="admHomeEditBtn" onclick="admHomeToggleEdit()" style="flex-shrink:0;background:#fffaf1;border:2px solid #0f1c28;color:#1c2b3a;font-size:0.74rem;font-weight:700;padding:7px 13px;border-radius:20px;cursor:pointer;font-family:inherit">✏ Editar nombres</button>'
       + '</div>'
 
