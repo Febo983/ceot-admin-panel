@@ -623,6 +623,13 @@ function estTablaConversion() {
   if (!meses.length) return '<div style="font-size:0.78rem;color:var(--co-ink-dim,#6b6a5a)">Todavía no hay ningún mes con consultas y cirugías cargadas a la vez.</div>';
 
   var pct = function (x, c) { return c ? estPct(x / c) : "—"; };
+  // Celda: "269 cons · 5 cx" arriba y el porcentaje abajo.
+  var celda = function (x, c, peso) {
+    if (!c) return '<td style="padding:4px 8px;text-align:right">—</td>';
+    return '<td style="padding:4px 8px;text-align:right;white-space:nowrap">'
+      + '<div style="font-size:0.68rem;color:var(--co-ink-dim,#6b6a5a)">' + estN(c) + ' cons · ' + estN(x) + ' cx</div>'
+      + '<div style="font-weight:' + peso + '">' + pct(x, c) + '</div></td>';
+  };
   var filas = EST_MEDICOS.map(function (md) {
     var rc = cons[md.key] || [], rx = cx[md.key] || [];
     var sc = 0, sx = 0;
@@ -638,23 +645,24 @@ function estTablaConversion() {
 
   var body = filas.map(function (f) {
     var tds = '<td style="padding:4px 8px;font-weight:600;' + fijo + '">' + f.label + '</td>';
-    meses.forEach(function (mm) { tds += '<td style="padding:4px 8px;text-align:right">' + pct(f.rx[mm] || 0, f.rc[mm]) + '</td>'; });
-    return '<tr>' + tds + '<td style="padding:4px 8px;text-align:right;font-weight:700">' + pct(f.sx, f.sc) + '</td></tr>';
+    meses.forEach(function (mm) { tds += celda(f.rx[mm] || 0, f.rc[mm], 600); });
+    return '<tr style="border-top:1px solid var(--co-line,#d9d0b8)">' + tds + celda(f.sx, f.sc, 800) + '</tr>';
   }).join("");
 
   var gc = 0, gx = 0;
   var tot = '<td style="padding:5px 8px;font-weight:800;position:sticky;left:0;background:rgba(32,36,31,.05)">TOTAL SERVICIO</td>';
   meses.forEach(function (mm) {
     gc += totC[mm]; gx += totX[mm];
-    tot += '<td style="padding:5px 8px;text-align:right;font-weight:800">' + pct(totX[mm], totC[mm]) + '</td>';
+    tot += celda(totX[mm], totC[mm], 800);
   });
-  tot += '<td style="padding:5px 8px;text-align:right;font-weight:800">' + pct(gx, gc) + '</td>';
+  tot += celda(gx, gc, 800);
 
   return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.76rem">'
     + '<thead><tr style="background:rgba(32,36,31,.05)">' + th + '</tr></thead>'
     + '<tbody>' + body + '<tr style="background:rgba(32,36,31,.05)">' + tot + '</tr></tbody></table></div>'
-    + '<div style="margin-top:8px;font-size:0.72rem;color:var(--co-ink-dim,#6b6a5a)">Cirugías cada 100 consultas del mismo mes ('
-    + estN(gx) + ' cirugías sobre ' + estN(gc) + ' consultas en el período: 1 cada ' + Math.round(gc / gx) + ').</div>';
+    + '<div style="margin-top:8px;font-size:0.72rem;color:var(--co-ink-dim,#6b6a5a);line-height:1.5">En cada celda: consultas y cirugías (cx) del mes, y qué porcentaje representan las cirugías. '
+    + 'En el período: ' + estN(gc) + ' consultas y ' + estN(gx) + ' cirugías (1 cada ' + Math.round(gc / gx) + ').<br>'
+    + 'Ojo con el mes suelto: un paciente puede consultar a fin de un mes y operarse a principios del siguiente, así que esa cirugía cuenta en un mes distinto al de su consulta. El <b>Total 2026</b> compensa ese corrimiento y es el dato más representativo.</div>';
 }
 
 // ── Tabla genérica médico × mes ─────────────────────────────────
