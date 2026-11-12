@@ -8,9 +8,9 @@
 // (clave "ceot_estadisticas_import"), igual que el resto del panel.
 // ═══════════════════════════════════════════════════════════════════
 
-var EST_IMPORT = { consultas: {}, cirugias: {} };
+var EST_IMPORT = { consultas: {}, cirugias: {}, turnos: {}, ventanilla: {} };
 var estChartInstances = {};
-var estVista      = "consultas";   // "consultas" | "cirugias"
+var estVista      = "consultas";   // "consultas" | "cirugias" | "turnos" | "ventanilla"
 var estImpPreview = null;           // preview pendiente de confirmar
 var estProfCtx    = null;           // datos para (re)dibujar los charts del portal
 var estProfDoctor = null;           // profesional logueado, para la exportación
@@ -45,6 +45,8 @@ function estCargar(onDone) {
   } catch (e) { EST_IMPORT = { consultas: {}, cirugias: {} }; }
   if (!EST_IMPORT.consultas) EST_IMPORT.consultas = {};
   if (!EST_IMPORT.cirugias)  EST_IMPORT.cirugias  = {};
+  if (!EST_IMPORT.turnos)     EST_IMPORT.turnos     = {};   // secretarías (estadisticas-secretarias.js)
+  if (!EST_IMPORT.ventanilla) EST_IMPORT.ventanilla = {};
   syncPull("ceot_estadisticas_import", function () {
     estCargar();
     if (onDone) onDone();
@@ -150,6 +152,7 @@ function estMesesConDato(totMes) {
 function estOrigenMes(tipo, mm) {
   var ym = "2026-" + String(mm + 1).padStart(2, "0");
   if (EST_IMPORT[tipo] && EST_IMPORT[tipo][ym]) return "importado";
+  if (tipo === "turnos" || tipo === "ventanilla") return (EST_SEED_SEC[tipo] && EST_SEED_SEC[tipo][ym]) ? "semilla" : null;
   if (tipo === "consultas" && mm <= EST_SEED_HASTA_MES) return "semilla";
   if (tipo === "cirugias"  && mm <= EST_SEED_HASTA_MES) return "semilla";
   return null;
@@ -166,7 +169,7 @@ function renderEstadisticasCeot(vista) {
   var sb = document.getElementById("adm-sidenav-estadisticas");
   if (sb) sb.className = "adm-sidenav-btn active";
 
-  estVista = (vista === "cirugias" || vista === "consultas") ? vista : estVista;
+  estVista = (vista === "cirugias" || vista === "consultas" || vista === "turnos" || vista === "ventanilla") ? vista : estVista;
 
   var cont = document.getElementById("adm-content");
   if (!cont) return;
@@ -210,6 +213,7 @@ function estPintarAdmin() {
     + '<div class="adm-sec-title" style="margin:0;border:none;padding:0">📈 Estadísticas CEOT</div>'
     + '<div style="display:flex;gap:6px;flex-wrap:wrap">'
     + estBtnVista("consultas", "Consultas") + estBtnVista("cirugias", "Cirugías")
+    + estBtnVista("turnos", "Asignación de turnos") + estBtnVista("ventanilla", "Atención en ventanilla")
     + (typeof estExpBotones === "function" ? estExpBotones() : "")
     + '</div>'
     + '</div>';
@@ -220,12 +224,14 @@ function estPintarAdmin() {
 
   html += estBloqueImport();
 
-  html += (estVista === "consultas") ? estAdminConsultas() : estAdminCirugias();
+  var esSec = estVista === "turnos" || estVista === "ventanilla";
+  html += esSec ? estAdminSecretarias(estVista) : ((estVista === "consultas") ? estAdminConsultas() : estAdminCirugias());
   html += '</div>';
 
   cont.innerHTML = html;
   if (window.lucide) lucide.createIcons();
-  if (estVista === "consultas") estInitChartsConsultas(); else estInitChartsCirugias();
+  if (esSec) estInitChartsSecretarias(estVista);
+  else if (estVista === "consultas") estInitChartsConsultas(); else estInitChartsCirugias();
 }
 
 // ── Bloque de importación mensual ────────────────────────────────
@@ -251,19 +257,22 @@ function estBloqueImport() {
     }).join("");
     var noRec = p.filas.filter(function (f) { return !f.ok; }).length;
     var esCx = p.tipo === "cirugias";
-    h += '<div style="font-weight:700;font-size:0.82rem;margin-bottom:8px">Previsualización del archivo — ' + (esCx ? "cirugías" : "consultas") + '</div>';
+    var pSec = (p.tipo === "turnos" || p.tipo === "ventanilla") ? EST_SEC_TIPOS[p.tipo] : null;
+    h += '<div style="font-weight:700;font-size:0.82rem;margin-bottom:8px">Previsualización del archivo — ' + (pSec ? pSec.titulo.toLowerCase() : (esCx ? "cirugías" : "consultas")) + '</div>';
     h += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
       + '<label style="font-size:0.75rem;color:var(--co-ink-dim,#6b6a5a)">Mes a cargar:</label>'
       + '<select id="estImpYm" style="padding:5px 8px;border-radius:7px;border:1px solid var(--co-line,#d9d0b8);font-size:0.78rem">' + opts + '</select>'
-      + '<span style="font-size:0.75rem;color:var(--co-ink-dim,#6b6a5a)">· ' + p.filas.length + (esCx ? ' cirujanos' : ' médicos') + ' · total ' + estN(p.total)
+      + '<span style="font-size:0.75rem;color:var(--co-ink-dim,#6b6a5a)">· ' + p.filas.length + (pSec ? ' usuarios' : (esCx ? ' cirujanos' : ' médicos')) + ' · total ' + estN(p.total)
+        + (pSec ? ' · ' + p.sec.dias + ' días con actividad' : '')
         + (esCx && p.sinAsignar ? ' · ' + p.sinAsignar + ' sin asignar' : '')
         + (esCx && p.grupos != null && p.grupos !== p.total ? ' · ' + p.grupos + ' grupos en el archivo' : '')
         + (esCx && p.nunCodificadas != null ? ' · ' + p.nunCodificadas + ' con NUN cargada' : '') + '</span>'
       + '</div>';
+    (p.avisos || []).forEach(function (a) { h += '<div style="font-size:0.74rem;color:#8a5a12;background:rgba(201,147,58,.14);border-radius:7px;padding:6px 9px;margin-bottom:8px">⚠ ' + a + '</div>'; });
     if (noRec) h += '<div style="font-size:0.72rem;color:#dc2626;margin-bottom:8px">⚠ ' + noRec + ' nombre(s) sin reconocer (fila roja). Revisá el mapeo antes de confirmar.</div>';
     h += '<div style="max-height:230px;overflow:auto;border:1px solid var(--co-line,#d9d0b8);border-radius:7px;margin-bottom:10px">'
       + '<table style="width:100%;border-collapse:collapse;font-size:0.76rem"><thead><tr style="background:rgba(32,36,31,.05)">'
-      + '<th style="padding:4px 8px;text-align:left">Nombre en el Excel</th><th style="padding:4px 8px;text-align:left">' + (esCx ? "Cirujano" : "Médico") + '</th><th style="padding:4px 8px;text-align:right">' + (esCx ? "Cirugías" : "Consultas") + '</th>'
+      + '<th style="padding:4px 8px;text-align:left">Nombre en el Excel</th><th style="padding:4px 8px;text-align:left">' + (pSec ? "Secretaria" : (esCx ? "Cirujano" : "Médico")) + '</th><th style="padding:4px 8px;text-align:right">' + (pSec ? pSec.Unidad : (esCx ? "Cirugías" : "Consultas")) + '</th>'
       + '</tr></thead><tbody>' + filasHtml + '</tbody></table></div>';
     h += '<div style="display:flex;gap:8px">'
       + '<button onclick="estConfirmarImport()" style="padding:7px 16px;border-radius:8px;border:none;background:#16a34a;color:#fff;font-size:0.78rem;font-weight:700;cursor:pointer">✓ Confirmar y guardar</button>'
@@ -274,14 +283,17 @@ function estBloqueImport() {
   }
 
   var esCxImp = estVista === "cirugias";
+  var secImp = (estVista === "turnos" || estVista === "ventanilla") ? EST_SEC_TIPOS[estVista] : null;
   h += '<div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">'
     + '<div style="flex:1;min-width:220px">'
-    + '<div style="font-weight:700;font-size:0.82rem;margin-bottom:3px">⬆ Importar mes de ' + (esCxImp ? 'cirugías' : 'consultas') + ' (Excel)</div>'
-    + '<div style="font-size:0.73rem;color:var(--co-ink-dim,#6b6a5a)">' + (esCxImp
+    + '<div style="font-weight:700;font-size:0.82rem;margin-bottom:3px">⬆ Importar mes de ' + (secImp ? secImp.titulo.toLowerCase() : (esCxImp ? 'cirugías' : 'consultas')) + ' (Excel)</div>'
+    + '<div style="font-size:0.73rem;color:var(--co-ink-dim,#6b6a5a)">' + (secImp
+        ? 'Subí el Excel mensual <b>"' + secImp.reporte + '"</b> del sistema de la clínica (un archivo por mes). El mes se detecta por las fechas de los registros y podés revisar el conteo por secretaria antes de guardar.'
+        : esCxImp
         ? 'Subí el Excel mensual de <b>cirugías</b> (reporte "TRAUMATO ..." del sistema, hoja de prestaciones). Se cuenta una cirugía por paciente, el mes se detecta solo y podés revisar el conteo por cirujano antes de guardar.'
         : 'Subí el Excel mensual de <b>consultas por médico</b> (formato del sistema de la clínica). El mes se detecta solo y podés corregirlo antes de guardar.') + '</div>'
     + '</div>'
-    + '<input type="file" accept=".xls,.xlsx" onchange="' + (esCxImp ? 'estImportarCirugias' : 'estImportarExcel') + '(this.files[0])" style="font-size:0.75rem">'
+    + '<input type="file" accept=".xls,.xlsx" onchange="' + (secImp ? 'estImportarSecretarias' : (esCxImp ? 'estImportarCirugias' : 'estImportarExcel')) + '(this.files[0])" style="font-size:0.75rem">'
     + '</div>';
 
   // Meses cargados
@@ -474,6 +486,13 @@ function estConfirmarImport() {
   var sel = document.getElementById("estImpYm");
   var ym = sel ? sel.value : estImpPreview.ym;
   var p = estImpPreview;
+  if (p.tipo === "turnos" || p.tipo === "ventanilla") {
+    EST_IMPORT[p.tipo][ym] = estSecObjImport(p);
+    estGuardar();
+    estImpPreview = null;
+    estPintarAdmin();
+    return;
+  }
   var obj = { _ts: new Date().toISOString() };
   var tot = 0;
   p.filas.forEach(function (f) { obj[f.key] = f.n; tot += f.n; });
@@ -497,7 +516,7 @@ function estConfirmarImport() {
   estPintarAdmin();
 }
 function estQuitarMes(ym) {
-  var tipo = (estVista === "cirugias") ? "cirugias" : "consultas";
+  var tipo = (estVista === "cirugias" || estVista === "turnos" || estVista === "ventanilla") ? estVista : "consultas";
   if (!confirm("¿Quitar el mes de " + tipo + " importado " + ym + "? (no afecta la semilla)")) return;
   if (EST_IMPORT[tipo]) delete EST_IMPORT[tipo][ym];
   estGuardar();
@@ -659,7 +678,7 @@ function estChartBase() {
   return { grid: dark ? "rgba(241,237,226,.08)" : "rgba(32,36,31,.08)" };
 }
 function estInitChartsConsultas() {
-  estDestruir(["estChartConsEvo", "estChartConsRank", "estChartCxEvo", "estChartCxRank", "estChartCxCob", "estChartCxDona"]);
+  estDestruir(["estChartConsEvo", "estChartConsRank", "estChartCxEvo", "estChartCxRank", "estChartCxCob", "estChartCxDona"].concat(EST_SEC_CHARTS));
   if (!window.Chart) return;
   var b = estChartBase();
   var mat = estConsMatriz2026();
@@ -717,7 +736,7 @@ function estInitChartsConsultas() {
   }
 }
 function estInitChartsCirugias() {
-  estDestruir(["estChartConsEvo", "estChartConsRank", "estChartCxEvo", "estChartCxRank", "estChartCxCob", "estChartCxDona"]);
+  estDestruir(["estChartConsEvo", "estChartConsRank", "estChartCxEvo", "estChartCxRank", "estChartCxCob", "estChartCxDona"].concat(EST_SEC_CHARTS));
   if (!window.Chart) return;
   var b = estChartBase();
   var mat = estCxMatriz2026();

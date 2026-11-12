@@ -182,3 +182,105 @@ var EST_SEED = {
     porObraSocial: {}
   }
 };
+
+// ═══════════════════════════════════════════════════════════════════
+// SECRETARÍAS — "Asignación de turnos" y "Atención en ventanilla".
+// Fuente: reportes del sistema de la clínica, un Excel por mes:
+//   · turnos     → "Auditoría de Turnos" (…TURNOS_POR_SECRETARIA.xls)
+//                  [Profesional | Usuario | Fecha Carga | Cantidad]
+//   · ventanilla → "Auditoría de Caja"   (ATENCION_…_POR_USUARIO.xls)
+//                  [Fecha | Profesional | Usuario | Cantidad]
+// No hay histórico anterior a agosto 2026. Los meses nuevos entran por
+// el importador del panel (js/estadisticas-secretarias.js).
+// OJO: turnos NO tiene septiembre 2026 — el archivo "SEPTIEMBRE" que se
+// entregó traía los datos de octubre (mismo contenido que el de octubre).
+// ═══════════════════════════════════════════════════════════════════
+
+// Roster de secretarias. "JOSEFINA CATANIA"/"JULIETA CATANIA" (turnos) y
+// "JOSEFINA"/"JULIETA" (caja) son la misma persona: se unifica por nombre.
+var EST_SECRETARIAS = [
+  { key:"DANIELA",   label:"Daniela"   },
+  { key:"PAULA",     label:"Paula"     },
+  { key:"ELIZABETH", label:"Elizabeth" },
+  { key:"LAURA",     label:"Laura"     },
+  { key:"EVELINA",   label:"Evelina"   },
+  { key:"JOSEFINA",  label:"Josefina"  },
+  { key:"JULIETA",   label:"Julieta"   },
+  { key:"SUPLENCIA", label:"Suplencia" },
+  { key:"MEDICOS",   label:"Médicos (carga propia)" }
+];
+
+// Normaliza el "Usuario" del Excel a la clave del roster. Un usuario que es
+// un médico del servicio ("GUILERA, ARIEL") se agrupa en "MEDICOS". Lo que
+// no se reconoce queda con su nombre tal cual (el import lo marca en rojo).
+function estKeyDeSecretaria(raw) {
+  if (raw == null) return "";
+  var s = String(raw).toUpperCase()
+    .replace(/[ÁÀÄÂ]/g,"A").replace(/[ÉÈËÊ]/g,"E").replace(/[ÍÌÏÎ]/g,"I")
+    .replace(/[ÓÒÖÔ]/g,"O").replace(/[ÚÙÜÛ]/g,"U")
+    .replace(/\s+/g," ").trim();
+  if (!s) return "";
+  var km = estKeyDeMedico(s);
+  if (EST_MEDICOS.some(function (m) { return m.key === km; })) return "MEDICOS";
+  var w = s.split(" ")[0];
+  for (var i = 0; i < EST_SECRETARIAS.length; i++) if (EST_SECRETARIAS[i].key === w) return w;
+  return s;
+}
+
+// Semilla por mes ("AAAA-MM"). Misma forma para los dos tipos:
+//   total   — total del mes            dias    — días con actividad
+//   porSec  — por secretaria           porProf — por profesional
+//   dow     — total por día de semana (0=domingo … 6=sábado)
+//   dowDias — cuántos días de cada uno hubo en el mes
+//   horas   — (solo turnos) turnos por hora de carga, 0-23
+//   sinHora — (solo turnos) registros que el sistema trae sin hora
+var EST_SEED_SEC = {
+  turnos: {
+    "2026-08": {
+      total: 4496,
+      dias: 20,
+      porSec: {"DANIELA":1092,"PAULA":1052,"ELIZABETH":838,"JOSEFINA":715,"LAURA":464,"EVELINA":220,"JULIETA":112,"MEDICOS":2,"TOBIAS":1},
+      porProf: {"DEGANUTTI":634,"CORELICH":420,"BRUNI":402,"LABAYEN":397,"TRIVELLINI":378,"DE LA COLINA":332,"SOULE":297,"MAZZOLA":288,"FISSER":286,"GARMENDIA":284,"PERLASCO":251,"LEON":234,"GUILERA":220,"GERLING":73},
+      dow: [0,1059,882,898,801,856,0],
+      dowDias: [0,4,4,4,4,4,0],
+      horas: [0,0,0,0,0,0,0,8,411,366,416,448,332,321,384,331,252,201,205,285,1,0,0,0],
+      sinHora: 535
+    },
+    "2026-10": {
+      total: 4746,
+      dias: 21,
+      porSec: {"PAULA":1065,"DANIELA":887,"EVELINA":857,"LAURA":715,"ELIZABETH":709,"JOSEFINA":476,"JULIETA":36,"MEDICOS":1},
+      porProf: {"DEGANUTTI":552,"LABAYEN":455,"CORELICH":438,"BRUNI":411,"MAZZOLA":376,"GARMENDIA":370,"SOULE":362,"TRIVELLINI":360,"DE LA COLINA":331,"FISSER":289,"LEON":257,"PERLASCO":245,"GUILERA":223,"GERLING":77},
+      dow: [0,811,922,1012,968,1033,0],
+      dowDias: [0,3,4,4,5,5,0],
+      horas: [0,0,0,0,0,0,0,5,486,481,465,482,354,335,384,265,250,232,246,202,6,0,0,0],
+      sinHora: 553
+    }
+  },
+  ventanilla: {
+    "2026-08": {
+      total: 3208,
+      dias: 19,
+      porSec: {"PAULA":930,"ELIZABETH":709,"DANIELA":647,"LAURA":595,"JOSEFINA":256,"SUPLENCIA":66,"JULIETA":5},
+      porProf: {"DEGANUTTI":433,"BRUNI":291,"TRIVELLINI":271,"LABAYEN":267,"SOULE":267,"CORELICH":236,"DE LA COLINA":224,"MAZZOLA":218,"PERLASCO":204,"FISSER":202,"GARMENDIA":186,"LEON":186,"GUILERA":168,"GERLING":55},
+      dow: [0,631,514,838,468,757,0],
+      dowDias: [0,3,4,4,4,4,0]
+    },
+    "2026-09": {
+      total: 3565,
+      dias: 22,
+      porSec: {"ELIZABETH":772,"DANIELA":726,"LAURA":620,"PAULA":608,"SUPLENCIA":501,"JOSEFINA":338},
+      porProf: {"DEGANUTTI":441,"GARMENDIA":341,"BRUNI":328,"TRIVELLINI":319,"LABAYEN":308,"CORELICH":296,"SOULE":278,"DE LA COLINA":275,"MAZZOLA":260,"FISSER":243,"LEON":215,"GUILERA":167,"PERLASCO":50,"GERLING":44},
+      dow: [0,836,697,918,402,712,0],
+      dowDias: [0,4,5,5,4,4,0]
+    },
+    "2026-10": {
+      total: 3303,
+      dias: 21,
+      porSec: {"PAULA":957,"LAURA":599,"ELIZABETH":574,"DANIELA":535,"SUPLENCIA":285,"EVELINA":187,"JOSEFINA":166},
+      porProf: {"CORELICH":325,"LABAYEN":311,"SOULE":309,"DEGANUTTI":279,"MAZZOLA":279,"TRIVELLINI":273,"BRUNI":267,"GARMENDIA":266,"DE LA COLINA":214,"FISSER":207,"LEON":191,"GUILERA":169,"PERLASCO":157,"GERLING":56},
+      dow: [0,588,593,752,477,893,0],
+      dowDias: [0,3,4,4,5,5,0]
+    }
+  }
+};

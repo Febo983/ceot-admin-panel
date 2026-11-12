@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════
 // estadisticas-export.js — exporta el módulo "Estadísticas CEOT".
 //
-//   Panel admin     → PDF (una hoja de Consultas + una de Cirugías)
+//   Panel admin     → PDF (una hoja por vista: Consultas, Cirugías,
+//                     Asignación de turnos y Atención en ventanilla)
 //                     JPG (la vista que se está mirando).
 //   Portal del prof → PDF / JPG con UNA hoja, solo con sus números.
 //                     La hoja del profesional NO lleva nada del total
@@ -37,7 +38,10 @@ function estExpSelloArchivo() {
   return d.getFullYear() + "-" + estExpDosDig(d.getMonth() + 1) + "-" + estExpDosDig(d.getDate());
 }
 
-function estExpTitulo(vista) { return vista === "cirugias" ? "Cirugías" : "Consultas"; }
+function estExpTitulo(vista) {
+  if (vista === "turnos" || vista === "ventanilla") return EST_SEC_TIPOS[vista].titulo;
+  return vista === "cirugias" ? "Cirugías" : "Consultas";
+}
 
 // "DR. DE LA COLINA" → "Dr. De La Colina"
 function estExpNombreLindo(s) {
@@ -56,8 +60,9 @@ function estExpSlug(s) {
 // Último mes de 2026 con dato cargado, para el encabezado.
 function estExpUltimoMes(vista) {
   try {
-    var mat = (vista === "cirugias") ? estCxMatriz2026() : estConsMatriz2026();
-    var meses = estMesesConDato(estTotalPorMes(mat));
+    var meses;
+    if (vista === "turnos" || vista === "ventanilla") meses = estSecDatos(vista).meses;
+    else meses = estMesesConDato(estTotalPorMes((vista === "cirugias") ? estCxMatriz2026() : estConsMatriz2026()));
     if (!meses.length) return "";
     return estCap(EST_MESES[meses[meses.length - 1]]) + " 2026";
   } catch (e) { return ""; }
@@ -72,7 +77,7 @@ function estExpEstiloBoton() {
 
 function estExpBotones() {
   var e = estExpEstiloBoton();
-  return '<button onclick="estExportar(\'pdf\')" title="Las dos vistas: una hoja de Consultas y una de Cirugías" style="' + e + '">PDF</button>'
+  return '<button onclick="estExportar(\'pdf\')" title="Las cuatro vistas, una hoja cada una: Consultas, Cirugías, Asignación de turnos y Atención en ventanilla" style="' + e + '">PDF</button>'
     + '<button onclick="estExportar(\'jpg\')" title="La vista que estás mirando, como imagen" style="' + e + '">JPG</button>';
 }
 
@@ -291,7 +296,7 @@ function estExportar(formato) {
 
   var vistaOriginal = estVista;
   var salirModoDoc = estExpModoDocumento();
-  var vistas = (formato === "pdf") ? ["consultas", "cirugias"] : [vistaOriginal];
+  var vistas = (formato === "pdf") ? ["consultas", "cirugias", "turnos", "ventanilla"] : [vistaOriginal];
   var hojas = [];
 
   var terminar = function () {
