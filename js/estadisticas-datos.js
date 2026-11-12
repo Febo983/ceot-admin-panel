@@ -192,8 +192,6 @@ var EST_SEED = {
 //                  [Fecha | Profesional | Usuario | Cantidad]
 // No hay histórico anterior a agosto 2026. Los meses nuevos entran por
 // el importador del panel (js/estadisticas-secretarias.js).
-// OJO: turnos NO tiene septiembre 2026 — el archivo "SEPTIEMBRE" que se
-// entregó traía los datos de octubre (mismo contenido que el de octubre).
 // ═══════════════════════════════════════════════════════════════════
 
 // Roster de secretarias. "JOSEFINA CATANIA"/"JULIETA CATANIA" (turnos) y
@@ -245,6 +243,16 @@ var EST_SEED_SEC = {
       dowDias: [0,4,4,4,4,4,0],
       horas: [0,0,0,0,0,0,0,8,411,366,416,448,332,321,384,331,252,201,205,285,1,0,0,0],
       sinHora: 535
+    },
+    "2026-09": {
+      total: 4903,
+      dias: 22,
+      porSec: {"DANIELA":1080,"ELIZABETH":965,"JOSEFINA":922,"EVELINA":653,"PAULA":628,"LAURA":622,"JULIETA":32,"MEDICOS":1},
+      porProf: {"DEGANUTTI":641,"CORELICH":487,"GARMENDIA":481,"LABAYEN":472,"BRUNI":414,"TRIVELLINI":387,"SOULE":355,"MAZZOLA":341,"FISSER":335,"DE LA COLINA":327,"LEON":287,"GUILERA":220,"PERLASCO":95,"GERLING":61},
+      dow: [0,1073,1221,1148,755,706,0],
+      dowDias: [0,4,5,5,4,4,0],
+      horas: [0,0,0,0,0,0,0,2,494,485,461,455,406,354,330,305,224,273,240,253,9,0,0,0],
+      sinHora: 612
     },
     "2026-10": {
       total: 4746,
