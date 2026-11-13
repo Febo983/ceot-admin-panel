@@ -103,6 +103,7 @@ var ADM_HOME_MODULOS = [
   { key:"totalceot",        ico:"trending-up",     lbl:"Total CEOT",    cat:"sistema", home:false, fn:"renderTotalCeot()" },
   { key:"faqasistente",     ico:"bot",             lbl:"FAQ del asistente", cat:"sistema", home:false, fn:"renderFaqAsistente()" },
   { key:"correos",          ico:"mail",            lbl:"Correos",       cat:"sistema", home:false, fn:"renderCorreos()" },
+  { key:"backup",           ico:"download",        lbl:"Copia de seguridad", cat:"sistema", fn:"backupExportar()" },
 ];
 
 var LUCIDE_ACC_ICON = {
@@ -915,6 +916,7 @@ function renderAdmHome() {
   admHomeHudRender();
   admHomeCalRender();
   admHomeRenderResults();
+  if (typeof backupAvisoRender === "function") backupAvisoRender();
   coInitScrollFade("admMesStripScroll", "admMesStripWrap");
   if (retro) initAdmHomeBg(); else stopAdmHomeBg();
 }
