@@ -727,11 +727,17 @@ function admHomeSociosActivos() {
 // datos (el actual si ya los tiene) y cuánto se movió contra el mes con datos
 // anterior. Devuelve null solo si no hay ningún mes cargado.
 function admHomeTotalCeotMes(id) {
-  var tc = (typeof liquidacionData !== "undefined" && liquidacionData) ? liquidacionData.totalCeot : null;
-  if (!tc || !tc[id]) return 0;
-  var t = 0;
-  Object.values(tc[id]).forEach(function(v) { t += (v || 0); });
-  return t;
+  // NETO del mes: suma del NETO de cada profesional (misma cuenta que la fila
+  // TOTAL de "Detalle por profesional"), no el total liquidado CEOT.
+  try {
+    var t = 0, hay = false;
+    DOCTORES.forEach(function(d) {
+      var c = calcularNetoLocal(id, d);
+      if (c && c.neto) { t += c.neto; hay = true; }
+    });
+    if (hay) return t;
+  } catch (e) {}
+  return 0;
 }
 function admHomeTotalCeotInfo(mesAct) {
   var desde = PERIODOS_TODOS.indexOf(mesAct);
@@ -848,7 +854,7 @@ function renderAdmHome() {
       + '<div class="adm-home-hud" id="admHeroCard">'
       +   '<div id="admHomeHud" style="display:contents"></div>'
       +   '<div class="adm-home-hud-cell">'
-      +     '<div class="adm-home-hud-lab">Total CEOT · ' + statNetoLab + '</div>'
+      +     '<div class="adm-home-hud-lab">Neto del mes · ' + statNetoLab + '</div>'
       +     statNeto
       +   '</div>'
       +   '<div class="adm-home-hud-cell" onclick="renderPendientes()" style="cursor:pointer">'
@@ -885,7 +891,7 @@ function renderAdmHome() {
       + '</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
       + '<div style="background:rgba(32,36,31,0.05);border:0.5px solid rgba(32,36,31,0.1);border-radius:10px;padding:11px 12px">'
-      + '<div style="font-size:9px;color:rgba(32,36,31,0.35);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Total CEOT · ' + mesAct + '</div>'
+      + '<div style="font-size:9px;color:rgba(32,36,31,0.35);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Neto del mes · ' + mesAct + '</div>'
       + statNeto
       + '</div>'
       + '<div style="background:rgba(32,36,31,0.05);border:0.5px solid rgba(32,36,31,0.1);border-radius:10px;padding:11px 12px">'
