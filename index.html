@@ -2450,28 +2450,28 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/portal-render.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/backup.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/admin-home.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/gastos-obra.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/coberturas.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/presentacion.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/sueldo-b.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/dla.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/redsom.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/nun-data.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/accesos-debitos.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/estadisticas.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/estadisticas-secretarias.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/estadisticas-export.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/gastos-casa.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/faq-asistente.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/asistente.js?v=2026-11-16-resumen-transferencias-txt"></script>
-<script src="js/correos.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/datos.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/portal-render.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/backup.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/admin-home.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/gastos-obra.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/coberturas.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/presentacion.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/sueldo-b.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/dla.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/redsom.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/nun-data.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/accesos-debitos.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/estadisticas.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/estadisticas-secretarias.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/estadisticas-export.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/gastos-casa.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/faq-asistente.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/asistente.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/correos.js?v=2026-11-16-reparto-por-cheque"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -4189,7 +4189,7 @@ function renderSueldoDirector() {
   var html = '<div id="sueldoDirectorScreenRoot" style="padding:16px">'
     + licHonBannerHtml()
     + sueldoDirectorPeriodoSelectorHtml(periodo)
-    + transfResumenBotonesHtml()
+    + transfResumenBotonesHtml(periodo)
     + sdAcc('resumen', '📊 Resumen sueldos directores — ' + periodoNombre(periodo), sueldoDirectorResumenHtml(periodo))
     + sdAccSiHay('transffam', transfFamHtml, '🏠 Transferencias a familiares' + (TRANSF_FAM_RESUMEN_PEND ? ' — ' + TRANSF_FAM_RESUMEN_PEND + ' pendiente' + (TRANSF_FAM_RESUMEN_PEND === 1 ? '' : 's') : ''))
     + sdAcc('sd', '🏦 Sueldo Director', sueldoDirectorTabHtml(periodo))
@@ -6893,23 +6893,195 @@ function transfResumenTexto(periodo) {
   return L.join('\n');
 }
 
+// Cheques disponibles del período (unión de todos los profesionales), en orden.
+function transfResumenChequesDelMes(periodo) {
+  var vistos = {}, fechas = [];
+  SUELDO_DIRECTOR_LISTA.concat(PRESTAMO_CASA_SOCIOS).forEach(function(ap) {
+    var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
+    var base = doc ? calcularDetalleChequesProfesional(periodo, doc) : null;
+    if (!base) return;
+    base.detalle.forEach(function(d) { if (!d.pendiente && !vistos[d.fecha]) { vistos[d.fecha] = 1; fechas.push(d.fecha); } });
+  });
+  function clave(f) { var m = /^(\d{1,2})\/(\d{1,2})/.exec(f); return m ? parseInt(m[2], 10) * 100 + parseInt(m[1], 10) : 9999; }
+  fechas.sort(function(a, b) { return clave(a) - clave(b); });
+  return fechas;
+}
+
+// Reparto de UN cheque: por profesional, neto de ese cheque + avisos
+// (sobrante de cheques anteriores sin asignar, parte que va al sueldo,
+// familiares que salen de ese cheque, y lo que queda para el profesional).
+function transfResumenChequeTexto(periodo, fecha) {
+  var inf = periodoInfo(periodo);
+  var perTxt = inf ? inf.largo + ' ' + inf.anio : periodoNombre(periodo);
+  function money(n) { return fmt(n).replace(/[  ]/g, ' '); }
+  function pad(s, n) { s = String(s); while (s.length < n) s += ' '; return s; }
+  function docDe(ap) { return DOCTORES.filter(function(d) { return d.apellido === ap; })[0]; }
+  var ahora = new Date();
+  var fh = ('0' + ahora.getDate()).slice(-2) + '/' + ('0' + (ahora.getMonth() + 1)).slice(-2) + '/' + ahora.getFullYear()
+    + ' ' + ('0' + ahora.getHours()).slice(-2) + ':' + ('0' + ahora.getMinutes()).slice(-2);
+  var L = [];
+  L.push('REPARTO DEL CHEQUE DEL ' + fecha + ' - ' + perTxt.toUpperCase());
+  L.push('Armado el ' + fh);
+  L.push('========================================================');
+
+  var tot = { neto: 0, sobr: 0, sueldo: 0, fam: 0, queda: 0 };
+  var sinCheque = [];
+
+  function persona(ap, sueldoMonto, sueldoHecho, etiquetaSueldo) {
+    var doc = docDe(ap); if (!doc) return;
+    var base = calcularDetalleChequesProfesional(periodo, doc);
+    if (!base) { sinCheque.push(ap + ' (sin datos)'); return; }
+    var det = base.detalle, idx = -1;
+    det.forEach(function(d, i) { if (!d.pendiente && d.fecha === fecha) idx = i; });
+    if (idx < 0) { sinCheque.push(ap); return; }
+
+    var profKey = transfFamProfKey(periodo, ap);
+    function netoDe(d) { return netoEfectivo(transfFamKey(periodo, ap, d.fecha), d.neto); }
+    var neto = netoDe(det[idx]);
+    var prevAcum = 0;
+    for (var i = 0; i < idx; i++) if (!det[i].pendiente) prevAcum += netoDe(det[i]);
+
+    var entries = TRANSF_FAM[profKey] || [];
+    function ultimoIdx(e) {
+      var mx = -1;
+      (e.cheques || []).forEach(function(f) { det.forEach(function(d, j) { if (d.fecha === f && j > mx) mx = j; }); });
+      return mx;
+    }
+    // Remanentes REALES de cheques anteriores (no todo cheque anterior): lo que
+    // sobró al completar el sueldo, y lo que sobró de un familiar cuyo grupo de
+    // cheques cerró antes de este. Un cheque común ya repartido no cuenta.
+    var sobrList = [], sobrante = 0, acc = 0, libre = {}, sueldoEn = {};
+    det.forEach(function(d, j) {
+      if (d.pendiente || j >= idx) return;
+      var antes = acc, nj = netoDe(d); acc += nj;
+      var sp = sueldoMonto ? Math.min(Math.max(sueldoMonto - antes, 0), nj) : 0;
+      sueldoEn[j] = sp; libre[j] = nj - sp;
+    });
+    var enFam = {};
+    entries.forEach(function(e) {
+      (e.cheques || []).forEach(function(f) { det.forEach(function(d, j) { if (d.fecha === f) enFam[j] = true; }); });
+    });
+    Object.keys(libre).forEach(function(k) {
+      var j = parseInt(k, 10);
+      if (!enFam[j] && sueldoEn[j] > 0 && libre[j] > 0.5) sobrList.push({ f: det[j].fecha, m: libre[j], why: 'sobro al completar el sueldo' });
+    });
+    entries.forEach(function(e) {
+      var u = ultimoIdx(e);
+      if (u === -1 || u >= idx) return;
+      var grupo = entries.filter(function(e2) { return transfFamMismoGrupo(e2.cheques, e.cheques); });
+      if (grupo[0] !== e) return;
+      var libreGrupo = 0;
+      e.cheques.forEach(function(f) { det.forEach(function(d, j) { if (d.fecha === f && libre[j] != null) libreGrupo += libre[j]; }); });
+      var comprometido = grupo.reduce(function(sum, e2) { return sum + (e2.importe || 0); }, 0);
+      if (libreGrupo - comprometido > 0.5) sobrList.push({ f: det[u].fecha, m: libreGrupo - comprometido, why: 'sobro del familiar ' + e.nombre });
+    });
+    sobrList.forEach(function(x) { sobrante += x.m; });
+
+    var lineas = [];
+    var disponible = neto + sobrante;
+    var sueldoEste = 0;
+    if (sueldoMonto) {
+      var falta = Math.max(0, sueldoMonto - prevAcum);
+      sueldoEste = Math.min(falta, neto);
+      var nota;
+      if (falta === 0) nota = 'ya cubierto con cheques anteriores';
+      else if (sueldoEste >= falta) nota = 'COMPLETA el sueldo (' + money(sueldoMonto) + ')';
+      else nota = 'acumula, con este van ' + money(prevAcum + sueldoEste) + ' de ' + money(sueldoMonto);
+      if (sueldoHecho) nota += ' - ya marcado como transferido';
+      if (falta > 0) lineas.push({ t: '-> ' + etiquetaSueldo, m: sueldoEste, n: nota });
+      else lineas.push({ t: '-> ' + etiquetaSueldo, m: null, n: nota });
+    }
+    var famEste = 0;
+    entries.forEach(function(e, i) {
+      if ((e.cheques || []).indexOf(fecha) === -1) return;
+      var hecho = transfFamEstaTransferido(profKey, i);
+      if (ultimoIdx(e) === idx) {
+        var otros = e.cheques.filter(function(f) { return f !== fecha; });
+        lineas.push({ t: '-> Familiar: ' + e.nombre, m: e.importe,
+          n: (otros.length ? 'junta cheques ' + e.cheques.join(' + ') : '') + (hecho ? ' - ya transferido' : '') });
+        famEste += (e.importe || 0);
+      } else {
+        lineas.push({ t: '-> Familiar: ' + e.nombre, m: null, n: 'este cheque suma para ese familiar, se paga con el cheque ' + e.cheques[e.cheques.length - 1] });
+      }
+    });
+    var queda = disponible - sueldoEste - famEste;
+
+    L.push('');
+    L.push(ap.toUpperCase());
+    L.push('  ' + pad('Neto del cheque ' + fecha, 40) + money(neto));
+    sobrList.forEach(function(x) { L.push('  ' + pad('+ SOBRANTE del cheque ' + x.f, 40) + pad(money(x.m), 16) + x.why + ' (sumalo si no lo transferiste ya)'); });
+    lineas.forEach(function(l) { L.push('  ' + pad(l.t, 40) + pad(l.m != null ? money(l.m) : '', 16) + (l.n || '')); });
+    L.push('  ' + pad('= Queda para ' + ap, 40) + pad(money(queda), 16) + (queda < -0.5 ? 'ATENCION: lo asignado supera lo disponible' : ''));
+    tot.neto += neto; tot.sobr += sobrante; tot.sueldo += sueldoEste; tot.fam += famEste; tot.queda += queda;
+  }
+
+  SUELDO_DIRECTOR_LISTA.forEach(function(ap) {
+    persona(ap, SUELDO_DIRECTOR_MONTO, sueldoDirectorEstaHecho(periodo, ap), 'Sueldo Director');
+  });
+  PRESTAMO_CASA_SOCIOS.forEach(function(ap) {
+    var bbva = SUELDO_BBVA_LISTA.indexOf(ap) !== -1;
+    persona(ap, bbva ? SUELDO_BBVA_MONTO : 0, bbva ? sueldoBbvaEstaHecho(periodo, ap) : false, 'Sueldo BBVA');
+  });
+
+  // Anotaciones de familiares todavía sin cheque asignado
+  var anot = [];
+  SUELDO_DIRECTOR_LISTA.concat(PRESTAMO_CASA_SOCIOS).forEach(function(ap) {
+    var famArr = TRANSF_FAM[transfFamProfKey(periodo, ap)] || [];
+    (TRANSF_DERIV[ap] || []).forEach(function(d) {
+      if (!famArr.some(function(f) { return f.nombre === d.nombre; })) anot.push(ap + ' -> ' + d.nombre + ' ' + money(d.importe));
+    });
+  });
+  if (anot.length) { L.push(''); L.push('Anotados sin cheque asignado todavia: ' + anot.join(' | ')); }
+  if (sinCheque.length) { L.push(''); L.push('Sin este cheque (no cobran de el): ' + sinCheque.join(', ')); }
+  L.push('');
+  L.push('--------------------------------------------------------');
+  L.push('Netos del cheque ' + fecha + ' (todos): ' + money(tot.neto));
+  L.push('Sobrantes de cheques anteriores: ' + money(tot.sobr));
+  L.push('Va a sueldos: ' + money(tot.sueldo));
+  L.push('Va a familiares: ' + money(tot.fam));
+  L.push('Queda para los profesionales: ' + money(tot.queda));
+  return L.join('\n');
+}
+
+function transfResumenSeleccion() {
+  var el = document.getElementById('transfResumenSel');
+  return el ? el.value : '';
+}
+function transfResumenTextoActual() {
+  var periodo = adminPeriodoAct || tabMesActual();
+  var f = transfResumenSeleccion();
+  return f ? transfResumenChequeTexto(periodo, f) : transfResumenTexto(periodo);
+}
 function transfResumenDescargar(btn) {
   var periodo = adminPeriodoAct || tabMesActual();
-  var txt = transfResumenTexto(periodo).replace(/\n/g, '\r\n');
+  var f = transfResumenSeleccion();
+  var txt = transfResumenTextoActual().replace(/\n/g, '\r\n');
   var blob = new Blob(['﻿' + txt], { type: 'text/plain;charset=utf-8' });
   var a = document.createElement('a');
+  var inf = periodoInfo(periodo);
   a.href = URL.createObjectURL(blob);
-  a.download = 'transferencias-' + (periodoInfo(periodo) ? periodoInfo(periodo).largo.toLowerCase() + '-' + periodoInfo(periodo).anio : periodo) + '.txt';
+  a.download = (f ? 'cheque-' + f.replace(/[^0-9a-zA-Z]+/g, '-') : 'transferencias') + '-' + (inf ? inf.largo.toLowerCase() + '-' + inf.anio : periodo) + '.txt';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
 }
 function transfResumenCopiar(btn) {
-  copiarTexto(transfResumenTexto(adminPeriodoAct || tabMesActual()), btn);
+  copiarTexto(transfResumenTextoActual(), btn);
 }
-function transfResumenBotonesHtml() {
+function transfResumenBotonesHtml(periodo) {
   var css = 'font-size:.72rem;padding:5px 11px;border:1px solid rgba(32,36,31,.25);border-radius:6px;background:none;cursor:pointer;font-family:inherit;color:#1f3a2e;font-weight:600';
-  return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 14px 0">'
-    + '<button type="button" onclick="transfResumenDescargar(this)" style="' + css + '">📄 Bajar lo que falta (.txt)</button>'
+  var fechas = transfResumenChequesDelMes(periodo);
+  // Por defecto: el último cheque que ya llegó (el que se está repartiendo).
+  var defecto = '';
+  fechas.forEach(function(f) { if (sueldoDirectorFechaPaso(f)) defecto = f; });
+  if (!defecto && fechas.length) defecto = fechas[0];
+  var rec = window._transfResumenSelVal;
+  if (typeof rec === 'string' && (rec === '' || fechas.indexOf(rec) !== -1)) defecto = rec;
+  var opts = fechas.map(function(f) {
+    return '<option value="' + escAttr(f) + '"' + (f === defecto ? ' selected' : '') + '>Cheque ' + escAttr(f) + '</option>';
+  }).join('') + '<option value=""' + (defecto === '' ? ' selected' : '') + '>Todo lo que falta del mes</option>';
+  return '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-6px 0 14px 0">'
+    + '<select id="transfResumenSel" onchange="window._transfResumenSelVal=this.value" style="padding:5px 8px;border:1px solid rgba(32,36,31,.25);border-radius:6px;font-family:inherit;font-size:.74rem;font-weight:600;background:var(--co-card,#fbf8f0)">' + opts + '</select>'
+    + '<button type="button" onclick="transfResumenDescargar(this)" style="' + css + '">📄 Bajar reparto (.txt)</button>'
     + '<button type="button" onclick="transfResumenCopiar(this)" style="' + css + '">📋 Copiar</button>'
     + '</div>';
 }
@@ -8308,7 +8480,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-16-resumen-transferencias-txt';
+  var CURRENT_BUILD = '2026-11-16-reparto-por-cheque';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
