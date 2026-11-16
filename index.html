@@ -2450,27 +2450,27 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/portal-render.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/backup.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/admin-home.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/gastos-obra.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/presentacion.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/sueldo-b.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/dla.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/redsom.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/nun-data.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/accesos-debitos.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/estadisticas.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/estadisticas-secretarias.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/estadisticas-export.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/gastos-casa.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/faq-asistente.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/asistente.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
-<script src="js/correos.js?v=2026-11-16-cpsm-garmendia-mat-cuit"></script>
+<script src="js/datos.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/portal-render.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/backup.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/admin-home.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/gastos-obra.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/presentacion.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/sueldo-b.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/dla.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/redsom.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/nun-data.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/accesos-debitos.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/estadisticas.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/estadisticas-secretarias.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/estadisticas-export.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/gastos-casa.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/faq-asistente.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/asistente.js?v=2026-11-16-resumen-transferencias-txt"></script>
+<script src="js/correos.js?v=2026-11-16-resumen-transferencias-txt"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -4188,6 +4188,7 @@ function renderSueldoDirector() {
   var html = '<div id="sueldoDirectorScreenRoot" style="padding:16px">'
     + licHonBannerHtml()
     + sueldoDirectorPeriodoSelectorHtml(periodo)
+    + transfResumenBotonesHtml()
     + sdAcc('resumen', '📊 Resumen sueldos directores — ' + periodoNombre(periodo), sueldoDirectorResumenHtml(periodo))
     + sdAccSiHay('transffam', transfFamHtml, '🏠 Transferencias a familiares' + (TRANSF_FAM_RESUMEN_PEND ? ' — ' + TRANSF_FAM_RESUMEN_PEND + ' pendiente' + (TRANSF_FAM_RESUMEN_PEND === 1 ? '' : 's') : ''))
     + sdAcc('sd', '🏦 Sueldo Director', sueldoDirectorTabHtml(periodo))
@@ -6779,6 +6780,139 @@ function restoProfesionalesTabHtml(periodo) {
     + '</div>';
 }
 
+// ── Resumen de lo que queda por transferir (todos los profesionales) ──
+// Pedido de Marcelo, 16/11/2026: no abrir tarjeta por tarjeta para saber qué
+// falta. NO es una vista nueva en pantalla (la lista unificada "A transferir"
+// ya se descartó el 06/11): es solo un texto que se baja a .txt o se copia.
+// Reusa exactamente lo que ya muestran las tarjetas: sueldo director,
+// neto del mes de Resto de profesionales, transferencias a familiares y
+// anotaciones derivadas sin cheque. No suma un total general a propósito: lo
+// de familiares sale de la misma plata del neto/saldo (se contaría doble).
+function transfResumenPendientes(periodo) {
+  var orden = [], porProf = {};
+  function slot(ap) { if (!porProf[ap]) { porProf[ap] = []; orden.push(ap); } return porProf[ap]; }
+  function docDe(ap) { return DOCTORES.filter(function(d) { return d.apellido === ap; })[0]; }
+  var totales = { sueldo: 0, sueldoNo: 0, resto: 0, restoNo: 0, fam: 0 };
+
+  SUELDO_DIRECTOR_LISTA.forEach(function(ap) {
+    var doc = docDe(ap); if (!doc) return;
+    var s = calcularSueldoDirector(periodo, doc, SUELDO_DIRECTOR_MONTO);
+    var it = slot(ap);
+    if (!s) { it.push({ txt: 'Sueldo Director', nota: 'sin datos cargados', est: 'no' }); return; }
+    if (sueldoDirectorEstaHecho(periodo, ap)) return;
+    if (!s.alcanza) {
+      it.push({ txt: 'Sueldo Director', monto: s.monto, est: 'no', nota: 'no alcanza este mes, faltan ' + fmt(s.faltante) });
+      totales.sueldoNo += s.monto;
+    } else if (sueldoDirectorFechaPaso(s.fechaCompleta)) {
+      it.push({ txt: 'Sueldo Director', monto: s.monto, est: 'ya', nota: 'LISTO PARA TRANSFERIR' });
+      totales.sueldo += s.monto;
+    } else {
+      it.push({ txt: 'Sueldo Director', monto: s.monto, est: 'no', nota: 'disponible el ' + (s.fechaCompleta || '—') });
+      totales.sueldoNo += s.monto;
+    }
+  });
+
+  PRESTAMO_CASA_SOCIOS.forEach(function(ap) {
+    var doc = docDe(ap); if (!doc) return;
+    var base = calcularDetalleChequesProfesional(periodo, doc);
+    var it = slot(ap);
+    if (!base) { it.push({ txt: 'Neto del mes', nota: 'sin datos cargados', est: 'no' }); return; }
+    if (restoProfEstaHecho(periodo, ap)) return;
+    var c = calcularNetoLocal(periodo, doc);
+    var notas = [];
+    var listo = sueldoDirectorFechaPaso(base.ultimaFecha);
+    notas.push(listo ? 'LISTO PARA TRANSFERIR' : 'todavía suma, último cheque ' + (base.ultimaFecha || '—'));
+    if (c && c.pendiente) notas.push('falta OSDE/CEM');
+    if (SUELDO_BBVA_LISTA.indexOf(ap) !== -1) {
+      notas.push('incluye sueldo BBVA ' + fmt(SUELDO_BBVA_MONTO) + (sueldoBbvaEstaHecho(periodo, ap) ? ' (ya transferido)' : ''));
+    }
+    it.push({ txt: 'Neto del mes', monto: base.totalNetoMes, est: listo ? 'ya' : 'no', nota: notas.join(' · ') });
+    if (listo) totales.resto += base.totalNetoMes; else totales.restoNo += base.totalNetoMes;
+  });
+
+  // Transferencias a familiares ya registradas y todavía no marcadas
+  Object.keys(TRANSF_FAM).forEach(function(key) {
+    var parts = key.split('|');
+    if (parts[0] !== periodo || !porProf[parts[1]]) return;
+    (TRANSF_FAM[key] || []).forEach(function(e, i) {
+      if (transfFamEstaTransferido(key, i)) return;
+      porProf[parts[1]].push({ txt: 'Familiar: ' + e.nombre, monto: e.importe, est: 'fam', nota: (e.cheques && e.cheques.length ? 'cheque ' + e.cheques.join(' + ') : '') });
+      totales.fam += (e.importe || 0);
+    });
+  });
+
+  // Anotaciones sin cheque asignado todavía (no hay transferencia registrada)
+  orden.forEach(function(ap) {
+    var famArr = TRANSF_FAM[transfFamProfKey(periodo, ap)] || [];
+    (TRANSF_DERIV[ap] || []).forEach(function(d) {
+      var yaTiene = famArr.some(function(f) { return f.nombre === d.nombre; });
+      if (yaTiene) return;
+      porProf[ap].push({ txt: 'Familiar: ' + d.nombre, monto: d.importe, est: 'fam', nota: 'anotado, sin cheque asignado todavía' });
+      totales.fam += (d.importe || 0);
+    });
+  });
+
+  return { orden: orden, porProf: porProf, totales: totales };
+}
+
+function transfResumenTexto(periodo) {
+  var inf = periodoInfo(periodo);
+  var perTxt = inf ? inf.largo + ' ' + inf.anio : periodoNombre(periodo);
+  var r = transfResumenPendientes(periodo);
+  function money(n) { return fmt(n).replace(/[  ]/g, ' '); }
+  function pad(s, n) { s = String(s); while (s.length < n) s += ' '; return s; }
+  var ahora = new Date();
+  var fh = ('0' + ahora.getDate()).slice(-2) + '/' + ('0' + (ahora.getMonth() + 1)).slice(-2) + '/' + ahora.getFullYear()
+    + ' ' + ('0' + ahora.getHours()).slice(-2) + ':' + ('0' + ahora.getMinutes()).slice(-2);
+  var L = [];
+  L.push('TRANSFERENCIAS QUE FALTAN - ' + perTxt.toUpperCase());
+  L.push('Armado el ' + fh);
+  L.push('========================================================');
+  var conAlgo = 0, sinNada = [];
+  r.orden.forEach(function(ap) {
+    var items = r.porProf[ap];
+    if (!items.length) { sinNada.push(ap); return; }
+    conAlgo++;
+    L.push('');
+    L.push(ap.toUpperCase());
+    items.forEach(function(it) {
+      L.push('  ' + pad(it.txt, 34) + pad(it.monto != null ? money(it.monto) : '-', 16) + (it.nota || ''));
+    });
+  });
+  if (!conAlgo) { L.push(''); L.push('No queda nada por transferir en ' + perTxt + '.'); }
+  if (sinNada.length) { L.push(''); L.push('Sin nada pendiente: ' + sinNada.join(', ')); }
+  var t = r.totales;
+  L.push('');
+  L.push('--------------------------------------------------------');
+  L.push('Sueldos Director listos para transferir: ' + money(t.sueldo));
+  L.push('Sueldos Director todavia no disponibles: ' + money(t.sueldoNo));
+  L.push('Neto del mes (Resto) listo para transferir: ' + money(t.resto));
+  L.push('Neto del mes (Resto) todavia sumando: ' + money(t.restoNo));
+  L.push('Familiares pendientes (sale de lo anterior, no se suma): ' + money(t.fam));
+  return L.join('\n');
+}
+
+function transfResumenDescargar(btn) {
+  var periodo = adminPeriodoAct || tabMesActual();
+  var txt = transfResumenTexto(periodo).replace(/\n/g, '\r\n');
+  var blob = new Blob(['﻿' + txt], { type: 'text/plain;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'transferencias-' + (periodoInfo(periodo) ? periodoInfo(periodo).largo.toLowerCase() + '-' + periodoInfo(periodo).anio : periodo) + '.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
+}
+function transfResumenCopiar(btn) {
+  copiarTexto(transfResumenTexto(adminPeriodoAct || tabMesActual()), btn);
+}
+function transfResumenBotonesHtml() {
+  var css = 'font-size:.72rem;padding:5px 11px;border:1px solid rgba(32,36,31,.25);border-radius:6px;background:none;cursor:pointer;font-family:inherit;color:#1f3a2e;font-weight:600';
+  return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 14px 0">'
+    + '<button type="button" onclick="transfResumenDescargar(this)" style="' + css + '">📄 Bajar lo que falta (.txt)</button>'
+    + '<button type="button" onclick="transfResumenCopiar(this)" style="' + css + '">📋 Copiar</button>'
+    + '</div>';
+}
+
 // ── Préstamos Casa — alta y edición desde el panel ──────────────────
 // Antes cada préstamo vivía hardcodeado en js/datos.js y agregar uno nuevo
 // era tocar código y publicar. Acá se editan y se guardan en
@@ -8170,7 +8304,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-16-cpsm-garmendia-mat-cuit';
+  var CURRENT_BUILD = '2026-11-16-resumen-transferencias-txt';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
