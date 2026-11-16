@@ -41,10 +41,12 @@ No hay build: lo que está en `master` es lo que ven los profesionales.
 ## Estructura
 
 - `index.html` — la app (portal profesional + panel admin).
-- `data/` — datos que antes estaban hardcodeados en `index.html`
-  (liquidaciones por mes, config de grupos/porcentajes, proveedores de obra).
-  Cargan como `<script src>` **antes** del script principal.
-- `js/` — módulos del script principal, en orden de carga.
+- `js/` — módulos del script principal, en orden de carga (ver los
+  `<script src>` al final de `index.html`). El primero, `js/datos.js`, tiene
+  los datos que antes estaban hardcodeados en `index.html` (liquidaciones por
+  mes, config de grupos/porcentajes, endpoints) y tiene que cargar antes que
+  el resto.
+- `tools/regression/` — harness de regresión de render (ver su README).
 - `tools/bump.mjs` — bumpea la versión en los 20 lugares a la vez.
 - `tools/preflight.mjs` — chequeo previo a publicar.
 - `version.txt` — build actual, para el auto-chequeo de versión del cliente.
