@@ -701,6 +701,15 @@ const PRESTAMOS_CASA_BASE = [
     cuotaPersonal: 980000,                   // crédito de $18.000.000 en 24 cuotas de $980.000
     inicio: { mes: "diciembre", anio: 2026 },// cuota 1 = Dic 2026, cuota 24 = Nov 2028
     cuotas: 24
+  },
+  {
+    id: "mercadolibre",
+    tag: "Mercadolibre",
+    socios: ["BRUNI"],
+    cuotaPersonal: 396136,
+    inicio: { mes: "diciembre", anio: 2026 },// cuota 1 = Dic 2026, cuota 6 = May 2027
+    cuotas: 6,
+    reparteEntre: 11
   }
 ];
 
