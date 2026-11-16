@@ -1136,9 +1136,7 @@ var CPSM_PROF = [
   { ap:"PERLASCO",     nombre:"Camilo Nicolas",         mat:"95074", mape:"47796362", notaNombre:"DR. PERLASCO CAMILO",         cuit:"20-29593933-9" },
   { ap:"SOULE",        nombre:"Ivan",                   mat:"96211", mape:"49796362", notaNombre:"DR. IVAN SOULÉ",              cuit:"20-35296127-3" },
   { ap:"TRIVELLINI",   nombre:"Amilcar",                mat:"93078", mape:"44796362", notaNombre:"DR. TRIVELLINI AMILCAR",      cuit:"20-20654988-3" },
-  // Garmendia: falta CUIT y matrícula Colón (se completan acá cuando lleguen).
-  // Mientras tanto entra al reparto y a la nota CEM, pero no al Excel.
-  { ap:"GARMENDIA",    nombre:"Valeria",                mat:"",      mape:"50796362", notaNombre:"DRA. GARMENDIA VALERIA",      cuit:"" },
+  { ap:"GARMENDIA",    nombre:"Valeria",                mat:"95117", mape:"50796362", notaNombre:"DRA. GARMENDIA VALERIA",      cuit:"27-34792762-2" },
 ];
 
 // ── Total de honorarios del mes (sin gastos de equipo), cargado a mano ──
