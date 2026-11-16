@@ -6841,12 +6841,14 @@ function prestAportesResumenHtml() {
   var filas = prestAportesLeerSoloLectura();
   if (!filas.length) return '';
   var n = function (x) { return Number(x) || 0; };
-  var tot = { p: 0, s: 0, c: 0, t: 0, q: 0, T: 0 };
+  var tot = { p: 0, s: 0, c: 0, t: 0, q: 0, T: 0, X: 0 };
   var th = 'style="text-align:right"';
   var rows = filas.map(function (r) {
     var primer = r.k === 'GARMENDIA' ? Math.round(n(r.primerUsd) * 1450) : n(r.primer);
     tot.p += primer; tot.s += n(r.segundo); tot.t += n(r.tercer); tot.q += n(r.cuarto); tot.T += n(r.total);
     if (r.segundoCpsm) tot.c += n(r.segundo);
+    var sinCpsm = n(r.total) - (r.segundoCpsm ? n(r.segundo) : 0);
+    tot.X += sinCpsm;
     var dev = [];
     dev.push(r.k === 'GARMENDIA' ? '1º entrada (sin devolución)' : '1º sin definir');
     if (n(r.segundo)) dev.push(r.segundoCpsm ? '2º por cuotas CPSM' : '2º sin definir');
@@ -6858,19 +6860,20 @@ function prestAportesResumenHtml() {
       + '<td class="ipt-num">' + (n(r.tercer) ? fmt(r.tercer) : '—') + '</td>'
       + '<td class="ipt-num">' + (n(r.cuarto) ? fmt(r.cuarto) : '—') + '</td>'
       + '<td class="ipt-num" style="font-weight:800">' + fmt(r.total) + '</td>'
+      + '<td class="ipt-num" style="font-weight:800;color:#1d6b62">' + fmt(sinCpsm) + '</td>'
       + '<td style="font-size:.66rem;color:rgba(32,36,31,.65)">' + dev.join(' · ') + '</td></tr>';
   }).join('');
   return '<div style="margin-top:22px;font-weight:700;font-size:.85rem">Aportes de capital — resumen completo</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.5);margin:3px 0 8px">Solo lectura; se editan en Gastos Casa. La marca CPSM es el 2º aporte financiado con préstamo, que se devuelve por las cuotas de arriba. El resto todavía no tiene criterio de devolución.</div>'
     + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-    +   '<th>Profesional</th><th ' + th + '>1er aporte</th><th ' + th + '>2º aporte</th><th ' + th + '>3er aporte</th><th ' + th + '>4º aporte</th><th ' + th + '>Total</th><th>Devolución</th>'
+    +   '<th>Profesional</th><th ' + th + '>1er aporte</th><th ' + th + '>2º aporte</th><th ' + th + '>3er aporte</th><th ' + th + '>4º aporte</th><th ' + th + '>Total</th><th ' + th + '>Aportes sin CPSM</th><th>Devolución</th>'
     + '</tr></thead><tbody>' + rows + '</tbody><tfoot><tr class="adm-totals">'
     +   '<td style="text-align:right;font-weight:800">Total general</td>'
     +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.p) + '</td>'
     +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.s) + '<div style="font-size:.6rem;color:#1d6b62">CPSM ' + fmt(tot.c) + '</div></td>'
     +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.t) + '</td>'
     +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.q) + '</td>'
-    +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.T) + '</td><td></td>'
+    +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.T) + '</td><td class="ipt-num" style="font-weight:800;color:#1d6b62">' + fmt(tot.X) + '</td><td></td>'
     + '</tr></tfoot></table></div>';
 }
 
