@@ -2450,28 +2450,28 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/portal-render.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/backup.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/admin-home.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/gastos-obra.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/coberturas.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/presentacion.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/sueldo-b.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/dla.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/redsom.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/nun-data.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/accesos-debitos.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/estadisticas.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/estadisticas-secretarias.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/estadisticas-export.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/gastos-casa.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/faq-asistente.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/asistente.js?v=2026-11-16-reparto-por-cheque"></script>
-<script src="js/correos.js?v=2026-11-16-reparto-por-cheque"></script>
+<script src="js/datos.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/portal-render.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/backup.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/admin-home.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/gastos-obra.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/coberturas.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/presentacion.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/sueldo-b.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/dla.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/redsom.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/nun-data.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/accesos-debitos.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/estadisticas.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/estadisticas-secretarias.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/estadisticas-export.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/gastos-casa.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/faq-asistente.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/asistente.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
+<script src="js/correos.js?v=2026-11-16-reparto-por-cheque-resumen-arriba"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -6925,7 +6925,8 @@ function transfResumenChequeTexto(periodo, fecha) {
   L.push('========================================================');
 
   var tot = { neto: 0, sobr: 0, sueldo: 0, fam: 0, queda: 0 };
-  var sinCheque = [];
+  var sinCheque = [], D = [], resumen = [];
+  function m2(n) { return money(n).replace(/\$\s/, '$'); }
 
   function persona(ap, sueldoMonto, sueldoHecho, etiquetaSueldo) {
     var doc = docDe(ap); if (!doc) return;
@@ -6975,6 +6976,10 @@ function transfResumenChequeTexto(periodo, fecha) {
       var comprometido = grupo.reduce(function(sum, e2) { return sum + (e2.importe || 0); }, 0);
       if (libreGrupo - comprometido > 0.5) sobrList.push({ f: det[u].fecha, m: libreGrupo - comprometido, why: 'sobro del familiar ' + e.nombre });
     });
+    // Solo el remanente del cheque inmediatamente anterior (más viejos: ya resueltos).
+    var prevIdx = -1;
+    det.forEach(function(d, j) { if (!d.pendiente && j < idx) prevIdx = j; });
+    sobrList = sobrList.filter(function(x) { return prevIdx !== -1 && x.f === det[prevIdx].fecha; });
     sobrList.forEach(function(x) { sobrante += x.m; });
 
     var lineas = [];
@@ -6991,7 +6996,7 @@ function transfResumenChequeTexto(periodo, fecha) {
       if (falta > 0) lineas.push({ t: '-> ' + etiquetaSueldo, m: sueldoEste, n: nota });
       else lineas.push({ t: '-> ' + etiquetaSueldo, m: null, n: nota });
     }
-    var famEste = 0;
+    var famEste = 0, famPartes = [];
     entries.forEach(function(e, i) {
       if ((e.cheques || []).indexOf(fecha) === -1) return;
       var hecho = transfFamEstaTransferido(profKey, i);
@@ -7000,18 +7005,31 @@ function transfResumenChequeTexto(periodo, fecha) {
         lineas.push({ t: '-> Familiar: ' + e.nombre, m: e.importe,
           n: (otros.length ? 'junta cheques ' + e.cheques.join(' + ') : '') + (hecho ? ' - ya transferido' : '') });
         famEste += (e.importe || 0);
+        famPartes.push(m2(e.importe) + ' A ' + e.nombre);
       } else {
         lineas.push({ t: '-> Familiar: ' + e.nombre, m: null, n: 'este cheque suma para ese familiar, se paga con el cheque ' + e.cheques[e.cheques.length - 1] });
       }
     });
     var queda = disponible - sueldoEste - famEste;
+    var partes = [];
+    var completa = sueldoMonto && Math.max(0, sueldoMonto - prevAcum) > 0 && sueldoEste >= Math.max(0, sueldoMonto - prevAcum);
+    if (completa) partes.push('SUELDO ' + m2(sueldoMonto) + ' completo');
+    if (queda - sobrante > 0.5) partes.push(m2(queda - sobrante));
+    famPartes.forEach(function(x) { partes.push(x); });
+    if (sobrante > 0.5) partes.push('SOBRANTE anterior ' + m2(sobrante) + ' (ver detalle)');
+    var txtRes;
+    if (queda < -0.5) txtRes = 'REVISAR: lo asignado supera lo disponible';
+    else if (partes.length) txtRes = partes.join(' + ');
+    else if (sueldoEste > 0) txtRes = 'esperando para el sueldo';
+    else txtRes = 'nada para transferir';
+    resumen.push(pad(ap, 14) + txtRes);
 
-    L.push('');
-    L.push(ap.toUpperCase());
-    L.push('  ' + pad('Neto del cheque ' + fecha, 40) + money(neto));
-    sobrList.forEach(function(x) { L.push('  ' + pad('+ SOBRANTE del cheque ' + x.f, 40) + pad(money(x.m), 16) + x.why + ' (sumalo si no lo transferiste ya)'); });
-    lineas.forEach(function(l) { L.push('  ' + pad(l.t, 40) + pad(l.m != null ? money(l.m) : '', 16) + (l.n || '')); });
-    L.push('  ' + pad('= Queda para ' + ap, 40) + pad(money(queda), 16) + (queda < -0.5 ? 'ATENCION: lo asignado supera lo disponible' : ''));
+    D.push('');
+    D.push(ap.toUpperCase());
+    D.push('  ' + pad('Neto del cheque ' + fecha, 40) + money(neto));
+    sobrList.forEach(function(x) { D.push('  ' + pad('+ SOBRANTE del cheque ' + x.f, 40) + pad(money(x.m), 16) + x.why + ' (sumalo si no lo transferiste ya)'); });
+    lineas.forEach(function(l) { D.push('  ' + pad(l.t, 40) + pad(l.m != null ? money(l.m) : '', 16) + (l.n || '')); });
+    D.push('  ' + pad('= Queda para ' + ap, 40) + pad(money(queda), 16) + (queda < -0.5 ? 'ATENCION: lo asignado supera lo disponible' : ''));
     tot.neto += neto; tot.sobr += sobrante; tot.sueldo += sueldoEste; tot.fam += famEste; tot.queda += queda;
   }
 
@@ -7022,6 +7040,12 @@ function transfResumenChequeTexto(periodo, fecha) {
     var bbva = SUELDO_BBVA_LISTA.indexOf(ap) !== -1;
     persona(ap, bbva ? SUELDO_BBVA_MONTO : 0, bbva ? sueldoBbvaEstaHecho(periodo, ap) : false, 'Sueldo BBVA');
   });
+
+  L.push('');
+  resumen.forEach(function(x) { L.push(x); });
+  L.push('');
+  L.push('--- DETALLE ---');
+  D.forEach(function(x) { L.push(x); });
 
   // Anotaciones de familiares todavía sin cheque asignado
   var anot = [];
@@ -8480,7 +8504,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-16-reparto-por-cheque';
+  var CURRENT_BUILD = '2026-11-16-reparto-por-cheque-resumen-arriba';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
