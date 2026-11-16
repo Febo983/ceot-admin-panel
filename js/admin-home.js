@@ -49,7 +49,8 @@ var ADM_SUBTABS = {
   ],
   licencias: [
     { k:"licenciashon", lbl:"Honorarios",   fn:"renderLicenciasHon()" },
-    { k:"licencias",    lbl:"Del personal", fn:"renderLicencias()" }
+    { k:"licencias",    lbl:"Del personal", fn:"renderLicencias()" },
+    { k:"coberturas",   lbl:"Coberturas",   fn:"renderCoberturas()" }
   ]
 };
 function admSubtabs(grupo, activa) {
