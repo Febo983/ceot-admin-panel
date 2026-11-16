@@ -378,6 +378,12 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   vals.forEach(function(monto, idx) { netosPorFecha[fechas[idx]] = netoDeCheque(monto, idx); });
 
   html += '<div class="cheque-list">';
+  // Centro Médico va primero: es lo primero que se transfiere
+  // Centro Médico — liquidación del mes anterior, acreditado 1ra semana del mes actual
+  var prevMesNombre = {"mayo":"Abril","junio":"Mayo","julio":"Junio","agosto":"Julio","septiembre":"Agosto","octubre":"Sep","noviembre":"Oct","diciembre":"Nov","enero2027":"Diciembre","febrero2027":"Enero","marzo2027":"Febrero","abril2027":"Marzo","mayo2027":"Abril","junio2027":"Mayo","julio2027":"Junio","agosto2027":"Julio","septiembre2027":"Agosto","octubre2027":"Septiembre","noviembre2027":"Octubre","diciembre2027":"Noviembre"};
+  var cmLabel = "Centro Médico" + (prevMesNombre[periodo] ? " · Liquid. " + prevMesNombre[periodo] : "");
+  var cmValAnot = (!cmExt.pendiente && cmExt.val) ? cmExt.val : 0;
+  html += extraRow(cmLabel, cmExt, retencionExtraAnotHtml(cmValAnot, pctApCheq), gaChipFor("Acreditación CEM"));
   vals.forEach(function(monto, idx) {
     var fecha = fechas[idx];
     var acred = chequeAcreditado(fecha);
@@ -419,11 +425,6 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
   // OSDE — siempre presente
   var osdeValAnot = (!osdeExt.pendiente && osdeExt.val) ? osdeExt.val : 0;
   html += extraRow("OSDE", osdeExt, retencionExtraAnotHtml(osdeValAnot, pctApCheq), gaChipFor("Cheque OSDE"));
-  // Centro Médico — liquidación del mes anterior, acreditado 1ra semana del mes actual
-  var prevMesNombre = {"mayo":"Abril","junio":"Mayo","julio":"Junio","agosto":"Julio","septiembre":"Agosto","octubre":"Sep","noviembre":"Oct","diciembre":"Nov","enero2027":"Diciembre","febrero2027":"Enero","marzo2027":"Febrero","abril2027":"Marzo","mayo2027":"Abril","junio2027":"Mayo","julio2027":"Junio","agosto2027":"Julio","septiembre2027":"Agosto","octubre2027":"Septiembre","noviembre2027":"Octubre","diciembre2027":"Noviembre"};
-  var cmLabel = "Centro Médico" + (prevMesNombre[periodo] ? " · Liquid. " + prevMesNombre[periodo] : "");
-  var cmValAnot = (!cmExt.pendiente && cmExt.val) ? cmExt.val : 0;
-  html += extraRow(cmLabel, cmExt, retencionExtraAnotHtml(cmValAnot, pctApCheq), gaChipFor("Acreditación CEM"));
   // Gastos A — se descuenta del cheque actual para cubrir gastos del mes siguiente
   var gaLabelMes = periodoSigLabel(periodo) ? " · " + periodoSigLabel(periodo) : "";
   if (gaPP) {
