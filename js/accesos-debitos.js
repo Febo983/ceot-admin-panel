@@ -1328,7 +1328,75 @@ function cpsmHonorariosLocales(mesLiqStr) {
   return hay ? out : null;
 }
 
+// ── Fallback #1: leer RESUMEN directo de la planilla (gviz JSONP, sin token) ──
+// Honorarios M-2 por profesional = DIFERIDOS COLÓN + OSDE AL DÍA de la columna del mes.
+var CPSM_SHEET_ID = "1NjHxZTUy3hVinrhR09Cq22gjcMiHQuSG8P4sSIPJa98", CPSM_RESUMEN_GID = "128326827";
+var _cpsmGvizSeq = 0;
+function cpsmNumCelda(c) {
+  if (!c || c.v == null || c.v === "") return 0;
+  if (typeof c.v === "number") return c.v;
+  var n = parseFloat(String(c.v).replace(/[^\d,\-]/g, "").replace(",", "."));
+  return isNaN(n) ? 0 : n;
+}
+function cpsmGvizResumen(mesNombre, anio, cb) {
+  var cbName = "__cpsmGviz" + (_cpsmGvizSeq++), done = false;
+  var limpiar = function() { window[cbName] = function() {}; var s = document.getElementById(cbName); if (s) s.remove(); };
+  var to = setTimeout(function() { if (!done) { done = true; limpiar(); cb(null); } }, 15000);
+  window[cbName] = function(resp) {
+    if (done) return; done = true; clearTimeout(to); limpiar();
+    try {
+      var rows = (resp && resp.table && resp.table.rows) || [];
+      var txt = function(c) { return c ? String(c.f != null ? c.f : (c.v != null ? c.v : "")) : ""; };
+      var ab = mesNombre.slice(0, 3), mi = MESES_CPSM.indexOf(mesNombre);
+      var out = {}, hay = false;
+      ["DIFERIDOS", "OSDE AL"].forEach(function(titulo) {
+        var ini = -1;
+        for (var i = 0; i < rows.length; i++) {
+          if (txt((rows[i].c || [])[0]).toUpperCase().indexOf(titulo) === 0) { ini = i; break; }
+        }
+        if (ini < 0) return;
+        // fila de encabezado de meses: la siguiente con "PROFESIONAL"
+        var h = -1, col = -1;
+        for (var j = ini; j < Math.min(ini + 3, rows.length); j++) {
+          var cs = rows[j].c || [];
+          for (var k = 1; k < cs.length; k++) {
+            var t = txt(cs[k]).toLowerCase(), v = cs[k] && cs[k].v;
+            var esFecha = typeof v === "string" && /^Date\((\d+),(\d+)/.exec(v);
+            if (esFecha ? (parseInt(esFecha[1], 10) === anio && parseInt(esFecha[2], 10) === mi) : (t.indexOf(ab) === 0 && t.indexOf(String(anio)) >= 0)) { h = j; col = k; break; }
+          }
+          if (col >= 0) break;
+        }
+        if (col < 0) return;
+        for (var r = h + 1; r < rows.length; r++) {
+          var nom = txt((rows[r].c || [])[0]).trim();
+          if (!nom || /^(TOTAL|PROFESIONAL)/i.test(nom)) break;
+          var ap = nom.split(",")[0].trim().toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+          var val = cpsmNumCelda((rows[r].c || [])[col]);
+          if (val) { out[ap] = (out[ap] || 0) + val; hay = true; }
+        }
+      });
+      cb(hay ? out : null);
+    } catch (e) { cb(null); }
+  };
+  var sc = document.createElement("script");
+  sc.id = cbName;
+  sc.onerror = function() { if (!done) { done = true; clearTimeout(to); limpiar(); cb(null); } };
+  sc.src = "https://docs.google.com/spreadsheets/d/" + CPSM_SHEET_ID + "/gviz/tq?gid=" + CPSM_RESUMEN_GID +
+    "&headers=0&range=A1:P60&tqx=out:json;responseHandler:" + cbName + "&_=" + Date.now();
+  document.head.appendChild(sc);
+}
+
 function cpsmRenderFallback() {
+  var lbl = document.getElementById("cpsm-fuente-label");
+  var partes = lbl ? lbl.textContent.trim().split(" ") : [];
+  var mesF = (partes[0] || "").toLowerCase(), anioF = parseInt(partes[1], 10) || new Date().getFullYear();
+  cpsmGvizResumen(mesF, anioF, function(d) {
+    if (d) { cpsmRenderTabla(d, "sheet"); return; }
+    cpsmRenderFallbackLocal();
+  });
+}
+
+function cpsmRenderFallbackLocal() {
   var mesLiqEl = document.getElementById("cpsm-mes-liq");
   var local = cpsmHonorariosLocales(mesLiqEl ? mesLiqEl.value : "");
   cpsmRenderTabla(local, local ? "local" : null);
