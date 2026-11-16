@@ -1136,7 +1136,63 @@ var CPSM_PROF = [
   { ap:"PERLASCO",     nombre:"Camilo Nicolas",         mat:"95074", mape:"47796362", notaNombre:"DR. PERLASCO CAMILO",         cuit:"20-29593933-9" },
   { ap:"SOULE",        nombre:"Ivan",                   mat:"96211", mape:"49796362", notaNombre:"DR. IVAN SOULÉ",              cuit:"20-35296127-3" },
   { ap:"TRIVELLINI",   nombre:"Amilcar",                mat:"93078", mape:"44796362", notaNombre:"DR. TRIVELLINI AMILCAR",      cuit:"20-20654988-3" },
+  // Garmendia: falta CUIT y matrícula Colón (se completan acá cuando lleguen).
+  // Mientras tanto entra al reparto y a la nota CEM, pero no al Excel.
+  { ap:"GARMENDIA",    nombre:"Valeria",                mat:"",      mape:"50796362", notaNombre:"DRA. GARMENDIA VALERIA",      cuit:"" },
 ];
+
+// ── Total de honorarios del mes (sin gastos de equipo), cargado a mano ──
+// Si está cargado, el CPSM total = 5% de ese total, repartido entre los
+// profesionales según su % de Colón (5 cheques) + OSDE de M-2. Guardado por
+// mes de liquidación + año, sincronizado entre PCs.
+var CPSM_TOTAL_K = "ceot_cpsm_total_mes";
+function cpsmTotalClave() {
+  var m = document.getElementById("cpsm-mes-liq"), a = document.getElementById("cpsm-anio");
+  return m && a ? m.value + "-" + a.value : "";
+}
+function cpsmTotalGet() {
+  try {
+    var o = JSON.parse(localStorage.getItem(CPSM_TOTAL_K) || "{}");
+    var man = parseFloat(o[cpsmTotalClave()]) || 0;
+    if (man > 0) return man;
+    return typeof dlaHonorarios === "function" ? dlaHonorarios(cpsmFuentePeriodo()) : 0;
+  } catch (e) { return 0; }
+}
+function cpsmTotalManual() {
+  try { return parseFloat(JSON.parse(localStorage.getItem(CPSM_TOTAL_K) || "{}")[cpsmTotalClave()]) || 0; } catch (e) { return 0; }
+}
+// AAAAMM del mes de los honorarios (M-2) para el mes de liquidación elegido
+function cpsmFuentePeriodo() {
+  var m = document.getElementById("cpsm-mes-liq"), a = document.getElementById("cpsm-anio");
+  if (!m || !a) return "";
+  var i = MESES_CPSM.indexOf(m.value) - 2, y = parseInt(a.value, 10) || new Date().getFullYear();
+  if (i < 0) { i += 12; y -= 1; }
+  return y + ("0" + (i + 1)).slice(-2);
+}
+function cpsmTotalGuardar(raw) {
+  var n = parseFloat(String(raw).replace(/\./g, "").replace(",", ".").trim()) || 0;
+  try {
+    var o = JSON.parse(localStorage.getItem(CPSM_TOTAL_K) || "{}");
+    if (n > 0) o[cpsmTotalClave()] = n; else delete o[cpsmTotalClave()];
+    localStorage.setItem(CPSM_TOTAL_K, JSON.stringify(o));
+    if (typeof syncPush === "function") syncPush(CPSM_TOTAL_K);
+  } catch (e) {}
+  cpsmActualizarResultados();
+}
+var _cpsmBaseExento = {}; // base (Colón+OSDE) de los exentos, para el pool del reparto
+
+// Devuelve { ap: {honor, cpsm} } según haya o no total cargado.
+function cpsmCalcularTodos(vals) {
+  var total = cpsmTotalGet(), pool = 0, out = {};
+  CPSM_PROF.forEach(function(p) { pool += p.exento ? (_cpsmBaseExento[p.ap] || 0) : (vals[p.ap] || 0); });
+  CPSM_PROF.forEach(function(p) {
+    var base = vals[p.ap] || 0, honor;
+    if (total > 0 && pool > 0) honor = Math.round(total * (p.exento ? 0 : base) / pool);
+    else honor = Math.round(base);
+    out[p.ap] = { honor: honor, cpsm: p.exento ? 10 : cpsmCalc(honor) };
+  });
+  return out;
+}
 var MESES_CPSM = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
 function cpsmMesFuente(mesLiqNum) {
@@ -1165,14 +1221,23 @@ function cpsmLeerInputs() {
 
 function cpsmActualizarResultados() {
   var vals = cpsmLeerInputs();
+  var calc = cpsmCalcularTodos(vals);
   var total = 0;
   CPSM_PROF.forEach(function(p) {
     var el = document.getElementById("cpsm-res-" + p.ap.replace(/ /g,"_"));
     if (!el) return;
-    var cpsm = p.exento ? 10 : cpsmCalc(vals[p.ap]);
+    var cpsm = calc[p.ap].cpsm;
     el.textContent = "$ " + cpsmFmt(cpsm);
     total += cpsm;
   });
+  var infoEl = document.getElementById("cpsm-total-info");
+  if (infoEl) {
+    var tm = cpsmTotalGet();
+    var deClinica = tm > 0 && !cpsmTotalManual();
+    infoEl.textContent = tm > 0
+      ? "CPSM del mes = 5% de $ " + cpsmFmt(tm) + (deClinica ? " (honorarios del PDF de la clínica)" : "") + " = $ " + cpsmFmt(Math.round(tm * 0.05)) + ", repartido según % de Colón + OSDE de cada uno."
+      : "Sin total cargado: se calcula el 5% de los honorarios de cada profesional.";
+  }
   var totEl = document.getElementById("cpsm-total");
   if (totEl) totEl.textContent = "$ " + cpsmFmt(total);
   var dlBtn = document.getElementById("cpsm-dl-btn");
@@ -1190,9 +1255,14 @@ function cpsmDescargarExcel() {
   // El portal de CPSM calcula el 5% él mismo — exportamos los honorarios M-2
   // crudos, no el "CPSM a pagar" que ya calculamos acá.
   // Sin fila de TOTAL y CUIT sin guiones: el portal de carga no toma el archivo si no matchea ese formato exacto.
+  var sinDatos = CPSM_PROF.filter(function(p) { return !p.mat || !p.cuit; });
+  if (sinDatos.length && !confirm("Falta matrícula o CUIT de: " + sinDatos.map(function(p){return p.ap;}).join(", ") + ".\nEl Excel saldrá SIN esas filas. ¿Descargar igual?")) return;
+  var calc = cpsmCalcularTodos(vals);
   var rows = [["Apellido","Nombre","Matricula","CUIT","Honorarios"]];
   CPSM_PROF.forEach(function(p) {
-    var honor = p.exento ? 0 : Math.round(vals[p.ap] || 0);
+    if (!p.mat || !p.cuit) return;
+    // Con total cargado se exporta el honorario asignado: el portal aplica su 5% y da el CPSM repartido.
+    var honor = p.exento ? 0 : calc[p.ap].honor;
     if (!honor) honor = 10; // el portal de carga no acepta filas con importe 0
     rows.push([p.ap, p.nombre.toUpperCase(), p.mat, p.cuit.replace(/-/g,""), honor]);
   });
@@ -1218,6 +1288,8 @@ function cpsmRenderTabla(honorariosData, origen) {
       + '<td><span class="cpsm-result" id="' + resId + '">$ 0</span></td>'
       + '</tr>';
   }).join("");
+  _cpsmBaseExento = {};
+  CPSM_PROF.forEach(function(p) { if (p.exento && honorariosData) _cpsmBaseExento[p.ap] = Math.round(honorariosData[p.ap] || 0); });
   var tbody = document.getElementById("cpsm-tbody");
   if (tbody) tbody.innerHTML = filas;
 
@@ -1309,6 +1381,9 @@ function renderCpsm() {
     + '</div>'
     + '<div style="margin-bottom:10px;font-size:0.8rem;color:rgba(32,36,31,.55)">Honorarios fuente: <span class="cpsm-fuente-badge" id="cpsm-fuente-label">' + fuenteStr.charAt(0).toUpperCase()+fuenteStr.slice(1) + ' ' + anioAct + '</span>'
     + '  <span id="cpsm-fetch-status" style="margin-left:8px;font-size:0.72rem">Cargando...</span></div>'
+    + '<div class="sb-field" style="margin-bottom:12px"><label>Honorarios totales del mes, sin gastos de equipo (opcional)</label>'
+    +   '<input type="text" id="cpsm-total-in" class="cpsm-input" style="text-align:left" placeholder="Ej: 194857451,20" onchange="cpsmTotalGuardar(this.value)">'
+    +   '<div id="cpsm-total-info" style="margin-top:4px;font-size:0.75rem;color:rgba(32,36,31,.6)"></div></div>'
     + '<table class="cpsm-tabla">'
     +   '<thead><tr><th>Profesional</th><th>Honorarios (M-2)</th><th>CPSM a pagar</th></tr></thead>'
     +   '<tbody id="cpsm-tbody"></tbody>'
@@ -1334,8 +1409,13 @@ function renderCpsm() {
     + '</div>'
     + '</div>';
 
+  html = html.replace(/<\/div>$/, '<div id="dla-seccion" style="margin-top:26px;border-top:1px solid rgba(32,36,31,.12);padding-top:18px"></div></div>');
   document.getElementById("adm-content").innerHTML = html;
+  if (typeof dlaRenderSeccion === "function") dlaRenderSeccion();
 
+  cpsmTotalRefrescarInput();
+  if (typeof syncPull === "function") syncPull(DLA_K, function() { dlaRenderSeccion(); cpsmActualizarResultados(); });
+  if (typeof syncPull === "function") syncPull(CPSM_TOTAL_K, function() { cpsmTotalRefrescarInput(); cpsmActualizarResultados(); });
   // Render tabla vacía mientras carga
   cpsmRenderTabla(null);
   cemNotaRenderTabla(null);
@@ -1344,7 +1424,15 @@ function renderCpsm() {
   cemNotaFetch(MESES_CPSM[mesActNum-1]);
 }
 
+function cpsmTotalRefrescarInput() {
+  var el = document.getElementById("cpsm-total-in");
+  if (!el) return;
+  var t = cpsmTotalManual();
+  el.value = t > 0 ? String(t).replace(".", ",") : "";
+}
+
 function cpsmCambiarPeriodo() {
+  cpsmTotalRefrescarInput();
   cpsmActualizarFuente();
   var lbl = document.getElementById("cpsm-fuente-label");
   var fuente = lbl ? lbl.textContent.split(" ")[0].toLowerCase() : "";
