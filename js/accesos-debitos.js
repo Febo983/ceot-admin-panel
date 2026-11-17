@@ -2054,28 +2054,39 @@ function incidenciaBaseMensual(doc) {
   return bases.reduce(function(x, y) { return x + y; }, 0) / bases.length;
 }
 
-// Base que se espera cobrar en cada mes de retención del calendario (índice 0 =
-// mes 1 del calendario). Meses anteriores al actual: ya están en el Acumulado.
+// Retención que se espera juntar en cada mes de retención del calendario
+// (índice 0 = mes 1 del calendario). Devuelve dos arrays:
+//  - bases: base sobre la que se aplica el % vigente (estimación: el mes en
+//    curso solo cuenta lo que falta acreditar; los futuros, el promedio).
+//  - fijos: pesos ya devengados de meses cerrados cuyos cheques todavía no se
+//    acreditaron (son dato real y no dependen del %).
+// Los meses anteriores al actual ya están en el Acumulado, salvo esos cheques.
 function incidenciaBasesFuturas(doc, base, n) {
   var hoy = new Date(), hoyIdx = hoy.getFullYear() * 12 + hoy.getMonth();
-  var out = [];
+  var bases = [], fijos = [];
   for (var j = 0; j < n; j++) {
     var idx = INCIDENCIA_MES1.anio * 12 + (INCIDENCIA_MES1.mes - 1) + j;
-    if (idx < hoyIdx) out.push(0);
-    else if (idx > hoyIdx) out.push(base);
-    else {
+    var b = 0, f = 0;
+    if (idx < hoyIdx) {
+      var pid = periodoIdDe(Math.floor(idx / 12), idx % 12);
+      var cp = (pid && APORTE_CEOT_DESDE.indexOf(pid) !== -1) ? calcularNetoLocal(pid, doc) : null;
+      if (cp && cp.pctAporte) f = Math.max(0, (cp.aporteCeot || 0) - aporteCeotAcreditadoHoy(cp));
+    } else if (idx > hoyIdx) {
+      b = base;
+    } else {
       var c = calcularNetoLocal(periodoDeFecha(hoy), doc), ya = 0;
       if (c && c.pctAporte) ya = aporteCeotAcreditadoHoy(c) / c.pctAporte;
-      out.push(Math.max(0, base - ya));
+      b = Math.max(0, base - ya);
     }
+    bases.push(b); fijos.push(f);
   }
-  return out;
+  return { bases: bases, fijos: fijos };
 }
 
-function incidenciaSaldos(e, pct, bases) {
+function incidenciaSaldos(e, pct, bases, fijos) {
   var saldo = e.acum, out = [];
   for (var k = 0; k < e.cal.length; k++) {
-    if (k > 0) saldo += pct * (bases[k - 1] || 0);
+    if (k > 0) saldo += pct * (bases[k - 1] || 0) + (fijos[k - 1] || 0);
     saldo -= e.cal[k];
     out.push(saldo);
   }
@@ -2084,10 +2095,10 @@ function incidenciaSaldos(e, pct, bases) {
 
 // Menor % que deja el saldo en cero o más en todos los meses (Infinity si ni
 // con todo alcanza, p.ej. un vencimiento ya vencido sin retención por delante).
-function incidenciaPctNecesario(e, bases) {
+function incidenciaPctNecesario(e, bases, fijos) {
   var need = -e.acum, disp = 0, p = 0;
   for (var k = 0; k < e.cal.length; k++) {
-    if (k > 0) disp += bases[k - 1] || 0;
+    if (k > 0) { disp += bases[k - 1] || 0; need -= fijos[k - 1] || 0; }
     need += e.cal[k];
     if (need > 0) {
       if (disp <= 0) return Infinity;
@@ -2105,20 +2116,24 @@ function incidenciaCoberturaHtml(cob) {
   var pctTxt = function(x) { return (Math.round(x * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%"; };
   window._incidenciaCob = [];
   var cols = '';
-  for (k = ini; k < n; k++) cols += '<th>' + incidenciaMesCorto(k) + '</th>';
+  // Columna k (vencimiento del mes k): su saldo suma la retención de los meses
+  // anteriores; desde el mes en curso en adelante esa retención es estimada.
+  var _h = new Date();
+  var estK = (_h.getFullYear() * 12 + _h.getMonth()) - (INCIDENCIA_MES1.anio * 12 + INCIDENCIA_MES1.mes - 1) + 1;
+  for (k = ini; k < n; k++) cols += '<th' + (k >= estK ? ' style="font-style:italic"' : '') + '>' + incidenciaMesCorto(k) + (k >= estK ? ' <span style="font-weight:400">est.</span>' : '') + '</th>';
   var filas = cob.map(function(e) {
     var base = incidenciaBaseMensual(e.doc);
-    var bases = incidenciaBasesFuturas(e.doc, base, n - 1);
+    var bf = incidenciaBasesFuturas(e.doc, base, n - 1), bases = bf.bases, fijos = bf.fijos;
     var pct = e.pct == null ? 0 : e.pct;
-    var saldos = incidenciaSaldos(e, pct, bases);
-    var nec = incidenciaPctNecesario(e, bases);
+    var saldos = incidenciaSaldos(e, pct, bases, fijos);
+    var nec = incidenciaPctNecesario(e, bases, fijos);
     var necOk = isFinite(nec);
     var necRed = necOk ? Math.ceil(nec * 10000 - 1e-9) / 10000 : nec;   // hacia arriba, a 0,01%
     var llega = saldos.every(function(x) { return x >= -1; });
     var celdas = '';
     for (k = ini; k < n; k++) {
       var v = saldos[k];
-      celdas += '<td style="color:' + (v >= -1 ? VERDE : ROJO) + '">' + (v >= -1 ? fmt(Math.max(0, v)) : '−' + fmt(-v)) + '</td>';
+      celdas += '<td style="' + (k >= estK ? 'font-style:italic;' : '') + 'color:' + (v >= -1 ? VERDE : ROJO) + '">' + (v >= -1 ? fmt(Math.max(0, v)) : '−' + fmt(-v)) + '</td>';
     }
     var idx = window._incidenciaCob.push({ ap: e.ap, nombre: e.nombre, pct: necRed, actual: pct, falta: !llega && necOk }) - 1;
     var estado;
@@ -2143,7 +2158,7 @@ function incidenciaCoberturaHtml(cob) {
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
     +   'Saldo del fondo de cada socio después de pagar el vencimiento de cada mes: Acumulado + retención esperada − vencimientos. '
     +   'La retención esperada es su % vigente sobre su base mensual real (promedio de los últimos 3 meses cerrados de Colón + OSDE + CEM). '
-    +   'Rojo = ese mes no llega. "% necesario" es el menor % que deja todos los meses en verde; el botón lo aplica como % vigente de ese socio '
+    +   'Rojo = ese mes no llega. Los meses marcados "est." (cursiva) son estimados: se van reemplazando por datos reales a medida que se cargan las liquidaciones. "% necesario" es el menor % que deja todos los meses en verde; el botón lo aplica como % vigente de ese socio '
     +   '(cambia la retención de los meses que todavía no están cerrados, en liquidaciones y comprobantes).'
     + '</div>'
     + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
