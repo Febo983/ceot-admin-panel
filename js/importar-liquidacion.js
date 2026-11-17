@@ -878,6 +878,38 @@ function guardarRedsomImportados(items, periodoHint) {
     });
     periodoKey = Object.keys(cuenta).sort(function(a, b) { return cuenta[b] - cuenta[a]; })[0];
   }
+  // Las filas que vinieron del PDF de la clínica (origen 'pdf', sin nombre de
+  // profesional) no deben duplicarse ni perderse al subir la liquidación por
+  // profesional: cada fila nueva con nombre reemplaza a su par del PDF (mismo
+  // cruce que redsomPlanPdf, en todos los períodos guardados), y las del PDF
+  // que no tienen par se conservan en su período.
+  var pdfKeep = [];
+  try {
+    if (typeof redsomClaveFila === 'function') {
+      var nuevas = {};
+      items.forEach(function(it) { var c = redsomClaveFila(it); nuevas[c] = (nuevas[c] || 0) + 1; });
+      var gAll = [];
+      try { gAll = JSON.parse(localStorage.getItem('redsom_guardados') || '[]'); } catch (e) {}
+      if (gAll.indexOf(periodoKey) === -1) gAll.push(periodoKey);
+      gAll.forEach(function(k) {
+        var viejo = [];
+        try { viejo = JSON.parse(localStorage.getItem('redsom_imp_' + k) || '[]') || []; } catch (e) {}
+        var resto = [], cambio = false;
+        viejo.forEach(function(it) {
+          if (it.origen !== 'pdf') { if (k !== periodoKey) resto.push(it); return; }
+          var c = redsomClaveFila(it);
+          if (nuevas[c]) { nuevas[c]--; cambio = true; return; }   // ya llegó con nombre
+          resto.push(it);
+        });
+        if (k === periodoKey) pdfKeep = resto;
+        else if (cambio) {
+          localStorage.setItem('redsom_imp_' + k, JSON.stringify(resto));
+          if (typeof syncPush === 'function') syncPush('redsom_imp_' + k);
+        }
+      });
+      items = items.concat(pdfKeep);
+    }
+  } catch (e) {}
   try {
     localStorage.setItem('redsom_imp_' + periodoKey, JSON.stringify(items));
     var guard = [];
