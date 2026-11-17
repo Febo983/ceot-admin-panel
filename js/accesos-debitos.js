@@ -2121,6 +2121,8 @@ function incidenciaCoberturaHtml(cob) {
   var _h = new Date();
   var estK = (_h.getFullYear() * 12 + _h.getMonth()) - (INCIDENCIA_MES1.anio * 12 + INCIDENCIA_MES1.mes - 1) + 1;
   for (k = ini; k < n; k++) cols += '<th' + (k >= estK ? ' style="font-style:italic"' : '') + '>' + incidenciaMesCorto(k) + (k >= estK ? ' <span style="font-weight:400">est.</span>' : '') + '</th>';
+  var totPers = 0, colsVacias = '';
+  for (k = ini; k < n; k++) colsVacias += '<td></td>';
   var filas = cob.map(function(e) {
     var base = incidenciaBaseMensual(e.doc);
     var bf = incidenciaBasesFuturas(e.doc, base, n - 1), bases = bf.bases, fijos = bf.fijos;
@@ -2135,6 +2137,12 @@ function incidenciaCoberturaHtml(cob) {
       var v = saldos[k];
       celdas += '<td style="' + (k >= estK ? 'font-style:italic;' : '') + 'color:' + (v >= -1 ? VERDE : ROJO) + '">' + (v >= -1 ? fmt(Math.max(0, v)) : '−' + fmt(-v)) + '</td>';
     }
+    // Retención personal: lo que le sobra al socio al final del calendario, o sea
+    // lo que retiene de más sobre lo que hace falta para pagar todo. Es la
+    // proyección y se ajusta sola al entrar meses reales.
+    var pers = saldos[saldos.length - 1];
+    var masPct = llega && necOk ? Math.max(0, pct - necRed) : null;
+    if (llega && pers > 0) totPers += pers;
     var idx = window._incidenciaCob.push({ ap: e.ap, nombre: e.nombre, pct: necRed, actual: pct, falta: !llega && necOk }) - 1;
     var estado;
     if (llega) {
@@ -2148,7 +2156,10 @@ function incidenciaCoberturaHtml(cob) {
       + '<td>' + pctTxt(pct) + '</td>'
       + '<td style="color:' + (llega ? VERDE : ROJO) + ';font-weight:700">' + (necOk ? pctTxt(necRed) : '—') + '</td>'
       + '<td>' + (base ? fmt(base) : '—') + '</td>'
-      + celdas + '<td>' + estado + '</td></tr>';
+      + celdas
+      + '<td>' + (masPct != null ? pctTxt(masPct) : '—') + '</td>'
+      + '<td style="font-weight:700;color:' + VERDE + '">' + (llega && pers > 0 ? fmt(pers) : '—') + '</td>'
+      + '<td>' + estado + '</td></tr>';
   }).join("");
   var pend = window._incidenciaCob.filter(function(x) { return x.falta; }).length;
   var btnTodos = pend
@@ -2158,12 +2169,14 @@ function incidenciaCoberturaHtml(cob) {
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
     +   'Saldo del fondo de cada socio después de pagar el vencimiento de cada mes: Acumulado + retención esperada − vencimientos. '
     +   'La retención esperada es su % vigente sobre su base mensual real (promedio de los últimos 3 meses cerrados de Colón + OSDE + CEM). '
-    +   'Rojo = ese mes no llega. Los meses marcados "est." (cursiva) son estimados: se van reemplazando por datos reales a medida que se cargan las liquidaciones. "% necesario" es el menor % que deja todos los meses en verde; el botón lo aplica como % vigente de ese socio '
+    +   'Rojo = ese mes no llega. "% de más" es lo que retiene por encima del % necesario y "Retención personal" lo que le sobra al socio al final del calendario (proyectado: se ajusta solo a medida que entran meses reales). Los meses marcados "est." (cursiva) son estimados: se van reemplazando por datos reales a medida que se cargan las liquidaciones. "% necesario" es el menor % que deja todos los meses en verde; el botón lo aplica como % vigente de ese socio '
     +   '(cambia la retención de los meses que todavía no están cerrados, en liquidaciones y comprobantes).'
     + '</div>'
     + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-    +   '<th>Profesional</th><th>% vigente</th><th>% necesario</th><th>Base mensual</th>' + cols + '<th>Estado</th>'
-    + '</tr></thead><tbody>' + filas + '</tbody></table></div>';
+    +   '<th>Profesional</th><th>% vigente</th><th>% necesario</th><th>Base mensual</th>' + cols + '<th>% de más</th><th>Retención personal</th><th>Estado</th>'
+    + '</tr></thead><tbody>' + filas
+    + '<tr class="adm-totals"><td>TOTAL</td><td></td><td></td><td></td>' + colsVacias + '<td></td><td>' + fmt(totPers) + '</td><td></td></tr>'
+    + '</tbody></table></div>';
 }
 
 // Aplica de una vez el % necesario de todos los socios que hoy no llegan,
