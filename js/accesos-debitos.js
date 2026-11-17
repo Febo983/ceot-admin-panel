@@ -2159,7 +2159,12 @@ async function incidenciaAplicarPct(i) {
     var data = await (await fetch(authURL(url))).json();
     if (!data.ok) throw new Error(data.error || 'error desconocido');
     APORTE_PCT_REMOTO = override;
-    renderIncidenciaFondo();
+    // Se repinta toda la pantalla (no solo el reparto): los inputs de % por
+    // profesional de arriba tienen que mostrar el valor nuevo; si quedan con el
+    // viejo, un "Guardar" posterior lo pisaría para todos.
+    var y = window.scrollY;
+    await renderAporteCeot();
+    window.scrollTo(0, y);
   } catch (err) {
     alert("No se pudo guardar: " + err.message);
   }
