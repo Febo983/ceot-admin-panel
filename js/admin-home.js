@@ -658,16 +658,69 @@ function admHomeCalRender() {
     + '<div class="adm-home-hud-lab">Google Calendar</div><div style="display:flex;gap:6px">'
     + (src ? '<button style="' + btn + '" onclick="admHomeCalToggle()">' + (abierto ? 'Ocultar' : 'Mostrar') + '</button>' : '')
     + '<button style="' + btn + '" onclick="admHomeCalConfigurar()">' + (src ? 'Cambiar' : 'Conectar') + '</button>'
+    + '<button style="' + btn + '" onclick="admHomeAgendaConfigurar()" title="Enlace del script que lee los eventos de hoy">Hoy ⚙</button>'
     + '</div></div>';
-  var cuerpo = '';
+  var cuerpo = '<div id="admHomeAgendaHoy">' + admHomeAgendaHoyHtml() + '</div>';
   if (!src) {
-    cuerpo = '<div style="padding:4px 14px 14px;font-size:0.82rem;color:#4d5b68">Conectá tu calendario para ver la agenda acá arriba.</div>';
+    cuerpo += '<div style="padding:4px 14px 14px;font-size:0.82rem;color:#4d5b68">Conectá tu calendario para ver la agenda acá arriba.</div>';
   } else if (abierto) {
     var url = "https://calendar.google.com/calendar/embed?src=" + encodeURIComponent(src)
       + "&mode=AGENDA&showTitle=0&showNav=0&showDate=0&showPrint=0&showTabs=0&showCalendars=0&showTz=0&hl=es&ctz=America%2FArgentina%2FBuenos_Aires";
-    cuerpo = '<iframe title="Google Calendar" src="' + url + '" style="width:100%;height:230px;border:0;border-top:2px dashed rgba(15,28,40,.14);display:block;background:#fff"></iframe>';
+    cuerpo += '<iframe title="Google Calendar" src="' + url + '" style="width:100%;height:230px;border:0;border-top:2px dashed rgba(15,28,40,.14);display:block;background:#fff"></iframe>';
   }
   el.innerHTML = '<div class="adm-home-hud" style="display:block">' + cab + cuerpo + '</div>';
+  admHomeAgendaHoyTraer();
+}
+
+// ── Franja "Hoy": eventos del día remarcados y titilando ────────────
+// El iframe de Google no se puede estilizar, así que los eventos de hoy los
+// trae un Apps Script propio (agenda-hoy.gs, cuenta dueña del calendario).
+// El enlace no va en el código (repo público): se pega una vez en "Hoy ⚙" y
+// queda en ceot_agenda_hoy_url, sincronizado.
+var AGENDA_HOY_KEY = "ceot_agenda_hoy_url";
+var _agendaHoy = null, _agendaPulled = false, _agendaTimer = null;
+function admHomeAgendaUrl() { try { return localStorage.getItem(AGENDA_HOY_KEY) || ""; } catch (e) { return ""; } }
+function admHomeAgendaHoyHtml() {
+  if (!admHomeAgendaUrl() || !_agendaHoy) return "";
+  var ahora = new Date(), min = ahora.getHours() * 60 + ahora.getMinutes();
+  var hm = function(s) { var p = (s || "").split(":"); return (+p[0]) * 60 + (+p[1]); };
+  if (!document.getElementById("agendaHoyCss")) {
+    var st = document.createElement("style"); st.id = "agendaHoyCss";
+    st.textContent = "@keyframes agendaTitila{0%,100%{box-shadow:0 0 0 0 rgba(217,48,37,.55);background:#fff1ef}50%{box-shadow:0 0 0 6px rgba(217,48,37,0);background:#ffe1dc}}"
+      + ".agenda-hoy-ev{animation:agendaTitila 1.6s ease-in-out infinite}@media (prefers-reduced-motion:reduce){.agenda-hoy-ev{animation:none;background:#ffe1dc}}";
+    document.head.appendChild(st);
+  }
+  if (!_agendaHoy.length) return '<div style="padding:2px 14px 10px;font-size:0.8rem;color:#4d5b68">Hoy no hay eventos en el calendario.</div>';
+  var filas = _agendaHoy.map(function(e) {
+    var pasado = !e.todoElDia && hm(e.fin) <= min;
+    var hora = e.todoElDia ? "Todo el día" : e.inicio + "–" + e.fin;
+    return '<div class="' + (pasado ? "" : "agenda-hoy-ev") + '" style="display:flex;gap:10px;align-items:baseline;border:2px solid ' + (pasado ? "rgba(15,28,40,.18)" : "#d93025") + ';border-radius:10px;padding:6px 10px;font-size:0.84rem;color:#1c2b3a;' + (pasado ? "opacity:.5;text-decoration:line-through" : "font-weight:700") + '">'
+      + '<span style="font-variant-numeric:tabular-nums;white-space:nowrap">' + admHomeHudEsc(hora) + '</span><span>' + admHomeHudEsc(e.titulo) + '</span></div>';
+  }).join("");
+  return '<div style="padding:2px 14px 12px"><div class="adm-home-hud-lab" style="margin-bottom:6px">Hoy · ' + _agendaHoy.length + (_agendaHoy.length === 1 ? ' evento' : ' eventos') + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:6px">' + filas + '</div></div>';
+}
+function admHomeAgendaHoyTraer() {
+  if (!_agendaPulled) { _agendaPulled = true; syncPull(AGENDA_HOY_KEY, function() { admHomeAgendaHoyTraer(); }); }
+  var url = admHomeAgendaUrl();
+  if (!url) return;
+  fetch(url).then(function(r) { return r.json(); }).then(function(d) {
+    if (!d || !d.ok) return;
+    _agendaHoy = d.items || [];
+    var c = document.getElementById("admHomeAgendaHoy");
+    if (c) c.innerHTML = admHomeAgendaHoyHtml();
+  }).catch(function() {});
+  // Cada 5 min: trae de nuevo y apaga lo que ya pasó.
+  if (!_agendaTimer) _agendaTimer = setInterval(function() { if (document.getElementById("admHomeAgendaHoy")) admHomeAgendaHoyTraer(); }, 300000);
+}
+function admHomeAgendaConfigurar() {
+  var v = prompt("Pegá el enlace (…/exec) del script que lee los eventos de hoy.\nDejalo vacío para desactivar.", admHomeAgendaUrl());
+  if (v === null) return;
+  v = v.trim();
+  try { if (v) localStorage.setItem(AGENDA_HOY_KEY, v); else localStorage.removeItem(AGENDA_HOY_KEY); } catch (e) {}
+  if (v) syncPush(AGENDA_HOY_KEY);
+  _agendaHoy = null;
+  admHomeCalRender();
 }
 function admHomeCalToggle() {
   var abierto = true;
