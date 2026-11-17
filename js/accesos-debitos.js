@@ -1911,6 +1911,8 @@ function incidenciaFondoWrapHtml(plan) {
   var ROJO = "#b13a2c", VERDE = "#1d6b62";
   var T = { monto:0, acum:0, inm:0, d30:0, cuota:0, ant:0, falta:0, retener:0, ultimo:0 };
   var detalle = [];          // {nombre, ret[]} para la tabla mes a mes
+  var pagosHechos = incidenciaPagosCargar();
+  var calTot = [];           // vencimientos totales por mes (suma de los socios)
 
   var filas = apellidos.map(function(ap) {
     var doc = DOCTORES.filter(function(d) { return d.apellido === ap; })[0];
@@ -1930,8 +1932,17 @@ function incidenciaFondoWrapHtml(plan) {
     // Hasta qué mes del calendario (pago a cuenta, dividendos, cuotas y
     // anticipos en el orden en que vencen) le alcanza el fondo acumulado.
     var calProf = incidenciaCalendario(inm, d30, cuota, nc, ant, na);
+    // Los vencimientos que ya se pagaron (tilde en "constancia de pago") salen
+    // del calendario y se restan del Acumulado: esa plata ya salió del fondo.
+    // "Falta" no cambia (monto - acum) porque resta lo mismo de los dos lados;
+    // lo que sí cambia es cuánto cubre el fondo y la retención mes a mes.
+    calProf.forEach(function(v, i) { calTot[i] = (calTot[i] || 0) + v; });
+    var pagadoProf = 0;
+    calProf.forEach(function(v, i) {
+      if (pagosHechos[i]) { acum -= v; pagadoProf += v; calProf[i] = 0; }
+    });
     var cubre = incidenciaMesesQueCubre(acum, calProf);
-    var falta = monto - acum;
+    var falta = monto - (acum + pagadoProf);
     // Retención mes a mes: un importe fijo y un último mes que ajusta.
     var ret = incidenciaRetenciones(acum, calProf);
     var retener = ret[0] || 0;
@@ -1985,7 +1996,58 @@ function incidenciaFondoWrapHtml(plan) {
     +   '<td style="color:' + (T.ultimo > 0 ? ROJO : VERDE) + '">' + (T.ultimo > 0 ? fmt(T.ultimo) : '—') + '</td>'
     +   '<td>' + fmt(T.monto) + '</td></tr>'
     + '</tbody></table></div>'
+    + incidenciaVencimientosHtml(calTot)
     + incidenciaRetencionesTablaHtml(detalle, nret);
+}
+
+// Constancia de pago de cada vencimiento del calendario: una tilde por mes,
+// con la fecha en que se marcó. Es solo registro: no cambia ningún cálculo
+// (Acumulado, Falta y retenciones siguen saliendo del fondo real). Se guarda
+// en localStorage y se espeja entre PCs con syncPush/syncPull.
+var INCIDENCIA_PAGOS_KEY = "ceot_incidencia_pagos";
+var _incidenciaPagosPulled = false;
+function incidenciaPagosCargar() {
+  if (!_incidenciaPagosPulled) {
+    _incidenciaPagosPulled = true;
+    syncPull(INCIDENCIA_PAGOS_KEY, function() {
+      if (document.getElementById("incidencia-fondo-wrap")) renderIncidenciaFondo();
+    });
+  }
+  var o = null;
+  try { o = JSON.parse(localStorage.getItem(INCIDENCIA_PAGOS_KEY) || "null"); } catch (e) { o = null; }
+  return (o && typeof o === "object") ? o : {};
+}
+function incidenciaPagoToggle(i) {
+  var pagos = incidenciaPagosCargar();
+  if (pagos[i]) delete pagos[i];
+  else {
+    var h = new Date();
+    pagos[i] = h.getFullYear() + "-" + ("0" + (h.getMonth() + 1)).slice(-2) + "-" + ("0" + h.getDate()).slice(-2);
+  }
+  try { localStorage.setItem(INCIDENCIA_PAGOS_KEY, JSON.stringify(pagos)); } catch (e) {}
+  syncPush(INCIDENCIA_PAGOS_KEY);
+  renderIncidenciaFondo();
+}
+function incidenciaVencimientosHtml(calTot) {
+  var pagos = incidenciaPagosCargar();
+  var VERDE = "#1d6b62";
+  var filas = calTot.map(function(v, i) {
+    var f = pagos[i];
+    var fTxt = f ? f.slice(8, 10) + "/" + f.slice(5, 7) + "/" + f.slice(0, 4) : "";
+    return '<tr' + (f ? ' style="background:rgba(29,107,98,.07)"' : '') + '>'
+      + '<td style="text-align:center"><input type="checkbox" ' + (f ? 'checked ' : '')
+      +   'onchange="incidenciaPagoToggle(' + i + ')" title="Marcar como pagado"></td>'
+      + '<td>' + incidenciaMesCorto(i) + '</td>'
+      + '<td>' + fmt(v) + '</td>'
+      + '<td style="color:' + VERDE + ';font-weight:700">' + (f ? 'Pagado el ' + fTxt : '') + '</td></tr>';
+  }).join("");
+  return '<div class="adm-sec-title" style="margin-top:20px">Vencimientos — constancia de pago</div>'
+    + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
+    +   'Tildá cada mes cuando lo pagues; queda la fecha del día. Al tildar un mes, su vencimiento sale del calendario y se descuenta del Acumulado (esa plata ya salió del fondo): "Falta" no cambia, pero sí lo que cubre el fondo y la retención mes a mes.'
+    + '</div>'
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+    +   '<th>Pagado</th><th>Mes</th><th>Vence (total)</th><th>Constancia</th>'
+    + '</tr></thead><tbody>' + filas + '</tbody></table></div>';
 }
 
 // Tabla de retenciones mes a mes: una fila por profesional, una columna por
