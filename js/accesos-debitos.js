@@ -1217,6 +1217,29 @@ function cpsmLeerInputs() {
   return vals;
 }
 
+// Guarda el CPSM por profesional del mes elegido para que el neto lo use
+// cuando el endpoint no lo trae (ver respaldosLocalesAplicar en datos.js).
+// Los exentos no van (esLab ya los pone en 0). Sin importes no se guarda.
+function cpsmGuardarCalculado(calc) {
+  try {
+    var clave = cpsmTotalClave();
+    if (!clave) return;
+    var map = {}, hay = false;
+    CPSM_PROF.forEach(function(p) {
+      if (p.exento || !calc[p.ap]) return;
+      var v = calc[p.ap].cpsm;
+      if (v > 0) { map[p.ap] = v; hay = true; }
+    });
+    if (!hay) return;
+    var all = JSON.parse(localStorage.getItem(CPSM_CALC_K) || "{}");
+    if (JSON.stringify(all[clave]) === JSON.stringify(map)) return;
+    all[clave] = map;
+    localStorage.setItem(CPSM_CALC_K, JSON.stringify(all));
+    if (typeof syncPush === "function") syncPush(CPSM_CALC_K);
+    if (typeof respaldosLocalesAplicar === "function") respaldosLocalesAplicar();
+  } catch (e) {}
+}
+
 function cpsmActualizarResultados() {
   var vals = cpsmLeerInputs();
   var calc = cpsmCalcularTodos(vals);
@@ -1228,6 +1251,7 @@ function cpsmActualizarResultados() {
     el.textContent = "$ " + cpsmFmt(cpsm);
     total += cpsm;
   });
+  cpsmGuardarCalculado(calc);
   var infoEl = document.getElementById("cpsm-total-info");
   if (infoEl) {
     var tm = cpsmTotalGet();

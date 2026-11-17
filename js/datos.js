@@ -751,7 +751,59 @@ function prestamosCasaLeerLocal() {
 // pantalla que llamó acá (sería recursión infinita). El refresco de lo que
 // haya en pantalla cuando llega el valor del server lo hace el propio
 // callback del syncPull, una sola vez.
+// ── Respaldos locales de CPSM y Gastos A ─────────────────────────────
+// Si el endpoint de Liquidaciones / Gastos A no trae el mes (PERIODO_CPSM o
+// GASTOS_A en null), el neto quedaba con CPSM $0 y Gastos A "—" aunque el
+// módulo CPSM y la calculadora de Gastos A ya tuvieran el número. Esos módulos
+// guardan lo que calculan en stores sincronizados y acá se vuelcan a las
+// variables globales SOLO si falta el dato; si después llega el real del
+// endpoint, éste manda (se compara por referencia/valor con lo que pusimos).
+var CPSM_CALC_K = "ceot_cpsm_calculado";        // { "noviembre-2026": { AP: cpsm } }
+var _fbPropios = { cpsm: {}, ga: {} };
+var _fbPulled = false;
+function respaldosLocalesAplicar() {
+  try {
+    var c = JSON.parse(localStorage.getItem(CPSM_CALC_K) || "{}");
+    Object.keys(c).forEach(function(k) {
+      var m = /^([a-z]+)-(\d{4})$/.exec(k);
+      var idx = m ? MESES_NOMBRES.indexOf(m[1]) : -1;
+      var pid = idx >= 0 ? periodoIdDe(parseInt(m[2], 10), idx) : null;
+      if (!pid || !c[k] || typeof c[k] !== "object") return;
+      var cur = PERIODO_CPSM[pid];
+      if (cur === null || cur === undefined || cur === _fbPropios.cpsm[pid]) {
+        PERIODO_CPSM[pid] = c[k];
+        _fbPropios.cpsm[pid] = c[k];
+      }
+    });
+  } catch (e) {}
+  try {
+    var g = JSON.parse(localStorage.getItem("ceot_gastos_a_calc") || "{}");
+    Object.keys(g).forEach(function(per) {
+      var sig = PERIODO_SIG[per], tot = g[per] && parseFloat(g[per].total);
+      if (!sig || !(tot > 0)) return;
+      var cur = GASTOS_A[sig];
+      if (cur == null || cur === _fbPropios.ga[sig]) {
+        GASTOS_A[sig] = tot;
+        _fbPropios.ga[sig] = tot;
+      }
+    });
+  } catch (e) {}
+}
+function respaldosLocalesCargar() {
+  respaldosLocalesAplicar();
+  if (_fbPulled) return;
+  _fbPulled = true;
+  [CPSM_CALC_K, "ceot_gastos_a_calc"].forEach(function(k) {
+    syncPull(k, function() {
+      respaldosLocalesAplicar();
+      if (typeof doctorActual !== 'undefined' && doctorActual && typeof rerenderPortalMeses === 'function') rerenderPortalMeses();
+      if (typeof renderSueldoDirector === 'function' && document.getElementById('sueldoDirectorScreenRoot')) renderSueldoDirector();
+    });
+  });
+}
+
 function prestamosCasaCargar(onDone) {
+  respaldosLocalesCargar();
   prestamosCasaLeerLocal();
   if (onDone) onDone();
   if (!_prestamosCasaPulled) {
