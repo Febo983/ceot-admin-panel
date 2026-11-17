@@ -2120,7 +2120,7 @@ function incidenciaCoberturaHtml(cob) {
       var v = saldos[k];
       celdas += '<td style="color:' + (v >= -1 ? VERDE : ROJO) + '">' + (v >= -1 ? fmt(Math.max(0, v)) : '−' + fmt(-v)) + '</td>';
     }
-    var idx = window._incidenciaCob.push({ ap: e.ap, nombre: e.nombre, pct: necRed }) - 1;
+    var idx = window._incidenciaCob.push({ ap: e.ap, nombre: e.nombre, pct: necRed, actual: pct, falta: !llega && necOk }) - 1;
     var estado;
     if (llega) {
       estado = '<span style="color:' + VERDE + ';font-weight:700">Cubre</span>';
@@ -2135,7 +2135,11 @@ function incidenciaCoberturaHtml(cob) {
       + '<td>' + (base ? fmt(base) : '—') + '</td>'
       + celdas + '<td>' + estado + '</td></tr>';
   }).join("");
-  return '<div class="adm-sec-title" style="margin-top:20px">Cobertura mes a mes — ¿cada socio llega a pagar su parte?</div>'
+  var pend = window._incidenciaCob.filter(function(x) { return x.falta; }).length;
+  var btnTodos = pend
+    ? ' <button type="button" onclick="incidenciaAplicarTodos()" style="border:none;background:#b13a2c;color:#fff;border-radius:6px;cursor:pointer;font-size:.7rem;padding:3px 10px;font-weight:700;vertical-align:middle;margin-left:8px">Aplicar los % necesarios (' + pend + ')</button>'
+    : '';
+  return '<div class="adm-sec-title" style="margin-top:20px">Cobertura mes a mes — ¿cada socio llega a pagar su parte?' + btnTodos + '</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
     +   'Saldo del fondo de cada socio después de pagar el vencimiento de cada mes: Acumulado + retención esperada − vencimientos. '
     +   'La retención esperada es su % vigente sobre su base mensual real (promedio de los últimos 3 meses cerrados de Colón + OSDE + CEM). '
@@ -2145,6 +2149,29 @@ function incidenciaCoberturaHtml(cob) {
     + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
     +   '<th>Profesional</th><th>% vigente</th><th>% necesario</th><th>Base mensual</th>' + cols + '<th>Estado</th>'
     + '</tr></thead><tbody>' + filas + '</tbody></table></div>';
+}
+
+// Aplica de una vez el % necesario de todos los socios que hoy no llegan,
+// con una sola confirmación que lista cada cambio.
+async function incidenciaAplicarTodos() {
+  var lista = (window._incidenciaCob || []).filter(function(x) { return x.falta; });
+  if (!lista.length) return;
+  var fp = function(x) { return (Math.round(x * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2 }) + "%"; };
+  var txt = lista.map(function(x) { return x.nombre + ": " + fp(x.actual) + " → " + fp(x.pct); }).join("\n");
+  if (!confirm("¿Subir la Retención Ganancias de estos socios?\n\n" + txt + "\n\nSe guarda para todos los dispositivos y cambia la retención de los meses que todavía no están cerrados (liquidaciones y comprobantes). Los meses cerrados no se mueven.")) return;
+  var override = Object.assign({}, APORTE_PCT_REMOTO || {});
+  lista.forEach(function(x) { override[x.ap] = x.pct; });
+  try {
+    var url = LIQUIDACION_ENDPOINT + '?action=setAportePct&valores=' + encodeURIComponent(JSON.stringify(override));
+    var data = await (await fetch(authURL(url))).json();
+    if (!data.ok) throw new Error(data.error || 'error desconocido');
+    APORTE_PCT_REMOTO = override;
+    var y = window.scrollY;
+    await renderAporteCeot();
+    window.scrollTo(0, y);
+  } catch (err) {
+    alert("No se pudo guardar: " + err.message);
+  }
 }
 
 async function incidenciaAplicarPct(i) {
