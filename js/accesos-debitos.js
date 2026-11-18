@@ -1232,7 +1232,15 @@ function cpsmGuardarCalculado(calc) {
     });
     if (!hay) return;
     var all = JSON.parse(localStorage.getItem(CPSM_CALC_K) || "{}");
-    if (JSON.stringify(all[clave]) === JSON.stringify(map)) return;
+    if (JSON.stringify(all[clave]) === JSON.stringify(map)) {
+      // Ya estaba guardado acá, pero puede no haber llegado al guardado compartido
+      // (sesión vencida al calcular): reintentar el envío una vez por carga de página.
+      if (typeof syncPush === "function" && !window._cpsmReenviado && AUTH_TOKEN && AUTH_ROLE === "admin") {
+        window._cpsmReenviado = true;
+        syncPush(CPSM_CALC_K);
+      }
+      return;
+    }
     all[clave] = map;
     localStorage.setItem(CPSM_CALC_K, JSON.stringify(all));
     if (typeof syncPush === "function") syncPush(CPSM_CALC_K);

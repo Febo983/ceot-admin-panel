@@ -777,6 +777,12 @@ function respaldosLocalesAplicar() {
       if (curVacio || cur === _fbPropios.cpsm[pid]) {
         PERIODO_CPSM[pid] = c[k];
         _fbPropios.cpsm[pid] = c[k];
+      } else if (typeof cur === "object") {
+        // El endpoint trae el mes pero sin algunos profesionales (ej. Garmendia no
+        // está en el cálculo del Sheet): completar solo los que faltan o están en 0.
+        Object.keys(c[k]).forEach(function(ap) {
+          if (!(cur[ap] > 0) && c[k][ap] > 0) cur[ap] = c[k][ap];
+        });
       }
     });
   } catch (e) {}
