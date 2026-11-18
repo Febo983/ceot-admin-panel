@@ -770,7 +770,11 @@ function respaldosLocalesAplicar() {
       var pid = idx >= 0 ? periodoIdDe(parseInt(m[2], 10), idx) : null;
       if (!pid || !c[k] || typeof c[k] !== "object") return;
       var cur = PERIODO_CPSM[pid];
-      if (cur === null || cur === undefined || cur === _fbPropios.cpsm[pid]) {
+      // "Vacío" también cuenta el mapa con todos los importes en 0: el endpoint
+      // devuelve el mes con descuentos en 0 y eso pisaba el CPSM calculado (-$0).
+      var curVacio = cur === null || cur === undefined ||
+        (typeof cur === "object" && !Object.keys(cur).some(function(ap) { return cur[ap] > 0; }));
+      if (curVacio || cur === _fbPropios.cpsm[pid]) {
         PERIODO_CPSM[pid] = c[k];
         _fbPropios.cpsm[pid] = c[k];
       }
@@ -1349,6 +1353,10 @@ async function cargarLiquidacionRemota() {
       var sfBtn = document.getElementById("adm-sidenav-facturas");
       if (sfBtn && sfBtn.classList.contains("active")) renderFacturas();
     }
+
+    // El endpoint recién pisó PERIODO_CPSM: re-aplicar el CPSM calculado a mano
+    // si el mes quedó vacío (antes solo se aplicaba antes de que llegue el endpoint).
+    if (typeof respaldosLocalesAplicar === "function") respaldosLocalesAplicar();
 
     // Si ya hay un doctor logueado, actualizar el historial con los nuevos datos
     if (doctorActual) renderHistorial(doctorActual);
