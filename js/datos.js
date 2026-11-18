@@ -764,6 +764,14 @@ var _fbPulled = false;
 function respaldosLocalesAplicar() {
   try {
     var c = JSON.parse(localStorage.getItem(CPSM_CALC_K) || "{}");
+    // CPSM fijado en el código (calculado en el módulo CPSM, 5% de $194.857.451;
+    // Labayen exento): así llega a todos los dispositivos aunque el guardado
+    // compartido no lo tenga. Si hay uno guardado, ese manda.
+    if (!c["noviembre-2026"]) c["noviembre-2026"] = {
+      "BRUNI":1096195,"CORELICH":802641,"DE LA COLINA":919316,"DEGANUTTI":2039874,
+      "LEON":369071,"MAZZOLA":701646,"PERLASCO":740838,"SOULE":599616,
+      "TRIVELLINI":1011713,"GARMENDIA":1021396
+    };
     Object.keys(c).forEach(function(k) {
       var m = /^([a-z]+)-(\d{4})$/.exec(k);
       var idx = m ? MESES_NOMBRES.indexOf(m[1]) : -1;
