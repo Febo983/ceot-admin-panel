@@ -101,9 +101,9 @@ var ADM_HOME_MODULOS = [
   { key:"gastoscasa",       ico:"home",            lbl:"Gastos Casa",   cat:"casa", fn:"renderGastosCasa()" },
   { key:"gastospagos",      ico:"wallet",          lbl:"Gastos y Pagos",cat:"casa", fn:"renderGastosPagos()" },
   { key:"estadisticas",     ico:"line-chart",      lbl:"Estadísticas CEOT", cat:"clinica", fn:"renderEstadisticasCeot()" },
+  { key:"buzon",            ico:"mail",            lbl:"Buzón",         cat:"clinica", fn:"renderBuzon()" },
   { key:"totalceot",        ico:"trending-up",     lbl:"Total CEOT",    cat:"sistema", home:false, fn:"renderTotalCeot()" },
   { key:"faqasistente",     ico:"bot",             lbl:"FAQ del asistente", cat:"sistema", home:false, fn:"renderFaqAsistente()" },
-  { key:"correos",          ico:"mail",            lbl:"Correos",       cat:"sistema", home:false, fn:"renderCorreos()" },
   { key:"backup",           ico:"download",        lbl:"Copia de seguridad", cat:"sistema", fn:"backupExportar()" },
 ];
 
