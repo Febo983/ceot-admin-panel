@@ -329,7 +329,33 @@ function redsomAplicarHistorico(d) {
   return { ok: true, filas: filas, total: total, periodos: periodos };
 }
 
-function imprimirRedsom() { window.print(); }
+// Imprime en una ventana aparte, no con window.print() sobre la página: en el
+// panel hay una regla global de impresión (@media print del recibo de Sueldo B:
+// "body > *:not(#sb-print-area) {display:none}") y el page-turn 3D que dejan en
+// blanco cualquier window.print() directo — mismo problema y misma salida que
+// admAbrirVentanaImpresion y sbAbrirVentanaImpresion. Se copian los estilos de la
+// página y se fuerza la paleta clara. El contenido va dentro de #sb-print-area
+// porque esa misma regla global de impresión (copiada con los estilos) oculta
+// todo hijo directo del body salvo ese id.
+function imprimirRedsom() {
+  var cont = document.getElementById('adm-content');
+  if (!cont) return;
+  var clone = cont.cloneNode(true);
+  clone.querySelectorAll('.redsom-no-print, script').forEach(function(el) { el.remove(); });
+  var estilos = '';
+  document.querySelectorAll('style, link[rel="stylesheet"]').forEach(function(el) { estilos += el.outerHTML; });
+  var claro = '<style>:root,:root[data-theme="dark"]{--co-bg:#f2ecda;--co-card:#fbf8f0;--co-ink:#20241f;--co-ink-dim:#6b6a5a;'
+    + '--co-line:rgba(32,36,31,.15);--iv0:#f2ecda;--iv1:#fbf8f0;--iv2:rgba(32,36,31,0.05);--iv3:rgba(32,36,31,0.14);'
+    + '--ink:#20241f;--ink-lt:rgba(32,36,31,0.45)}'
+    + 'html,body{background:#fff!important;color:#20241f!important;margin:0;padding:12px;height:auto!important;overflow:visible!important}'
+    + '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    + '</style>';
+  var w = window.open('', '_blank', 'width=1100,height=800');
+  if (!w) { alert('El navegador bloqueó la ventana de impresión — habilitá pop-ups para este sitio.'); return; }
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>REDSOM · Reporte</title>' + estilos + claro
+    + '</head><body><div id="sb-print-area">' + clone.innerHTML + '</div><script>window.onload=function(){setTimeout(function(){window.print();},300);}<\/script></body></html>');
+  w.document.close();
+}
 
 // ══════ Importar el PDF "DETALLE DE PRACTICAS" de la clínica ══════
 // Francisco manda todos los meses un `DPR9042P<AAAAMM>.pdf` con el detalle de
