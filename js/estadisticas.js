@@ -216,7 +216,8 @@ function estPintarAdmin() {
     + estBtnVista("turnos", "Asignación de turnos") + estBtnVista("ventanilla", "Atención en ventanilla")
     + (typeof estExpBotones === "function" ? estExpBotones() : "")
     + '</div>'
-    + '</div>';
+    + '</div>'
+    + (typeof estRepControlesHtml === "function" ? estRepControlesHtml() : "");
 
   if (!window.Chart) {
     html += '<div data-est-skip="1" style="padding:8px 10px;margin-bottom:10px;border-radius:8px;background:rgba(220,38,38,.08);color:#dc2626;font-size:0.72rem">⚠ No se pudo cargar la librería de gráficos. Se muestran solo las tablas.</div>';
