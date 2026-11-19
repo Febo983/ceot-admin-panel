@@ -2,12 +2,13 @@
 // Pedido de Marcelo, 19/11/2026: además del detalle de todo CEOT, poder sacar
 // un reporte por profesional, mes a mes y con el total, fácil de leer.
 // Una hoja A4 vertical por profesional:
-//   1) Cuánto lleva retenido en total (número grande) + su % vigente.
-//   2) Tabla mes a mes: base (Colón + OSDE + CEM), %, retención, acumulado.
-//   3) Detalle de cada mes por acreditación (cada cheque Colón, OSDE, CEM).
+//   1) Total retenido + hasta qué vencimiento de Ganancias le alcanza (cobertura).
+//   2) Tira de vencimientos (cubierto / al acreditar / no cubierto / pagado).
+//   3) Una sola tabla mes a mes con Colón / OSDE / CEM, %, retención y acumulado.
+// Todo en UNA página por profesional (pedido del 19/11/2026: más compacto).
 // Usa los MISMOS números que la tabla "Registro mensual": c.aporteCeot de
 // calcularNetoLocal (retención devengada de la liquidación, la que va al
-// contador para Ganancias) y retencionPorAcreditacion para el detalle.
+// contador para Ganancias).
 
 function retRepSocios() {
   return DOCTORES.filter(function(d) { return APORTE_CEOT_PCT[d.apellido] !== null; });
@@ -23,162 +24,198 @@ function retRepDatos(d) {
       p: p, c: c,
       base: (c.colonBruto || 0) + (c.osde || 0) + (c.cm || 0),
       pct: c.pctAporte || 0,
-      ret: c.aporteCeot || 0,
-      items: retencionPorAcreditacion(c)
+      ret: c.aporteCeot || 0
     });
   });
   return out;
 }
 
-// Dibuja la hoja de un profesional. `doc` es un jsPDF portrait A4 y la hoja
+// Cobertura del pago de Ganancias de un profesional: hasta qué vencimiento le
+// alcanza lo retenido. Misma cuenta que la tabla "Reparto del fondo" (Acumulado
+// = retención YA acreditada + intereses de plazos fijos − vencimientos marcados
+// como pagados; calendario con el reparto que le toca de cada pago). Devuelve
+// también hasta dónde llegaría si se acreditaran los cheques que faltan del
+// período (retención devengada − acreditada), que es lo que se retuvo "en papel".
+function retRepCobertura(d) {
+  if (typeof incidenciaApellidos !== "function" || incidenciaApellidos().indexOf(d.apellido) < 0) return null;
+  var ap = d.apellido, plan = incidenciaPlanCargar();
+  var pct = INCIDENCIA_FONDO_PCT[ap] || 0, pctAnt = incidenciaAnticipoPct(ap);
+  var inm = Math.round((plan.inm || 0) * pct), d30 = Math.round((plan.d30 || 0) * pct);
+  var cuota = Math.round((plan.cuota || 0) * pct), ant = Math.round((plan.ant || 0) * pctAnt);
+  var calOrig = incidenciaCalendario(inm, d30, cuota, plan.nc || 0, ant, plan.na || 0);
+  var pagos = incidenciaPagosCargar();
+  var invData = (typeof invAcumuladoProfesionalData === "function") ? invAcumuladoProfesionalData() : { acum: {} };
+  var acum = (getAporteCeotAcumuladoPorApellido([ap])[ap] || 0) + ((invData.acum[ap] || {}).interes || 0);
+  var cal = calOrig.slice();
+  calOrig.forEach(function(v, i) { if (pagos[i]) { acum -= v; cal[i] = 0; } });
+  var pendiente = 0;
+  APORTE_CEOT_DESDE.forEach(function(p) {
+    var c = calcularNetoLocal(p, d);
+    if (c) pendiente += (c.aporteCeot || 0) - aporteCeotAcreditadoHoy(c);
+  });
+  var n = incidenciaMesesQueCubre(acum, cal);
+  var nTodo = incidenciaMesesQueCubre(acum + pendiente, cal);
+  var saldo = acum;
+  for (var i = 0; i < n; i++) saldo -= cal[i];
+  return {
+    calOrig: calOrig, pagos: pagos, acum: acum, pendiente: pendiente, n: n, nTodo: nTodo,
+    proxFalta: n < cal.length ? Math.max(0, cal[n] - saldo) : 0,
+    totalPlan: cal.length
+  };
+}
+
+// "Cubierto hasta Dic/26", o un texto si no cubre ninguno / todos.
+function retRepTextoCubre(n, total) {
+  if (n <= 0) return "Todavía no cubre ningún vencimiento";
+  if (n >= total) return "Cubre todo el plan (hasta " + incidenciaMesCorto(total - 1) + ")";
+  return "Cubierto hasta " + incidenciaMesCorto(n - 1);
+}
+
+// Dibuja la hoja de un profesional en UNA página: arriba el total retenido y la
+// cobertura de Ganancias, después la tira de vencimientos y una sola tabla mes a
+// mes con la apertura Colón / OSDE / CEM. `doc` es un jsPDF portrait A4 y la hoja
 // arranca en la página actual (el que llama hace addPage entre profesionales).
 function retRepPintarHoja(doc, d, interesPF, hoy) {
   var LM = 15, RM = 195, W = 210;
-  var xBase = 98, xPct = 118, xRet = 152, xAcum = 195;
   var datos = retRepDatos(d);
   var mesActual = tabMesActual();
+  var cob = retRepCobertura(d);
+  var total = datos.reduce(function(s, m) { return s + m.ret; }, 0);
+  var baseTot = datos.reduce(function(s, m) { return s + m.base; }, 0);
+  function pct(v) { return (Math.round(v * 1000) / 10) + "%"; }
 
   // Encabezado
   doc.setFillColor(31, 58, 46);
-  doc.rect(LM, 12, RM - LM, 22, "F");
+  doc.rect(LM, 10, RM - LM, 16, "F");
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(12.5);
-  doc.text("CEOT — CLÍNICA TRAUMATOLÓGICA COLÓN", W / 2, 21, { align: "center" });
-  doc.setFontSize(9.5);
-  doc.text("RETENCIÓN GANANCIAS — REPORTE INDIVIDUAL", W / 2, 28.5, { align: "center" });
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11.5);
+  doc.text("CEOT — CLÍNICA TRAUMATOLÓGICA COLÓN", W / 2, 17, { align: "center" });
+  doc.setFontSize(8.5);
+  doc.text("RETENCIÓN GANANCIAS — REPORTE INDIVIDUAL", W / 2, 22.5, { align: "center" });
   doc.setTextColor(0, 0, 0);
 
-  var y = 45;
-  doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+  var y = 35;
+  doc.setFont("helvetica", "bold"); doc.setFontSize(13);
   doc.text(d.nombre, LM, y);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8);
   doc.setTextColor(100, 100, 100);
-  var pctVig = getAporteCeotPct(d.apellido);
-  doc.text("Emitido: " + hoy + "   ·   % vigente: " + (Math.round((pctVig || 0) * 1000) / 10) + "%", RM, y, { align: "right" });
+  doc.text("Emitido: " + hoy + "   ·   % vigente: " + (Math.round((getAporteCeotPct(d.apellido) || 0) * 1000) / 10) + "%", RM, y, { align: "right" });
   doc.setTextColor(0, 0, 0);
 
-  // Resumen en una caja
-  var total = datos.reduce(function(s, m) { return s + m.ret; }, 0);
-  var baseTot = datos.reduce(function(s, m) { return s + m.base; }, 0);
-  y += 7;
-  doc.setFillColor(244, 242, 236);
-  doc.setDrawColor(210, 205, 190);
-  doc.roundedRect(LM, y, RM - LM, interesPF > 0 ? 36 : 28, 2, 2, "FD");
-  doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
-  doc.setTextColor(90, 90, 90);
-  doc.text("TOTAL RETENIDO A LA FECHA", LM + 6, y + 8);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(20);
-  doc.setTextColor(31, 58, 46);
-  doc.text(fmtPDF(total), LM + 6, y + 19);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
-  doc.setTextColor(90, 90, 90);
-  doc.text(datos.length + (datos.length === 1 ? " mes con retención" : " meses con retención"), RM - 6, y + 8, { align: "right" });
-  doc.text("Sobre honorarios de " + fmtPDF(baseTot), RM - 6, y + 14, { align: "right" });
-  if (datos.length) {
-    doc.text("Promedio mensual: " + fmtPDF(total / datos.length), RM - 6, y + 20, { align: "right" });
-  }
-  var yCaja = y + 24;
-  if (interesPF > 0) {
-    doc.setTextColor(60, 60, 60);
-    doc.text("+ Intereses ya generados por plazos fijos: " + fmtPDF(interesPF) + "   →   Total real: " + fmtPDF(total + interesPF), LM + 6, y + 31);
-    yCaja = y + 36;
+  // Dos cajas lado a lado: total retenido | cobertura de Ganancias
+  y += 5;
+  var altoCaja = 30, mid = LM + 84;
+  doc.setDrawColor(210, 205, 190); doc.setFillColor(244, 242, 236);
+  doc.roundedRect(LM, y, 84, altoCaja, 2, 2, "FD");
+  doc.roundedRect(mid + 3, y, RM - mid - 3, altoCaja, 2, 2, "FD");
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(90, 90, 90);
+  doc.text("TOTAL RETENIDO A LA FECHA", LM + 5, y + 6);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(17); doc.setTextColor(31, 58, 46);
+  doc.text(fmtPDF(total), LM + 5, y + 16);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(90, 90, 90);
+  doc.text(datos.length + (datos.length === 1 ? " mes" : " meses") + " · promedio " + fmtPDF(datos.length ? total / datos.length : 0) + " por mes", LM + 5, y + 22);
+  if (interesPF > 0) doc.text("+ intereses de plazos fijos " + fmtPDF(interesPF), LM + 5, y + 26.5);
+
+  var xc = mid + 8;
+  doc.text("PAGO DE GANANCIAS — HASTA DÓNDE ALCANZA", xc, y + 6);
+  if (cob) {
+    var todo = cob.n >= cob.totalPlan;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11.5);
+    if (todo) doc.setTextColor(22, 107, 58); else if (cob.n > 0) doc.setTextColor(31, 58, 46); else doc.setTextColor(177, 58, 44);
+    doc.text(retRepTextoCubre(cob.n, cob.totalPlan), xc, y + 14);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(90, 90, 90);
+    doc.text("Con lo ya acreditado: " + fmtPDF(cob.acum), xc, y + 19.5);
+    if (!todo) doc.text("Próximo (" + incidenciaMesCorto(cob.n) + "): faltan " + fmtPDF(cob.proxFalta), xc, y + 23.5);
+    if (cob.nTodo > cob.n) {
+      doc.text("Al acreditarse el resto (" + fmtPDF(cob.pendiente) + "): " + retRepTextoCubre(cob.nTodo, cob.totalPlan).toLowerCase(), xc, y + 27.5);
+    }
+  } else {
+    doc.setFontSize(8); doc.text("Este profesional no participa del reparto del fondo.", xc, y + 14);
   }
   doc.setTextColor(0, 0, 0);
-  y = yCaja + 10;
+  y += altoCaja + 5;
+
+  // Tira de vencimientos
+  if (cob) {
+    var nv = cob.calOrig.length, bw = (RM - LM) / nv;
+    for (var i = 0; i < nv; i++) {
+      var pagado = !!cob.pagos[i], ok = i < cob.n, okTodo = i < cob.nTodo;
+      var fill = pagado ? [225, 228, 224] : ok ? [214, 236, 222] : okTodo ? [253, 240, 205] : [246, 217, 213];
+      var x0 = LM + i * bw;
+      doc.setFillColor(fill[0], fill[1], fill[2]); doc.setDrawColor(255, 255, 255);
+      doc.rect(x0, y, bw, 12, "FD");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(60, 60, 60);
+      doc.text(incidenciaMesCorto(i), x0 + bw / 2, y + 4, { align: "center" });
+      doc.setFont("helvetica", "normal"); doc.setFontSize(6.3);
+      doc.text(fmtPDF(cob.calOrig[i]), x0 + bw / 2, y + 7.6, { align: "center" });
+      doc.setFontSize(5.8); doc.setTextColor(100, 100, 100);
+      doc.text(pagado ? "pagado" : ok ? "cubierto" : okTodo ? "al acreditar" : "no cubierto", x0 + bw / 2, y + 10.6, { align: "center" });
+    }
+    doc.setTextColor(0, 0, 0);
+    y += 17;
+  }
 
   if (!datos.length) {
-    doc.setFont("helvetica", "italic"); doc.setFontSize(10);
-    doc.setTextColor(120, 120, 120);
-    doc.text("Todavía no hay períodos con retención cargada para este profesional.", LM, y);
+    doc.setFont("helvetica", "italic"); doc.setFontSize(10); doc.setTextColor(120, 120, 120);
+    doc.text("Todavía no hay períodos con retención cargada para este profesional.", LM, y + 4);
     doc.setTextColor(0, 0, 0);
     return;
   }
 
-  function cabecera(titulo, yy) {
-    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-    doc.setTextColor(31, 58, 46);
-    doc.text(titulo, LM, yy);
-    doc.setTextColor(0, 0, 0);
-    yy += 5;
-    doc.setFontSize(8);
-    doc.setTextColor(90, 90, 90);
-    doc.text("Período", LM, yy);
-    doc.text("Honorarios", xBase, yy, { align: "right" });
-    doc.text("%", xPct, yy, { align: "right" });
-    doc.text("Retención", xRet, yy, { align: "right" });
-    doc.text("Acumulado", xAcum, yy, { align: "right" });
-    doc.setTextColor(0, 0, 0);
-    doc.setDrawColor(31, 58, 46);
-    doc.line(LM, yy + 2, RM, yy + 2);
-    return yy + 7;
-  }
-  function pct(v) { return (Math.round(v * 1000) / 10) + "%"; }
-
-  // 1) Mes a mes
-  y = cabecera("Mes a mes", y);
-  var acum = 0;
-  datos.forEach(function(m, i) {
-    if (y > 270) { doc.addPage(); y = cabecera("Mes a mes (continuación)", 20); }
-    acum += m.ret;
-    if (i % 2 === 0) { doc.setFillColor(248, 247, 242); doc.rect(LM, y - 4.5, RM - LM, 6.5, "F"); }
-    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    var lbl = periodoNombre(m.p) + (m.p === mesActual ? "  (en curso)" : "");
-    doc.text(lbl, LM + 1, y);
-    doc.text(fmtPDF(m.base), xBase, y, { align: "right" });
-    doc.text(pct(m.pct), xPct, y, { align: "right" });
-    doc.setFont("helvetica", "bold");
-    doc.text(fmtPDF(m.ret), xRet, y, { align: "right" });
-    doc.setFont("helvetica", "normal");
-    doc.text(fmtPDF(acum), xAcum - 1, y, { align: "right" });
-    y += 6.5;
-  });
-  doc.setDrawColor(31, 58, 46);
-  doc.line(LM, y - 3, RM, y - 3);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(9.5);
-  doc.text("TOTAL", LM + 1, y + 2);
-  doc.text(fmtPDF(baseTot), xBase, y + 2, { align: "right" });
-  doc.setTextColor(31, 58, 46);
-  doc.text(fmtPDF(total), xRet, y + 2, { align: "right" });
-  doc.setTextColor(0, 0, 0);
-  y += 14;
-
-  // 2) Detalle por acreditación
-  if (y > 255) { doc.addPage(); y = 20; }
-  doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-  doc.setTextColor(31, 58, 46);
-  doc.text("Detalle de cada mes", LM, y);
+  // Tabla mes a mes (una sola, con apertura de honorarios)
+  var X = { col: 74, osde: 96, cem: 116, hon: 140, pct: 153, ret: 174, acum: 195 };
+  doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(31, 58, 46);
+  doc.text("Mes a mes", LM, y);
+  y += 4.5;
+  doc.setFontSize(7.5); doc.setTextColor(90, 90, 90);
+  doc.text("Período", LM + 1, y);
+  doc.text("Colón", X.col, y, { align: "right" });
+  doc.text("OSDE", X.osde, y, { align: "right" });
+  doc.text("CEM", X.cem, y, { align: "right" });
+  doc.text("Honorarios", X.hon, y, { align: "right" });
+  doc.text("%", X.pct, y, { align: "right" });
+  doc.text("Retención", X.ret, y, { align: "right" });
+  doc.text("Acumulado", X.acum - 1, y, { align: "right" });
+  doc.setDrawColor(31, 58, 46); doc.line(LM, y + 1.8, RM, y + 1.8);
   doc.setTextColor(0, 0, 0);
   y += 6;
-  datos.forEach(function(m) {
-    var filas = m.items.length || 1;
-    if (y + 7 + filas * 5 > 280) { doc.addPage(); y = 20; }
-    doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-    doc.setFillColor(238, 236, 228);
-    doc.rect(LM, y - 4.5, RM - LM, 6.5, "F");
-    doc.text(periodoNombre(m.p), LM + 1, y);
-    doc.text(fmtPDF(m.ret), xRet, y, { align: "right" });
-    y += 6;
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8.5);
-    m.items.forEach(function(it) {
-      doc.setTextColor(70, 70, 70);
-      doc.text(it.label, LM + 5, y);
-      doc.text(fmtPDF(it.bruto), xBase, y, { align: "right" });
-      doc.text(pct(m.pct), xPct, y, { align: "right" });
-      doc.text(fmtPDF(it.retencion), xRet, y, { align: "right" });
-      y += 5;
-    });
-    doc.setTextColor(0, 0, 0);
-    y += 3;
+  var acum = 0, tCol = 0, tOs = 0, tCem = 0, hayCurso = false;
+  datos.forEach(function(m, i) {
+    if (y > 275) { doc.addPage(); y = 20; }
+    acum += m.ret; tCol += m.c.colonBruto || 0; tOs += m.c.osde || 0; tCem += m.c.cm || 0;
+    if (i % 2 === 0) { doc.setFillColor(248, 247, 242); doc.rect(LM, y - 4, RM - LM, 5.6, "F"); }
+    var curso = m.p === mesActual; if (curso) hayCurso = true;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8.3);
+    doc.text(periodoNombre(m.p) + (curso ? " *" : ""), LM + 1, y);
+    doc.text(fmtPDF(m.c.colonBruto || 0), X.col, y, { align: "right" });
+    doc.text(m.c.osde ? fmtPDF(m.c.osde) : "—", X.osde, y, { align: "right" });
+    doc.text(m.c.cm ? fmtPDF(m.c.cm) : "—", X.cem, y, { align: "right" });
+    doc.text(fmtPDF(m.base), X.hon, y, { align: "right" });
+    doc.text(pct(m.pct), X.pct, y, { align: "right" });
+    doc.setFont("helvetica", "bold");
+    doc.text(fmtPDF(m.ret), X.ret, y, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.text(fmtPDF(acum), X.acum - 1, y, { align: "right" });
+    y += 5.6;
   });
+  doc.setDrawColor(31, 58, 46); doc.line(LM, y - 3.2, RM, y - 3.2);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
+  doc.text("TOTAL", LM + 1, y + 1.5);
+  doc.text(fmtPDF(tCol), X.col, y + 1.5, { align: "right" });
+  doc.text(fmtPDF(tOs), X.osde, y + 1.5, { align: "right" });
+  doc.text(fmtPDF(tCem), X.cem, y + 1.5, { align: "right" });
+  doc.text(fmtPDF(baseTot), X.hon, y + 1.5, { align: "right" });
+  doc.setTextColor(31, 58, 46);
+  doc.text(fmtPDF(total), X.ret, y + 1.5, { align: "right" });
+  doc.setTextColor(0, 0, 0);
+  y += 9;
 
-  // Nota final
-  if (y > 268) { doc.addPage(); y = 20; }
-  y += 2;
-  doc.setFont("helvetica", "italic"); doc.setFontSize(7.5);
-  doc.setTextColor(120, 120, 120);
-  var nota = "Retención = honorarios del período (cheques Colón + OSDE + CEM) × el % del profesional, según la liquidación de cada mes; "
-    + "es el monto que se informa para Ganancias, esté o no ya acreditado el cheque en el banco. El mes en curso puede seguir subiendo a medida que se acrediten los cheques que faltan. "
-    + "Los meses sin importes cargados no figuran.";
+  doc.setFont("helvetica", "italic"); doc.setFontSize(6.8); doc.setTextColor(120, 120, 120);
+  var nota = "Retención = honorarios del período (Colón + OSDE + CEM) × % del profesional, según la liquidación de cada mes; es el monto que se informa para Ganancias, esté o no acreditado el cheque. "
+    + (hayCurso ? "* Mes en curso: puede seguir subiendo a medida que se acrediten los cheques que faltan. " : "")
+    + (cob ? "Cobertura: se usa lo ya acreditado más intereses de plazos fijos, menos los vencimientos ya pagados, contra lo que le toca de cada vencimiento (mismo cálculo que Reparto del fondo). "
+      + "Verde = cubierto · amarillo = se cubre cuando se acrediten los cheques pendientes · rojo = no cubierto · gris = ya pagado." : "");
+  if (y > 285) { doc.addPage(); y = 20; }
   doc.text(doc.splitTextToSize(nota, RM - LM), LM, y);
   doc.setTextColor(0, 0, 0);
 }
