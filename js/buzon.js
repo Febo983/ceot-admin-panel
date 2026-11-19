@@ -25,6 +25,7 @@ var buzonBusca = "";
 var buzonTimer = null;
 var buzonToastCerrado = "";     // firma del último cartel cerrado
 var buzonObserver = null;
+var buzonSolo = "";            // "sini" | "docs" cuando se entra por un link directo: muestra una sola sección
 
 function bzEsc(s) {
   return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -265,10 +266,11 @@ function bzPintar() {
       + ';background:' + (on ? '#1f3a2e' : 'var(--co-card,#fbf8f0)') + ';color:' + (on ? '#fff' : 'var(--co-ink,#20241f)') + ';font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit">'
       + txt + (cuenta ? ' <span style="background:#b13a2c;color:#fff;border-radius:10px;padding:0 7px;font-size:.66rem;margin-left:4px">' + cuenta + '</span>' : '') + '</button>';
   };
+  var titulo = buzonSolo === "sini" ? "🚑 Siniestros — REDSOM" : (buzonSolo === "docs" ? "📄 Contadora — PDFs por mes" : "📬 Buzón");
   var html = '<div style="padding:16px">'
     + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
-    +   '<div class="adm-sec-title" style="margin:0;border:none;padding:0">📬 Buzón</div>'
-    +   '<div style="display:flex;gap:6px;flex-wrap:wrap">' + tab("docs", "Contadora", n.docs) + tab("sini", "Siniestros", n.sini) + '</div>'
+    +   '<div class="adm-sec-title" style="margin:0;border:none;padding:0">' + titulo + '</div>'
+    +   (buzonSolo ? '' : '<div style="display:flex;gap:6px;flex-wrap:wrap">' + tab("docs", "Contadora", n.docs) + tab("sini", "Siniestros", n.sini) + '</div>')
     +   '<button style="' + BZ_BTN + ';margin-left:auto" onclick="renderBuzon(true)">↻ Actualizar</button>'
     + '</div>';
   if (buzonVista === "sini") {
@@ -299,6 +301,7 @@ function bzCambiarVista(v) {
 function bzMarcarVistoLuego(clave) { setTimeout(function () { bzMarcarVisto(clave); }, 4000); }
 
 async function renderBuzon(forzar) {
+  if (forzar === undefined) buzonSolo = "";   // entrar desde el mosaico = módulo completo; los links directos y los botones internos pasan true
   if (typeof cerrarAdmSidenav === "function") cerrarAdmSidenav();
   if (typeof admDesactivarSidebar === "function") admDesactivarSidebar();
   var cont = document.getElementById("adm-content");
@@ -406,3 +409,21 @@ function bzIniciar() {
   }
 }
 document.addEventListener("DOMContentLoaded", function () { setTimeout(bzIniciar, 1500); });
+
+// ── Links directos ─────────────────────────────────────────────────
+// ...?ir=siniestros  → solo la sección de REDSOM (Equipo Análisis de Siniestros)
+// ...?ir=contadora   → solo los PDFs de la contadora
+// ...?ir=buzon       → el módulo completo
+// Sin sesión, el panel pide el login y después de entrar abre directo esa pantalla.
+function buzonIrADesdeUrl() {
+  var q = "";
+  try { q = new URLSearchParams(location.search).get("ir") || ""; } catch (e) {}
+  if (!q && location.hash) q = location.hash.replace(/^#/, "");
+  q = q.toLowerCase();
+  if (q === "siniestros" || q === "redsom") { buzonSolo = "sini"; buzonVista = "sini"; }
+  else if (q === "contadora") { buzonSolo = "docs"; buzonVista = "docs"; }
+  else if (q === "buzon") { buzonSolo = ""; }
+  else return false;
+  renderBuzon(true);
+  return true;
+}
