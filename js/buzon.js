@@ -70,11 +70,12 @@ function bzEsNuevo(it, visto, clave) {
   return !desde || it.proc > desde;
 }
 function bzNuevos() {
-  var out = { docs: 0, sini: 0 };
+  var out = { docs: 0, sini: 0, liq: 0 };
   if (!buzonDatos) return out;
   var v = bzVisto();
   buzonDatos.docs.forEach(function (d) { if (bzEsNuevo(d, v, "docs")) out.docs++; });
   buzonDatos.sini.forEach(function (s) { if (bzEsNuevo(s, v, "sini")) out.sini++; });
+  (buzonDatos.liq || []).forEach(function (l) { if (bzEsNuevo(l, v, "liq")) out.liq++; });
   return out;
 }
 function bzMarcarVisto(clave) {
@@ -96,7 +97,9 @@ async function bzCargar() {
   var j = await bzPedir({ accion: "bzlista" });
   buzonDatos = j;
   // Primera vez en este navegador/cuenta: nada de lo ya cargado cuenta como nuevo.
-  if (!bzVisto()) bzGuardarVisto({ docs: j.ts, sini: j.ts });
+  var vv = bzVisto();
+  if (!vv) bzGuardarVisto({ docs: j.ts, sini: j.ts, liq: j.ts });
+  else if (!vv.liq) { vv.liq = j.ts; bzGuardarVisto(vv); }   // sección agregada después: lo que ya existía no cuenta como nuevo
   return j;
 }
 function bzBajarBlob(blob, nombre) {
@@ -256,6 +259,73 @@ function bzHtmlSini(v) {
   }).join("") + (casos.length > 120 ? '<div style="font-size:.7rem;color:var(--co-ink-dim,#6b6a5a)">Se muestran los 120 casos más recientes: usá el buscador para ver los demás.</div>' : '');
 }
 
+var BZ_LIQ_TIPOS = { FAC: "Factura al profesional", MCC: "Movimientos de cuenta corriente", DPR: "Detalle de prestaciones", DLQ: "Detalle de liquidación", DLA: "Detalle de liquidación ampliada" };
+var BZ_LIQ_ORDEN = ["FAC", "DLQ", "DLA", "DPR", "MCC"];
+function bzLiqMesLargo(per) { return bzMesLargo(String(per).slice(0, 4) + "-" + String(per).slice(4)); }
+
+function bzHtmlLiq(v) {
+  var items = buzonDatos.liq || [];
+  if (!items.length) return '<div style="font-size:.8rem;color:var(--co-ink-dim,#6b6a5a)">Todavía no hay archivos de liquidación cargados.</div>';
+  var porPer = {};
+  items.forEach(function (l) { (porPer[l.per] = porPer[l.per] || []).push(l); });
+  var pers = Object.keys(porPer).sort().reverse();
+  var abierto = true;
+  return pers.map(function (per) {
+    var lista = porPer[per];
+    var nuevos = lista.filter(function (l) { return bzEsNuevo(l, v, "liq"); }).length;
+    var tit = function (t) { return '<div style="font-size:.72rem;font-weight:800;color:var(--co-ink-dim,#6b6a5a);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">' + t + '</div>'; };
+    var col = function (cta, titulo) {
+      var fs = lista.filter(function (l) { return l.cta === cta; }).sort(function (a, b) { return BZ_LIQ_ORDEN.indexOf(a.tipo) - BZ_LIQ_ORDEN.indexOf(b.tipo); });
+      if (!fs.length) return '<div>' + tit(titulo) + '<div style="font-size:.72rem;color:var(--co-ink-dim,#6b6a5a)">Sin archivos todavía</div></div>';
+      return '<div>' + tit(titulo) + fs.map(function (l) {
+        var id = l.per + "|" + l.cta + "|" + l.tipo, nuevo = bzEsNuevo(l, v, "liq");
+        return '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-top:1px solid var(--co-line,#d9d0b8)">'
+          + '<span style="flex:1;min-width:0;font-size:.76rem;font-weight:600">' + bzEsc(BZ_LIQ_TIPOS[l.tipo] || l.tipo) + (nuevo ? bzPill("NUEVO", "#1f3a2e", "#fff") : "")
+          + ' <span style="font-weight:400;color:var(--co-ink-dim,#6b6a5a);font-size:.64rem">' + bzTam(l.bytes) + '</span></span>'
+          + '<a href="' + bzEsc(l.url) + '" target="_blank" rel="noopener" style="' + BZ_BTN + ';text-decoration:none">Abrir</a>'
+          + '<button style="' + BZ_BTN + '" onclick="bzBajarLiq(\'' + bzEsc(id) + '\', this)">⬇</button></div>';
+      }).join("") + '</div>';
+    };
+    var res = '<details ' + (abierto ? 'open' : '') + ' style="background:var(--co-card,#fbf8f0);border:1px solid var(--co-line,#d9d0b8);border-radius:10px;padding:10px 12px;margin-bottom:10px">'
+      + '<summary style="cursor:pointer;display:flex;align-items:center;gap:10px;flex-wrap:wrap;list-style:none">'
+      +   '<span style="font-size:.9rem;font-weight:800">' + bzLiqMesLargo(per) + '</span>'
+      +   '<span style="font-size:.7rem;color:var(--co-ink-dim,#6b6a5a)">' + lista.length + (lista.length === 1 ? ' archivo' : ' archivos') + '</span>'
+      +   (nuevos ? bzPill(nuevos + ' nuevo' + (nuevos > 1 ? 's' : ''), "#1f3a2e", "#fff") : "")
+      +   '<button style="' + BZ_BTN + ';margin-left:auto" onclick="event.preventDefault();event.stopPropagation();bzBajarMesLiq(\'' + bzEsc(per) + '\', this)">⬇ Bajar el mes (ZIP)</button>'
+      + '</summary>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:8px">' + col("9042P", "Individual") + col("9008G", "Grupal") + '</div></details>';
+    abierto = false;
+    return res;
+  }).join("");
+}
+
+async function bzBajarLiq(id, btn) {
+  var txt = btn ? btn.textContent : "";
+  if (btn) { btn.disabled = true; btn.textContent = "…"; }
+  try {
+    var j = await bzPedir({ accion: "bzliq", id: id });
+    bzBajarBlob(bzB64Blob(j.b64, j.mime), j.name);
+  } catch (e) { alert("No se pudo bajar el archivo: " + e.message); }
+  if (btn) { btn.disabled = false; btn.textContent = txt; }
+}
+async function bzBajarMesLiq(per, btn) {
+  var txt = btn ? btn.textContent : "";
+  if (btn) { btn.disabled = true; btn.textContent = "Armando ZIP…"; }
+  try {
+    await bzCargarJSZip();
+    var fs = (buzonDatos.liq || []).filter(function (l) { return l.per === per; });
+    if (!fs.length) throw new Error("no hay archivos en ese mes");
+    var zip = new JSZip();
+    for (var i = 0; i < fs.length; i++) {
+      if (btn) btn.textContent = "Bajando " + (i + 1) + "/" + fs.length + "…";
+      var j = await bzPedir({ accion: "bzliq", id: fs[i].per + "|" + fs[i].cta + "|" + fs[i].tipo });
+      zip.file((fs[i].cta === "9008G" ? "Grupal/" : "Individual/") + j.name, j.b64, { base64: true });
+    }
+    bzBajarBlob(await zip.generateAsync({ type: "blob" }), "Liquidacion_" + per + ".zip");
+  } catch (e) { alert("No se pudo armar el ZIP: " + e.message); }
+  if (btn) { btn.disabled = false; btn.textContent = txt; }
+}
+
 function bzPintar() {
   var cont = document.getElementById("adm-content");
   if (!cont) return;
@@ -266,11 +336,11 @@ function bzPintar() {
       + ';background:' + (on ? '#1f3a2e' : 'var(--co-card,#fbf8f0)') + ';color:' + (on ? '#fff' : 'var(--co-ink,#20241f)') + ';font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit">'
       + txt + (cuenta ? ' <span style="background:#b13a2c;color:#fff;border-radius:10px;padding:0 7px;font-size:.66rem;margin-left:4px">' + cuenta + '</span>' : '') + '</button>';
   };
-  var titulo = buzonSolo === "sini" ? "🚑 Siniestros — REDSOM" : (buzonSolo === "docs" ? "📄 Contadora — PDFs por mes" : "📬 Buzón");
+  var titulo = buzonSolo === "sini" ? "🚑 Siniestros — REDSOM" : (buzonSolo === "docs" ? "📄 Contadora — PDFs por mes" : (buzonSolo === "liq" ? "🏥 Liquidación Clínica Colón" : "📬 Buzón"));
   var html = '<div style="padding:16px">'
     + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">'
     +   '<div class="adm-sec-title" style="margin:0;border:none;padding:0">' + titulo + '</div>'
-    +   (buzonSolo ? '' : '<div style="display:flex;gap:6px;flex-wrap:wrap">' + tab("docs", "Contadora", n.docs) + tab("sini", "Siniestros", n.sini) + '</div>')
+    +   (buzonSolo ? '' : '<div style="display:flex;gap:6px;flex-wrap:wrap">' + tab("docs", "Contadora", n.docs) + tab("sini", "Siniestros", n.sini) + tab("liq", "Liquidación Clínica", n.liq) + '</div>')
     +   '<button style="' + BZ_BTN + ';margin-left:auto" onclick="renderBuzon(true)">↻ Actualizar</button>'
     + '</div>';
   if (buzonVista === "sini") {
@@ -279,6 +349,9 @@ function bzPintar() {
       + '<label style="font-size:.76rem;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" ' + (buzonSoloNuevos ? 'checked' : '') + ' onchange="bzSoloNuevos(this.checked)"> Solo con novedades</label>'
       + '</div>'
       + '<div id="bzLista">' + bzHtmlSini(v) + '</div>';
+  } else if (buzonVista === "liq") {
+    html += '<div style="font-size:.72rem;color:var(--co-ink-dim,#6b6a5a);margin-bottom:10px">Archivos de "Liquidación actual" de coloncc.com.ar, individual (CEOT) y grupal, por mes. Se actualizan solos cuando la clínica los sube.</div>'
+      + '<div id="bzLista">' + bzHtmlLiq(v) + '</div>';
   } else {
     html += '<div style="font-size:.72rem;color:var(--co-ink-dim,#6b6a5a);margin-bottom:10px">PDFs que manda la contadora, ordenados por el período del asunto (o por el mes en que llegaron si el asunto no lo dice).</div>'
       + '<div id="bzLista">' + bzHtmlDocs(v) + '</div>';
@@ -323,8 +396,10 @@ async function renderBuzon(forzar) {
 }
 
 // ── Alertas ───────────────────────────────────────────────────────
+// En un link directo (una sola sección) solo cuenta lo de esa sección.
+function bzTotal(n) { return buzonSolo ? (n[buzonSolo] || 0) : n.docs + n.sini + n.liq; }
 function bzActualizarAvisos() {
-  var n = bzNuevos(), total = n.docs + n.sini;
+  var n = bzNuevos(), total = bzTotal(n);
   // Título de la pestaña
   var base = document.title.replace(/^\(\d+\)\s*/, "");
   document.title = total ? "(" + total + ") " + base : base;
@@ -345,8 +420,8 @@ function bzPintarBadges(total) {
 }
 function bzToast(n) {
   var viejo = document.getElementById("bzToast");
-  var total = n.docs + n.sini;
-  var firma = n.docs + "/" + n.sini;
+  var total = bzTotal(n);
+  var firma = n.docs + "/" + n.sini + "/" + n.liq;
   var adm = document.getElementById("adminView");
   var visible = adm && getComputedStyle(adm).display !== "none";
   var enBuzon = !!document.getElementById("bzLista");
@@ -355,6 +430,7 @@ function bzToast(n) {
   var partes = [];
   if (n.sini) partes.push(n.sini + (n.sini === 1 ? " mensaje nuevo" : " mensajes nuevos") + " de Siniestros");
   if (n.docs) partes.push(n.docs + (n.docs === 1 ? " PDF nuevo" : " PDFs nuevos") + " de la contadora");
+  if (n.liq) partes.push(n.liq + (n.liq === 1 ? " archivo nuevo" : " archivos nuevos") + " de la liquidación de la clínica");
   var t = document.createElement("div");
   t.id = "bzToast";
   t.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:9999;max-width:320px;background:#1f3a2e;color:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.3);font-family:inherit;display:flex;gap:10px;align-items:flex-start";
@@ -369,7 +445,7 @@ function bzCerrarToast(firma) {
 }
 function bzIrDesdeToast() {
   var n = bzNuevos();
-  buzonVista = n.sini ? "sini" : "docs";
+  buzonVista = n.sini ? "sini" : (n.docs ? "docs" : "liq");
   var t = document.getElementById("bzToast"); if (t) t.remove();
   renderBuzon(true);
 }
@@ -401,7 +477,7 @@ function bzIniciar() {
       if (pend) return;
       pend = setTimeout(function () {
         pend = null;
-        if (buzonDatos && !document.querySelector("[data-bz-badge]")) { var n = bzNuevos(); bzPintarBadges(n.docs + n.sini); }
+        if (buzonDatos && !document.querySelector("[data-bz-badge]")) { var n = bzNuevos(); bzPintarBadges(bzTotal(n)); }
       }, 400);
     });
     var ac = document.getElementById("adm-content");
@@ -413,6 +489,7 @@ document.addEventListener("DOMContentLoaded", function () { setTimeout(bzIniciar
 // ── Links directos ─────────────────────────────────────────────────
 // ...?ir=siniestros  → solo la sección de REDSOM (Equipo Análisis de Siniestros)
 // ...?ir=contadora   → solo los PDFs de la contadora
+// ...?ir=liquidacion → solo la liquidación de la clínica (individual y grupal)
 // ...?ir=buzon       → el módulo completo
 // Sin sesión, el panel pide el login y después de entrar abre directo esa pantalla.
 function buzonIrADesdeUrl() {
@@ -422,6 +499,7 @@ function buzonIrADesdeUrl() {
   q = q.toLowerCase();
   if (q === "siniestros" || q === "redsom") { buzonSolo = "sini"; buzonVista = "sini"; }
   else if (q === "contadora") { buzonSolo = "docs"; buzonVista = "docs"; }
+  else if (q === "liquidacion" || q === "liquidaciones") { buzonSolo = "liq"; buzonVista = "liq"; }
   else if (q === "buzon") { buzonSolo = ""; }
   else return false;
   buzonModoSolo(!!buzonSolo);
