@@ -27,7 +27,7 @@ var ACCESOS_DATA = [
   { id:9,  cat:"mes", title:"CC CEM MDP",               desc:"Sistema privado del Centro Médico MDP",                     url:"https://privado.centromedicomdp.org.ar/" },
   { id:10, cat:"clinica", title:"Programación CX (Sheet)",  desc:"Calendario de cirugías — Google Sheets",                    url:"https://docs.google.com/spreadsheets/d/1VYIarOpfCgqinj5Uy2dAYCSsx6c5GL9J7YbAYKvCbdk/edit?usp=sharing" },
   { id:12, cat:"clinica", title:"Generador de Órdenes CX", desc:"PDFs de órdenes de cirugía con sello del médico",            url:"https://febo983.github.io/generador-de-ordenes-ceot/" },
-  { id:15, cat:"clinica", title:"Evoluciones",              desc:"Registro de evoluciones clínicas CEOT",                     url:"https://evoluciones-ceot.netlify.app/" },
+  { id:15, cat:"clinica", title:"Evoluciones",              desc:"Registro de evoluciones clínicas CEOT",                     url:"https://ceot-dictado.netlify.app/" },
   { id:16, cat:"clinica", title:"Cirugías Programadas",     desc:"Agenda de cirugías programadas",                            url:"https://cirugias-progamadas.netlify.app/" },
   { id:19, cat:"clinica", title:"Estadísticas CX 26 v2",    desc:"Estadísticas de cirugías CEOT 2026 — versión actualizada", url:"https://ceot-estadisticas-cx-26.netlify.app/" },
   // ── Administración
@@ -150,6 +150,12 @@ function accCargarCustom() {
       // Acceso #36 "Premios por Desempeño" se retiró del código (quedó sólo el
       // tile del módulo en Gestión) — sacarlo también de lo ya guardado en localStorage.
       saved = saved.filter(function(a) { return a.id !== 36; });
+      // 19/11/2026: el link viejo de Evoluciones (evoluciones-ceot.netlify.app) quedó huérfano — la cuenta
+      // real es ceot-dictado.netlify.app. Se corrige también lo ya guardado (solo si sigue siendo el viejo).
+      var evoViejo = false;
+      saved.forEach(function(a) {
+        if (a.id === 15 && /evoluciones-ceot\.netlify\.app/.test(a.url || "")) { a.url = "https://ceot-dictado.netlify.app/"; evoViejo = true; }
+      });
       // Agregar defaults que no estén en el localStorage (nuevos accesos agregados en el código)
       var savedIds = saved.map(function(a) { return a.id; });
       ACCESOS_DATA.forEach(function(def) {
@@ -159,6 +165,7 @@ function accCargarCustom() {
         if (def.fn) saved[idx].fn = def.fn; else delete saved[idx].fn;
       });
       ACCESOS_DATA = saved;
+      if (evoViejo) accGuardarTodo();   // lo sube al guardado compartido si la sesión es admin
       accNextId = Math.max.apply(null, ACCESOS_DATA.map(function(a){return a.id;}))+1;
       return;
     }
