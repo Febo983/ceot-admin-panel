@@ -3,7 +3,7 @@
 // (solo admin). Pedido de Marcelo, 19/11/2026.
 //
 //   · estRepProfesionalPdf(key|"todos") — una hoja A4 por profesional:
-//       consultas, turnos asignados, cirugías y % de consultas que terminan
+//       consultas, cirugías y % de consultas que terminan
 //       en cirugía, mes a mes y total 2026.
 //   · estRepRankingSecretariasPdf()     — ranking mensual de secretarias
 //       (turnos asignados + atenciones en ventanilla), y el acumulado 2026.
@@ -42,14 +42,13 @@ function estRepEncabezado(doc, subtitulo) {
 function estRepDatosProfesional(key) {
   var cons = estConsMatriz2026()[key] || [];
   var cx = estCxMatriz2026()[key] || [];
-  var tur = (estSecDatos("turnos").prof[key]) || [];
   var meses = [];
   for (var m = 0; m < 12; m++) {
-    if (cons[m] != null || cx[m] != null || tur[m] != null) meses.push(m);
+    if (cons[m] != null || cx[m] != null) meses.push(m);
   }
-  var out = { key: key, meses: meses, cons: cons, cx: cx, tur: tur, sc: 0, sx: 0, tc: 0, tt: 0, tx: 0 };
+  var out = { key: key, meses: meses, cons: cons, cx: cx, sc: 0, sx: 0, tc: 0, tx: 0 };
   meses.forEach(function (m) {
-    out.tc += cons[m] || 0; out.tt += tur[m] || 0; out.tx += cx[m] || 0;
+    out.tc += cons[m] || 0; out.tx += cx[m] || 0;
     // El % se calcula solo sobre los meses que tienen consultas cargadas, para
     // no dividir cirugías de un mes por consultas de un mes que falta.
     if (cons[m]) { out.sc += cons[m]; out.sx += cx[m] || 0; }
@@ -76,23 +75,22 @@ function estRepPintarProfesional(doc, md) {
     return;
   }
 
-  // Cuatro cajas: consultas | turnos | cirugías | % cx
+  // Tres cajas: consultas | cirugías | % cx
   y += 6;
   var pctTotal = d.sc ? d.sx / d.sc : null;
   var cajas = [
     { t: "CONSULTAS", v: estRepN(d.tc), s: d.meses.length + (d.meses.length === 1 ? " mes" : " meses") + " cargados" },
-    { t: "TURNOS ASIGNADOS", v: d.tt ? estRepN(d.tt) : "—", s: "por las secretarias" },
     { t: "CIRUGÍAS", v: estRepN(d.tx), s: "en el período" },
     { t: "CONSULTAS QUE TERMINAN EN CX", v: pctTotal == null ? "—" : estPct(pctTotal), s: pctTotal ? "1 cirugía cada " + Math.round(d.sc / d.sx) + " consultas" : "sin cirugías" }
   ];
-  var bw = (RM - LM - 9) / 4;
+  var bw = (RM - LM - 6) / 3;
   cajas.forEach(function (c, i) {
     var x0 = LM + i * (bw + 3);
     doc.setDrawColor(210, 205, 190); doc.setFillColor(244, 242, 236);
     doc.roundedRect(x0, y, bw, 27, 2, 2, "FD");
     doc.setFont("helvetica", "normal"); doc.setFontSize(6.3); doc.setTextColor(90, 90, 90);
     doc.text(doc.splitTextToSize(c.t, bw - 6), x0 + 3, y + 5.5);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(i === 3 ? 15 : 16); doc.setTextColor(EST_REP_VERDE[0], EST_REP_VERDE[1], EST_REP_VERDE[2]);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(17); doc.setTextColor(EST_REP_VERDE[0], EST_REP_VERDE[1], EST_REP_VERDE[2]);
     doc.text(c.v, x0 + 3, y + 16);
     doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
     doc.text(c.s, x0 + 3, y + 22.5);
@@ -101,14 +99,13 @@ function estRepPintarProfesional(doc, md) {
   y += 36;
 
   // Tabla mes a mes
-  var X = { cons: 85, tur: 115, cx: 145, pct: 175, bar: 195 };
+  var X = { cons: 105, cx: 140, pct: 172 };
   doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(EST_REP_VERDE[0], EST_REP_VERDE[1], EST_REP_VERDE[2]);
   doc.text("Mes a mes", LM, y);
   y += 4.5;
   doc.setFontSize(7.5); doc.setTextColor(90, 90, 90);
   doc.text("Mes", LM + 1, y);
   doc.text("Consultas", X.cons, y, { align: "right" });
-  doc.text("Turnos asignados", X.tur, y, { align: "right" });
   doc.text("Cirugías", X.cx, y, { align: "right" });
   doc.text("% consultas a cx", X.pct + 8, y, { align: "right" });
   doc.setDrawColor(EST_REP_VERDE[0], EST_REP_VERDE[1], EST_REP_VERDE[2]); doc.line(LM, y + 1.8, RM, y + 1.8);
@@ -119,7 +116,6 @@ function estRepPintarProfesional(doc, md) {
     doc.setFont("helvetica", "normal"); doc.setFontSize(8.6);
     doc.text(estCap(EST_MESES[m]), LM + 1, y);
     doc.text(estRepN(d.cons[m]), X.cons, y, { align: "right" });
-    doc.text(estRepN(d.tur[m]), X.tur, y, { align: "right" });
     doc.text(estRepN(d.cx[m]), X.cx, y, { align: "right" });
     var p = (d.cons[m] && d.cx[m] != null) ? estPct(d.cx[m] / d.cons[m]) : "—";
     doc.setFont("helvetica", "bold");
@@ -130,7 +126,6 @@ function estRepPintarProfesional(doc, md) {
   doc.setFont("helvetica", "bold"); doc.setFontSize(8.8);
   doc.text("TOTAL 2026", LM + 1, y + 1.5);
   doc.text(estRepN(d.tc), X.cons, y + 1.5, { align: "right" });
-  doc.text(d.tt ? estRepN(d.tt) : "—", X.tur, y + 1.5, { align: "right" });
   doc.text(estRepN(d.tx), X.cx, y + 1.5, { align: "right" });
   doc.setTextColor(EST_REP_VERDE[0], EST_REP_VERDE[1], EST_REP_VERDE[2]);
   doc.text(pctTotal == null ? "—" : estPct(pctTotal), X.pct + 8, y + 1.5, { align: "right" });
@@ -138,10 +133,8 @@ function estRepPintarProfesional(doc, md) {
   y += 10;
 
   doc.setFont("helvetica", "italic"); doc.setFontSize(6.8); doc.setTextColor(120, 120, 120);
-  var primTur = null;
-  d.meses.forEach(function (m) { if (primTur == null && d.tur[m] != null) primTur = m; });
   var nota = "% consultas a cx = cirugías ÷ consultas del mismo período. En un mes suelto puede distorsionar (un paciente consulta a fin de un mes y se opera a principios del siguiente); "
-    + "el TOTAL compensa ese corrimiento y es el dato más representativo. Turnos asignados = turnos cargados en su agenda por las secretarias" + (primTur != null ? " (se miden desde " + EST_MESES[primTur] + ")" : "") + ". \"—\" = mes sin dato cargado.";
+    + "el TOTAL compensa ese corrimiento y es el dato más representativo. \"—\" = mes sin dato cargado.";
   doc.text(doc.splitTextToSize(nota, RM - LM), LM, y);
   doc.setTextColor(0, 0, 0);
 }
@@ -298,7 +291,7 @@ function estRepControlesHtml() {
     + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
     +   '<span style="font-size:0.74rem;font-weight:700">Reporte por profesional</span>'
     +   '<select id="estRepProf" style="padding:6px 8px;border:1px solid var(--co-line,#d9d0b8);border-radius:8px;font-size:0.78rem;font-family:inherit">' + opts + '</select>'
-    +   '<button onclick="estRepProfesionalPdf(document.getElementById(\'estRepProf\').value)" title="Consultas, turnos, cirugías y % de consultas que terminan en cirugía, mes a mes" style="' + e + '">⬇ PDF</button>'
+    +   '<button onclick="estRepProfesionalPdf(document.getElementById(\'estRepProf\').value)" title="Consultas, cirugías y % de consultas que terminan en cirugía, mes a mes" style="' + e + '">⬇ PDF</button>'
     + '</div>'
     + '<div style="display:flex;gap:6px;align-items:center">'
     +   '<span style="font-size:0.74rem;font-weight:700">Secretarias</span>'
