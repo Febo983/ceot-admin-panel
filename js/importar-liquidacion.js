@@ -51,6 +51,7 @@ function abrirImportModal() {
   actualizarMesColonAuto();
   cmMesAutoSeleccionar();
   gastosExtraDefaultCargar();
+  if (typeof gdInicializarForm === 'function') gdInicializarForm();
   impChequesHistCargar();
   // El Fondo CEOT se escribe desde acá (procesarArchivosImport) pero se
   // mostraba solo en Sueldo Director, así que esta pantalla nunca lo cargaba:

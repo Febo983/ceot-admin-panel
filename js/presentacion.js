@@ -903,7 +903,7 @@ function presPerfilCard(titulo, canvasId, footHtml, h) {
 // mostrar "cobertura parcial: faltan N meses" en vez de un número pelado).
 function presPerfilMesesEsperados() {
   var d = new Date();
-  return (d.getFullYear() === 2026) ? (d.getMonth() + 1) : 12;
+  return (d.getFullYear() >= 2026) ? (d.getMonth() + 1) : 12;
 }
 
 // Arma los datos del bloque: en vivo si ya hay al menos un mes importado con

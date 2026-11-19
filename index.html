@@ -2450,28 +2450,29 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/portal-render.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/backup.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/admin-home.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/gastos-obra.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/coberturas.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/presentacion.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/sueldo-b.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/dla.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/redsom.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/nun-data.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/accesos-debitos.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/estadisticas.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/estadisticas-secretarias.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/estadisticas-export.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/gastos-casa.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/faq-asistente.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/asistente.js?v=2026-11-18-cpsm-fijo"></script>
-<script src="js/correos.js?v=2026-11-18-cpsm-fijo"></script>
+<script src="js/datos.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/portal-render.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/backup.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/admin-home.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/gastos-obra.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/coberturas.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/presentacion.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/sueldo-b.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/gasto-destiempo.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/dla.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/redsom.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/nun-data.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/accesos-debitos.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/estadisticas.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/estadisticas-secretarias.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/estadisticas-export.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/gastos-casa.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/faq-asistente.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/asistente.js?v=2026-11-19-gasto-destiempo-2027"></script>
+<script src="js/correos.js?v=2026-11-19-gasto-destiempo-2027"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -2588,9 +2589,14 @@ function voiceBuscarDoctor(t) {
 
 var VOICE_MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
+// Devuelve el id de período: "agosto" (2026) o "enero2027" si la frase dice 2027 / "27".
 function voiceBuscarMes(t) {
   for (var m = 0; m < VOICE_MESES.length; m++) {
-    if (t.indexOf(VOICE_MESES[m]) !== -1) return VOICE_MESES[m];
+    if (t.indexOf(VOICE_MESES[m]) !== -1) {
+      var id2027 = VOICE_MESES[m] + '2027';
+      var dice2027 = /2027|veintisiete|27/.test(t);
+      return (dice2027 && PERIODOS_TODOS.indexOf(id2027) !== -1) ? id2027 : VOICE_MESES[m];
+    }
   }
   return null;
 }
@@ -2768,10 +2774,11 @@ function voiceEjecutarComando(transcript) {
   }
 
   // 7) Navegación por mes ("llevame a agosto", "mostrame julio")
+  var vMes = voiceBuscarMes(t);
   for (var m = 0; m < VOICE_MESES.length; m++) {
-    if (t.indexOf(VOICE_MESES[m]) !== -1) {
-      renderAdminPanelPage(VOICE_MESES[m]);
-      var resp = "Mostrando " + VOICE_MESES[m];
+    if (vMes && t.indexOf(VOICE_MESES[m]) !== -1) {
+      renderAdminPanelPage(vMes);
+      var resp = "Mostrando " + periodoNombre(vMes);
       voiceHablar(resp);
       voiceMostrarEstado('🎙️ "' + transcript + '" → ' + resp);
       return;
@@ -8234,6 +8241,28 @@ async function restaurarAporteCeotPct() {
       </div>
       <button class="imp-btn-gray" onclick="gastosExtraAbrirFormNuevo()" style="margin-top:8px">+ Agregar gasto nuevo</button>
 
+      <!-- Gasto a destiempo: se carga después de importar, sin volver a subir archivos. -->
+      <hr class="imp-sep">
+      <div class="imp-sec-title">Gasto a destiempo <span style="color:rgba(32,36,31,.35);font-weight:400;text-transform:none;letter-spacing:0">(un monto por profesional, se descuenta de todos los cheques Colón que falten acreditar)</span></div>
+      <div class="imp-field">
+        <label class="imp-label">Concepto</label>
+        <input type="text" id="gdConcepto" class="imp-input" placeholder="Ej. Reparación equipo">
+      </div>
+      <div class="imp-field">
+        <label class="imp-label">Monto a descontar a cada profesional (dejá vacío a quien no corresponde)</label>
+        <div id="gdSocios" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px"></div>
+      </div>
+      <div class="imp-field">
+        <label class="imp-label">Descontar de cheques con fecha posterior a</label>
+        <input type="date" id="gdCorte" class="imp-input" style="max-width:170px" onchange="gdInvalidarPlan()">
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="imp-btn-blue" onclick="gdPrevisualizar()">Ver vista previa</button>
+        <button class="imp-btn-primary" id="gdBtnAplicar" style="display:none" onclick="gdAplicar()">✓ Descontar en la planilla</button>
+      </div>
+      <div id="gdMsg" style="font-size:.72rem;margin-top:8px"></div>
+      <div id="gdHistorial"></div>
+
       <!-- STEP 2 — visible tras procesar -->
       <div id="impStep2" style="display:none">
         <hr class="imp-sep">
@@ -8500,7 +8529,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-17-agenda-hoy-titila';
+  var CURRENT_BUILD = '2026-11-19-gasto-destiempo-2027';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
