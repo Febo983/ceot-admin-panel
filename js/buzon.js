@@ -424,6 +424,31 @@ function buzonIrADesdeUrl() {
   else if (q === "contadora") { buzonSolo = "docs"; buzonVista = "docs"; }
   else if (q === "buzon") { buzonSolo = ""; }
   else return false;
+  buzonModoSolo(!!buzonSolo);
   renderBuzon(true);
   return true;
+}
+
+// Modo "solo esta pantalla": con un link directo (?ir=siniestros / ?ir=contadora) el panel
+// queda reducido a esa sección — sin menú, mes a mes, módulos, importar, checklist, voz ni
+// botón Inicio. Queda el título y "Salir". Hasta el refresco automático de la home se desvía
+// a la misma pantalla para que no saque al usuario de ahí.
+var _bzRenderAdmHomeOrig = null;
+function buzonModoSolo(on) {
+  var st = document.getElementById("bzKioskCss");
+  if (on && !st) {
+    st = document.createElement("style");
+    st.id = "bzKioskCss";
+    st.textContent = "body.buzon-kiosk #adminView .adm-header > div:last-child > *:not(#adminLogoutBtn){display:none!important}"
+      + "body.buzon-kiosk .adm-sidenav,body.buzon-kiosk .adm-sidenav-overlay,body.buzon-kiosk .adm-tabs,body.buzon-kiosk .adm-footer,"
+      + "body.buzon-kiosk #voiceFab,body.buzon-kiosk #voiceHandsFreeBtn,body.buzon-kiosk #voiceStatus,body.buzon-kiosk #endpointStatusBanner,"
+      + "body.buzon-kiosk #admHomeBtn,body.buzon-kiosk #admHamburgerBtn{display:none!important}"
+      + "body.buzon-kiosk .adm-layout{display:block!important}";
+    document.head.appendChild(st);
+  }
+  document.body.classList.toggle("buzon-kiosk", !!on);
+  if (on && !_bzRenderAdmHomeOrig && typeof window.renderAdmHome === "function") {
+    _bzRenderAdmHomeOrig = window.renderAdmHome;
+    window.renderAdmHome = function () { if (document.body.classList.contains("buzon-kiosk")) renderBuzon(true); else _bzRenderAdmHomeOrig(); };
+  }
 }
