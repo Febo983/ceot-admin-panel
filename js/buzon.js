@@ -240,7 +240,7 @@ function bzHtmlSini(v) {
         return '<button style="' + BZ_BTN + ';margin:3px 6px 0 0;font-weight:600" onclick="bzBajarAdj(\'' + bzEsc(m.msg) + '\',' + a.i + ', this)" title="' + bzEsc(a.n) + '">📎 ' + bzEsc(a.n.length > 34 ? a.n.slice(0, 31) + '…' : a.n) + ' · ' + bzTam(a.s) + '</button>';
       }).join("");
       return '<div style="padding:8px 0;border-top:1px solid var(--co-line,#d9d0b8)">'
-        + '<div style="font-size:.66rem;color:var(--co-ink-dim,#6b6a5a)">' + bzFecha(m.fecha) + ' · ' + bzEsc(String(m.de).replace(/<.*$/, "").trim() || m.de) + (nuevo ? bzPill("NUEVO", "#b13a2c", "#fff") : "") + '</div>'
+        + '<div style="font-size:.66rem;color:var(--co-ink-dim,#6b6a5a)">' + bzFecha(m.fecha) + ' · ' + bzEsc(String(m.de).replace(/<.*$/, "").trim() || m.de) + (nuevo ? bzPill("NUEVO", "#b13a2c", "#fff") : "") + (m.urg ? bzPill("URGENTE", "#8a1f11", "#fff") : "") + '</div>'
         + '<div style="font-size:.78rem;white-space:pre-wrap;word-break:break-word;margin-top:3px">' + bzEsc(m.cuerpo) + '</div>'
         + (adj ? '<div>' + adj + '</div>' : '')
         + '</div>';
@@ -250,6 +250,7 @@ function bzHtmlSini(v) {
       +   '<span style="font-size:.86rem;font-weight:800">' + bzEsc(c.paciente || c.asunto) + '</span>'
       +   (c.dni ? '<span style="font-size:.7rem;color:var(--co-ink-dim,#6b6a5a)">DNI ' + bzEsc(c.dni) + '</span>' : '')
       +   (c.nuevos ? bzPill(c.nuevos + ' nuevo' + (c.nuevos > 1 ? 's' : ''), "#b13a2c", "#fff") : "")
+      +   (c.msgs.some(function (m) { return m.urg; }) ? bzPill("URGENTE", "#8a1f11", "#fff") : "")
       +   '<span style="margin-left:auto;font-size:.66rem;color:var(--co-ink-dim,#6b6a5a)">' + bzFecha(c.ultima) + ' · ' + c.msgs.length + (c.msgs.length === 1 ? ' mensaje' : ' mensajes') + '</span>'
       + '</summary>'
       + '<div style="font-size:.68rem;color:var(--co-ink-dim,#6b6a5a);margin-top:4px">' + bzEsc(c.asunto) + '</div>'
