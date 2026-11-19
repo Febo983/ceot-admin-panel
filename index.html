@@ -2450,29 +2450,30 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/portal-render.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/backup.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/admin-home.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/gastos-obra.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/coberturas.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/presentacion.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/sueldo-b.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/gasto-destiempo.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/dla.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/redsom.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/nun-data.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/accesos-debitos.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/estadisticas.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/estadisticas-secretarias.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/estadisticas-export.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/gastos-casa.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/faq-asistente.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/asistente.js?v=2026-11-19-redsom-imprimir"></script>
-<script src="js/correos.js?v=2026-11-19-redsom-imprimir"></script>
+<script src="js/datos.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/portal-render.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/backup.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/admin-home.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/gastos-obra.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/coberturas.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/presentacion.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/sueldo-b.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/gasto-destiempo.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/retencion-reporte.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/dla.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/redsom.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/nun-data.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/accesos-debitos.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/estadisticas.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/estadisticas-secretarias.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/estadisticas-export.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/gastos-casa.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/faq-asistente.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/asistente.js?v=2026-11-19-retencion-reporte-individual"></script>
+<script src="js/correos.js?v=2026-11-19-retencion-reporte-individual"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -4026,7 +4027,7 @@ async function renderAporteCeot() {
       + '<div style="font-size:.65rem;color:rgba(32,36,31,.35);padding:6px 2px 0 2px">⚑ Mientras un mes esté abierto, sus montos se recalculan solos con el % vigente de cada profesional (y con los importes que vayas cargando). "Cerrar mes" guarda una foto del % de ese momento — de ahí en más ese mes ya no se mueve aunque después cambies porcentajes. "Reabrir" vuelve a usar el % vigente. Los montos mostrados (y el ACUMULADO) son los devengados de la liquidación: la retención entera del período, esté o no acreditado todavía cada cheque en el banco — es el número que va al contador para Ganancias. TOTAL REAL suma además los intereses ya generados por los plazos fijos de la sección Inversiones.</div>'
       + '<div class="cpsm-btn-row" style="margin-top:10px">'
       +   '<button class="cpsm-dl-btn" style="display:inline-block" onclick="actionFeedback(this); descargarPDFAporteCeot()">⬇ Descargar PDF — detalle y total</button>'
-      + '</div>';
+      + '</div>' + retRepControlesHtml();
   }
 
   // ── Links de inversión: donde se va a invertir el fondo Retención Ganancias ──
@@ -8529,7 +8530,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-19-redsom-imprimir';
+  var CURRENT_BUILD = '2026-11-19-retencion-reporte-individual';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
