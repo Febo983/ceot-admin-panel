@@ -406,7 +406,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
       else if (cpsmAmt) { cpsmLineAmt = cpsmAmt; descPartes.push('<span style="color:#b13a2c">CPSM −' + fmt(cpsmAmt) + '</span>'); }
     }
     var retCheq = pctApCheq ? Math.round(monto * pctApCheq) : 0;
-    if (retCheq) descPartes.push('<span style="color:#b13a2c">ret. ' + (pctApCheq*100) + '% −' + fmt(retCheq) + '</span>');
+    if (retCheq) descPartes.push('<span style="color:#b13a2c">ret. ' + pctRetTxt(pctApCheq) + ' −' + fmt(retCheq) + '</span>');
 
     var tieneDesc = (idx === 0 && prestamoIndCheq) || retCheq || iibbLineAmt || cpsmLineAmt;
     var amtHtml = fmt(monto);
@@ -482,7 +482,7 @@ function renderIndividual(rawData, fechas, periodo, containerId, doctor) {
       var montoAp = Math.round(baseAp * pctAp);
       html += '<div class="cl-row cl-sep-row cl-neg">'
         + '<span class="cl-date">—</span>'
-        + '<span class="cl-lbl">Retención Ganancias (' + (pctAp*100) + '%)</span>'
+        + '<span class="cl-lbl">Retención Ganancias (' + pctRetTxt(pctAp) + ')</span>'
         + '<span class="cl-amt">−' + fmt(montoAp) + '</span>'
         + '</div>';
     } else if (pctAp === null || pctAp === undefined) {
@@ -948,7 +948,7 @@ function renderHistorial(doctor) {
       totalDesc += c.prestamoCasa;
     }
     if (c.aporteCeot > 0) {
-      descLineas.push('<div class="hist-dline"><span class="hist-dline-lbl">Retención Ganancias (' + (c.pctAporte*100) + '%)</span><span class="hist-dline-val neg">−' + fmt(c.aporteCeot) + '</span></div>');
+      descLineas.push('<div class="hist-dline"><span class="hist-dline-lbl">Retención Ganancias (' + pctRetTxt(c.pctAporte) + ')</span><span class="hist-dline-val neg">−' + fmt(c.aporteCeot) + '</span></div>');
       totalDesc += c.aporteCeot;
       var retItems = retencionPorAcreditacion(c);
       if (retItems.length > 1) {

@@ -2122,11 +2122,30 @@ function incidenciaPctNecesario(e, bases, fijos) {
 }
 
 // Sobra / falta de cada mes POR SEPARADO, en pesos (pedido de Marcelo,
-// 20/11/2026, con el 15% fijo): retención que entra ese mes con el % vigente
-// (% × base mensual estimada + cheques ya devengados sin acreditar) menos lo
-// que vence ese mes. No arrastra saldo: es el flujo del mes. El primer mes del
-// calendario no tiene retención que lo pague (sale de lo ya acumulado), por eso
-// va con "—". Mismo modelo que "Cobertura mes a mes" (incidenciaBasesFuturas).
+// 20/11/2026, con el 15% fijo): la retención COMPLETA de un mes menos el
+// vencimiento que paga, que es el del mes siguiente. No arrastra saldo: es el
+// flujo del mes.
+// Retención completa del mes (no "lo que falta acreditar", que es lo que usa la
+// proyección de saldos, porque ahí lo acreditado ya está en el Acumulado):
+//   - meses ya pasados: la real de la liquidación (c.aporteCeot);
+//   - mes en curso: la real si ya supera la estimada, si no la estimada;
+//   - meses futuros: % vigente × base mensual real (promedio últimos 3 cerrados).
+// Antes se usaba la base "menos lo acreditado" del mes en curso y la columna
+// siguiente daba un rojo falso (−2,1 M en Bruni en Dic/26).
+// El primer mes del calendario lo paga la retención de agosto–octubre, que ya
+// está en el Acumulado: va con "—".
+function incidenciaRetMesCompleta(doc, j, pct, base) {
+  var hoy = new Date(), hoyIdx = hoy.getFullYear() * 12 + hoy.getMonth();
+  var idx = INCIDENCIA_MES1.anio * 12 + (INCIDENCIA_MES1.mes - 1) + j;
+  var est = pct * base;
+  if (idx > hoyIdx) return { v: est, est: true };
+  var pid = periodoIdDe(Math.floor(idx / 12), idx % 12);
+  var c = (pid && APORTE_CEOT_DESDE.indexOf(pid) !== -1) ? calcularNetoLocal(pid, doc) : null;
+  var real = c ? (c.aporteCeot || 0) : 0;
+  if (idx < hoyIdx) return { v: real, est: false };
+  return real >= est ? { v: real, est: false } : { v: est, est: true };
+}
+
 function incidenciaSobraMesHtml(cob) {
   var ROJO = "#b13a2c", VERDE = "#1d6b62", n = cob.length ? cob[0].cal.length : 0, k;
   if (n < 2) return "";
@@ -2143,29 +2162,26 @@ function incidenciaSobraMesHtml(cob) {
   };
   var filas = cob.map(function(e) {
     var base = incidenciaBaseMensual(e.doc);
-    var bf = incidenciaBasesFuturas(e.doc, base, n - 1);
     var pct = e.pct == null ? 0 : e.pct;
     var celdas = '', suma = 0;
     for (k = ini; k < n; k++) {
-      // La primera columna (primer vencimiento sin pagar) sale del acumulado del
-      // fondo, que ya incluye casi toda la retención del mes anterior: restar el
-      // vencimiento entero al flujo nuevo daba un "falta" falso.
-      if (k === ini) { celdas += '<td style="color:rgba(32,36,31,.4)" title="Este vencimiento se paga con lo ya acumulado (ver Cobertura mes a mes)">—</td>'; continue; }
-      var v = pct * (bf.bases[k - 1] || 0) + (bf.fijos[k - 1] || 0) - e.cal[k];
+      if (k === 0) { celdas += '<td style="color:rgba(32,36,31,.4)" title="Lo paga la retención de agosto a octubre, que ya está en el Acumulado">—</td>'; continue; }
+      var r = incidenciaRetMesCompleta(e.doc, k - 1, pct, base);
+      var v = r.v - e.cal[k];
       suma += v; tot[k] = (tot[k] || 0) + v;
-      celdas += cel(v, k >= estK);
+      celdas += cel(v, r.est);
     }
     totGral += suma;
-    return '<tr><td>' + e.nombre + '</td><td>' + (Math.round(pct * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2 }) + '%</td>'
+    return '<tr><td>' + e.nombre + '</td><td>' + pctRetTxt(pct) + '</td>'
       + celdas + cel(suma, false, true) + '</tr>';
   }).join("");
   var pie = '';
-  for (k = ini; k < n; k++) pie += k === ini ? '<td></td>' : cel(tot[k] || 0, k >= estK);
+  for (k = ini; k < n; k++) pie += k === 0 ? '<td></td>' : cel(tot[k] || 0, k >= estK);
   return '<div class="adm-sec-title" style="margin-top:20px">Sobra / falta de cada mes — en pesos</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
-    +   'Retención que entra ese mes con el % vigente menos el vencimiento de ese mes, mes por mes y sin arrastrar saldo. '
-    +   'Verde con "+" = sobra, rojo con "−" = ese mes falta. En cursiva, meses estimados con la base mensual real (promedio de los últimos 3 meses cerrados). '
-    +   'El primer vencimiento sin pagar se paga con lo ya acumulado (para ese mirá Cobertura mes a mes) y no entra en el Total.'
+    +   'Retención completa del mes anterior (la que paga ese vencimiento) menos el vencimiento del mes, mes por mes y sin arrastrar saldo. '
+    +   'Verde con "+" = sobra, rojo con "−" = ese mes falta. Meses pasados: retención real de la liquidación; en cursiva, estimada con el % vigente sobre la base mensual real (promedio de los últimos 3 meses cerrados). '
+    +   'Para saber si el fondo llega a cada vencimiento (con lo ya acumulado) mirá Cobertura mes a mes.'
     + '</div>'
     + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Profesional</th><th>% vigente</th>' + cols + '<th>Total</th></tr></thead><tbody>'
     + filas

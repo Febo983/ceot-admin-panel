@@ -568,6 +568,14 @@ function incidenciaApellidos() {
   return Object.keys(INCIDENCIA_FONDO_PCT).concat(["GARMENDIA"]);
 }
 
+// % de Retención Ganancias para mostrar: "15%", "15,47%" (hasta 2 decimales,
+// coma decimal). Antes cada pantalla lo armaba a su manera: unas con
+// Math.round (un 15,47% salía "15%" en el comprobante) y otras con pct*100
+// crudo (salía "11.690000000000001%" en el portal). Usar siempre esta.
+function pctRetTxt(p) {
+  return (Math.round((p || 0) * 10000) / 100).toLocaleString("es-AR", { maximumFractionDigits: 2 }) + "%";
+}
+
 // Devuelve el % de Retención Ganancias vigente para un apellido: usa el override
 // editado a mano en el panel admin si existe, si no cae al default de arriba.
 function getAporteCeotPct(apellido) {

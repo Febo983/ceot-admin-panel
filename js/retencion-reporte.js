@@ -82,7 +82,7 @@ function retRepPintarHoja(doc, d, interesPF, hoy) {
   var cob = retRepCobertura(d);
   var total = datos.reduce(function(s, m) { return s + m.ret; }, 0);
   var baseTot = datos.reduce(function(s, m) { return s + m.base; }, 0);
-  function pct(v) { return (Math.round(v * 1000) / 10) + "%"; }
+  function pct(v) { return pctRetTxt(v); }
 
   // Encabezado
   doc.setFillColor(31, 58, 46);
@@ -99,7 +99,7 @@ function retRepPintarHoja(doc, d, interesPF, hoy) {
   doc.text(d.nombre, LM, y);
   doc.setFont("helvetica", "normal"); doc.setFontSize(8);
   doc.setTextColor(100, 100, 100);
-  doc.text("Emitido: " + hoy + "   ·   % vigente: " + (Math.round((getAporteCeotPct(d.apellido) || 0) * 1000) / 10) + "%", RM, y, { align: "right" });
+  doc.text("Emitido: " + hoy + "   ·   % vigente: " + pctRetTxt(getAporteCeotPct(d.apellido)), RM, y, { align: "right" });
   doc.setTextColor(0, 0, 0);
 
   // Dos cajas lado a lado: total retenido | cobertura de Ganancias
