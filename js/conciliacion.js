@@ -23,6 +23,7 @@
 var CONC_DESDE = '2026-06';
 var CONC_CUENTAS = { '094-351473/0': 'CC 351473/0', '094-351474/7': 'CC 351474/7' };
 var CONC_CUIT_PROPIO = '30719119545';
+var CONC_ALICUOTAS = ['0', '2,5', '5', '10,5', '21', '27'];
 var CONC_MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 
 // "1.234.567,89" / "-3,93" → número (2 decimales).
@@ -237,7 +238,8 @@ function concParseArca(rows) {
   var iF = col('Fecha'), iT = col('Tipo'), iPv = col('Punto de Venta'), iN = col('Número Desde'),
       iCuit = col(tipo === 'R' ? 'Nro. Doc. Emisor' : 'Nro. Doc. Receptor'),
       iNom = col(tipo === 'R' ? 'Denominación Emisor' : 'Denominación Receptor'),
-      iTot = col('Imp. Total'), iNeto = col('Neto Gravado Total'), iIva = col('Total IVA'), iTc = col('Tipo Cambio');
+      iTot = col('Imp. Total'), iNeto = col('Neto Gravado Total'), iIva = col('Total IVA'), iTc = col('Tipo Cambio'),
+      iNg = col('Neto No Gravado'), iEx = col('Op. Exentas'), iOt = col('Otros Tributos');
   if (iF < 0 || iT < 0 || iTot < 0 || iCuit < 0) throw new Error('Faltan columnas de ARCA (Fecha, Tipo, Nro. Doc., Imp. Total).');
   var out = [];
   for (var r = hi + 1; r < rows.length; r++) {
@@ -255,7 +257,14 @@ function concParseArca(rows) {
       id: tipo + '|' + cuit + '|' + tdesc.split(' - ')[0] + '|' + pv + '|' + nro,
       f: m[3] + '-' + m[2] + '-' + m[1], tipo: tdesc, pv: pv, nro: nro, cuit: cuit,
       nom: String(row[iNom] || '').trim(), total: sg * num(row[iTot]),
-      neto: sg * num(row[iNeto]), iva: sg * num(row[iIva])
+      neto: sg * num(row[iNeto]), iva: sg * num(row[iIva]),
+      ng: sg * num(row[iNg]), ex: sg * num(row[iEx]), ot: sg * num(row[iOt]),
+      // IVA por alícuota, solo las que tienen importe: { '21': [neto, iva], ... }
+      al: CONC_ALICUOTAS.reduce(function(o, a) {
+        var n = sg * num(row[col('Neto Grav. IVA ' + a + '%')]), v = sg * num(row[col('IVA ' + a + '%')]);
+        if (n || v) o[a] = [n, v];
+        return o;
+      }, {})
     });
   }
   return { tipo: tipo, facturas: out };
@@ -529,9 +538,11 @@ function renderConciliacion(mes) {
   var vb = function(k, t) { return '<button class="deb-btn' + (concVista === k ? ' deb-btn-pri' : '') + '" onclick="concVista=\'' + k + '\';concAbierto=\'\';renderConciliacion()">' + t + '</button>'; };
   var html = '<div id="concRoot">'
     + '<div class="deb-toolbar" style="flex-wrap:wrap;gap:6px">'
-    + vb('resumen', '📊 Resumen del mes') + vb('movs', '🏦 Movimientos') + vb('facturas', '🧾 Facturas ARCA') + vb('cuit', '👥 Por CUIT')
+    + vb('resumen', '📊 Resumen del mes') + vb('movs', '🏦 Movimientos') + vb('facturas', '🧾 Facturas ARCA') + vb('cuit', '👥 Por CUIT') + vb('imp', '🏛 Impuestos del banco')
     + '<button class="deb-btn" style="margin-left:auto" onclick="concImportar()" title="Resumen del BBVA en PDF y/o Mis Comprobantes de ARCA en Excel (emitidos y recibidos). Se pueden elegir varios juntos.">⬆ Importar mes</button>'
-    + (concMesSel ? '<button class="deb-btn" onclick="concExportarExcel()">⬇ Excel del mes</button>' : '')
+    + (concMesSel ? '<button class="deb-btn" onclick="concExportarExcel()">⬇ Excel del mes</button>'
+      + '<button class="deb-btn deb-btn-pri" onclick="concPaqueteContador(false)" title="Un Excel con IVA ventas, control de IVA compras, impuestos del banco y resumen contable del mes elegido">📦 Contador: mes</button>'
+      + '<button class="deb-btn deb-btn-pri" onclick="concPaqueteContador(true)" title="Lo mismo, desde junio 2026 hasta el mes elegido">📦 Contador: ejercicio</button>' : '')
     + '</div>'
     + '<div id="concAviso" style="display:none;font-size:.75rem;padding:8px 10px;border-radius:7px;margin-bottom:10px"></div>';
   if (!meses.length) {
@@ -554,6 +565,7 @@ function renderConciliacion(mes) {
   if (concVista === 'movs') html += concVistaMovs(X);
   else if (concVista === 'facturas') html += concVistaFacturas(X);
   else if (concVista === 'cuit') html += concVistaCuit(X);
+  else if (concVista === 'imp') html += concVistaImpuestos(X);
   else html += concVistaResumen(X);
   html += '</div>';
   document.getElementById('adm-content').innerHTML = html;
@@ -833,6 +845,168 @@ function concExportarExcel() {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(mv), 'Movimientos');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(fc), 'Facturas ARCA');
   XLSX.writeFile(wb, 'Conciliacion_BBVA_' + mes + '.xlsx');
+}
+
+// ══════ PAQUETE PARA EL CONTADOR ═══════════════════════════════════════
+// Impuestos, retenciones y gastos que el banco debita/acredita en la cuenta.
+// Varios se pueden computar: el impuesto al cheque (Ley 25.413) en parte a
+// cuenta de Ganancias, las retenciones y percepciones de IIBB a cuenta de
+// IIBB, las percepciones de IVA y el IVA de las comisiones como crédito
+// fiscal. El % computable del impuesto al cheque depende de la categoría de
+// la empresa: se muestra el 33% general y se aclara que lo confirma la contadora.
+var CONC_IMP_TIPOS = [
+  { k: 'chqDeb',  t: 'Imp. cheque (Ley 25.413) s/ débitos',  re: /IMP\.?LEY 25\.?413/ },
+  { k: 'chqCred', t: 'Imp. cheque (Ley 25.413) s/ créditos', re: /LEY NRO 25\.?413/ },
+  { k: 'arba',    t: 'Retenciones IIBB (ARBA)',             re: /RETENCION ARBA/ },
+  { k: 'pIIBB',   t: 'Percepciones IIBB',                   re: /PERCEP\.?\s*INGRESOS BRUTOS/ },
+  { k: 'pIVA',    t: 'Percepciones IVA (RG 2408)',          re: /PERCEPCION IVA/ },
+  { k: 'ivaCom',  t: 'IVA de comisiones bancarias',         re: /IVA TASA GENERAL/ },
+  { k: 'comis',   t: 'Comisiones y mantenimiento (neto)',    re: /^COMI|^COM |COMISION/ },
+  { k: 'afip',    t: 'Pagos AFIP / ARCA (VEP)',             re: /PAGOS AFIP/ },
+  { k: 'otrRet',  t: 'Otras retenciones',                   re: /RETENCION/ },
+  { k: 'interes', t: 'Intereses ganados',                   re: /INTERESES GANADOS/ }
+];
+function concImpTipo(c) {
+  for (var i = 0; i < CONC_IMP_TIPOS.length; i++) if (CONC_IMP_TIPOS[i].re.test(c)) return CONC_IMP_TIPOS[i].k;
+  return '';
+}
+// { mes: { tipo: importe (positivo = lo que salió de la cuenta; intereses positivo = ganado) } }
+function concImpuestosPorMes(X, meses) {
+  var out = {};
+  meses.forEach(function(m) { out[m] = {}; });
+  X.movs.forEach(function(mv) {
+    if (!out[mv.mes]) return;
+    var k = concImpTipo(mv.c); if (!k) return;
+    out[mv.mes][k] = (out[mv.mes][k] || 0) + (k === 'interes' ? mv.imp : -mv.imp);
+  });
+  return out;
+}
+function concMesesHasta(hasta, ejercicio) {
+  var b = concIdx().bbva;
+  return ejercicio ? b.filter(function(m) { return m >= CONC_DESDE && m <= hasta; }) : (b.indexOf(hasta) !== -1 ? [hasta] : []);
+}
+function concVistaImpuestos(X) {
+  var meses = concMesesHasta(concMesSel, true), I = concImpuestosPorMes(X, meses);
+  if (!meses.length) return '<div style="font-size:.78rem;color:#9a3412">Falta importar resúmenes del BBVA.</div>';
+  var tot = {};
+  var h = '<div style="font-size:.72rem;color:rgba(32,36,31,.55);margin-bottom:8px">Desde junio 2026 hasta ' + concMesNombre(concMesSel) + ', las 2 cuentas. Sale de los movimientos del resumen.</div>'
+    + '<div class="adm-table-wrap"><table class="adm-table" style="font-size:.72rem"><thead><tr><th style="text-align:left">Concepto</th>'
+    + meses.map(function(m) { return '<th>' + concMesNombre(m).replace(/ 20/, ' ') + '</th>'; }).join('') + '<th>Total</th></tr></thead><tbody>';
+  CONC_IMP_TIPOS.forEach(function(t) {
+    var fila = meses.map(function(m) { return I[m][t.k] || 0; }), suma = fila.reduce(function(a, b) { return a + b; }, 0);
+    tot[t.k] = suma;
+    if (!suma) return;
+    h += '<tr><td style="text-align:left">' + t.t + '</td>' + fila.map(function(v) { return '<td>' + (v ? concFmt(v) : '—') + '</td>'; }).join('') + '<td><b>' + concFmt(suma) + '</b></td></tr>';
+  });
+  h += '</tbody></table></div>';
+  var chq = (tot.chqDeb || 0) + (tot.chqCred || 0);
+  h += '<div class="adm-sec-title" style="margin-top:16px">Lo que se puede computar (para revisar con la contadora)</div>'
+    + '<div style="font-size:.78rem;line-height:1.7">'
+    + '• <b>A cuenta de Ganancias:</b> 33% del impuesto al cheque = <b>' + concFmt(chq * 0.33) + '</b> (sobre ' + concFmt(chq) + '). Si CEOT es PyME micro/pequeña el % puede ser mayor.<br>'
+    + '• <b>A cuenta de IIBB:</b> retenciones ARBA + percepciones IIBB = <b>' + concFmt((tot.arba || 0) + (tot.pIIBB || 0)) + '</b><br>'
+    + '• <b>Crédito fiscal IVA:</b> percepciones IVA = <b>' + concFmt(tot.pIVA || 0) + '</b>; IVA de comisiones = ' + concFmt(tot.ivaCom || 0)
+    + ' <span style="color:rgba(32,36,31,.55)">(el BBVA lo documenta en sus "Liquidaciones A", que ya están en ARCA recibidas: no sumarlo dos veces)</span>'
+    + '</div>';
+  return h;
+}
+
+// Libro IVA (ventas o compras) desde ARCA, en filas para Excel.
+function concLibroIva(X, tipo, meses) {
+  var lista = X.facs.filter(function(f) { return f.id.charAt(0) === tipo && meses.indexOf(f.f.slice(0, 7)) !== -1; });
+  // Solo las alícuotas que aparecen en el período (la mayoría vienen en cero).
+  var alics = CONC_ALICUOTAS.filter(function(a) { return lista.some(function(f) { return (f.al || {})[a]; }); });
+  var head = ['Fecha', 'Comprobante', 'Tipo', 'CUIT', tipo === 'E' ? 'Receptor' : 'Emisor'];
+  alics.forEach(function(a) { head.push('Neto ' + a + '%', 'IVA ' + a + '%'); });
+  head.push('Neto no gravado', 'Exento', 'Otros tributos', 'Total IVA', 'Total');
+  var rows = [head], T = head.map(function() { return 0; });
+  lista
+    .sort(function(a, b) { return a.f < b.f ? -1 : a.f > b.f ? 1 : 0; })
+    .forEach(function(f) {
+      var r = [f.f, concFacCorta(f), f.tipo, f.cuit, f.nom];
+      alics.forEach(function(a) { var v = (f.al || {})[a] || [0, 0]; r.push(v[0], v[1]); });
+      r.push(f.ng || 0, f.ex || 0, f.ot || 0, f.iva || 0, f.total || 0);
+      for (var i = 5; i < r.length; i++) T[i] += r[i] || 0;
+      rows.push(r);
+    });
+  T[0] = 'TOTAL'; T[1] = T[2] = T[3] = T[4] = '';
+  for (var j = 5; j < T.length; j++) T[j] = Math.round(T[j] * 100) / 100;
+  rows.push([], T);
+  return rows;
+}
+
+function concPaqueteContador(ejercicio) {
+  var hasta = concMesSel, meses = concMesesHasta(hasta, ejercicio), X = concCruzar();
+  var mesesArca = ejercicio ? concIdx().arca.filter(function(m) { return m >= CONC_DESDE && m <= hasta; }) : [hasta];
+  var titulo = ejercicio ? 'Ejercicio desde junio 2026 hasta ' + concMesNombre(hasta) : concMesNombre(hasta);
+  var wb = XLSX.utils.book_new();
+  var hoja = function(nombre, aoa, anchos) {
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    if (anchos) ws['!cols'] = anchos.map(function(w) { return { wch: w }; });
+    XLSX.utils.book_append_sheet(wb, ws, nombre);
+  };
+
+  // 1) Resumen contable del banco: por mes y cuenta, débitos/créditos por categoría.
+  var rc = [['CEOT — Resumen contable BBVA — ' + titulo], [], ['Mes', 'Cuenta', 'Concepto', 'Débitos', 'Créditos']];
+  meses.forEach(function(m) {
+    var saldos = concSaldosMes(m);
+    Object.keys(saldos).forEach(function(n) {
+      var cta = CONC_CUENTAS[n] || n, por = {};
+      X.movs.forEach(function(mv) {
+        if (mv.mes !== m || mv.cta !== n) return;
+        var k = X.cat[mv.id], c = por[k] = por[k] || [0, 0];
+        if (mv.imp < 0) c[0] -= mv.imp; else c[1] += mv.imp;
+      });
+      rc.push([concMesNombre(m), cta, 'Saldo inicial', '', saldos[n].ant]);
+      var td = 0, tc = 0;
+      CONC_CATS.forEach(function(c) {
+        var v = por[c.k]; if (!v) return;
+        td += v[0]; tc += v[1];
+        rc.push([concMesNombre(m), cta, c.t, Math.round(v[0] * 100) / 100 || '', Math.round(v[1] * 100) / 100 || '']);
+      });
+      rc.push([concMesNombre(m), cta, 'Total movimientos', Math.round(td * 100) / 100, Math.round(tc * 100) / 100]);
+      rc.push([concMesNombre(m), cta, 'Saldo final (resumen)', '', saldos[n].fin]);
+      rc.push([concMesNombre(m), cta, 'Control: inicial + créditos − débitos − final', '', Math.round((saldos[n].ant + tc - td - saldos[n].fin) * 100) / 100]);
+      rc.push([]);
+    });
+  });
+  hoja('Resumen banco', rc, [16, 14, 44, 18, 18]);
+
+  // 2) Impuestos y retenciones del banco.
+  var I = concImpuestosPorMes(X, meses), tot = {};
+  var im = [['CEOT — Impuestos, retenciones y gastos debitados por el BBVA — ' + titulo], [], ['Concepto'].concat(meses.map(concMesNombre), ['Total'])];
+  CONC_IMP_TIPOS.forEach(function(t) {
+    var fila = meses.map(function(m) { return Math.round((I[m][t.k] || 0) * 100) / 100; });
+    tot[t.k] = fila.reduce(function(a, b) { return a + b; }, 0);
+    if (tot[t.k]) im.push([t.t].concat(fila, [Math.round(tot[t.k] * 100) / 100]));
+  });
+  var chq = (tot.chqDeb || 0) + (tot.chqCred || 0);
+  im.push([], ['Computable (a confirmar con la contadora)'],
+    ['A cuenta de Ganancias: 33% del impuesto al cheque', Math.round(chq * 0.33 * 100) / 100],
+    ['A cuenta de IIBB: retenciones ARBA + percepciones IIBB', Math.round(((tot.arba || 0) + (tot.pIIBB || 0)) * 100) / 100],
+    ['Crédito fiscal IVA: percepciones IVA', Math.round((tot.pIVA || 0) * 100) / 100],
+    ['IVA de comisiones (ya documentado en las Liquidaciones A del BBVA en ARCA)', Math.round((tot.ivaCom || 0) * 100) / 100]);
+  hoja('Impuestos banco', im, [58].concat(meses.map(function() { return 15; }), [16]));
+  var det = [['Fecha', 'Cuenta', 'Concepto', 'Tipo', 'Importe']];
+  X.movs.forEach(function(mv) {
+    if (meses.indexOf(mv.mes) === -1) return;
+    var k = concImpTipo(mv.c); if (!k) return;
+    var t = CONC_IMP_TIPOS.filter(function(x) { return x.k === k; })[0];
+    det.push([mv.f, CONC_CUENTAS[mv.cta] || mv.cta, mv.c, t.t, mv.imp]);
+  });
+  hoja('Detalle impuestos', det, [11, 13, 40, 36, 14]);
+
+  // 3) IVA ventas y control de IVA compras.
+  hoja('IVA Ventas', concLibroIva(X, 'E', mesesArca), [11, 16, 30, 13, 34]);
+  hoja('IVA Compras (control)', concLibroIva(X, 'R', mesesArca), [11, 16, 30, 13, 34]);
+
+  // 4) Lo que falta identificar, para que se sepa qué no está clasificado.
+  var pe = [['Fecha', 'Cuenta', 'Concepto', 'Nombre', 'CUIT', 'Importe']];
+  X.movs.forEach(function(mv) {
+    if (meses.indexOf(mv.mes) !== -1 && X.cat[mv.id] === 'pend') pe.push([mv.f, CONC_CUENTAS[mv.cta] || mv.cta, mv.c, mv.nom, mv.cuit, mv.imp]);
+  });
+  hoja('Sin identificar', pe.length > 1 ? pe : [['No quedan movimientos sin identificar.']], [11, 13, 40, 22, 13, 14]);
+
+  XLSX.writeFile(wb, 'CEOT_contador_' + (ejercicio ? CONC_DESDE + '_a_' : '') + hasta + '.xlsx');
 }
 
 if (typeof module !== 'undefined') module.exports = { concParseBbva: concParseBbva, concLineasDesdeItems: concLineasDesdeItems, concNum: concNum,
