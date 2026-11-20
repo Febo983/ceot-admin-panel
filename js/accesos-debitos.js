@@ -2147,7 +2147,10 @@ function incidenciaSobraMesHtml(cob) {
     var pct = e.pct == null ? 0 : e.pct;
     var celdas = '', suma = 0;
     for (k = ini; k < n; k++) {
-      if (k === 0) { celdas += '<td style="color:rgba(32,36,31,.4)" title="El primer mes se paga con lo ya acumulado">—</td>'; continue; }
+      // La primera columna (primer vencimiento sin pagar) sale del acumulado del
+      // fondo, que ya incluye casi toda la retención del mes anterior: restar el
+      // vencimiento entero al flujo nuevo daba un "falta" falso.
+      if (k === ini) { celdas += '<td style="color:rgba(32,36,31,.4)" title="Este vencimiento se paga con lo ya acumulado (ver Cobertura mes a mes)">—</td>'; continue; }
       var v = pct * (bf.bases[k - 1] || 0) + (bf.fijos[k - 1] || 0) - e.cal[k];
       suma += v; tot[k] = (tot[k] || 0) + v;
       celdas += cel(v, k >= estK);
@@ -2157,12 +2160,12 @@ function incidenciaSobraMesHtml(cob) {
       + celdas + cel(suma, false, true) + '</tr>';
   }).join("");
   var pie = '';
-  for (k = ini; k < n; k++) pie += k === 0 ? '<td></td>' : cel(tot[k] || 0, k >= estK);
+  for (k = ini; k < n; k++) pie += k === ini ? '<td></td>' : cel(tot[k] || 0, k >= estK);
   return '<div class="adm-sec-title" style="margin-top:20px">Sobra / falta de cada mes — en pesos</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
     +   'Retención que entra ese mes con el % vigente menos el vencimiento de ese mes, mes por mes y sin arrastrar saldo. '
     +   'Verde con "+" = sobra, rojo con "−" = ese mes falta. En cursiva, meses estimados con la base mensual real (promedio de los últimos 3 meses cerrados). '
-    +   'El primer mes se paga con lo ya acumulado.'
+    +   'El primer vencimiento sin pagar se paga con lo ya acumulado (para ese mirá Cobertura mes a mes) y no entra en el Total.'
     + '</div>'
     + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Profesional</th><th>% vigente</th>' + cols + '<th>Total</th></tr></thead><tbody>'
     + filas
