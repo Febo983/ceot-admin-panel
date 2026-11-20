@@ -270,6 +270,34 @@ var RET_ALERTA_DIAS = 30;
 // Ganancias, así el aviso salta antes y no después. Ajustar acá si hace falta.
 var RET_ALERTA_DIA_VENC = 13;
 
+// % de retención que necesita un socio, con el mismo modelo que la tabla
+// "Cobertura mes a mes" (incidenciaPctNecesario): su base mensual real y lo ya
+// acreditado/pendiente. Devuelve:
+//   vigente  = % que tiene hoy
+//   plan     = % mínimo para cubrir TODO el calendario (el que usa la tabla)
+//   venc     = % mínimo para llegar al vencimiento `idx` (null si ni retener el
+//              100% de la base alcanza a tiempo)
+// Todos redondeados hacia arriba a 0,01%; null/Infinity = no se puede.
+function retRepPctNecesario(d, cob, cal, idx, faltaHoy) {
+  var up = function(x) { return isFinite(x) ? Math.ceil(x * 10000 - 1e-9) / 10000 : null; };
+  var vig = (typeof getAporteCeotPct === "function") ? getAporteCeotPct(d.apellido) : null;
+  var base = incidenciaBaseMensual(d);
+  var bf = incidenciaBasesFuturas(d, base, cal.length - 1);
+  var plan = up(incidenciaPctNecesario({ acum: cob.acum, cal: cal }, bf.bases, bf.fijos));
+  var venc = up(incidenciaPctNecesario({ acum: cob.acum, cal: cal.slice(0, idx + 1) }, bf.bases, bf.fijos));
+  if (venc != null && venc > 1) venc = null;
+  if (plan != null && plan > 1) plan = null;
+  // Si a este vencimiento no se llega retención mediante (ya venció o la
+  // retención entra después), se calcula el % para el resto del calendario
+  // suponiendo que ese faltante se aporta de otra fuente.
+  var resto = null;
+  if (venc == null) {
+    resto = up(incidenciaPctNecesario({ acum: cob.acum + (faltaHoy || 0), cal: cal }, bf.bases, bf.fijos));
+    if (resto != null && resto > 1) resto = null;
+  }
+  return { vigente: vig, plan: plan, venc: venc, resto: resto, base: base };
+}
+
 function retRepAlertas(hoy) {
   hoy = hoy || new Date();
   var hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
@@ -289,10 +317,15 @@ function retRepAlertas(hoy) {
       if (cob.n > i) continue;                  // lo cubre lo ya acreditado
       var falta = sumCal - cob.acum;
       var faltaTodo = sumCal - (cob.acum + cob.pendiente);
+      var pcts = retRepPctNecesario(d, cob, cal, i, Math.max(0, Math.round(sumCal - cob.acum)));
       out.push({
-        doc: d, idx: i, fecha: fecha, dias: dias, monto: cal[i],
+        doc: d, idx: i, fecha: fecha, dias: dias, monto: cal[i], pcts: pcts,
         falta: Math.max(0, Math.round(falta)),
-        estado: cob.nTodo > i ? "acreditar" : "no-llega",
+        // Mismo criterio que la tabla "Cobertura mes a mes": rojo si con el %
+        // vigente la retención proyectada no junta lo necesario a tiempo;
+        // amarillo si hoy falta pero con el % vigente (y los cheques por
+        // acreditar) se llega.
+        estado: (pcts.venc == null || (pcts.vigente != null && pcts.venc > pcts.vigente)) ? "no-llega" : "acreditar",
         faltaTodo: Math.max(0, Math.round(faltaTodo))
       });
       break;
@@ -300,6 +333,23 @@ function retRepAlertas(hoy) {
   });
   out.sort(function(a, b) { return a.dias - b.dias || b.falta - a.falta; });
   return out;
+}
+
+function retRepPctTexto(a) {
+  var f = function(x) { return (Math.round(x * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%"; };
+  var p = a.pcts, vig = p.vigente != null ? f(p.vigente) : "—";
+  if (p.venc == null) {
+    // La retención no llega a tiempo a este vencimiento: hay que poner plata de otra fuente.
+    return "→ A este vencimiento no se llega con retención: aportar $ " + fmt(a.falta) + " de otra fuente"
+      + (p.resto != null ? " y retener " + f(p.resto) + " (hoy " + vig + ") para el resto del calendario"
+                         : ", y ni retener el 100% alcanza para el resto del calendario");
+  }
+  if (p.vigente != null && p.venc <= p.vigente && (p.plan == null || p.plan <= p.vigente))
+    return "→ Alcanza con el " + vig + " vigente (necesario para este vencimiento: " + f(p.venc) + ")";
+  var t = "→ Retener " + f(p.venc) + " para llegar a este vencimiento (hoy " + vig + ")";
+  if (p.plan != null && p.plan > p.venc) t += " · " + f(p.plan) + " para cubrir todo el calendario";
+  else if (p.plan == null) t += " · el calendario completo no alcanza ni con el 100%";
+  return t;
 }
 
 function retRepAlertasHtml() {
@@ -314,8 +364,9 @@ function retRepAlertasHtml() {
       + '<span style="font-weight:800;min-width:150px">' + (rojo ? '🔴 ' : '🟡 ') + admHomeHudEsc(a.doc.nombre) + '</span>'
       + '<span style="font-size:.78rem">' + incidenciaMesCorto(a.idx) + ' · ' + fd(a.fecha) + ' · ' + cuando + '</span>'
       + '<span style="font-size:.78rem;font-weight:700;color:' + (rojo ? '#c0392b' : '#a86a00') + '">'
-      +   (rojo ? 'No llega: faltan $ ' + fmt(a.faltaTodo) + ' aun con los cheques pendientes'
-                : 'Hoy faltan $ ' + fmt(a.falta) + ' (llega al acreditarse los cheques pendientes)') + '</span>'
+      +   (rojo ? 'No llega con el % vigente: hoy faltan $ ' + fmt(a.falta)
+                : 'Hoy faltan $ ' + fmt(a.falta) + ' (con el % vigente se junta a tiempo)') + '</span>'
+      + '<span style="flex-basis:100%;font-size:.8rem;font-weight:800;color:#1c2b3a;padding-left:2px">' + retRepPctTexto(a) + '</span>'
       + '</div>';
   }).join("");
   return '<div onclick="renderAporteCeot()" style="cursor:pointer;margin-bottom:14px;padding:10px 14px;border:2px solid #c0392b;border-radius:10px;background:#fff4f1;color:#1c2b3a">'
