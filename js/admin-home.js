@@ -453,88 +453,92 @@ function admHomeRenderResults() {
       html += '<div style="' + tileWrap + ';margin-bottom:6px">' + tiles.join("") + '</div>';
     }
   } else {
-    // Franja fija de arriba: los módulos más abiertos, sin encabezado de grupo
-    // ni nada alrededor. En modo edición no se arma (hay que poder renombrar y
-    // borrar todo desde su grupo, sin tiles duplicados).
+    // 20/11/2026 (pedido de Marcelo: "no me gusta que queden espacios
+    // vacíos"): antes cada grupo arrancaba fila nueva y los de 1–2 mosaicos
+    // dejaban la fila a medio llenar. Ahora todo va en UNA grilla continua: el
+    // nombre de cada grupo es una etiqueta sobre su primer mosaico, y el botón
+    // "Ver todo / Ver menos" es la última celda y se estira hasta cerrar la
+    // fila (admHomeAjustarRelleno).
+    var secciones = [];
+    var tileMod = function(m) { return admHomeTile(m.ico, admHomeModLabel(m), admHomeCatColor(m.cat), { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key }); };
+    var tileAcc = function(a) {
+      var ico = LUCIDE_ACC_ICON[a.title] || "link";
+      var nav = a.fn ? { fn: a.fn } : { href: a.url };
+      return admHomeTile(ico, a.title, admHomeCatColor(a.cat), Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
+    };
+
+    // Los módulos más abiertos y los accesos más usados. En modo edición no se
+    // arman (hay que poder renombrar y borrar todo desde su grupo).
     var destacados = homeEditMode ? [] : admHomeDestacados();
     var destKeys = destacados.map(function(m) { return m.key; });
-    if (destacados.length) {
-      html += '<div style="display:flex;align-items:center;gap:7px;margin:0 0 7px">'
-        + '<span style="width:9px;height:9px;border-radius:3px;background:#ef6fa2;border:2px solid #0f1c28;flex-shrink:0"></span>'
-        + '<span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.42)">Lo que más usás</span>'
-        + '</div>';
-      html += '<div style="' + tileWrap + ';margin-bottom:16px">'
-        + destacados.map(function(m) { return admHomeTile(m.ico, admHomeModLabel(m), admHomeCatColor(m.cat), { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key }); }).join("")
-        + '</div>';
-    }
+    if (destacados.length) secciones.push({ t: "Lo que más usás", c: "#ef6fa2", tiles: destacados.map(tileMod) });
 
     var hayAccFijos = ACCESOS_DATA.some(function(a) { return admHomeEsFijado("acc:" + a.id); });
     var atajos = (homeEditMode || (!destacados.length && !hayAccFijos)) ? [] : admHomeAtajos();
     var atajoIds = atajos.map(function(a) { return a.id; });
-    if (atajos.length) {
-      html += '<div style="display:flex;align-items:center;gap:7px;margin:0 0 7px">'
-        + '<span style="width:9px;height:9px;border-radius:3px;background:rgba(55,138,221,0.9);border:2px solid #0f1c28;flex-shrink:0"></span>'
-        + '<span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.42)">Atajos</span>'
-        + '</div>';
-      html += '<div style="' + tileWrap + ';margin-bottom:16px">'
-        + atajos.map(function(a) {
-            var ico = LUCIDE_ACC_ICON[a.title] || "link";
-            var nav = a.fn ? { fn: a.fn } : { href: a.url };
-            return admHomeTile(ico, a.title, admHomeCatColor(a.cat), Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
-          }).join("")
-        + '</div>';
-    }
+    if (atajos.length) secciones.push({ t: "Atajos", c: "rgba(55,138,221,0.9)", tiles: atajos.map(tileAcc) });
 
-    // Todo lo demás (el resto de los módulos y los accesos) se arma igual que
-    // siempre, pero en su propia variable para poder plegarlo entero.
-    var resto = "";
-    // Una sola pasada por las categorías: cada una trae primero sus módulos y
-    // después sus accesos. Antes eran dos listas separadas — los módulos por
-    // grupo (Honorarios/Gestión) y más abajo los accesos por su propio cat —
-    // así que lo del mismo tema quedaba en dos lugares distintos de la home.
+    // El resto, por categoría: cada una trae primero sus módulos y después sus
+    // accesos. Va plegado mientras haya franja de destacados.
+    var hayFranja = destacados.length || atajos.length;
+    var mostrarResto = !hayFranja || homeVerTodo;
+    var ocultos = 0;
     ADM_HOME_CATS.forEach(function(g) {
       var mods = admHomeOrdenarPorUso(admHomeModulosEnHome().filter(function(m) { return m.cat === g.k && destKeys.indexOf(m.key) === -1; }), function(m) { return "mod:" + m.key; });
       var accs = admHomeOrdenarPorUso(ACCESOS_DATA.filter(function(a) { return admHomeCat(a.cat).k === g.k && atajoIds.indexOf(a.id) === -1; }), function(a) { return "acc:" + a.id; });
+      ocultos += mods.length + accs.length;
+      if (!mostrarResto) return;
       if (!mods.length && !accs.length && !homeEditMode) return;
-      var tiles = mods.map(function(m) {
-        return admHomeTile(m.ico, admHomeModLabel(m), admHomeCatColor(m.cat), { fn: m.fn, editFn: "admHomeEditarModulo('" + m.key + "')", usageKey: "mod:" + m.key });
-      }).concat(accs.map(function(a) {
-        var ico = LUCIDE_ACC_ICON[a.title] || "link";
-        var nav = a.fn ? { fn: a.fn } : { href: a.url };
-        return admHomeTile(ico, a.title, admHomeCatColor(a.cat), Object.assign(nav, { editFn: "admHomeEditarAcceso(" + a.id + ")", delFn: "admHomeEliminarAcceso(" + a.id + ")", usageKey: "acc:" + a.id }));
-      }));
+      var tiles = mods.map(tileMod).concat(accs.map(tileAcc));
       if (homeEditMode) {
-        tiles.push('<div onclick="admHomeNuevoAcceso(\'' + g.k + '\')" style="cursor:pointer;background:rgba(32,36,31,0.03);border:1px dashed rgba(32,36,31,.3);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;height:58px;box-sizing:border-box">'
+        tiles.push('<div onclick="admHomeNuevoAcceso(\'' + g.k + '\')" style="cursor:pointer;background:rgba(32,36,31,0.03);border:2px dashed rgba(32,36,31,.3);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;min-height:64px">'
           + '<i data-lucide="plus" style="width:18px;height:18px;color:rgba(31,58,46,.8)" stroke-width="1.75"></i>'
           + '<div style="font-size:11px;color:rgba(31,58,46,.8);font-weight:500">Nuevo</div>'
           + '</div>');
       }
-      resto += '<div style="display:flex;align-items:center;gap:7px;margin:0 0 7px">'
-        + '<span style="width:9px;height:9px;border-radius:3px;background:' + g.c + ';border:2px solid #0f1c28;flex-shrink:0"></span>'
-        + '<span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(32,36,31,.42)">' + g.t + ' <span style="color:rgba(32,36,31,.2);font-weight:500">· ' + (mods.length + accs.length) + '</span></span>'
-        + '</div>';
-      resto += '<div style="' + tileWrap + ';margin-bottom:16px">' + tiles.join("") + '</div>';
+      secciones.push({ t: g.t, c: g.c, n: mods.length + accs.length, tiles: tiles });
     });
 
-    // El resto va plegado mientras haya franja de destacados: un botón en vez
-    // de 37 tiles más abajo. El estado es por navegador (localStorage), no se
-    // sincroniza — es una preferencia de pantalla, no un dato del panel.
-    var hayFranja = destacados.length || atajos.length;
-    if (!hayFranja || homeVerTodo) {
-      html += resto;
-      if (hayFranja) {
-        html += '<div onclick="admHomeToggleVerTodo()" style="cursor:pointer;text-align:center;font-size:0.68rem;font-weight:700;color:rgba(32,36,31,.45);padding:9px;margin-bottom:6px">Ver menos ▲</div>';
-      }
-    } else {
-      var ocultos = (admHomeModulosEnHome().length - destacados.length) + (ACCESOS_DATA.length - atajos.length);
-      html += '<div onclick="admHomeToggleVerTodo()" style="cursor:pointer;background:#fffaf1;border:2px solid #0f1c28;border-radius:12px;box-shadow:0 3px 0 #0f1c28;padding:10px;text-align:center;font-size:0.76rem;font-weight:700;color:#1c2b3a;margin-bottom:6px">Ver todo · ' + ocultos + ' más ▼</div>';
+    var celdas = [];
+    secciones.forEach(function(sec) {
+      sec.tiles.forEach(function(t, k) {
+        if (k > 0) { celdas.push(t); return; }
+        celdas.push('<div style="position:relative;display:grid">' + t
+          + '<span style="position:absolute;top:-10px;left:12px;z-index:2;display:flex;align-items:center;gap:5px;padding:1px 7px;border-radius:6px;background:#fffaf1;border:2px solid #0f1c28;font-size:0.56rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#1c2b3a;white-space:nowrap;pointer-events:none">'
+          +   '<span style="width:7px;height:7px;border-radius:2px;background:' + sec.c + ';border:1.5px solid #0f1c28"></span>'
+          +   sec.t + (sec.n ? ' <span style="opacity:.45;font-weight:600">· ' + sec.n + '</span>' : '')
+          + '</span></div>');
+      });
+    });
+    if (hayFranja) {
+      var txt = mostrarResto ? "Ver menos ▲" : ("Ver todo (" + ocultos + ") ▼");
+      celdas.push('<div id="admHomeFill" onclick="admHomeToggleVerTodo()" style="cursor:pointer;background:#fffaf1;border:2px solid #0f1c28;border-radius:12px;box-shadow:0 3px 0 #0f1c28;display:flex;align-items:center;justify-content:center;min-height:56px;font-size:0.78rem;font-weight:800;color:#1c2b3a">' + txt + '</div>');
     }
+    html += '<div id="admHomeGrid" style="' + tileWrap.replace("gap:10px 9px", "gap:18px 9px") + ';padding-top:10px;margin-bottom:16px">' + celdas.join("") + '</div>';
   }
 
   root.innerHTML = html;
   coInitScrollFade("admCatChipsScroll", "admCatChipsWrap");
   if (window.lucide) lucide.createIcons();
+  admHomeAjustarRelleno();
 }
+
+// El botón "Ver todo / Ver menos" es la última celda de la grilla: ocupa las
+// columnas que sobran en la última fila; si la fila está completa, va solo en
+// una fila entera. Se recalcula al cambiar el ancho de la ventana.
+function admHomeAjustarRelleno() {
+  var grid = document.getElementById("admHomeGrid"), fill = document.getElementById("admHomeFill");
+  if (!grid || !fill) return;
+  var cols = getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length || 1;
+  var n = grid.children.length - 1;                      // celdas antes del botón
+  var libres = (cols - (n % cols)) % cols;
+  fill.style.gridColumn = libres ? ("span " + libres) : "1 / -1";
+}
+var _admHomeReszT = null;
+window.addEventListener("resize", function() {
+  clearTimeout(_admHomeReszT);
+  _admHomeReszT = setTimeout(admHomeAjustarRelleno, 120);
+});
 
 // La Dra. Garmendia se incorporó en agosto 2026. El cartel de "Socios
 // activos" decía "1er mes" fijo y quedó viejo apenas pasó septiembre, así que
