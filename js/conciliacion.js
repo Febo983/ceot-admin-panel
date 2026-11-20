@@ -23,6 +23,7 @@
 var CONC_DESDE = '2026-06';
 var CONC_CUENTAS = { '094-351473/0': 'CC 351473/0', '094-351474/7': 'CC 351474/7' };
 var CONC_CUIT_PROPIO = '30719119545';
+var CONC_CTA_OBRA = '094-351474/7';
 // CUITs de los profesionales (planilla de Marcelo, 20/11/2026). Lo que se les
 // transfiere (o lo que depositan ellos) va a "Honorarios a profesionales".
 var CONC_CUIT_PROF = {
@@ -533,6 +534,13 @@ function concCruzar() {
     if (mv.cuit && cuitsConFac[mv.cuit]) { cat[mv.id] = mv.imp < 0 ? 'prov' : 'cobro'; return; }
     if (mv.cuit && cuitProf[mv.cuit]) { cat[mv.id] = 'hon'; return; }
     if (obraNom[mv.id] || (mv.cuit && obraCuit[mv.cuit])) { cat[mv.id] = 'obra'; return; }
+    // Transferencias sin identificar que salen de la cuenta de la obra
+    // (351474/7): van a Obra igual, marcadas "sin detalle" (pedido de
+    // Marcelo, 20/11/2026). Las de la cuenta principal quedan pendientes.
+    if (mv.cta === CONC_CTA_OBRA && mv.imp < 0 && /TRANSF/.test(mv.c)) {
+      if (!mv.nom) mv.nom = 'Obra (sin detalle)';
+      cat[mv.id] = 'obra'; return;
+    }
     cat[mv.id] = 'pend';
   });
   return { movs: movs, facs: facs, porMov: porMov, porFac: porFac, cat: cat, auto: auto, man: man, cuits: cuits, facById: facById };
