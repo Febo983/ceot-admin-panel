@@ -358,6 +358,7 @@ var CONC_CATS = [
   { k: 'imp',       t: 'Impuestos y retenciones' },
   { k: 'banco',     t: 'Gastos e intereses bancarios' },
   { k: 'propias',   t: 'Entre cuentas propias' },
+  { k: 'obra',      t: 'Obra / Gastos Casa' },
   { k: 'pf',        t: 'Plazo fijo' },
   { k: 'tarjeta',   t: 'Tarjeta / pago de servicios' },
   { k: 'servicios', t: 'Débitos automáticos' },
@@ -480,6 +481,34 @@ function concCruzar() {
       if (aps.some(function(a) { return n.indexOf(a) !== -1; })) cuitProf[mv.cuit] = true;
     });
   }
+  // Obra (módulo Gastos Casa): muchas transferencias "INMEDIATA COE" no traen
+  // CUIT ni nombre, pero están anotadas en el libro de la obra con la misma
+  // fecha (±4 días) e importe. También la agenda de proveedores de la obra
+  // (OBRA_AGENDA_SEED) trae CUITs con nombre (techista, fletes...).
+  var obraNom = {}, obraCuit = {};
+  if (typeof OBRA_AGENDA_SEED !== 'undefined') {
+    OBRA_AGENDA_SEED.forEach(function(a) { var c = String(a.c || '').replace(/\D/g, ''); if (c.length === 11 && !obraCuit[c]) obraCuit[c] = a.n; });
+  }
+  var gc = [];
+  try { if (typeof gcLeer === 'function') gc = gcLeer().filter(function(r) { return r && r.tipo !== 'aporte' && r.imp > 0 && r.f; }); } catch (e) {}
+  var gcUsado = {};
+  movs.forEach(function(mv) {
+    if (mv.imp >= 0 || porMov[mv.id] || (man[mv.id] && man[mv.id].cat) || concCatAuto(mv)) return;
+    if (!/TRANSF/.test(mv.c) || mv.cuit === CONC_CUIT_PROPIO) return;
+    var mejor = -1;
+    gc.forEach(function(r, i) {
+      if (gcUsado[i] || concCent(r.imp) !== concCent(-mv.imp) || Math.abs(dias(r.f, mv.f)) > 4) return;
+      if (mejor === -1 || Math.abs(dias(r.f, mv.f)) < Math.abs(dias(gc[mejor].f, mv.f))) mejor = i;
+    });
+    if (mejor !== -1) { gcUsado[mejor] = true; obraNom[mv.id] = gc[mejor].c; }
+  });
+  // Un CUIT que aparece una vez en Gastos Casa (ej. el pintor) es de la obra
+  // también en los pagos que no están anotados ahí.
+  movs.forEach(function(mv) { if (mv.cuit && obraNom[mv.id] && !obraCuit[mv.cuit] && !cuitsConFac[mv.cuit]) obraCuit[mv.cuit] = obraNom[mv.id]; });
+  movs.forEach(function(mv) {
+    if (!mv.nom && obraNom[mv.id]) mv.nom = obraNom[mv.id] + ' (Gastos Casa)';
+    if (!mv.nom && mv.cuit && obraCuit[mv.cuit]) mv.nom = obraCuit[mv.cuit] + ' (agenda obra)';
+  });
   // Categoría final de cada movimiento.
   movs.forEach(function(mv) {
     var x = man[mv.id];
@@ -490,6 +519,7 @@ function concCruzar() {
     if (mv.cuit && cuits[mv.cuit] && cuits[mv.cuit].cat) { cat[mv.id] = cuits[mv.cuit].cat; return; }
     if (mv.cuit && cuitsConFac[mv.cuit]) { cat[mv.id] = mv.imp < 0 ? 'prov' : 'cobro'; return; }
     if (mv.cuit && cuitProf[mv.cuit]) { cat[mv.id] = 'hon'; return; }
+    if (obraNom[mv.id] || (mv.cuit && obraCuit[mv.cuit])) { cat[mv.id] = 'obra'; return; }
     cat[mv.id] = 'pend';
   });
   return { movs: movs, facs: facs, porMov: porMov, porFac: porFac, cat: cat, auto: auto, man: man, cuits: cuits, facById: facById };
