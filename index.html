@@ -2385,30 +2385,30 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/portal-render.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/backup.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/admin-home.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/gastos-obra.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/coberturas.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/presentacion.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/sueldo-b.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/gasto-destiempo.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/retencion-reporte.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/dla.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/redsom.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/nun-data.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/accesos-debitos.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/tareas-hoy.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/estadisticas.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/estadisticas-secretarias.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/estadisticas-export.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/estadisticas-reportes.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/buzon.js?v=2026-11-20-portal-tabs-wrap"></script>
-<script src="js/gastos-casa.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/datos.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/portal-render.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/backup.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/admin-home.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/gastos-obra.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/coberturas.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/presentacion.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/sueldo-b.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/gasto-destiempo.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/retencion-reporte.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/dla.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/redsom.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/nun-data.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/accesos-debitos.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/tareas-hoy.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/estadisticas.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/estadisticas-secretarias.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/estadisticas-export.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/estadisticas-reportes.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/buzon.js?v=2026-11-20-ayud-cruzada-reimport"></script>
+<script src="js/gastos-casa.js?v=2026-11-20-ayud-cruzada-reimport"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -7298,7 +7298,12 @@ function fondoCeotAyudantiaSectionHtml() {
     var mes = MESES_ORD_FC.indexOf(partes[0]);
     return (parseInt(partes[1], 10) || 0) * 12 + (mes === -1 ? 0 : mes);
   }
-  var periodos = Object.keys(CEOT_AYUD_CRUZADA).sort(function(a, b) { return fcOrdenPeriodo(a) - fcOrdenPeriodo(b); });
+  // Los períodos importados sin ningún cruce quedan guardados en cero (ver
+  // importar-liquidacion.js), no se listan.
+  var periodos = Object.keys(CEOT_AYUD_CRUZADA).filter(function(p) {
+    var e = CEOT_AYUD_CRUZADA[p] || {};
+    return (e.osde || 0) || (e.dif || 0) || (e.sinEsp && e.sinEsp.length);
+  }).sort(function(a, b) { return fcOrdenPeriodo(a) - fcOrdenPeriodo(b); });
   if (!periodos.length) {
     return '<div style="font-size:.75rem;color:rgba(32,36,31,.5);font-style:italic">Todavía no se detectó ninguna ayudantía cruzada al importar una liquidación (ni casos sin ESP/AY1 identificable).</div>';
   }
@@ -8477,7 +8482,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-20-portal-tabs-wrap';
+  var CURRENT_BUILD = '2026-11-20-ayud-cruzada-reimport';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');

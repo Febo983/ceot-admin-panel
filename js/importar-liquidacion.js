@@ -1125,11 +1125,16 @@ async function procesarArchivosImport() {
 
     // ── Fondo CEOT — Ayudantía cruzada: se guarda el resultado de este
     // período (reemplaza lo que hubiera si ya se había importado antes).
+    // Se guarda SIEMPRE, aunque dé cero: si un mes se había importado con
+    // cruces y al reimportarlo ya no hay, la entrada vieja tiene que quedar
+    // pisada en cero (con "actualizado" más nuevo gana el merge entre equipos);
+    // si no, seguía sumando al acumulado del fondo y del Portal. Los períodos
+    // en cero no se muestran en la tabla de Sueldo Director.
     impCeotAyudantiaOsde = ceotAyudantiaOsde;
     impCeotAyudantiaDif  = ceotAyudantiaDif;
     impCeotAyudantiaDetalle = ceotAyudantiaDetalle;
     impCeotAyudantiaSinEspDetalle = ceotAyudantiaSinEspDetalle;
-    if (periodoKeyArchivo && (ceotAyudantiaOsde || ceotAyudantiaDif || ceotAyudantiaSinEspDetalle.length)) {
+    if (periodoKeyArchivo) {
       ceotAyudCruzadaGuardarPeriodo(periodoKeyArchivo, {
         osde: ceotAyudantiaOsde, dif: ceotAyudantiaDif,
         detalle: ceotAyudantiaDetalle, sinEsp: ceotAyudantiaSinEspDetalle,
