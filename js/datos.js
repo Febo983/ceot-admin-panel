@@ -965,7 +965,7 @@ function syncMarcarEstado(clave, ok, error) {
 function syncTrasLogin() {
   var pendientes = _syncPullPendientes;
   _syncPullPendientes = [];
-  pendientes.forEach(function(p) { syncPull(p[0], p[1]); });
+  pendientes.forEach(function(p) { syncPull(p[0], p[1], p[2]); });
 }
 // syncPush manda por POST (el valor va en el cuerpo, sin límite de largo de
 // URL: Gastos Casa ya pesa más de lo que entra en un GET). Si el POST no se
@@ -1025,9 +1025,12 @@ function syncPushJsonp_(clave, valor, terminar) {
     document.head.appendChild(script);
   } catch (e) { terminar(false, 'no llegó al servidor'); }
 }
-function syncPull(clave, onDone) {
+// onVacio (opcional): se llama si el servidor no tiene nada guardado en esa
+// clave — para subir lo que haya acá (ver Débitos). No cambia nada para los
+// que no lo pasan.
+function syncPull(clave, onDone, onVacio) {
   try {
-    if (!AUTH_TOKEN) { _syncPullPendientes.push([clave, onDone]); return; }
+    if (!AUTH_TOKEN) { _syncPullPendientes.push([clave, onDone, onVacio]); return; }
     var cbName = '_syncPullCb' + (_syncCbSeq++);
     var limpiar = function() {
       clearTimeout(timeout);
@@ -1043,6 +1046,8 @@ function syncPull(clave, onDone) {
         if (resp && resp.valor_json != null && resp.valor_json !== localStorage.getItem(clave)) {
           localStorage.setItem(clave, resp.valor_json);
           if (onDone) onDone();
+        } else if (resp && resp.valor_json == null && onVacio) {
+          onVacio();
         }
       } catch (e) {}
     };

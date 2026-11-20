@@ -448,7 +448,7 @@ function debMarcarPendiente(key) {
   if (p.indexOf(key) === -1) p.push(key);
   try { localStorage.setItem(DEB_PEND_KEY, JSON.stringify(p)); } catch (e) {}
 }
-function debPull(clave, alLlegar) {
+function debPull(clave, alLlegar, alVacio) {
   if (_debPulled[clave] || typeof syncPull !== 'function') return;
   _debPulled[clave] = true;
   syncPull(clave, function() {
@@ -467,13 +467,97 @@ function debPull(clave, alLlegar) {
     }
     if (alLlegar) alLlegar();
     if (document.getElementById('debMesSel')) renderDebitos();
+  }, alVacio);
+}
+
+// Lista de claves de localStorage que empiezan con un prefijo.
+function debClavesLocales(pref) {
+  var out = [];
+  try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf(pref) === 0) out.push(k); } } catch (e) {}
+  return out;
+}
+function debJson(clave, def) {
+  try { var v = JSON.parse(localStorage.getItem(clave) || 'null'); return v == null ? def : v; } catch (e) { return def; }
+}
+
+// Detalle de un período: si el servidor no lo tiene y este navegador sí, se
+// sube. Pedido de Marcelo, 20/11/2026: julio, septiembre y octubre figuraban
+// en la lista pero el detalle había quedado solo en el navegador donde se
+// importaron (antes del guardado compartido). Abriendo Débitos en esa PC una
+// vez, quedan para todas.
+function debPullImp(k) {
+  debPull('deb_imp_' + k, null, function() {
+    if (localStorage.getItem('deb_imp_' + k)) syncPush('deb_imp_' + k);
   });
 }
 function debPullTodo() {
-  debPull('deb_guardados', function() {
-    debGetGuardados().forEach(function(k) { debPull('deb_imp_' + k); });
+  // Períodos con detalle en este navegador que no están en la lista: se suman
+  // (como pendientes, así el pull del índice no los saca) para que se suban.
+  var lista = debGetGuardados(), sumo = false;
+  debClavesLocales('deb_imp_').forEach(function(c) {
+    var k = c.slice('deb_imp_'.length);
+    if (lista.indexOf(k) === -1) { lista.unshift(k); debMarcarPendiente(k); sumo = true; }
   });
-  debGetGuardados().forEach(function(k) { debPull('deb_imp_' + k); });
+  if (sumo) { try { localStorage.setItem('deb_guardados', JSON.stringify(lista)); } catch (e) {} }
+  debPull('deb_guardados', function() {
+    debGetGuardados().forEach(debPullImp);
+  }, function() { if (debGetGuardados().length) syncPush('deb_guardados'); });
+  debGetGuardados().forEach(debPullImp);
+  debPullEstados();
+}
+
+// ── Estados y análisis NUN, compartidos ──────────────────────────
+// Antes vivían solo en el navegador (deb_est_<fact>_<nprest> y
+// deb_analisis_<fact>_<nprest>). Se siguen leyendo de esas mismas claves, pero
+// además:
+//   - deb_estados: un mapa con TODOS los estados (chico) → se sincroniza entero.
+//   - deb_analisis_idx: qué débitos tienen análisis; cada análisis se sube en
+//     su propia clave (son largos) y se baja recién al abrirlo.
+// La primera vez, lo que ya había en este navegador se suma y se sube.
+var DEB_EST_KEY = 'deb_estados', DEB_AN_IDX_KEY = 'deb_analisis_idx';
+function debEstadoGuardar(stKey, val) {
+  if (val) localStorage.setItem(stKey, val); else localStorage.removeItem(stKey);
+  var m = debJson(DEB_EST_KEY, {});
+  m[stKey] = val || '';
+  try { localStorage.setItem(DEB_EST_KEY, JSON.stringify(m)); } catch (e) {}
+  syncPush(DEB_EST_KEY);
+}
+function debAnalisisGuardar(fact, nprest, res) {
+  var k = debAnalisisKey(fact, nprest), idx = debJson(DEB_AN_IDX_KEY, {});
+  if (res) { try { localStorage.setItem(k, JSON.stringify(res)); } catch (e) {} idx[k] = true; syncPush(k); }
+  else { localStorage.removeItem(k); idx[k] = false; }
+  try { localStorage.setItem(DEB_AN_IDX_KEY, JSON.stringify(idx)); } catch (e) {}
+  syncPush(DEB_AN_IDX_KEY);
+}
+function debTieneAnalisis(fact, nprest) {
+  var k = debAnalisisKey(fact, nprest);
+  return !!localStorage.getItem(k) || !!debJson(DEB_AN_IDX_KEY, {})[k];
+}
+// Después de bajar (o no encontrar) el mapa del servidor: lo del servidor
+// manda; lo que este navegador tenía y el servidor no, se suma y se sube.
+function debEstadosAplicar() {
+  var m = debJson(DEB_EST_KEY, {}), cambio = false;
+  debClavesLocales('deb_est_').forEach(function(k) {
+    if (!(k in m)) { m[k] = localStorage.getItem(k) || ''; cambio = true; }
+  });
+  Object.keys(m).forEach(function(k) {
+    if (m[k]) localStorage.setItem(k, m[k]); else localStorage.removeItem(k);
+  });
+  try { localStorage.setItem(DEB_EST_KEY, JSON.stringify(m)); } catch (e) {}
+  if (cambio) syncPush(DEB_EST_KEY);
+}
+function debAnalisisIdxAplicar() {
+  var idx = debJson(DEB_AN_IDX_KEY, {}), cambio = false;
+  debClavesLocales('deb_analisis_').forEach(function(k) {
+    if (k === DEB_AN_IDX_KEY || k in idx) return;
+    idx[k] = true; cambio = true; syncPush(k);
+  });
+  try { localStorage.setItem(DEB_AN_IDX_KEY, JSON.stringify(idx)); } catch (e) {}
+  if (cambio) syncPush(DEB_AN_IDX_KEY);
+}
+function debPullEstados() {
+  debPull(DEB_EST_KEY, debEstadosAplicar, debEstadosAplicar);
+  debPull(DEB_AN_IDX_KEY, debAnalisisIdxAplicar, debAnalisisIdxAplicar);
 }
 
 // Al entrar por primera vez en la sesión sin elegir mes, abre el último período guardado.
@@ -573,7 +657,7 @@ function renderDebitos(mes) {
       var stKey = 'deb_est_' + d.fact + '_' + d.nprest;
       var estado = localStorage.getItem(stKey) || '';
       var bg = DEB_ESTADOS[estado] ? DEB_ESTADOS[estado].bg : '';
-      var tieneAnalisis = !!localStorage.getItem(debAnalisisKey(d.fact, d.nprest));
+      var tieneAnalisis = debTieneAnalisis(d.fact, d.nprest);
       var tipoStyle = d.tipo === 'GAS' ? 'color:#c2410c;font-weight:700' : 'color:#b13a2c;font-weight:700';
       var rowBg = bg ? 'background:' + bg + ';' : '';
       html += '<tr style="' + rowBg + '">'
@@ -723,7 +807,7 @@ function debEliminarGuardado(key) {
 function debSetEstado(sel) {
   var key = sel.dataset.stkey;
   var val = sel.value;
-  if (val) localStorage.setItem(key, val); else localStorage.removeItem(key);
+  debEstadoGuardar(key, val);
   var bgMap = { 'I':'#e8f1fb', 'P':'#fde8e8', 'R':'#e6f9ec', 'A':'#fffbe6', '':'' };
   var tr = sel.closest('tr');
   if (tr) tr.style.background = bgMap[val] || '';
@@ -1007,6 +1091,16 @@ function debAbrirAuditor(i) {
   var cached = null;
   try { cached = JSON.parse(localStorage.getItem(debAnalisisKey(d.fact, d.nprest)) || "null"); } catch (e) {}
   document.getElementById("debAudResultado").innerHTML = cached ? debAuditorResultadoHtml(cached) : "";
+  // Análisis hecho en otra PC: se baja al abrirlo.
+  if (!cached && debTieneAnalisis(d.fact, d.nprest) && typeof syncPull === 'function') {
+    var _k = debAnalisisKey(d.fact, d.nprest);
+    document.getElementById("debAudResultado").innerHTML = '<div style="font-size:.8rem;opacity:.6">Trayendo el análisis guardado…</div>';
+    syncPull(_k, function() {
+      var r = null; try { r = JSON.parse(localStorage.getItem(_k) || "null"); } catch (e) {}
+      var el = document.getElementById("debAudResultado");
+      if (el && r) el.innerHTML = debAuditorResultadoHtml(r);
+    }, function() { var el = document.getElementById("debAudResultado"); if (el) el.innerHTML = ""; });
+  }
 
   bg.style.display = "flex";
 }
@@ -1080,7 +1174,7 @@ function debAuditorAnalizar() {
         return;
       }
       msg.textContent = "";
-      try { localStorage.setItem(debAnalisisKey(d.fact, d.nprest), JSON.stringify(res.j)); } catch (e) {}
+      debAnalisisGuardar(d.fact, d.nprest, res.j);
       document.getElementById("debAudResultado").innerHTML = debAuditorResultadoHtml(res.j);
     })
     .catch(function(err){
@@ -1155,8 +1249,7 @@ function debAudCopiar(btn) {
 function debAuditorAplicar(estado) {
   var d = (debImportData || [])[debAuditorActual];
   if (!d || !estado) return;
-  var stKey = "deb_est_" + d.fact + "_" + d.nprest;
-  localStorage.setItem(stKey, estado);
+  debEstadoGuardar("deb_est_" + d.fact + "_" + d.nprest, estado);
   debCerrarAuditor();
   renderDebitos();
 }
@@ -1164,7 +1257,7 @@ function debAuditorAplicar(estado) {
 function debAuditorBorrar() {
   var d = (debImportData || [])[debAuditorActual];
   if (!d) return;
-  localStorage.removeItem(debAnalisisKey(d.fact, d.nprest));
+  debAnalisisGuardar(d.fact, d.nprest, null);
   document.getElementById("debAudResultado").innerHTML = "";
   renderDebitos();
 }
