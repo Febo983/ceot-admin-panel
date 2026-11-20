@@ -160,6 +160,7 @@ function tareasHoyHtml() {
       + '<input type="checkbox" onchange="admHomeChecklistToggle(\'' + it.id + '\');tareasHoyRepintar()" style="margin-top:3px">'
       + '<span style="flex:1;min-width:0">' + (atrasada ? '<b>Atrasada:</b> ' : '') + tareasHoyEsc(it.texto) + '</span>'
       + (typeof checklistIrHtml === "function" ? checklistIrHtml(it.id).replace('onclick="event.stopPropagation();', 'onclick="event.stopPropagation();tareasHoyCerrar();') : '')
+      + (it.id === "r3-1" && typeof waHorariosLinksHtml === "function" ? '<span style="display:flex;gap:4px">' + waHorariosLinksHtml() + '</span>' : '')
       + '</label>';
   };
   var ckHtml = ck.atrasadas.map(function(it) { return itemHtml(it, true); }).join("")

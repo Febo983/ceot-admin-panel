@@ -79,20 +79,23 @@ function admHomeModulosEnHome() {
   return ADM_HOME_MODULOS.filter(function(m) { return m.home !== false; });
 }
 
+// 20/11/2026: Gastos A, Inversiones, Préstamos Casa, Fondo CEOT, Gasto de
+// Equipos, Facturas y Copia de seguridad salieron del Inicio (home:false) por
+// poco uso según el contador; siguen en el menú lateral y en el buscador.
 var ADM_HOME_MODULOS = [
   { key:"liquidaciones",    ico:"bar-chart-3",     lbl:"Liquidaciones", cat:"mes", fn:"renderAdminPanelPage(tabMesActual())" },
   { key:"sueldodirector",   ico:"banknote",        lbl:"Transferencias del Mes", cat:"mes", fn:"abrirSueldoDirectorMesActual()" },
   // Antes eran secciones plegables dentro de "Transferencias del Mes" (ver SD_VISTAS en index.html).
-  { key:"gastosa",          ico:"file-text",       lbl:"Gastos A",      cat:"mes", fn:"abrirSdVista('gastosa')" },
-  { key:"inv",              ico:"piggy-bank",      lbl:"Inversiones",   cat:"mes", fn:"abrirSdVista('inv')" },
-  { key:"prestamoscasa",    ico:"building-2",      lbl:"Préstamos Casa", cat:"casa", fn:"abrirSdVista('prestamos')" },
-  { key:"fondoceot",        ico:"landmark",        lbl:"Fondo CEOT",    cat:"mes", fn:"abrirSdVista('fondoceot')" },
-  { key:"gastoequipo",      ico:"settings",        lbl:"Gasto de Equipos", cat:"clinica", fn:"abrirSdVista('gastoequipo')" },
+  { key:"gastosa",          ico:"file-text",       lbl:"Gastos A",      cat:"mes", home:false, fn:"abrirSdVista('gastosa')" },
+  { key:"inv",              ico:"piggy-bank",      lbl:"Inversiones",   cat:"mes", home:false, fn:"abrirSdVista('inv')" },
+  { key:"prestamoscasa",    ico:"building-2",      lbl:"Préstamos Casa", cat:"casa", home:false, fn:"abrirSdVista('prestamos')" },
+  { key:"fondoceot",        ico:"landmark",        lbl:"Fondo CEOT",    cat:"mes", home:false, fn:"abrirSdVista('fondoceot')" },
+  { key:"gastoequipo",      ico:"settings",        lbl:"Gasto de Equipos", cat:"clinica", home:false, fn:"abrirSdVista('gastoequipo')" },
   { key:"aporteceot",       ico:"percent",         lbl:"Retención Ganancias",   cat:"mes", fn:"renderAporteCeot()" },
   { key:"cpsm",             ico:"landmark",        lbl:"CPSM",          cat:"mes", home:false, fn:"renderCpsm()" },
   { key:"redsom",           ico:"stethoscope",     lbl:"Seguimiento REDSOM", cat:"mes", home:false, fn:"renderSeguimientoRedsom()" },
   { key:"debitos",          ico:"alert-triangle",  lbl:"Débitos",       cat:"mes", fn:"renderDebitos()" },
-  { key:"facturas",         ico:"receipt",         lbl:"Facturas",      cat:"mes", fn:"renderFacturas()" },
+  { key:"facturas",         ico:"receipt",         lbl:"Facturas",      cat:"mes", home:false, fn:"renderFacturas()" },
   { key:"presentacion",     ico:"presentation",    lbl:"Presentación",  cat:"mes", fn:"renderPresentacion()" },
   { key:"sueldob",          ico:"briefcase",       lbl:"Sueldo B",      cat:"gente", fn:"renderSueldoB()" },
   { key:"premios",          ico:"award",           lbl:"Premios",       cat:"gente", fn:"renderPremios()" },
@@ -104,7 +107,7 @@ var ADM_HOME_MODULOS = [
   { key:"buzon",            ico:"mail",            lbl:"Buzón",         cat:"clinica", fn:"renderBuzon()" },
   { key:"totalceot",        ico:"trending-up",     lbl:"Total CEOT",    cat:"sistema", home:false, fn:"renderTotalCeot()" },
   { key:"faqasistente",     ico:"bot",             lbl:"FAQ del asistente", cat:"sistema", home:false, fn:"renderFaqAsistente()" },
-  { key:"backup",           ico:"download",        lbl:"Copia de seguridad", cat:"sistema", fn:"backupExportar()" },
+  { key:"backup",           ico:"download",        lbl:"Copia de seguridad", cat:"sistema", home:false, fn:"backupExportar()" },
 ];
 
 var LUCIDE_ACC_ICON = {
@@ -195,17 +198,13 @@ function admHomeOrdenarPorUso(lista, keyFn) {
     .map(function(x) { return x.item; });
 }
 
-// La vista clásica quedó retirada (Marcelo solo usa la retro). Se fuerza retro
-// siempre; el código de la rama clásica sigue en el archivo pero es inalcanzable.
+// La vista clásica quedó retirada (Marcelo solo usa la retro, "la de Mario
+// Bros"). El 20/11/2026 se borró también su HTML de renderAdmHome.
 function admHomeCargarTema() {
   admHomeTheme = "retro";
   try { localStorage.setItem("ceot_home_theme", "retro"); } catch (e) {}
 }
 
-function admHomeToggleTema() {
-  admHomeTheme = "retro";
-  renderAdmHome();
-}
 
 function admHomeModLabel(m) {
   return MOD_LABELS_CUSTOM[m.key] || m.lbl;
@@ -569,12 +568,15 @@ function admHomeHudEsc(t) {
 // El checklist de la home se puede plegar (igual que el calendario): queda solo
 // el contador hechas/total. Preferencia de pantalla, por navegador.
 var HUD_CHECKLIST_ABIERTO_KEY = "ceot_home_checklist_abierto";
+// Desde el 20/11/2026 arranca plegado (solo el contador): la lista de
+// pendientes ya sale en "Tareas de hoy". "Mostrar" la abre y queda recordado.
+var HUD_CHECKLIST_ABIERTO_KEY_V2 = "ceot_home_checklist_abierto_v2";
 function admHomeChecklistAbierto() {
-  try { return localStorage.getItem(HUD_CHECKLIST_ABIERTO_KEY) !== "0"; } catch (e) { return true; }
+  try { return localStorage.getItem(HUD_CHECKLIST_ABIERTO_KEY_V2) === "1"; } catch (e) { return false; }
 }
 function admHomeChecklistPlegar(ev) {
   if (ev) ev.stopPropagation();
-  try { localStorage.setItem(HUD_CHECKLIST_ABIERTO_KEY, admHomeChecklistAbierto() ? "0" : "1"); } catch (e) {}
+  try { localStorage.setItem(HUD_CHECKLIST_ABIERTO_KEY_V2, admHomeChecklistAbierto() ? "0" : "1"); } catch (e) {}
   admHomeHudRender();
 }
 function admHomeHudRender() {
@@ -868,7 +870,6 @@ function renderAdmHome() {
   admHomeCargarTema();
   checklistSincronizar();
   checklistActualizarBadge();
-  waHorariosCheck();
   var retro = admHomeTheme === "retro";
 
   var h = new Date().getHours();
@@ -899,7 +900,6 @@ function renderAdmHome() {
   var statNeto = admHomeTotalCeotHtml(tcInfo, retro ? '#1c2b3a' : '#20241f');
   var statNetoLab = tcInfo ? periodoInfo(tcInfo.id).labelLargo : periodoInfo(mesAct).labelLargo;
 
-  var toggleBtn = '';  // toggle de tema retirado — solo queda la vista retro
 
   var html;
 
@@ -946,40 +946,6 @@ function renderAdmHome() {
       + '</div>'
 
       + '</div><div class="adm-home-ground" id="admHomeGround" aria-hidden="true"></div></div>';
-  } else {
-    html = '<div style="border-radius:0;padding:14px 16px 16px;min-height:200px">'
-      + '<div style="max-width:1600px;margin:0 auto">'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">'
-      +   '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span id="admHomeTareasBtn"></span><span style="font-size:0.78rem;color:rgba(32,36,31,0.38);font-weight:500;letter-spacing:.3px">' + saludo + ', Marcelo</span></div>'
-      +   toggleBtn
-      + '</div>'
-      + '<div id="admHomeAlertaRet"></div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
-      + '<div style="background:rgba(32,36,31,0.05);border:0.5px solid rgba(32,36,31,0.1);border-radius:10px;padding:11px 12px">'
-      + '<div style="font-size:9px;color:rgba(32,36,31,0.35);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Neto del mes · ' + mesAct + '</div>'
-      + statNeto
-      + '</div>'
-      + '<div style="background:rgba(32,36,31,0.05);border:0.5px solid rgba(32,36,31,0.1);border-radius:10px;padding:11px 12px">'
-      + '<div style="font-size:9px;color:rgba(32,36,31,0.35);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Socios activos</div>'
-      + '<span style="font-size:1.2rem;font-weight:800;color:#20241f">' + admHomeSociosActivos() + '</span>'
-      + (garmNota ? '<div style="font-size:9.5px;color:rgba(32,36,31,0.3);margin-top:2px">' + garmNota + '</div>' : '')
-      + '</div>'
-      + '</div>'
-      + '<div style="display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;scrollbar-width:none">' + mesStrip + '</div>'
-      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
-      + '<div style="flex:1;display:flex;align-items:center;gap:8px;border-bottom:1.5px dashed var(--co-line,#d9d0b8);padding:6px 4px">'
-      + '<i data-lucide="search" style="width:14px;height:14px;color:var(--co-ink-dim,#6b6a5a);flex-shrink:0" stroke-width="2"></i>'
-      + '<input id="admHomeSearchInput" oninput="admHomeBuscar(this.value)" placeholder="Buscar módulos, liquidaciones, accesos…" style="background:none;border:none;outline:none;color:#20241f;font-size:0.85rem;font-family:inherit;flex:1">'
-      + '</div>'
-      + '<button id="admHomeEditBtn" onclick="admHomeToggleEdit()" style="flex-shrink:0;background:rgba(32,36,31,.06);border:1px solid rgba(32,36,31,.12);color:rgba(32,36,31,.6);font-size:0.72rem;font-weight:600;padding:0 14px;border-radius:10px;cursor:pointer;font-family:inherit;height:38px"><i data-lucide="pencil" style="width:12px;height:12px;vertical-align:-2px;margin-right:3px" stroke-width="2"></i>Editar nombres</button>'
-      + '</div>'
-      + '<div id="admHomeDynamic"></div>'
-      + '<div style="display:flex;justify-content:space-between;font-size:9.5px;color:rgba(32,36,31,0.2);padding-top:8px;margin-top:2px;border-top:0.5px solid rgba(32,36,31,0.07)">'
-      + '<span><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:rgba(29,158,117,.8);margin-right:4px;vertical-align:1px"></span>Conectado</span>'
-      + '<span>Admin CEOT · ' + new Date().getFullYear() + '</span>'
-      + '</div>'
-      + '</div>'
-      + '</div>';
   }
 
   document.getElementById("adm-content").innerHTML = html;
@@ -1167,45 +1133,16 @@ function initAdmHomeBg() {
 var WA_HORARIOS_NUMERO = "5492236796006"; // 54 + 9 (celular AR) + 223 (Mar del Plata) + 6796006
 var WA_HORARIOS_SHEET_ID = "1M-l1KHAoRRFL7MLpmQY4tXCtY0SLj14Dm0ucQWsR5fA";
 
-function waHorariosDismissKey(d) {
-  d = d || new Date();
-  return "wa_horarios_dismiss_" + d.getFullYear() + "-" + (d.getMonth() + 1);
-}
-function waHorariosDismiss() {
-  try { localStorage.setItem(waHorariosDismissKey(), "1"); } catch (e) {}
-  var el = document.getElementById("waHorariosBanner");
-  if (el) el.remove();
-}
-function waHorariosCheck() {
-  var existing = document.getElementById("waHorariosBanner");
-  if (existing) existing.remove();
-
-  var d = new Date();
-  if (d.getDate() < 24) return;
-  try { if (localStorage.getItem(waHorariosDismissKey(d)) === "1") return; } catch (e) {}
-
+// Los dos links que daba el cartel flotante (retirado el 20/11/2026: la tarea
+// ya sale en "Tareas de hoy"), ahora al lado de la tarea r3-1.
+function waHorariosLinksHtml() {
   var MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-  var mensaje = "Hola! Te paso el Sheet de horarios y asistencia de " + MESES[d.getMonth()] + ".";
+  var mensaje = "Hola! Te paso el Sheet de horarios y asistencia de " + MESES[new Date().getMonth()] + ".";
   var waUrl = "https://wa.me/" + WA_HORARIOS_NUMERO + "?text=" + encodeURIComponent(mensaje);
   var sheetUrl = "https://docs.google.com/spreadsheets/d/" + WA_HORARIOS_SHEET_ID + "/export?format=xlsx";
-
-  var div = document.createElement("div");
-  div.id = "waHorariosBanner";
-  div.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:5000;max-width:300px;"
-    + "background:#fbf8f0;border:1.5px solid #92610f;border-radius:10px;padding:13px 15px;"
-    + "box-shadow:0 4px 14px rgba(32,36,31,.18);font-family:system-ui,-apple-system,sans-serif";
-  div.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">'
-    +   '<div style="font-weight:700;font-size:.85rem;color:#92610f">📋 Horarios y asistencia</div>'
-    +   '<button onclick="waHorariosDismiss()" title="No mostrar este mes" style="border:none;background:none;cursor:pointer;font-size:.9rem;color:rgba(32,36,31,.4);line-height:1;padding:0">✕</button>'
-    + '</div>'
-    + '<div style="font-size:.76rem;color:rgba(32,36,31,.65);line-height:1.4;margin-bottom:10px">Toca mandarle al estudio el Sheet de este mes.</div>'
-    + '<div style="display:flex;flex-direction:column;gap:6px">'
-    +   '<a href="' + sheetUrl + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:7px 10px;border-radius:6px;border:1px solid rgba(32,36,31,.2);background:#fff;color:#20241f;font-size:.78rem;font-weight:600;text-decoration:none">⬇ Descargar Sheet (.xlsx)</a>'
-    +   '<a href="' + waUrl + '" target="_blank" rel="noopener" style="display:block;text-align:center;padding:7px 10px;border-radius:6px;border:none;background:#1f3a2e;color:#fff;font-size:.78rem;font-weight:600;text-decoration:none">💬 Abrir WhatsApp</a>'
-    + '</div>'
-    + '<div style="font-size:.65rem;color:rgba(32,36,31,.4);margin-top:8px">Descargá el archivo primero y arrastralo al chat — WhatsApp Web no deja adjuntarlo solo.</div>';
-  document.body.appendChild(div);
+  var st = "flex-shrink:0;white-space:nowrap;text-decoration:none;font-size:0.68rem;font-weight:700;padding:3px 9px;border-radius:12px;border:1.5px solid #1c2b3a;background:#fff;color:#1c2b3a";
+  return '<a href="' + sheetUrl + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="' + st + '" title="Descargá el archivo y arrastralo al chat">Sheet ↓</a>'
+    + '<a href="' + waUrl + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="' + st + '">WhatsApp ↗</a>';
 }
 
 // ══════ CHECKLIST MENSUAL ═══════════════════════════════════════

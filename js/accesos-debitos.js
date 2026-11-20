@@ -27,26 +27,17 @@ var ACCESOS_DATA = [
   { id:9,  cat:"mes", title:"CC CEM MDP",               desc:"Sistema privado del Centro Médico MDP",                     url:"https://privado.centromedicomdp.org.ar/" },
   { id:10, cat:"clinica", title:"Programación CX (Sheet)",  desc:"Calendario de cirugías — Google Sheets",                    url:"https://docs.google.com/spreadsheets/d/1VYIarOpfCgqinj5Uy2dAYCSsx6c5GL9J7YbAYKvCbdk/edit?usp=sharing" },
   { id:12, cat:"clinica", title:"Generador de Órdenes CX", desc:"PDFs de órdenes de cirugía con sello del médico",            url:"https://febo983.github.io/generador-de-ordenes-ceot/" },
-  { id:15, cat:"clinica", title:"Evoluciones",              desc:"Registro de evoluciones clínicas CEOT",                     url:"https://ceot-dictado.netlify.app/" },
   { id:16, cat:"clinica", title:"Cirugías Programadas",     desc:"Agenda de cirugías programadas",                            url:"https://cirugias-progamadas.netlify.app/" },
-  { id:19, cat:"clinica", title:"Estadísticas CX 26 v2",    desc:"Estadísticas de cirugías CEOT 2026 — versión actualizada", url:"https://ceot-estadisticas-cx-26.netlify.app/" },
   // ── Administración
   { id:24, cat:"clinica", title:"App para caja GACI",         desc:"Registro de consultas: caja diaria por secretaria, cola de turnos y cierre",  url:"https://ceot-agenda.netlify.app/" },
-  { id:25, cat:"clinica", title:"Permisos ART",               desc:"Gestión de permisos de ART para cirugías",                  url:"https://permiso-art-ceot.netlify.app/" },
   { id:27, cat:"gente", title:"Horarios y Asistencias",     desc:"Registro de horarios, asistencias y licencias",             url:"https://docs.google.com/spreadsheets/d/1M-l1KHAoRRFL7MLpmQY4tXCtY0SLj14Dm0ucQWsR5fA/edit?usp=sharing" },
-  { id:28, cat:"sistema", title:"Documentación CEOT",         desc:"Documentos y archivos generales del CEOT",                  url:"https://drive.google.com/drive/folders/1eOUfTKOEkFZTsgsctzwNhq0IJ-Wdp3N7?usp=drive_link" },
   { id:29, cat:"sistema", title:"Archivos Reuniones",         desc:"Minutas y acuerdos de reuniones del equipo",                url:"https://drive.google.com/drive/folders/1jnwuKnJaNdR45_QfGvqOmURQL7yrLdTA?usp=drive_link" },
   { id:35, cat:"casa", title:"Contable",                   desc:"Datos contables",                                           url:"https://claude.ai/code/artifact/e7c9f19e-d865-4574-9adb-56279cb542df" },
   { id:38, cat:"sistema", title:"Mi Google Calendar",        desc:"Calendario de Google de Marce (marcelo.aime74@gmail.com)", url:"https://calendar.google.com/calendar/u/0/r?authuser=marcelo.aime74@gmail.com" },
   { id:41, cat:"sistema", title:"Diagrama de Arquitectura",  desc:"Cómo se conectan el panel admin y el portal profesional",  url:"https://febo983.github.io/ceot-admin-panel/architecture.html" },
   { id:37, cat:"clinica", title:"Normas Convenios OOSS",    desc:"Autorizaciones, coseguros, manuales de prestador y contactos por obra social", url:"https://febo983.github.io/ceot-normas-convenios/" },
-  { id:39, cat:"clinica", title:"Portal del Profesional GACI", desc:"Agenda del día en vivo (sala de espera, atendidos) y estadísticas — para los médicos", url:"https://ceot-agenda.netlify.app/profesional" },
   { id:40, cat:"clinica", title:"Conector de Nomencladores", desc:"Código Nacional (NN) ↔ Código NUN, según la facturación real (191 pares)", url:"https://claude.ai/code/artifact/59653f06-122f-453e-ba9b-098ba2cc0759" },
   // ── Otros
-  { id:30, cat:"gente", title:"Encuesta Secretarias",       desc:"Evaluación y premios a secretarias",                        url:"https://docs.google.com/spreadsheets/d/19ITME1mzL2eIYX4YIudIGwP7yeGBDP93XM6Y2gfperw/edit?usp=sharing" },
-  { id:31, cat:"gente", title:"Encuesta Satisfacción",      desc:"Encuesta de satisfacción de pacientes CEOT",                url:"https://docs.google.com/spreadsheets/d/1T9Rck2IdVg-aYDnjZo3sQJ_0dZ0MvhDBrlWFE1EVAvs/edit?usp=sharing" },
-  { id:32, cat:"mes", title:"Caja de Médicos",            desc:"Autogestión Caja de Médicos",                               url:"https://www.cajademedicos.com.ar/aplicaciones/jsp/m.EntidadesAutogestion/ent_principal.jsp?mensaje=S" },
-  { id:33, cat:"casa", title:"BBVA CEOT",                  desc:"Home banking BBVA — cuenta CEOT",                           url:"https://www.bbva.com.ar/empresas.html" },
 ];
 
 var accNextId = 42;
@@ -150,6 +141,16 @@ function accCargarCustom() {
       // Acceso #36 "Premios por Desempeño" se retiró del código (quedó sólo el
       // tile del módulo en Gestión) — sacarlo también de lo ya guardado en localStorage.
       saved = saved.filter(function(a) { return a.id !== 36; });
+      // 20/11/2026: se sacaron los accesos que nunca se abrieron desde el panel
+      // (Evoluciones, Estadísticas CX 26 v2, Permisos ART, Documentación CEOT,
+      // Encuesta Secretarias, Encuesta Satisfacción, Caja de Médicos, BBVA CEOT y
+      // Portal del Profesional GACI). También de lo ya guardado, siempre (si se
+      // hiciera una sola vez, un guardado viejo que llega tarde los reviviría).
+      // Un acceso nuevo con el mismo destino toma otro id y no se ve afectado.
+      var retirados = [15, 19, 25, 28, 30, 31, 32, 33, 39];
+      var antes = saved.length;
+      saved = saved.filter(function(a) { return retirados.indexOf(a.id) === -1; });
+      var sacoRetirados = saved.length !== antes;
       // 19/11/2026: el link viejo de Evoluciones (evoluciones-ceot.netlify.app) quedó huérfano — la cuenta
       // real es ceot-dictado.netlify.app. Se corrige también lo ya guardado (solo si sigue siendo el viejo).
       var evoViejo = false;
@@ -165,7 +166,7 @@ function accCargarCustom() {
         if (def.fn) saved[idx].fn = def.fn; else delete saved[idx].fn;
       });
       ACCESOS_DATA = saved;
-      if (evoViejo) accGuardarTodo();   // lo sube al guardado compartido si la sesión es admin
+      if (evoViejo || sacoRetirados) accGuardarTodo();   // lo sube al guardado compartido si la sesión es admin
       accNextId = Math.max.apply(null, ACCESOS_DATA.map(function(a){return a.id;}))+1;
       return;
     }
