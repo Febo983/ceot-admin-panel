@@ -302,7 +302,42 @@ function concLeer(k, def) {
 }
 function concEscribir(k, v) {
   localStorage.setItem(k, JSON.stringify(v));
-  if (typeof syncPush === 'function') syncPush(k);
+  concSubir(k);
+}
+// Subida a la planilla compartida DE A UNA: al importar se escriben ~20 claves
+// juntas y, mandadas todas a la vez, Apps Script rechazaba algunas (pasó con
+// conc_arca_2026-07_R y _10_R el 20/11/2026). Cola secuencial + hasta 3
+// reintentos por clave si el guardado falla.
+var _concCola = [], _concSubiendo = false, _concIntentos = {};
+function concSubir(k) {
+  if (typeof syncPush !== 'function') return;
+  if (_concCola.indexOf(k) === -1) _concCola.push(k);
+  if (!_concSubiendo) concSubirSiguiente();
+}
+function concSubirSiguiente() {
+  var k = _concCola.shift();
+  if (!k) { _concSubiendo = false; return; }
+  _concSubiendo = true;
+  syncPush(k);
+  var esperar = function() {
+    if (typeof _syncEnVuelo !== 'undefined' && _syncEnVuelo[k]) { setTimeout(esperar, 300); return; }
+    var st = (typeof ENDPOINT_STATUS !== 'undefined') ? ENDPOINT_STATUS['sync_' + k] : null;
+    if (st && !st.ok && st.error !== 'unauthorized' && (_concIntentos[k] || 0) < 3) {
+      _concIntentos[k] = (_concIntentos[k] || 0) + 1;
+      _concCola.push(k);
+    } else if (st && st.ok) delete _concIntentos[k];
+    setTimeout(concSubirSiguiente, 400);
+  };
+  setTimeout(esperar, 300);
+}
+// Lo que quedó sin subir en una sesión anterior (aviso "No se pudo
+// actualizar") se vuelve a mandar al abrir el módulo.
+function concReintentarFallidos() {
+  if (typeof ENDPOINT_STATUS === 'undefined') return;
+  Object.keys(ENDPOINT_STATUS).forEach(function(sk) {
+    var k = sk.replace(/^sync_/, '');
+    if (/^conc_/.test(k) && !ENDPOINT_STATUS[sk].ok && ENDPOINT_STATUS[sk].error !== 'unauthorized' && localStorage.getItem(k) !== null) concSubir(k);
+  });
 }
 function concIdx() {
   var i = concLeer(CONC_IDX_KEY, {});
@@ -597,6 +632,7 @@ function renderConciliacion(mes) {
   var btn = document.getElementById('adm-sidenav-conciliacion');
   if (btn) btn.className = 'adm-sidenav-btn active';
   concPull(CONC_IDX_KEY); concPullMeses();
+  concReintentarFallidos();
   var meses = concMesesTodos();
   if (mes) concMesSel = mes;
   if (meses.indexOf(concMesSel) === -1) concMesSel = meses.length ? meses[meses.length - 1] : '';
