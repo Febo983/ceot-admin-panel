@@ -2382,30 +2382,30 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/portal-render.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/backup.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/admin-home.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/gastos-obra.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/coberturas.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/presentacion.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/sueldo-b.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/gasto-destiempo.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/retencion-reporte.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/dla.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/redsom.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/nun-data.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/accesos-debitos.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/tareas-hoy.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/estadisticas.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/estadisticas-secretarias.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/estadisticas-export.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/estadisticas-reportes.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/buzon.js?v=2026-11-20-home-sin-huecos"></script>
-<script src="js/gastos-casa.js?v=2026-11-20-home-sin-huecos"></script>
+<script src="js/datos.js?v=2026-11-20-portal-2027"></script>
+<script src="js/portal-render.js?v=2026-11-20-portal-2027"></script>
+<script src="js/backup.js?v=2026-11-20-portal-2027"></script>
+<script src="js/admin-home.js?v=2026-11-20-portal-2027"></script>
+<script src="js/gastos-obra.js?v=2026-11-20-portal-2027"></script>
+<script src="js/coberturas.js?v=2026-11-20-portal-2027"></script>
+<script src="js/presentacion.js?v=2026-11-20-portal-2027"></script>
+<script src="js/sueldo-b.js?v=2026-11-20-portal-2027"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-20-portal-2027"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-20-portal-2027"></script>
+<script src="js/gasto-destiempo.js?v=2026-11-20-portal-2027"></script>
+<script src="js/retencion-reporte.js?v=2026-11-20-portal-2027"></script>
+<script src="js/dla.js?v=2026-11-20-portal-2027"></script>
+<script src="js/redsom.js?v=2026-11-20-portal-2027"></script>
+<script src="js/nun-data.js?v=2026-11-20-portal-2027"></script>
+<script src="js/accesos-debitos.js?v=2026-11-20-portal-2027"></script>
+<script src="js/tareas-hoy.js?v=2026-11-20-portal-2027"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-20-portal-2027"></script>
+<script src="js/estadisticas.js?v=2026-11-20-portal-2027"></script>
+<script src="js/estadisticas-secretarias.js?v=2026-11-20-portal-2027"></script>
+<script src="js/estadisticas-export.js?v=2026-11-20-portal-2027"></script>
+<script src="js/estadisticas-reportes.js?v=2026-11-20-portal-2027"></script>
+<script src="js/buzon.js?v=2026-11-20-portal-2027"></script>
+<script src="js/gastos-casa.js?v=2026-11-20-portal-2027"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -2922,10 +2922,21 @@ function renderHome(doctor) {
 var MESES_TABS = PERIODOS_TODOS;
 var _tabsOlderExpanded = false;
 
+// Hacia adelante llega hasta el último mes con datos del profesional (pedido de
+// Marcelo, 20/11/2026: Ene 27 ya estaba cargado y en el Portal no aparecía
+// porque la ventana cortaba en actual+1). Los meses futuros vacíos no se muestran.
 function mesesVisiblesPorDefecto() {
   var mi = MESES_TABS.indexOf(tabMesActual());
+  var hasta = mi + 1;
+  if (typeof doctorActual !== "undefined" && doctorActual && typeof calcularNetoLocal === "function") {
+    for (var k = MESES_TABS.length - 1; k > hasta; k--) {
+      var c = null;
+      try { c = calcularNetoLocal(MESES_TABS[k], doctorActual); } catch (e) {}
+      if (c) { hasta = k; break; }
+    }
+  }
   var set = {};
-  for (var i = mi - 2; i <= mi + 1; i++) if (MESES_TABS[i]) set[MESES_TABS[i]] = true;
+  for (var i = mi - 2; i <= hasta; i++) if (MESES_TABS[i]) set[MESES_TABS[i]] = true;
   return set;
 }
 
@@ -8460,7 +8471,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-20-home-sin-huecos';
+  var CURRENT_BUILD = '2026-11-20-portal-2027';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');

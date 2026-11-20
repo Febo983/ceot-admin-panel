@@ -1255,6 +1255,10 @@ function mostrarNotificaciones(doctor) {
       var parts = fecha.split('/');
       if (parts.length < 2) return;
       var cheqDate = new Date(anio, parseInt(parts[1])-1, parseInt(parts[0]));
+      // La fecha viene sin año: mismo ajuste que chequeAcreditado (un cheque de
+      // enero mirado en diciembre es del año siguiente, y al revés).
+      if (cheqDate - hoy > 183 * 86400000) cheqDate = new Date(anio - 1, parseInt(parts[1])-1, parseInt(parts[0]));
+      else if (hoy - cheqDate > 183 * 86400000) cheqDate = new Date(anio + 1, parseInt(parts[1])-1, parseInt(parts[0]));
       cheqDate.setHours(0,0,0,0);
       var acred = new Date(cheqDate); acred.setDate(acred.getDate() + 2);
       var diff = Math.round((acred - hoy) / 86400000);
