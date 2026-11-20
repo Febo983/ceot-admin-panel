@@ -1814,54 +1814,6 @@ function incidenciaMesCorto(i) {
   return MESES_CPSM[m].slice(0, 3) + "/" + String(a).slice(2);
 }
 
-// Retención mes a mes, lo más pareja posible.
-//
-// En cada mes toma la tasa plana más baja que todavía llega a todos los
-// vencimientos que faltan, y nunca menos que repartir en partes iguales lo que
-// queda. Da un importe fijo todos los meses y un último mes más chico, en vez
-// de meses en cero seguidos de picos — que es lo que daba el criterio viejo
-// (falta ÷ meses a mano) y dejaba a 8 de los 10 socios en rojo entre marzo y
-// mayo de 2027.
-//
-// Son cal.length - 1 retenciones, no una por mes: la de un mes sale de la
-// liquidación que se cobra ese mes y termina de entrar a fin de mes, así que
-// paga el vencimiento del mes SIGUIENTE. Una retención en el último mes
-// llegaría después del último vencimiento.
-function incidenciaRetenciones(acum, cal) {
-  var n = cal.length, nret = n - 1, total = 0, i, k;
-  for (i = 0; i < n; i++) total += cal[i];
-  var falta = total - acum;
-  if (falta <= 0) { var cero = []; for (i = 0; i < n; i++) cero.push(0); return cero; }
-
-  var ret = [], cum = 0;
-  for (var j = 1; j <= nret; j++) {
-    var tasa = 0, acumPagos = 0;
-    for (k = 1; k <= n; k++) {
-      acumPagos += cal[k - 1];
-      if (k <= j) continue;
-      var L = acumPagos - acum - cum;           // lo que falta juntar para ese mes
-      if (L > 0) tasa = Math.max(tasa, L / (k - j));
-    }
-    var parejo = (falta - cum) / (n - j);       // lo que queda, en partes iguales
-    var r = Math.max(0, Math.min(Math.max(tasa, parejo), falta - cum));
-    ret.push(r); cum += r;
-  }
-  ret.push(0);
-
-  // Redondeo hacia arriba, y el último mes con plata absorbe la diferencia
-  // para que la suma dé exactamente lo que falta. Hacia arriba y no al más
-  // cercano a propósito: redondear para abajo deja algún mes corto por un
-  // peso y el saldo de ese mes queda en negativo.
-  var red = ret.map(function(x) { return Math.ceil(x - 1e-9); });
-  var ult = -1, suma = 0;
-  for (i = 0; i < nret; i++) if (red[i] > 0) ult = i;
-  if (ult >= 0) {
-    for (i = 0; i < red.length; i++) if (i !== ult) suma += red[i];
-    red[ult] = Math.round(falta) - suma;
-  }
-  return red;
-}
-
 // Cuántos meses enteros del calendario paga el fondo acumulado antes de
 // agotarse.
 function incidenciaMesesQueCubre(acum, cal) {
@@ -1911,9 +1863,6 @@ function incidenciaFondoWrapHtml(plan) {
   var nc    = plan.nc || 0;
   var na    = plan.na || 0;
   var mesesCal = Math.max(nc + 1, na);
-  // Las retenciones son una menos que los meses del calendario: la del último
-  // mes entraría después del último vencimiento (ver incidenciaRetenciones).
-  var nret = Math.max(1, mesesCal - 1);
   var apellidos = incidenciaApellidos();
   var acumulado = getAporteCeotAcumuladoPorApellido(apellidos);
   // Suma los intereses ya generados por los plazos fijos de "Inversiones"
@@ -1925,8 +1874,7 @@ function incidenciaFondoWrapHtml(plan) {
   var invData = (typeof invAcumuladoProfesionalData === "function") ? invAcumuladoProfesionalData() : { acum: {}, totInt: 0 };
 
   var ROJO = "#b13a2c", VERDE = "#1d6b62";
-  var T = { monto:0, acum:0, inm:0, d30:0, cuota:0, ant:0, falta:0, retener:0, ultimo:0 };
-  var detalle = [];          // {nombre, ret[]} para la tabla mes a mes
+  var T = { monto:0, acum:0, inm:0, d30:0, cuota:0, ant:0, falta:0 };
   var pagosHechos = incidenciaPagosCargar();
   var calTot = [];           // vencimientos totales por mes (suma de los socios)
   var cob = [];              // datos por socio para la tabla de cobertura
@@ -1961,13 +1909,8 @@ function incidenciaFondoWrapHtml(plan) {
     cob.push({ ap: ap, nombre: doc ? doc.nombre : ap, doc: doc, acum: acum, cal: calProf.slice(), pct: (typeof getAporteCeotPct === 'function' ? getAporteCeotPct(ap) : null) });
     var cubre = incidenciaMesesQueCubre(acum, calProf);
     var falta = monto - (acum + pagadoProf);
-    // Retención mes a mes: un importe fijo y un último mes que ajusta.
-    var ret = incidenciaRetenciones(acum, calProf);
-    var retener = ret[0] || 0;
-    var ultimo  = ret[nret - 1] || 0;
-    detalle.push({ nombre: doc ? doc.nombre : ap, ret: ret });
     T.monto += monto; T.acum += acum; T.inm += inm; T.d30 += d30; T.cuota += cuota;
-    T.ant += ant; T.falta += falta; T.retener += retener; T.ultimo += ultimo;
+    T.ant += ant; T.falta += falta;
     var pctTxt = function(x) {
       return x ? (Math.round(x * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' : '—';
     };
@@ -2011,8 +1954,7 @@ function incidenciaFondoWrapHtml(plan) {
     + '</tbody></table></div>'
     + incidenciaVencimientosHtml(calTot)
     + incidenciaCoberturaHtml(cob)
-    + incidenciaSobraMesHtml(cob)
-    + incidenciaRetencionesTablaHtml(detalle, nret);
+    + incidenciaSobraMesHtml(cob);
 }
 
 // Constancia de pago de cada vencimiento del calendario: una tilde por mes,
@@ -2050,7 +1992,7 @@ function incidenciaPagoToggle(i) {
 // que se espera de aquí en adelante − vencimientos. La retención esperada es el
 // % vigente por la base mensual real del socio (promedio de sus últimos 3 meses
 // cerrados de Colón + OSDE + CEM). La retención de un mes paga el vencimiento
-// del mes SIGUIENTE (ver incidenciaRetenciones). Del mes en curso solo cuenta lo
+// del mes SIGUIENTE. Del mes en curso solo cuenta lo
 // que todavía no se acreditó: lo acreditado ya está dentro del Acumulado.
 function incidenciaBaseMensual(doc) {
   if (!doc) return 0;
@@ -2172,7 +2114,7 @@ function incidenciaSobraMesHtml(cob) {
       celdas += cel(v, r.est);
     }
     totGral += suma;
-    return '<tr><td>' + e.nombre + '</td><td>' + pctRetTxt(pct) + '</td>'
+    return '<tr><td>' + e.nombre + '</td><td>' + pctRetTxt(pct) + '</td><td>' + (base ? fmt(base) : '—') + '</td>'
       + celdas + cel(suma, false, true) + '</tr>';
   }).join("");
   var pie = '';
@@ -2180,30 +2122,31 @@ function incidenciaSobraMesHtml(cob) {
   return '<div class="adm-sec-title" style="margin-top:20px">Sobra / falta de cada mes — en pesos</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
     +   'Retención completa del mes anterior (la que paga ese vencimiento) menos el vencimiento del mes, mes por mes y sin arrastrar saldo. '
-    +   'Verde con "+" = sobra, rojo con "−" = ese mes falta. Meses pasados: retención real de la liquidación; en cursiva, estimada con el % vigente sobre la base mensual real (promedio de los últimos 3 meses cerrados). '
+    +   '"Base mensual" = Colón + OSDE + CEM, promedio de sus últimos 3 meses cerrados. Verde con "+" = sobra, rojo con "−" = ese mes falta. Meses pasados: retención real de la liquidación; en cursiva, estimada con el % vigente sobre la base mensual real (promedio de los últimos 3 meses cerrados). '
     +   'Para saber si el fondo llega a cada vencimiento (con lo ya acumulado) mirá Cobertura mes a mes.'
     + '</div>'
-    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Profesional</th><th>% vigente</th>' + cols + '<th>Total</th></tr></thead><tbody>'
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Profesional</th><th>% vigente</th><th>Base mensual</th>' + cols + '<th>Total</th></tr></thead><tbody>'
     + filas
-    + '<tr class="adm-totals"><td>TOTAL</td><td></td>' + pie + cel(totGral, false) + '</tr>'
+    + '<tr class="adm-totals"><td>TOTAL</td><td></td><td></td>' + pie + cel(totGral, false) + '</tr>'
     + '</tbody></table></div>';
 }
 
+// Cobertura: ¿el fondo de cada socio llega a cada vencimiento? (Acumulado +
+// retención esperada − vencimientos). El 20/11/2026 se sacaron "Base mensual",
+// "% de más", "Retención personal" y los botones de aplicar el %: con el 15%
+// fijo repetían la tabla "Sobra / falta de cada mes" y el cartel del Inicio
+// (que sigue teniendo el botón Aplicar). La base mensual pasó a esa tabla.
 function incidenciaCoberturaHtml(cob) {
   var ROJO = "#b13a2c", VERDE = "#1d6b62", n = cob.length ? cob[0].cal.length : 0, k;
   var pagos = incidenciaPagosCargar();
   var ini = 0;
   while (ini < n - 1 && pagos[ini]) ini++;
-  var pctTxt = function(x) { return (Math.round(x * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%"; };
-  window._incidenciaCob = [];
   var cols = '';
   // Columna k (vencimiento del mes k): su saldo suma la retención de los meses
   // anteriores; desde el mes en curso en adelante esa retención es estimada.
   var _h = new Date();
   var estK = (_h.getFullYear() * 12 + _h.getMonth()) - (INCIDENCIA_MES1.anio * 12 + INCIDENCIA_MES1.mes - 1) + 1;
   for (k = ini; k < n; k++) cols += '<th' + (k >= estK ? ' style="font-style:italic"' : '') + '>' + incidenciaMesCorto(k) + (k >= estK ? ' <span style="font-weight:400">est.</span>' : '') + '</th>';
-  var totPers = 0, colsVacias = '';
-  for (k = ini; k < n; k++) colsVacias += '<td></td>';
   var filas = cob.map(function(e) {
     var base = incidenciaBaseMensual(e.doc);
     var bf = incidenciaBasesFuturas(e.doc, base, n - 1), bases = bf.bases, fijos = bf.fijos;
@@ -2218,92 +2161,26 @@ function incidenciaCoberturaHtml(cob) {
       var v = saldos[k];
       celdas += '<td style="' + (k >= estK ? 'font-style:italic;' : '') + 'color:' + (v >= -1 ? VERDE : ROJO) + '">' + (v >= -1 ? fmt(Math.max(0, v)) : '−' + fmt(-v)) + '</td>';
     }
-    // Retención personal: lo que le sobra al socio al final del calendario, o sea
-    // lo que retiene de más sobre lo que hace falta para pagar todo. Es la
-    // proyección y se ajusta sola al entrar meses reales.
-    var pers = saldos[saldos.length - 1];
-    var masPct = llega && necOk ? Math.max(0, pct - necRed) : null;
-    if (llega && pers > 0) totPers += pers;
-    var idx = window._incidenciaCob.push({ ap: e.ap, nombre: e.nombre, pct: necRed, actual: pct, falta: !llega && necOk }) - 1;
-    var estado;
-    if (llega) {
-      estado = '<span style="color:' + VERDE + ';font-weight:700">Cubre</span>';
-    } else if (necOk) {
-      estado = '<button type="button" onclick="incidenciaAplicarPct(' + idx + ')" style="border:1px solid ' + ROJO + ';background:#fff;color:' + ROJO + ';border-radius:6px;cursor:pointer;font-size:.7rem;padding:3px 8px;font-weight:700">Usar ' + pctTxt(necRed) + '</button>';
-    } else {
-      estado = '<span style="color:' + ROJO + ';font-weight:700" title="Hay un vencimiento sin retención por delante que lo cubra">No alcanza</span>';
-    }
+    var estado = llega
+      ? '<span style="color:' + VERDE + ';font-weight:700">Cubre</span>'
+      : '<span style="color:' + ROJO + ';font-weight:700"' + (necOk ? '' : ' title="Hay un vencimiento sin retención por delante que lo cubra"') + '>No alcanza</span>';
     return '<tr><td>' + e.nombre + '</td>'
-      + '<td>' + pctTxt(pct) + '</td>'
-      + '<td style="color:' + (llega ? VERDE : ROJO) + ';font-weight:700">' + (necOk ? pctTxt(necRed) : '—') + '</td>'
-      + '<td>' + (base ? fmt(base) : '—') + '</td>'
+      + '<td>' + pctRetTxt(pct) + '</td>'
+      + '<td style="color:' + (llega ? VERDE : ROJO) + ';font-weight:700">' + (necOk ? pctRetTxt(necRed) : '—') + '</td>'
       + celdas
-      + '<td>' + (masPct != null ? pctTxt(masPct) : '—') + '</td>'
-      + '<td style="font-weight:700;color:' + VERDE + '">' + (llega && pers > 0 ? fmt(pers) : '—') + '</td>'
       + '<td>' + estado + '</td></tr>';
   }).join("");
-  var pend = window._incidenciaCob.filter(function(x) { return x.falta; }).length;
-  var btnTodos = pend
-    ? ' <button type="button" onclick="incidenciaAplicarTodos()" style="border:none;background:#b13a2c;color:#fff;border-radius:6px;cursor:pointer;font-size:.7rem;padding:3px 10px;font-weight:700;vertical-align:middle;margin-left:8px">Aplicar los % necesarios (' + pend + ')</button>'
-    : '';
-  return '<div class="adm-sec-title" style="margin-top:20px">Cobertura mes a mes — ¿cada socio llega a pagar su parte?' + btnTodos + '</div>'
+  return '<div class="adm-sec-title" style="margin-top:20px">Cobertura mes a mes — ¿cada socio llega a pagar su parte?</div>'
     + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
     +   'Saldo del fondo de cada socio después de pagar el vencimiento de cada mes: Acumulado + retención esperada − vencimientos. '
-    +   'La retención esperada es su % vigente sobre su base mensual real (promedio de los últimos 3 meses cerrados de Colón + OSDE + CEM). '
-    +   'Rojo = ese mes no llega. "% de más" es lo que retiene por encima del % necesario y "Retención personal" lo que le sobra al socio al final del calendario (proyectado: se ajusta solo a medida que entran meses reales). Los meses marcados "est." (cursiva) son estimados: se van reemplazando por datos reales a medida que se cargan las liquidaciones. "% necesario" es el menor % que deja todos los meses en verde; el botón lo aplica como % vigente de ese socio '
-    +   '(cambia la retención de los meses que todavía no están cerrados, en liquidaciones y comprobantes).'
+    +   'La retención esperada es su % vigente sobre su base mensual real (la de la tabla de abajo). Rojo = ese mes no llega. '
+    +   'Los meses "est." (cursiva) son estimados y se reemplazan por datos reales a medida que se cargan las liquidaciones. '
+    +   '"% necesario" es el menor % que deja todos los meses en verde (para aplicarlo, usá el botón del cartel del Inicio o los % de arriba).'
     + '</div>'
     + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-    +   '<th>Profesional</th><th>% vigente</th><th>% necesario</th><th>Base mensual</th>' + cols + '<th>% de más</th><th>Retención personal</th><th>Estado</th>'
+    +   '<th>Profesional</th><th>% vigente</th><th>% necesario</th>' + cols + '<th>Estado</th>'
     + '</tr></thead><tbody>' + filas
-    + '<tr class="adm-totals"><td>TOTAL</td><td></td><td></td><td></td>' + colsVacias + '<td></td><td>' + fmt(totPers) + '</td><td></td></tr>'
     + '</tbody></table></div>';
-}
-
-// Aplica de una vez el % necesario de todos los socios que hoy no llegan,
-// con una sola confirmación que lista cada cambio.
-async function incidenciaAplicarTodos() {
-  var lista = (window._incidenciaCob || []).filter(function(x) { return x.falta; });
-  if (!lista.length) return;
-  var fp = function(x) { return (Math.round(x * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2 }) + "%"; };
-  var txt = lista.map(function(x) { return x.nombre + ": " + fp(x.actual) + " → " + fp(x.pct); }).join("\n");
-  if (!confirm("¿Subir la Retención Ganancias de estos socios?\n\n" + txt + "\n\nSe guarda para todos los dispositivos y cambia la retención de los meses que todavía no están cerrados (liquidaciones y comprobantes). Los meses cerrados no se mueven.")) return;
-  var override = Object.assign({}, APORTE_PCT_REMOTO || {});
-  lista.forEach(function(x) { override[x.ap] = x.pct; });
-  try {
-    var url = LIQUIDACION_ENDPOINT + '?action=setAportePct&valores=' + encodeURIComponent(JSON.stringify(override));
-    var data = await (await fetch(authURL(url))).json();
-    if (!data.ok) throw new Error(data.error || 'error desconocido');
-    APORTE_PCT_REMOTO = override;
-    var y = window.scrollY;
-    await renderAporteCeot();
-    window.scrollTo(0, y);
-  } catch (err) {
-    alert("No se pudo guardar: " + err.message);
-  }
-}
-
-async function incidenciaAplicarPct(i) {
-  var e = (window._incidenciaCob || [])[i];
-  if (!e) return;
-  var txt = (Math.round(e.pct * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2 }) + "%";
-  if (!confirm("¿Subir la Retención Ganancias de " + e.nombre + " a " + txt + "?\n\nSe guarda para todos los dispositivos y cambia la retención de los meses que todavía no están cerrados (liquidaciones y comprobantes). Los meses cerrados no se mueven.")) return;
-  var override = Object.assign({}, APORTE_PCT_REMOTO || {});
-  override[e.ap] = e.pct;
-  try {
-    var url = LIQUIDACION_ENDPOINT + '?action=setAportePct&valores=' + encodeURIComponent(JSON.stringify(override));
-    var data = await (await fetch(authURL(url))).json();
-    if (!data.ok) throw new Error(data.error || 'error desconocido');
-    APORTE_PCT_REMOTO = override;
-    // Se repinta toda la pantalla (no solo el reparto): los inputs de % por
-    // profesional de arriba tienen que mostrar el valor nuevo; si quedan con el
-    // viejo, un "Guardar" posterior lo pisaría para todos.
-    var y = window.scrollY;
-    await renderAporteCeot();
-    window.scrollTo(0, y);
-  } catch (err) {
-    alert("No se pudo guardar: " + err.message);
-  }
 }
 
 function incidenciaVencimientosHtml(calTot) {
@@ -2328,63 +2205,6 @@ function incidenciaVencimientosHtml(calTot) {
     + '</tr></thead><tbody>' + filas + '</tbody></table></div>';
 }
 
-// Tabla de retenciones mes a mes: una fila por profesional, una columna por
-// mes del calendario en el que se retiene. Es lo que se le pasa a quien hace
-// la liquidación, así que lleva su propio botón para copiarla entera.
-//
-// El texto a copiar va en window._incidenciaRetTexto y no incrustado en el
-// onclick: son importes con comas y nombres con apóstrofes, y escaparlos
-// dentro del atributo es pedir que algo se rompa.
-function incidenciaRetencionesTablaHtml(detalle, nret) {
-  var TAB = String.fromCharCode(9), NL = String.fromCharCode(10);
-  var i, cols = '';
-  for (i = 0; i < nret; i++) cols += '<th>' + incidenciaMesCorto(i) + '</th>';
-
-  var tot = [], sumaTot = 0;
-  for (i = 0; i < nret; i++) tot.push(0);
-
-  var filas = detalle.map(function(d) {
-    var suma = 0, celdas = '';
-    for (var k = 0; k < nret; k++) {
-      var v = d.ret[k] || 0;
-      suma += v; tot[k] += v;
-      celdas += '<td>' + (v > 0 ? fmt(v) : '—') + '</td>';
-    }
-    sumaTot += suma;
-    return '<tr><td>' + d.nombre + '</td>' + celdas
-      + '<td style="font-weight:700">' + fmt(suma) + '</td></tr>';
-  }).join("");
-
-  var celdasTot = '';
-  for (i = 0; i < nret; i++) celdasTot += '<td>' + fmt(tot[i]) + '</td>';
-
-  // Para pegar en una planilla: encabezado + una fila por profesional.
-  var lineas = ['Profesional'];
-  for (i = 0; i < nret; i++) lineas[0] += TAB + incidenciaMesCorto(i);
-  detalle.forEach(function(d) {
-    var f = d.nombre;
-    for (var k = 0; k < nret; k++) f += TAB + numParaPegar(d.ret[k] || 0);
-    lineas.push(f);
-  });
-  window._incidenciaRetTexto = lineas.join(NL);
-
-  return '<div class="adm-sec-title" style="margin-top:20px">Retenciones mes a mes'
-    +   ' <button type="button" title="Copiar la tabla entera"'
-    +     ' onclick="copiarTexto(window._incidenciaRetTexto, this)"'
-    +     ' style="border:none;background:rgba(32,36,31,.06);border-radius:4px;cursor:pointer;font-size:.7rem;padding:2px 6px;vertical-align:middle">📋 copiar</button>'
-    + '</div>'
-    + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
-    +   'Lo que hay que descontarle a cada uno en la liquidación de cada mes. Es un importe fijo y el último mes ajusta. '
-    +   'La retención de un mes sale de la liquidación que se cobra ese mes y queda completa a fin de mes, así que paga el vencimiento del mes siguiente: '
-    +   'por eso son ' + nret + ' retenciones y no ' + (nret + 1) + ', y en el último mes del calendario ya no se retiene.'
-    + '</div>'
-    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-    +   '<th>Profesional</th>' + cols + '<th>Total</th>'
-    + '</tr></thead><tbody>' + filas
-    + '<tr class="adm-totals"><td>TOTAL</td>' + celdasTot
-    +   '<td>' + fmt(sumaTot) + '</td></tr>'
-    + '</tbody></table></div>';
-}
 
 function incidenciaPlanLeerInput(id) {
   var el = document.getElementById(id);
