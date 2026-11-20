@@ -542,21 +542,22 @@ function registrosDesdeXLSXCrudo(rows) {
 // en 3 partes iguales entre esos 3.
 var GASEQ_SOCIOS_CEOT = ['TRIVELLINI', 'CORELICH', 'DEGANUTTI'];
 
-// Ayudantía cruzada: si el AY2 de una práctica es uno de estos 4 y el ESP
-// (el que opera) de esa MISMA práctica (misma factura + paciente — NPREST es
-// el código de la prestación, no un ID único de la cirugía, así que 2
-// pacientes distintos con la misma práctica en la misma facturación podrían
+// Ayudantía cruzada: si el AY2 de una práctica es uno de estos 4 y el ESP **o
+// AY1** de esa MISMA práctica (misma factura + paciente — NPREST es el código
+// de la prestación, no un ID único de la cirugía, así que 2 pacientes
+// distintos con la misma práctica en la misma facturación podrían
 // compartirlo) es del "equipo" contrario, ese importe no se le paga al AY2 —
-// queda acreditado al fondo de CEOT en vez de a su propia cuenta. Si el ESP
-// es del mismo equipo que el AY2 (ej. BRUNI/DE LA COLINA) o no es de los 4,
-// el importe sigue normal. El AY1 NO cuenta para el cruce: lo que cobra el
-// AY1 es suyo, y quién sea el AY1 no cambia a dónde va el AY2 (definido por
-// Marcelo, 20/11/2026 — antes se miraba ESP o AY1).
+// queda acreditado al fondo de CEOT en vez de a su propia cuenta. Si el
+// responsable (ESP o AY1) es del mismo equipo que el AY2 (ej. BRUNI/DE LA
+// COLINA), o ninguno de los 2 roles es de los 4, el importe sigue normal.
+// Confirmado por Marcelo (20/11/2026): el AY1 SÍ cuenta para el cruce (ej. AY2
+// BRUNI con AY1 GARMENDIA → fondo), pero lo que cobra el propio AY1 es suyo,
+// nunca va al fondo — solo se desvía el importe del AY2.
 var AYUD_CRUZADA_A = ['BRUNI', 'DE LA COLINA'];
 var AYUD_CRUZADA_B = ['GARMENDIA', 'PERLASCO'];
 
 // factura + DNI (o nombre si no hay DNI) del paciente — misma práctica que se
-// usa para emparejar AY2 contra el ESP, evita depender de NPREST.
+// usa para emparejar AY2 contra ESP/AY1, evita depender de NPREST.
 function ayudPacienteKey(reg) {
   var dni = String(reg.pacienteDni || '').trim();
   if (dni) return reg.factura + '|dni:' + dni;
@@ -575,13 +576,13 @@ function billingDesdeRegistros(registros) {
   var ceotAyudantiaOsde = 0, ceotAyudantiaDif = 0, ceotAyudantiaDetalle = [];
   var ceotAyudantiaSinEspDetalle = [];
 
-  // Mapa factura|paciente → apellidos normalizados del ESP de esa práctica
-  // (puede haber más de uno), para cruzarlos contra cada AY2 del mismo
-  // paciente/factura.
+  // Mapa factura|paciente → apellidos normalizados de ESP y AY1 de esa
+  // práctica (puede haber más de uno), para cruzarlos contra cada AY2 del
+  // mismo paciente/factura sin importar cuál de los 2 roles ocupe el rival.
   var responsablesPorPractica = {};
   registros.forEach(function(reg) {
     var rolReg = String(reg.rol || '').trim().toUpperCase();
-    if (rolReg !== 'ESP') return;
+    if (rolReg !== 'ESP' && rolReg !== 'AY1') return;
     if (!reg.factura || (!reg.pacienteDni && !reg.pacienteNombre)) return;
     var respKey = normDocImp(reg.profNombre);
     if (!respKey) return;
@@ -615,7 +616,7 @@ function billingDesdeRegistros(registros) {
         ceotAyudantiaDetalle.push({ esp: rivalEncontrado, ay2: key, importe: imp * sgn, os: inst, factura: reg.factura, paciente: reg.pacienteNombre || reg.pacienteDni || '' });
         return;
       }
-      // No se encontró el ESP de esta práctica en el archivo (puede
+      // No se encontró ESP ni AY1 para esta práctica en el archivo (puede
       // facturarse en otra factura/período) — no se puede confirmar si es
       // cruce o no, así que se paga normal (no se asume nada), pero se avisa
       // para revisar a mano.
@@ -660,7 +661,7 @@ function ayudantiaCruzadaMensajes(osde, dif, detalle, sinEspDetalle) {
   if (osde || dif) {
     var total = osde + dif;
     var det = (detalle || []).map(function(d) {
-      return 'ESP ' + d.esp + ' / AY2 ' + d.ay2 + ': ' + fmtImp(d.importe) + ' (' + d.os + (d.paciente ? ', ' + d.paciente : '') + ')';
+      return 'ESP/AY1 ' + d.esp + ' / AY2 ' + d.ay2 + ': ' + fmtImp(d.importe) + ' (' + d.os + (d.paciente ? ', ' + d.paciente : '') + ')';
     }).join('<br>');
     msgs.push({ bg: '#fee2e2', color: '#991b1b', texto: '🏛 Ayudantía cruzada acreditada a CEOT (no se paga al AY2): ' + fmtImp(total) +
       ' — OSDE ' + fmtImp(osde) + ' + Diferidos ' + fmtImp(dif) + '.<br>' + det });
@@ -670,7 +671,7 @@ function ayudantiaCruzadaMensajes(osde, dif, detalle, sinEspDetalle) {
     var sinEsp = sinEspDetalle.map(function(d) {
       return 'AY2 ' + d.ay2 + ': ' + fmtImp(d.importe) + ' (' + d.os + (d.paciente ? ', ' + d.paciente : '') + ', factura ' + d.factura + ')';
     }).join('<br>');
-    msgs.push({ bg: '#ffedd5', color: '#9a3412', texto: '⚠ AY2 de Bruni/De la Colina/Garmendia/Perlasco sin ESP identificable en este archivo (se pagó normal, revisar a mano si corresponde a CEOT): ' +
+    msgs.push({ bg: '#ffedd5', color: '#9a3412', texto: '⚠ AY2 de Bruni/De la Colina/Garmendia/Perlasco sin ESP/AY1 identificable en este archivo (se pagó normal, revisar a mano si corresponde a CEOT): ' +
       fmtImp(sinEspTotal) + '.<br>' + sinEsp });
   }
   return msgs;
@@ -688,7 +689,7 @@ function ayudantiaCruzadaFootnoteDivHtml(osde, dif, detalle, sinEspDetalle) {
 
 // ── Fondo CEOT — Ayudantía cruzada: registro acumulado por período ──
 // Cada vez que se importa una liquidación y se detecta al menos un cruce (o un
-// caso sin ESP identificable), se guarda acá — mismo mecanismo que
+// caso sin ESP/AY1 identificable), se guarda acá — mismo mecanismo que
 // GASTOS_EXTRA_DEFAULT (localStorage + syncPull/syncPush, visible en
 // cualquier dispositivo). Reimportar el mismo período reemplaza su entrada
 // entera (idempotente), no la suma dos veces.
