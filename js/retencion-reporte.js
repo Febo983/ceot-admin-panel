@@ -357,7 +357,8 @@ function retRepAlertasHtml() {
   try { al = retRepAlertas(); } catch (e) { return ""; }
   if (!al.length) return "";
   var fd = function(f) { return ("0" + f.getDate()).slice(-2) + "/" + ("0" + (f.getMonth() + 1)).slice(-2) + "/" + f.getFullYear(); };
-  var filas = al.map(function(a) {
+  window._retRepAl = al;
+  var filas = al.map(function(a, k) {
     var rojo = a.estado === "no-llega";
     var cuando = a.dias < 0 ? "vencido hace " + (-a.dias) + " d" : (a.dias === 0 ? "vence hoy" : "vence en " + a.dias + " d");
     return '<div style="display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;padding:5px 0;border-top:1px dashed rgba(15,28,40,.15)">'
@@ -366,13 +367,71 @@ function retRepAlertasHtml() {
       + '<span style="font-size:.78rem;font-weight:700;color:' + (rojo ? '#c0392b' : '#a86a00') + '">'
       +   (rojo ? 'No llega con el % vigente: hoy faltan $ ' + fmt(a.falta)
                 : 'Hoy faltan $ ' + fmt(a.falta) + ' (con el % vigente se junta a tiempo)') + '</span>'
-      + '<span style="flex-basis:100%;font-size:.8rem;font-weight:800;color:#1c2b3a;padding-left:2px">' + retRepPctTexto(a) + '</span>'
+      + '<span style="flex-basis:100%;font-size:.8rem;font-weight:800;color:#1c2b3a;padding-left:2px">' + retRepPctTexto(a)
+      +   retRepBotonAplicarHtml(a, k) + '</span>'
       + '</div>';
   }).join("");
   return '<div onclick="renderAporteCeot()" style="cursor:pointer;margin-bottom:14px;padding:10px 14px;border:2px solid #c0392b;border-radius:10px;background:#fff4f1;color:#1c2b3a">'
     + '<div style="font-size:.74rem;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#c0392b;margin-bottom:4px">'
     +   'Retención en riesgo · Ganancias (próximos ' + RET_ALERTA_DIAS + ' días)</div>'
     + filas
+    + retRepBotonTodosHtml(al)
     + '<div style="font-size:.68rem;opacity:.6;margin-top:4px">Tocá para ver Retención Ganancias. Se calcula con lo acreditado hoy + intereses − vencimientos tildados como pagados.</div>'
     + '</div>';
+}
+
+// ── Aplicar el % desde el cartel ─────────────────────────────
+// Guarda en el mismo lugar que los inputs de "Retención Ganancias"
+// (setAportePct → APORTE_PCT_REMOTO → getAporteCeotPct), así que lo toman solos
+// Retención Ganancias, Reparto del fondo, liquidaciones/comprobantes y el portal
+// de cada profesional. Los meses ya cerrados no se mueven.
+// % a aplicar: el del calendario completo; si el plan completo no se alcanza,
+// el del resto del calendario (suponiendo el faltante aportado aparte).
+function retRepPctAplicable(a) {
+  var p = a.pcts, t = p.plan != null ? p.plan : p.resto;
+  if (t == null) return null;
+  if (p.vigente != null && t <= p.vigente) return null;   // ya retiene lo suficiente
+  return t;
+}
+var _retRepBtn = "margin-left:8px;border:1px solid #c0392b;background:#c0392b;color:#fff;border-radius:6px;cursor:pointer;font-size:.72rem;padding:3px 10px;font-weight:700;font-family:inherit";
+function retRepBotonAplicarHtml(a, k) {
+  var t = retRepPctAplicable(a);
+  if (t == null) return "";
+  return '<button type="button" style="' + _retRepBtn + '" onclick="event.stopPropagation();retRepAplicarPct([' + k + '])">Aplicar '
+    + (Math.round(t * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2 }) + '%</button>';
+}
+function retRepBotonTodosHtml(al) {
+  var n = al.filter(function(a) { return retRepPctAplicable(a) != null; }).length;
+  if (n < 2) return "";
+  var todos = al.map(function(a, k) { return k; });
+  return '<div style="margin-top:8px"><button type="button" style="' + _retRepBtn.replace("margin-left:8px;", "") + '" onclick="event.stopPropagation();retRepAplicarPct(['
+    + todos.join(",") + '])">Aplicar a los ' + n + ' socios</button></div>';
+}
+
+async function retRepAplicarPct(ids) {
+  var al = window._retRepAl || [];
+  var fp = function(x) { return (Math.round(x * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2 }) + "%"; };
+  var lista = ids.map(function(k) { return al[k]; }).filter(function(a) { return a && retRepPctAplicable(a) != null; });
+  if (!lista.length) return;
+  var txt = lista.map(function(a) { return a.doc.nombre + ": " + fp(a.pcts.vigente || 0) + " → " + fp(retRepPctAplicable(a)); }).join("\n");
+  if (!confirm("¿Cambiar la Retención Ganancias?\n\n" + txt + "\n\nSe guarda para todos los dispositivos y cambia la retención de los meses que todavía no están cerrados (liquidaciones, comprobantes y portal de cada profesional). Los meses cerrados no se mueven.")) return;
+  try {
+    // Se re-sincroniza antes: se manda el snapshot completo y, con uno viejo,
+    // se pisarían los % que otro dispositivo cambió mientras tanto.
+    await cargarAportePctRemoto();
+    var override = Object.assign({}, APORTE_PCT_REMOTO || {});
+    lista.forEach(function(a) { override[a.doc.apellido] = retRepPctAplicable(a); });
+    var url = LIQUIDACION_ENDPOINT + '?action=setAportePct&valores=' + encodeURIComponent(JSON.stringify(override));
+    var data = await (await fetch(authURL(url))).json();
+    if (!data.ok) throw new Error(data.error || "error desconocido");
+    APORTE_PCT_REMOTO = override;
+    // Se repinta lo que esté a la vista: el cartel, y Retención Ganancias si está abierta.
+    if (typeof admHomeAlertaRetRender === "function") admHomeAlertaRetRender();
+    if (document.querySelector(".aporte-pct-input") && typeof renderAporteCeot === "function") {
+      var y = window.scrollY; await renderAporteCeot(); window.scrollTo(0, y);
+    }
+    alert("✓ Listo: " + lista.length + " socio" + (lista.length === 1 ? "" : "s") + " con el % nuevo, para todos los dispositivos.");
+  } catch (err) {
+    alert("No se pudo guardar: " + err.message);
+  }
 }
