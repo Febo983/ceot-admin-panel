@@ -23,6 +23,17 @@
 var CONC_DESDE = '2026-06';
 var CONC_CUENTAS = { '094-351473/0': 'CC 351473/0', '094-351474/7': 'CC 351474/7' };
 var CONC_CUIT_PROPIO = '30719119545';
+// CUITs de los profesionales (planilla de Marcelo, 20/11/2026). Lo que se les
+// transfiere (o lo que depositan ellos) va a "Honorarios a profesionales".
+var CONC_CUIT_PROF = {
+  '23279400429': 'BRUNI, Maximiliano',   '20181292653': 'CORELICH, Daniel O.',
+  '20274663252': 'DEGANUTTI, Cristian G.', '20182772578': 'FISSER, Fabián',
+  '20272293458': 'GUILERA, Ariel',       '20137044618': 'LABAYEN, Daniel G.',
+  '20295935643': 'MAZZOLA, Maximiliano', '24363841712': 'DE LA COLINA, Juan P.',
+  '20206549883': 'TRIVELLINI, Amílcar',  '27347927622': 'GARMENDIA, Valeria',
+  '20295053845': 'GERLING, Cristian',    '20374055829': 'LEON, Joaquín',
+  '20295939339': 'PERLASCO, Camilo'
+};
 var CONC_ALICUOTAS = ['0', '2,5', '5', '10,5', '21', '27'];
 var CONC_MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 
@@ -509,6 +520,8 @@ function concCruzar() {
     if (!mv.nom && obraNom[mv.id]) mv.nom = obraNom[mv.id] + ' (Gastos Casa)';
     if (!mv.nom && mv.cuit && obraCuit[mv.cuit]) mv.nom = obraCuit[mv.cuit] + ' (agenda obra)';
   });
+  Object.keys(CONC_CUIT_PROF).forEach(function(c) { if (!cuitsConFac[c]) cuitProf[c] = true; });
+  movs.forEach(function(mv) { if (CONC_CUIT_PROF[mv.cuit] && (!mv.nom || /^\d+$/.test(mv.nom))) mv.nom = CONC_CUIT_PROF[mv.cuit]; });
   // Categoría final de cada movimiento.
   movs.forEach(function(mv) {
     var x = man[mv.id];
