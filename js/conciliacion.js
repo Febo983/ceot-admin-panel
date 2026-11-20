@@ -24,6 +24,12 @@ var CONC_DESDE = '2026-06';
 var CONC_CUENTAS = { '094-351473/0': 'CC 351473/0', '094-351474/7': 'CC 351474/7' };
 var CONC_CUIT_PROPIO = '30719119545';
 var CONC_CTA_OBRA = '094-351474/7';
+// Transferencias "COE" (sin CUIT ni nombre en el resumen) que se repiten con
+// el mismo importe y se sabe a quién van. Si el importe cambia, el pago
+// vuelve a "Sin identificar" y hay que actualizarlo acá.
+var CONC_PAGOS_FIJOS = [
+  { cta: '094-351473/0', imp: 230000, nom: 'Cristian Gómez (soporte técnico)', cat: 'terceros' }  // Marcelo, 20/11/2026
+];
 // CUITs de los profesionales (planilla de Marcelo, 20/11/2026). Lo que se les
 // transfiere (o lo que depositan ellos) va a "Honorarios a profesionales".
 var CONC_CUIT_PROF = {
@@ -367,6 +373,7 @@ var CONC_CATS = [
   { k: 'cobro',     t: 'Cobro (Colón / Centro Médico)' },
   { k: 'hon',       t: 'Honorarios a profesionales' },
   { k: 'sueldos',   t: 'Sueldos' },
+  { k: 'terceros',  t: 'Honorarios de terceros / servicios' },
   { k: 'imp',       t: 'Impuestos y retenciones' },
   { k: 'banco',     t: 'Gastos e intereses bancarios' },
   { k: 'propias',   t: 'Entre cuentas propias' },
@@ -534,6 +541,14 @@ function concCruzar() {
     if (mv.cuit && cuitsConFac[mv.cuit]) { cat[mv.id] = mv.imp < 0 ? 'prov' : 'cobro'; return; }
     if (mv.cuit && cuitProf[mv.cuit]) { cat[mv.id] = 'hon'; return; }
     if (obraNom[mv.id] || (mv.cuit && obraCuit[mv.cuit])) { cat[mv.id] = 'obra'; return; }
+    // Pagos fijos conocidos que el banco no nombra (transferencias COE).
+    for (var q = 0; q < CONC_PAGOS_FIJOS.length; q++) {
+      var pf = CONC_PAGOS_FIJOS[q];
+      if (mv.cta === pf.cta && concCent(-mv.imp) === concCent(pf.imp) && /COE/.test(mv.c)) {
+        if (!mv.nom) mv.nom = pf.nom;
+        cat[mv.id] = pf.cat; return;
+      }
+    }
     // Transferencias sin identificar que salen de la cuenta de la obra
     // (351474/7): van a Obra igual, marcadas "sin detalle" (pedido de
     // Marcelo, 20/11/2026). Las de la cuenta principal quedan pendientes.
