@@ -717,6 +717,7 @@ function admHomeAgendaHoyTraer() {
     _agendaHoy = d.items || [];
     var c = document.getElementById("admHomeAgendaHoy");
     if (c) c.innerHTML = admHomeAgendaHoyHtml();
+    if (typeof tareasHoyRepintar === "function") tareasHoyRepintar();
   }).catch(function() {});
   // Cada 5 min: trae de nuevo y apaga lo que ya pasó.
   if (!_agendaTimer) _agendaTimer = setInterval(function() { if (document.getElementById("admHomeAgendaHoy")) admHomeAgendaHoyTraer(); }, 300000);
@@ -909,7 +910,7 @@ function renderAdmHome() {
     html = '<div class="adm-home-retro adm-home-retro-wrap"><canvas id="admHomeBg" aria-hidden="true"></canvas><div class="adm-home-retro-inner">'
       + '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px 12px;flex-wrap:wrap;margin-bottom:10px">'
       +   '<h1 style="font-size:20px;font-weight:800;letter-spacing:.2px;color:#1c2b3a;margin:0">Inicio</h1>'
-      +   '<div style="font-size:0.78rem;color:#4d5b68">' + saludo + ', Marcelo</div>'
+      +   '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span id="admHomeTareasBtn"></span><span style="font-size:0.78rem;color:#4d5b68">' + saludo + ', Marcelo</span></div>'
       + '</div>'
 
       + '<div id="admHomeCal" style="position:relative;z-index:1;margin-bottom:14px"></div>'
@@ -949,9 +950,10 @@ function renderAdmHome() {
     html = '<div style="border-radius:0;padding:14px 16px 16px;min-height:200px">'
       + '<div style="max-width:1600px;margin:0 auto">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">'
-      +   '<div style="font-size:0.78rem;color:rgba(32,36,31,0.38);font-weight:500;letter-spacing:.3px">' + saludo + ', Marcelo</div>'
+      +   '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span id="admHomeTareasBtn"></span><span style="font-size:0.78rem;color:rgba(32,36,31,0.38);font-weight:500;letter-spacing:.3px">' + saludo + ', Marcelo</span></div>'
       +   toggleBtn
       + '</div>'
+      + '<div id="admHomeAlertaRet"></div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
       + '<div style="background:rgba(32,36,31,0.05);border:0.5px solid rgba(32,36,31,0.1);border-radius:10px;padding:11px 12px">'
       + '<div style="font-size:9px;color:rgba(32,36,31,0.35);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">Neto del mes · ' + mesAct + '</div>'
@@ -985,6 +987,7 @@ function renderAdmHome() {
   admHomeHudRender();
   admHomeAlertaRetRender();
   admHomeCalRender();
+  if (typeof tareasHoyAlEntrar === "function") tareasHoyAlEntrar();
   admHomeRenderResults();
   if (typeof backupAvisoRender === "function") backupAvisoRender();
   coInitScrollFade("admMesStripScroll", "admMesStripWrap");
@@ -1294,6 +1297,7 @@ function checklistSincronizar() {
   syncPull("ceot_checklist_done", function() {
     checklistActualizarBadge();
     admHomeHudRender();
+    if (typeof tareasHoyRepintar === "function") tareasHoyRepintar();
     if (document.getElementById("adm-content") && document.querySelector("#adm-content .adm-sec-title") &&
         /Checklist mensual/.test(document.querySelector("#adm-content .adm-sec-title").textContent)) renderChecklistBody();
   });
