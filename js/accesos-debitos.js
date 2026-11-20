@@ -2011,6 +2011,7 @@ function incidenciaFondoWrapHtml(plan) {
     + '</tbody></table></div>'
     + incidenciaVencimientosHtml(calTot)
     + incidenciaCoberturaHtml(cob)
+    + incidenciaSobraMesHtml(cob)
     + incidenciaRetencionesTablaHtml(detalle, nret);
 }
 
@@ -2118,6 +2119,55 @@ function incidenciaPctNecesario(e, bases, fijos) {
     }
   }
   return p;
+}
+
+// Sobra / falta de cada mes POR SEPARADO, en pesos (pedido de Marcelo,
+// 20/11/2026, con el 15% fijo): retención que entra ese mes con el % vigente
+// (% × base mensual estimada + cheques ya devengados sin acreditar) menos lo
+// que vence ese mes. No arrastra saldo: es el flujo del mes. El primer mes del
+// calendario no tiene retención que lo pague (sale de lo ya acumulado), por eso
+// va con "—". Mismo modelo que "Cobertura mes a mes" (incidenciaBasesFuturas).
+function incidenciaSobraMesHtml(cob) {
+  var ROJO = "#b13a2c", VERDE = "#1d6b62", n = cob.length ? cob[0].cal.length : 0, k;
+  if (n < 2) return "";
+  var pagos = incidenciaPagosCargar(), ini = 0;
+  while (ini < n - 1 && pagos[ini]) ini++;
+  var _h = new Date();
+  var estK = (_h.getFullYear() * 12 + _h.getMonth()) - (INCIDENCIA_MES1.anio * 12 + INCIDENCIA_MES1.mes - 1) + 1;
+  var cols = '';
+  for (k = ini; k < n; k++) cols += '<th' + (k >= estK ? ' style="font-style:italic"' : '') + '>' + incidenciaMesCorto(k) + '</th>';
+  var tot = [], totGral = 0;
+  var cel = function(v, itl, neg) {
+    return '<td style="' + (itl ? 'font-style:italic;' : '') + (neg ? 'font-weight:700;' : '') + 'color:' + (v >= -1 ? VERDE : ROJO) + '">'
+      + (v >= -1 ? '+' + fmt(Math.max(0, v)) : '−' + fmt(-v)) + '</td>';
+  };
+  var filas = cob.map(function(e) {
+    var base = incidenciaBaseMensual(e.doc);
+    var bf = incidenciaBasesFuturas(e.doc, base, n - 1);
+    var pct = e.pct == null ? 0 : e.pct;
+    var celdas = '', suma = 0;
+    for (k = ini; k < n; k++) {
+      if (k === 0) { celdas += '<td style="color:rgba(32,36,31,.4)" title="El primer mes se paga con lo ya acumulado">—</td>'; continue; }
+      var v = pct * (bf.bases[k - 1] || 0) + (bf.fijos[k - 1] || 0) - e.cal[k];
+      suma += v; tot[k] = (tot[k] || 0) + v;
+      celdas += cel(v, k >= estK);
+    }
+    totGral += suma;
+    return '<tr><td>' + e.nombre + '</td><td>' + (Math.round(pct * 10000) / 100).toLocaleString("es-AR", { minimumFractionDigits: 2 }) + '%</td>'
+      + celdas + cel(suma, false, true) + '</tr>';
+  }).join("");
+  var pie = '';
+  for (k = ini; k < n; k++) pie += k === 0 ? '<td></td>' : cel(tot[k] || 0, k >= estK);
+  return '<div class="adm-sec-title" style="margin-top:20px">Sobra / falta de cada mes — en pesos</div>'
+    + '<div style="font-size:.68rem;color:rgba(32,36,31,.45);padding:0 2px 8px 2px">'
+    +   'Retención que entra ese mes con el % vigente menos el vencimiento de ese mes, mes por mes y sin arrastrar saldo. '
+    +   'Verde con "+" = sobra, rojo con "−" = ese mes falta. En cursiva, meses estimados con la base mensual real (promedio de los últimos 3 meses cerrados). '
+    +   'El primer mes se paga con lo ya acumulado.'
+    + '</div>'
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>Profesional</th><th>% vigente</th>' + cols + '<th>Total</th></tr></thead><tbody>'
+    + filas
+    + '<tr class="adm-totals"><td>TOTAL</td><td></td>' + pie + cel(totGral, false) + '</tr>'
+    + '</tbody></table></div>';
 }
 
 function incidenciaCoberturaHtml(cob) {
