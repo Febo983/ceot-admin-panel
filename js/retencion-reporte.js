@@ -435,3 +435,64 @@ async function retRepAplicarPct(ids) {
     alert("No se pudo guardar: " + err.message);
   }
 }
+
+// ══════ HASTA QUÉ MES LE ALCANZA — TABLA POR PROFESIONAL ═════════
+// Pedido de Marcelo, 20/11/2026: "nombre y apellido del profesional, y hasta
+// qué mes le alcanza el dinero para ir pagando". Una fila por socio del reparto
+// con la misma cuenta que el reporte individual (retRepCobertura): lo ya
+// acreditado + intereses de plazos fijos − vencimientos tildados como pagados,
+// contra lo que le toca de cada vencimiento de Ganancias.
+
+// "BRUNI, Maximiliano" → "Maximiliano Bruni"; "DE LA COLINA, Juan Pablo" →
+// "Juan Pablo de la Colina". Sin nombre de pila cargado usa d.nombre.
+function retRepNombreCompleto(d) {
+  var k = d.junioKey || "";
+  var cap = function(s) {
+    return s.toLowerCase().split(/\s+/).map(function(w, i, a) {
+      if (i < a.length - 1 && /^(de|del|la|las|los)$/.test(w)) return w;
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    }).join(" ");
+  };
+  var i = k.indexOf(",");
+  if (i < 0) return cap(d.apellido || d.nombre || "");
+  return k.slice(i + 1).trim() + " " + cap(k.slice(0, i).trim());
+}
+
+function retRepHastaCuandoHtml() {
+  var filas = [];
+  retRepSocios().forEach(function(d) {
+    var cob;
+    try { cob = retRepCobertura(d); } catch (e) { cob = null; }
+    if (!cob) return;
+    // Vencimientos sin pagar que cubre lo que hay hoy (los ya pagados no cuentan).
+    var cubre = 0;
+    for (var i = 0; i < cob.n; i++) if (!cob.pagos[i]) cubre++;
+    var hayPendientes = cob.calOrig.some(function(v, i) { return v && !cob.pagos[i]; });
+    var hasta, color;
+    if (!hayPendientes) { hasta = "Plan completo pagado"; color = "#166b3a"; }
+    else if (cob.n >= cob.totalPlan) { hasta = "Todo el plan (hasta " + incidenciaMesCorto(cob.totalPlan - 1) + ")"; color = "#166b3a"; }
+    else if (cubre === 0) { hasta = "No alcanza para " + incidenciaMesCorto(cob.n); color = "#b13a2c"; }
+    else { hasta = incidenciaMesCorto(cob.n - 1); color = "#1f3a2e"; }
+    var prox = cob.n < cob.totalPlan
+      ? incidenciaMesCorto(cob.n) + ": faltan $ " + fmt(Math.round(cob.proxFalta))
+      : "—";
+    var conPend = cob.nTodo > cob.n
+      ? (cob.nTodo >= cob.totalPlan ? "Todo el plan" : "Hasta " + incidenciaMesCorto(cob.nTodo - 1))
+      : "—";
+    filas.push({ d: d, n: cob.n, html: '<tr>'
+      + '<td style="text-align:left;font-weight:700">' + escAttr(retRepNombreCompleto(d)) + '</td>'
+      + '<td style="font-weight:800;color:' + color + '">' + hasta + '</td>'
+      + '<td>$ ' + fmt(Math.round(cob.acum)) + '</td>'
+      + '<td>' + prox + '</td>'
+      + '<td>' + conPend + (cob.pendiente > 0 ? ' <span style="opacity:.6">($ ' + fmt(Math.round(cob.pendiente)) + ' por acreditar)</span>' : '') + '</td>'
+      + '</tr>' });
+  });
+  if (!filas.length) return "";
+  // Primero los que llegan menos lejos.
+  filas.sort(function(a, b) { return a.n - b.n; });
+  return '<div class="adm-sec-title" style="margin-top:6px">Hasta qué mes le alcanza a cada profesional</div>'
+    + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
+    + '<th style="text-align:left">Profesional</th><th>Le alcanza hasta</th><th>Disponible hoy</th><th>Próximo vencimiento</th><th>Si se acredita lo pendiente</th>'
+    + '</tr></thead><tbody>' + filas.map(function(f) { return f.html; }).join("") + '</tbody></table></div>'
+    + '<div style="font-size:.65rem;color:rgba(32,36,31,.45);padding:6px 2px 14px 2px">Disponible hoy = retención ya acreditada + intereses de plazos fijos − vencimientos tildados como pagados. Se compara contra lo que le toca de cada vencimiento de Ganancias (misma cuenta que "Reparto del fondo" y el reporte individual).</div>';
+}
