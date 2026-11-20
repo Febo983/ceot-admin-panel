@@ -95,6 +95,7 @@ var ADM_HOME_MODULOS = [
   { key:"cpsm",             ico:"landmark",        lbl:"CPSM",          cat:"mes", home:false, fn:"renderCpsm()" },
   { key:"redsom",           ico:"stethoscope",     lbl:"Seguimiento REDSOM", cat:"mes", home:false, fn:"renderSeguimientoRedsom()" },
   { key:"debitos",          ico:"alert-triangle",  lbl:"Débitos",       cat:"mes", fn:"renderDebitos()" },
+  { key:"conciliacion",     ico:"scale",           lbl:"Conciliación bancaria", cat:"casa", fn:"renderConciliacion()" },
   { key:"facturas",         ico:"receipt",         lbl:"Facturas",      cat:"mes", home:false, fn:"renderFacturas()" },
   { key:"presentacion",     ico:"presentation",    lbl:"Presentación",  cat:"mes", fn:"renderPresentacion()" },
   { key:"sueldob",          ico:"briefcase",       lbl:"Sueldo B",      cat:"gente", fn:"renderSueldoB()" },
