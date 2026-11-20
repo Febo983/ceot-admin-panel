@@ -1760,6 +1760,7 @@ function incidenciaPlanCargar() {
     _incidenciaTotalPulled = true;
     syncPull(INCIDENCIA_PLAN_KEY, function() {
       if (document.getElementById("incidencia-plan-inm")) renderIncidenciaFondo();
+      if (typeof admHomeAlertaRetRender === "function") admHomeAlertaRetRender();
     });
   }
   var plan = null;
@@ -2024,6 +2025,7 @@ function incidenciaPagosCargar() {
     _incidenciaPagosPulled = true;
     syncPull(INCIDENCIA_PAGOS_KEY, function() {
       if (document.getElementById("incidencia-fondo-wrap")) renderIncidenciaFondo();
+      if (typeof admHomeAlertaRetRender === "function") admHomeAlertaRetRender();
     });
   }
   var o = null;

@@ -555,6 +555,14 @@ function admHomeGarmendiaNota() {
 // tarea agrupado en los tres tramos (se prenden como monedas al tildar; en rojo
 // las atrasadas) y las próximas pendientes para tildar sin salir de la home.
 var ADM_HOME_HUD_PROX = 3;
+// Alerta de retenciones que no alcanzan para el vencimiento (retencion-reporte.js).
+// Los pagos tildados y el plan llegan por syncPull: se vuelve a dibujar cuando entran.
+function admHomeAlertaRetRender() {
+  var el = document.getElementById("admHomeAlertaRet");
+  if (!el || typeof retRepAlertasHtml !== "function") return;
+  try { incidenciaPagosCargar(); incidenciaPlanCargar(); } catch (e) {}
+  el.innerHTML = retRepAlertasHtml();
+}
 function admHomeHudEsc(t) {
   return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -905,6 +913,7 @@ function renderAdmHome() {
       + '</div>'
 
       + '<div id="admHomeCal" style="position:relative;z-index:1;margin-bottom:14px"></div>'
+      + '<div id="admHomeAlertaRet" style="position:relative;z-index:1"></div>'
       + '<div class="adm-home-hud" id="admHeroCard">'
       +   '<div id="admHomeHud" style="display:contents"></div>'
       +   '<div class="adm-home-hud-cell">'
@@ -974,6 +983,7 @@ function renderAdmHome() {
   document.getElementById("adm-content").innerHTML = html;
   admMarcarMesHoy(true);
   admHomeHudRender();
+  admHomeAlertaRetRender();
   admHomeCalRender();
   admHomeRenderResults();
   if (typeof backupAvisoRender === "function") backupAvisoRender();

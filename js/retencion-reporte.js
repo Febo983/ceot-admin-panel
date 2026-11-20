@@ -254,3 +254,74 @@ function retRepControlesHtml() {
     + '<button class="cpsm-dl-btn" style="display:inline-block" onclick="actionFeedback(this); descargarReporteRetencionIndividual()">⬇ Descargar reporte individual (PDF)</button>'
     + '</div></div>';
 }
+
+// ══════ ALERTA: RETENCIÓN QUE NO ALCANZA PARA EL VENCIMIENTO ═════
+// Pedido de Marcelo, 20/11/2026: que el panel le avise (solo a él) cuando un
+// profesional no llega a juntar con su retención lo que hay que pagar de
+// Ganancias, con 30 días de anticipación.
+// Para cada socio mira los vencimientos NO pagados que caen dentro de los
+// próximos 30 días (o ya vencidos) y toma el primero que su fondo no cubre:
+//   "al acreditar" = hoy no llega, pero sí cuando entren los cheques que faltan.
+//   "no llega"     = ni con los cheques pendientes alcanza.
+// Misma cuenta que retRepCobertura (Acumulado + intereses − pagados).
+var RET_ALERTA_DIAS = 30;
+// Día del mes en que vence cada pago del calendario (el calendario del plan solo
+// tiene mes, no día). Se usa el 13 = el más temprano de los vencimientos de
+// Ganancias, así el aviso salta antes y no después. Ajustar acá si hace falta.
+var RET_ALERTA_DIA_VENC = 13;
+
+function retRepAlertas(hoy) {
+  hoy = hoy || new Date();
+  var hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  var out = [];
+  retRepSocios().forEach(function(d) {
+    var cob = retRepCobertura(d);
+    if (!cob) return;
+    var acum = 0, accTodo = 0, sumCal = 0;
+    var cal = cob.calOrig.map(function(v, i) { return cob.pagos[i] ? 0 : v; });
+    for (var i = 0; i < cal.length; i++) {
+      if (!cal[i]) continue;
+      var m = INCIDENCIA_MES1.mes - 1 + i;
+      var fecha = new Date(INCIDENCIA_MES1.anio + Math.floor(m / 12), m % 12, RET_ALERTA_DIA_VENC);
+      var dias = Math.round((fecha - hoy0) / 86400000);
+      if (dias > RET_ALERTA_DIAS) break;
+      sumCal += cal[i];
+      if (cob.n > i) continue;                  // lo cubre lo ya acreditado
+      var falta = sumCal - cob.acum;
+      var faltaTodo = sumCal - (cob.acum + cob.pendiente);
+      out.push({
+        doc: d, idx: i, fecha: fecha, dias: dias, monto: cal[i],
+        falta: Math.max(0, Math.round(falta)),
+        estado: cob.nTodo > i ? "acreditar" : "no-llega",
+        faltaTodo: Math.max(0, Math.round(faltaTodo))
+      });
+      break;
+    }
+  });
+  out.sort(function(a, b) { return a.dias - b.dias || b.falta - a.falta; });
+  return out;
+}
+
+function retRepAlertasHtml() {
+  var al;
+  try { al = retRepAlertas(); } catch (e) { return ""; }
+  if (!al.length) return "";
+  var fd = function(f) { return ("0" + f.getDate()).slice(-2) + "/" + ("0" + (f.getMonth() + 1)).slice(-2) + "/" + f.getFullYear(); };
+  var filas = al.map(function(a) {
+    var rojo = a.estado === "no-llega";
+    var cuando = a.dias < 0 ? "vencido hace " + (-a.dias) + " d" : (a.dias === 0 ? "vence hoy" : "vence en " + a.dias + " d");
+    return '<div style="display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;padding:5px 0;border-top:1px dashed rgba(15,28,40,.15)">'
+      + '<span style="font-weight:800;min-width:150px">' + (rojo ? '🔴 ' : '🟡 ') + admHomeHudEsc(a.doc.nombre) + '</span>'
+      + '<span style="font-size:.78rem">' + incidenciaMesCorto(a.idx) + ' · ' + fd(a.fecha) + ' · ' + cuando + '</span>'
+      + '<span style="font-size:.78rem;font-weight:700;color:' + (rojo ? '#c0392b' : '#a86a00') + '">'
+      +   (rojo ? 'No llega: faltan $ ' + fmt(a.faltaTodo) + ' aun con los cheques pendientes'
+                : 'Hoy faltan $ ' + fmt(a.falta) + ' (llega al acreditarse los cheques pendientes)') + '</span>'
+      + '</div>';
+  }).join("");
+  return '<div onclick="renderAporteCeot()" style="cursor:pointer;margin-bottom:14px;padding:10px 14px;border:2px solid #c0392b;border-radius:10px;background:#fff4f1;color:#1c2b3a">'
+    + '<div style="font-size:.74rem;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#c0392b;margin-bottom:4px">'
+    +   'Retención en riesgo · Ganancias (próximos ' + RET_ALERTA_DIAS + ' días)</div>'
+    + filas
+    + '<div style="font-size:.68rem;opacity:.6;margin-top:4px">Tocá para ver Retención Ganancias. Se calcula con lo acreditado hoy + intereses − vencimientos tildados como pagados.</div>'
+    + '</div>';
+}
