@@ -432,10 +432,39 @@ function debFmtPeriodo(p) {
 // Guardado compartido de los débitos importados: se traen una vez por sesión
 // (índice + detalle de cada período) y, si cambió algo, se repinta la pantalla.
 var _debPulled = {};
+// Períodos recién importados que todavía pueden no haber llegado al servidor.
+// Bug real (20/11/2026): si se abría Débitos mientras la subida del índice
+// seguía en vuelo, el pull traía el índice viejo, pisaba el local y el período
+// recién importado desaparecía de la lista. Ahora el pull del índice vuelve a
+// sumar estos pendientes; cada uno se borra de la lista cuando el servidor ya
+// lo tiene. Solo los recién importados: un período borrado en otra PC no
+// reaparece.
+var DEB_PEND_KEY = 'deb_guardados_pend';
+function debPendientes() {
+  try { return JSON.parse(localStorage.getItem(DEB_PEND_KEY) || '[]'); } catch (e) { return []; }
+}
+function debMarcarPendiente(key) {
+  var p = debPendientes();
+  if (p.indexOf(key) === -1) p.push(key);
+  try { localStorage.setItem(DEB_PEND_KEY, JSON.stringify(p)); } catch (e) {}
+}
 function debPull(clave, alLlegar) {
   if (_debPulled[clave] || typeof syncPull !== 'function') return;
   _debPulled[clave] = true;
   syncPull(clave, function() {
+    if (clave === 'deb_guardados') {
+      // Acá localStorage ya tiene el índice del servidor.
+      var remoto = debGetGuardados();
+      var faltan = debPendientes().filter(function(k) {
+        return remoto.indexOf(k) === -1 && localStorage.getItem('deb_imp_' + k);
+      });
+      faltan.forEach(function(k) { remoto.unshift(k); });
+      try {
+        localStorage.setItem('deb_guardados', JSON.stringify(remoto));
+        localStorage.setItem(DEB_PEND_KEY, JSON.stringify(faltan));   // los que el servidor ya tiene salen
+      } catch (e) {}
+      if (faltan.length) { syncPush('deb_guardados'); faltan.forEach(function(k) { syncPush('deb_imp_' + k); }); }
+    }
     if (alLlegar) alLlegar();
     if (document.getElementById('debMesSel')) renderDebitos();
   });
@@ -471,6 +500,14 @@ function renderDebitos(mes) {
   var sd = document.getElementById("adm-sidenav-debitos");
   if (sd) sd.className = "adm-sidenav-btn active";
 
+  // Un período guardado se relee siempre de localStorage. Antes quedaba el que
+  // se había leído al elegirlo: si el detalle todavía no había bajado del
+  // servidor (otra PC, o primera vez en la sesión), la pantalla quedaba vacía y
+  // seguía vacía aunque después llegara. Lo importado sin guardar (archivo
+  // abierto acá mismo) no se toca.
+  if (debMesActual.indexOf('__g__') === 0) {
+    try { debImportData = JSON.parse(localStorage.getItem('deb_imp_' + debMesActual.replace('__g__', '')) || 'null'); } catch (e) { debImportData = null; }
+  }
   var modoImport = debImportData !== null;
 
   // toolbar
@@ -675,6 +712,7 @@ function debSelMes(val) {
 function debEliminarGuardado(key) {
   if (!confirm('¿Eliminar ' + key + '?')) return;
   localStorage.removeItem('deb_imp_' + key);
+  try { localStorage.setItem(DEB_PEND_KEY, JSON.stringify(debPendientes().filter(function(g){ return g !== key; }))); } catch (e) {}
   var guardados = debGetGuardados().filter(function(g){ return g !== key; });
   localStorage.setItem('deb_guardados', JSON.stringify(guardados));
   if (typeof syncPush === 'function') syncPush('deb_guardados');

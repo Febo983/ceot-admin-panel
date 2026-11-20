@@ -835,6 +835,12 @@ function guardarDebitosImportados(items, periodoHint) {
   } catch (e) { return { n: 0, error: e.message }; }
   // Guardado compartido (como REDSOM): claves separadas para no mandar todos los meses juntos.
   try { if (typeof syncPush === 'function') { syncPush('deb_imp_' + periodoKey); syncPush('deb_guardados'); } } catch (e) {}
+  // Que un pull viejo del índice no lo borre, y que Débitos abra este período
+  // la próxima vez (antes seguía en el que se hubiera mirado antes en la sesión).
+  try {
+    if (typeof debMarcarPendiente === 'function') debMarcarPendiente(periodoKey);
+    if (typeof debMesActual !== 'undefined') { debMesActual = '__g__' + periodoKey; _debInicialHecho = true; }
+  } catch (e) {}
   var total = items.reduce(function(s, it) { return s + (it.imp || 0); }, 0);
   return { n: items.length, periodoKey: periodoKey, total: total };
 }
@@ -1081,8 +1087,9 @@ async function procesarArchivosImport() {
       var resDeb = guardarDebitosImportados(debs, periodoHint);
       if (debMsgEl && resDeb.n) {
         debMsgEl.style.display = 'block';
-        debMsgEl.textContent = '🩺 ' + resDeb.n + ' débito(s) > $50.000 (' + fmtImp(resDeb.total) +
-          ') cargados a la pestaña Débitos — período «' + resDeb.periodoKey + '». Abrilos ahí para analizarlos con el NUN.';
+        debMsgEl.innerHTML = '🩺 ' + resDeb.n + ' débito(s) > $50.000 (' + fmtImp(resDeb.total) +
+          ') cargados a la pestaña Débitos — período «' + resDeb.periodoKey + '». '
+          + '<a href="#" onclick="event.preventDefault(); if (typeof cerrarImportModal === \'function\') cerrarImportModal(); debSelMes(\'__g__' + resDeb.periodoKey + '\')" style="color:#1f3a2e;font-weight:700;text-decoration:underline">Ver los débitos</a>';
       } else if (debMsgEl) {
         debMsgEl.style.display = 'block';
         debMsgEl.textContent = '🩺 Sin débitos > $50.000 fuera de consultas en este archivo.';
