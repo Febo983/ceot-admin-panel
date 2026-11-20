@@ -180,8 +180,11 @@ body {
   pointer-events: none; opacity: 1; transition: opacity .15s;
 }
 .period-tabs-wrap.co-at-end::after { opacity: 0; }
+.period-tabs-wrap::after { display: none; }   /* ya no hay nada cortado a la derecha */
 .period-tabs {
-  display: flex; overflow-x: auto;
+  /* Antes scrolleaba de costado sin barra y lo de la derecha quedaba cortado
+     (Ene 27 no se veía, 20/11/2026). Ahora, si no entra, sigue en otra línea. */
+  display: flex; flex-wrap: wrap; overflow-x: visible;
   border-bottom: 1px solid #e5e7eb;
   background: #f9fafb; scrollbar-width: none;
 }
@@ -2382,30 +2385,30 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-20-portal-2027"></script>
-<script src="js/portal-render.js?v=2026-11-20-portal-2027"></script>
-<script src="js/backup.js?v=2026-11-20-portal-2027"></script>
-<script src="js/admin-home.js?v=2026-11-20-portal-2027"></script>
-<script src="js/gastos-obra.js?v=2026-11-20-portal-2027"></script>
-<script src="js/coberturas.js?v=2026-11-20-portal-2027"></script>
-<script src="js/presentacion.js?v=2026-11-20-portal-2027"></script>
-<script src="js/sueldo-b.js?v=2026-11-20-portal-2027"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-20-portal-2027"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-20-portal-2027"></script>
-<script src="js/gasto-destiempo.js?v=2026-11-20-portal-2027"></script>
-<script src="js/retencion-reporte.js?v=2026-11-20-portal-2027"></script>
-<script src="js/dla.js?v=2026-11-20-portal-2027"></script>
-<script src="js/redsom.js?v=2026-11-20-portal-2027"></script>
-<script src="js/nun-data.js?v=2026-11-20-portal-2027"></script>
-<script src="js/accesos-debitos.js?v=2026-11-20-portal-2027"></script>
-<script src="js/tareas-hoy.js?v=2026-11-20-portal-2027"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-20-portal-2027"></script>
-<script src="js/estadisticas.js?v=2026-11-20-portal-2027"></script>
-<script src="js/estadisticas-secretarias.js?v=2026-11-20-portal-2027"></script>
-<script src="js/estadisticas-export.js?v=2026-11-20-portal-2027"></script>
-<script src="js/estadisticas-reportes.js?v=2026-11-20-portal-2027"></script>
-<script src="js/buzon.js?v=2026-11-20-portal-2027"></script>
-<script src="js/gastos-casa.js?v=2026-11-20-portal-2027"></script>
+<script src="js/datos.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/portal-render.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/backup.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/admin-home.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/gastos-obra.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/coberturas.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/presentacion.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/sueldo-b.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/gasto-destiempo.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/retencion-reporte.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/dla.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/redsom.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/nun-data.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/accesos-debitos.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/tareas-hoy.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/estadisticas.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/estadisticas-secretarias.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/estadisticas-export.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/estadisticas-reportes.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/buzon.js?v=2026-11-20-portal-tabs-wrap"></script>
+<script src="js/gastos-casa.js?v=2026-11-20-portal-tabs-wrap"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -3071,8 +3074,11 @@ function actualizarTabsNeto(doctor) {
   PERIODOS_TODOS.forEach(function(t) {
     var b = document.getElementById("badge-"+t);
     if (!b) return;
-    b.className = (t===act) ? "tbadge tb-act" : "tbadge tb-ant";
-    b.textContent = (t===act) ? "actual" : "anterior";
+    // Antes todo lo que no era el mes actual decía "anterior", también los
+    // meses que vienen.
+    var futuro = PERIODOS_TODOS.indexOf(t) > PERIODOS_TODOS.indexOf(act);
+    b.className = (t===act) ? "tbadge tb-act" : (futuro ? "tbadge tb-ind" : "tbadge tb-ant");
+    b.textContent = (t===act) ? "actual" : (futuro ? "próximo" : "anterior");
   });
   PERIODOS_TODOS.forEach(function(pid) {
     var el = document.getElementById("tabneto-"+pid);
@@ -8471,7 +8477,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-20-portal-2027';
+  var CURRENT_BUILD = '2026-11-20-portal-tabs-wrap';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
