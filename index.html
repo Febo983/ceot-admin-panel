@@ -1622,6 +1622,11 @@ tr:hover .tf-add { opacity:1; }
 }
 .adm-home-retro-inner { max-width:1600px; margin:0 auto; position:relative; }
 #admHomeBg { position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; }
+/* Cielo según la hora (ver ADM_HOME_CIELOS): de noche los textos sueltos sobre el cielo van claros */
+.adm-home-retro-wrap { transition: background .6s ease; }
+.adm-home-sky-txt { text-shadow:0 1px 0 rgba(255,255,255,.75); }
+.adm-home-retro-wrap.cielo-noche .adm-home-sky-txt, .adm-home-retro-wrap.cielo-noche .adm-home-sky-txt span { color:#e8eef8 !important; text-shadow:0 1px 0 rgba(0,0,0,.6); }
+#admHomeBg { image-rendering: pixelated; }
 /* Tablero del mes (checklist + totales) */
 .adm-home-hud { position:relative; z-index:1; display:flex; flex-wrap:wrap; background:#fffaf1; border:2.5px solid #0f1c28; border-radius:14px; box-shadow:0 4px 0 #0f1c28; margin-bottom:14px; overflow:hidden; }
 .adm-home-hud-cell { flex:0 1 auto; min-width:0; padding:10px 16px; display:flex; flex-direction:column; justify-content:center; gap:4px; border-right:2px dashed rgba(15,28,40,.14); }

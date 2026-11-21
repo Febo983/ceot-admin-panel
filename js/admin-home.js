@@ -913,8 +913,8 @@ function renderAdmHome() {
     // (checklist + totales), buscador y filtros en una fila, los bloques y el piso.
     html = '<div class="adm-home-retro adm-home-retro-wrap"><canvas id="admHomeBg" aria-hidden="true"></canvas><div class="adm-home-retro-inner">'
       + '<div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px 12px;flex-wrap:wrap;margin-bottom:10px">'
-      +   '<h1 style="font-size:20px;font-weight:800;letter-spacing:.2px;color:#1c2b3a;margin:0">Inicio</h1>'
-      +   '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span id="admHomeTareasBtn"></span><span style="font-size:0.78rem;color:#4d5b68">' + saludo + ', Marcelo</span></div>'
+      +   '<h1 class="adm-home-sky-txt" style="font-size:20px;font-weight:800;letter-spacing:.2px;color:#1c2b3a;margin:0">Inicio</h1>'
+      +   '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span id="admHomeTareasBtn"></span><span class="adm-home-sky-txt" style="font-size:0.78rem;color:#4d5b68">' + saludo + ', Marcelo</span></div>'
       + '</div>'
 
       + '<div id="admHomeCal" style="position:relative;z-index:1;margin-bottom:14px"></div>'
@@ -944,7 +944,7 @@ function renderAdmHome() {
 
       + '<div id="admHomeDynamic"></div>'
 
-      + '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:#4d5b68;padding-top:10px;margin-top:8px">'
+      + '<div class="adm-home-sky-txt" style="display:flex;justify-content:space-between;font-size:10.5px;color:#4d5b68;padding-top:10px;margin-top:8px">'
       +   '<span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#2f9e63;border:1.5px solid #0f1c28;margin-right:5px;vertical-align:1px"></span>Conectado</span>'
       +   '<span>Admin CEOT · ' + new Date().getFullYear() + '</span>'
       + '</div>'
@@ -964,162 +964,218 @@ function renderAdmHome() {
   if (retro) initAdmHomeBg(); else stopAdmHomeBg();
 }
 
-// ══════ FONDO ANIMADO — VISTA RETRO (constelación de nodos + emojis que cruzan) ═════
-// El home admin se re-renderiza seguido (cambio de mes, editar nombres,
-// toggle clásico/retro), asi que el canvas se recrea cada vez — hay que
-// cortar el rAF previo antes de arrancar uno nuevo o se acumulan loops.
+// ══════ FONDO ANIMADO — VISTA RETRO (paisaje pixelado + personajes + cielo según la hora) ═════
+// Cielo que cambia con la hora (día / atardecer / noche con estrellas), nubes y
+// colinas en capas dibujadas a "pixeles" de 3px, y tres personajes propios en
+// pixel art (bichito, caracol, pajarito). El home admin se re-renderiza seguido
+// (cambio de mes, editar nombres), así que el canvas se recrea cada vez — hay
+// que cortar el rAF previo antes de arrancar uno nuevo o se acumulan loops.
 var _admHomeBgRaf = null;
 function stopAdmHomeBg() {
   if (_admHomeBgRaf) { cancelAnimationFrame(_admHomeBgRaf); _admHomeBgRaf = null; }
 }
+
+// Paletas por momento del día. "cielo" pinta el fondo del contenedor (CSS);
+// el resto lo usa el canvas. "noche" además aclara los textos sueltos sobre el cielo.
+var ADM_HOME_CIELOS = {
+  dia: {
+    cielo: "linear-gradient(180deg, #9fd8f7 0%, #cdeefc 100%)",
+    nube: "#ffffff", nubeSombra: "rgba(15,28,40,.10)",
+    lejos: ["#a5dcb2", "#7fbf91"], cerca: ["#6fcb83", "#3f9a4f"], arbusto: ["#3f9a4f", "#58c26f"]
+  },
+  atardecer: {
+    cielo: "linear-gradient(180deg, #f59a7a 0%, #fbc98b 55%, #ffe3b0 100%)",
+    nube: "#ffe9de", nubeSombra: "rgba(120,50,40,.14)",
+    lejos: ["#c9a98f", "#a88a73"], cerca: ["#7fae6e", "#55834d"], arbusto: ["#4d7a45", "#6a9a5c"]
+  },
+  noche: {
+    cielo: "linear-gradient(180deg, #0e1a33 0%, #1f3157 100%)",
+    nube: "#3a4d72", nubeSombra: "rgba(0,0,0,.25)",
+    lejos: ["#22385a", "#1a2c49"], cerca: ["#1f4a3d", "#163a30"], arbusto: ["#163a30", "#225546"]
+  }
+};
+function admHomeMomentoDelDia() {
+  var h = new Date().getHours();
+  if (h >= 7 && h < 18) return "dia";
+  if (h >= 18 && h < 20) return "atardecer";
+  return "noche";
+}
+
 function initAdmHomeBg() {
   stopAdmHomeBg();
   var canvas = document.getElementById("admHomeBg");
   if (!canvas) return;
   var ctx = canvas.getContext("2d");
   if (!ctx) return;
+  var wrap = canvas.parentElement;
 
   var reduceMotion = !window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
-  var INK = "15,28,40";     // #0f1c28 — borde navy del tema retro
-  var GOLD = "239,111,162"; // #ef6fa2 — acento rosa del avatar retro
-
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
-  var width = 0, height = 0, nodes = [], walkers = [], groundY = 110;
+  var P = 3;                       // tamaño de un "pixel" del dibujo
+  var width = 0, height = 0, groundY = 110, t = 0;
+  var clouds = [], stars = [], walkers = [];
+  var momento = null, pal = null;
 
-  // Personajes que cruzan el fondo del Home retro — emojis dibujados con
-  // ctx.fillText a baja opacidad. Cada uno: el glifo y su tipo de movimiento:
-  //   walk  → camina por el piso con un balanceo mínimo
-  //   hop   → avanza dando saltitos (rebote sinusoidal)
-  //   float → flota por encima del piso, con vaivén suave
-  var SPRITES = [
-    { e: "🍄", move: "walk" },
-    { e: "🐢", move: "walk" },
-    { e: "🐿️", move: "walk" },
-    { e: "🦔", move: "walk" },
-    { e: "🔥", move: "hop" },
-    { e: "🌱", move: "hop" },
-    { e: "⭐", move: "float" },
-    { e: "🪙", move: "float" },
-    { e: "☁️", move: "float" }
-  ];
-  var EMOJI_FONT = "23px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif";
+  function aplicarMomento() {
+    var m = admHomeMomentoDelDia();
+    if (m === momento) return;
+    momento = m; pal = ADM_HOME_CIELOS[m];
+    wrap.style.background = pal.cielo;
+    wrap.classList.toggle("cielo-noche", m === "noche");
+  }
 
-  function makeWalkers() {
-    var n = width < 420 ? 2 : (width < 620 ? 3 : 4);
-    walkers = [];
-    var pool = SPRITES.slice();
-    for (var i = 0; i < n; i++) {
-      var pick = pool.length
-        ? pool.splice(Math.floor(Math.random() * pool.length), 1)[0]
-        : SPRITES[Math.floor(Math.random() * SPRITES.length)];
-      walkers.push({
-        e: pick.e, move: pick.move,
-        x: Math.random() * Math.max(width, 1),
-        dir: Math.random() < 0.5 ? 1 : -1,
-        speed: 0.11 + Math.random() * 0.14,
-        phase: Math.floor(Math.random() * 100)
-      });
+  // Personajes propios, como grillas de caracteres (cada letra = un color).
+  // Dos cuadros por personaje para la animación de caminar / aletear.
+  var SPR = {
+    bichito: [
+      ["...KKKKK...","..KGGGGGK..",".KGGGGGGGK.",".KGWKGWKGK.","KGGWKGWKGGK","KGGGGGGGGGK","KGLGGGGGLGK",".KKKKKKKKK.","..KK...KK.."],
+      ["...KKKKK...","..KGGGGGK..",".KGGGGGGGK.",".KGWKGWKGK.","KGGWKGWKGGK","KGGGGGGGGGK","KGLGGGGGLGK",".KKKKKKKKK.","...KK.KK..."]
+    ],
+    caracol: [
+      ["....KKKK....","...KPPPPK...","..KPKKKPPK..","..KPKPKPPK..","..KPKKPPPK.K","KKKKPPPPKK.K","KYYYKKKKYYYK","KYYYYYYYYYYK",".KKKKKKKKKK."],
+      ["....KKKK....","...KPPPPK...","..KPKKKPPK..","..KPKPKPPK..","..KPKKPPPK.K","KKKKPPPPKKKK","KYYYKKKKYYYK","KYYYYYYYYYYK",".KKKKKKKKKK."]
+    ],
+    pajarito: [
+      ["..KKK.....",".KBBBK....","KBWKBBKKK.","KBBBBBBOOK",".KBBBBBKK.","..KKKKK..."],
+      ["..........","..KKK.....",".KBBBKKKK.","KBWKBBBOOK","KBBBBBBKK.",".KKKKKK..."]
+    ]
+  };
+  var COL = { K:"#0f1c28", G:"#6cc36b", L:"#3f9a4f", W:"#ffffff", P:"#ef6fa2", Y:"#f2d9a6", B:"#7ec4f2", O:"#f5c542" };
+
+  function drawSprite(rows, x, y, flip) {
+    for (var r = 0; r < rows.length; r++) {
+      var row = rows[r], n = row.length;
+      for (var c = 0; c < n; c++) {
+        var ch = row.charAt(flip ? n - 1 - c : c);
+        if (ch === ".") continue;
+        ctx.fillStyle = COL[ch];
+        ctx.fillRect(Math.round(x) + c * P, Math.round(y) + r * P, P, P);
+      }
     }
   }
+  // Círculo relleno en escalones de P (para nubes y arbustos).
+  function pixBlob(x, y, r) {
+    for (var dy = -r; dy <= r; dy += P) {
+      var w = Math.round(Math.sqrt(Math.max(0, r * r - dy * dy)) / P) * P;
+      ctx.fillRect(Math.round((x - w) / P) * P, Math.round((y + dy) / P) * P, w * 2, P);
+    }
+  }
+  // Colina semicircular escalonada: primero la silueta en el tono oscuro
+  // (queda como borde) y encima la misma silueta un pixel más chica.
+  function pixHill(cx, base, r, cols) {
+    var step = P * 2;
+    function silueta(rad) {
+      for (var x = -rad; x < rad; x += step) {
+        var mid = x + step / 2;
+        var h = Math.round(Math.sqrt(Math.max(0, rad * rad - mid * mid)) / P) * P;
+        ctx.fillRect(Math.round(cx + x), base - h, step, h);
+      }
+    }
+    ctx.fillStyle = cols[1]; silueta(r);
+    ctx.fillStyle = cols[0]; silueta(r - P);
+  }
+  function pixCloud(x, y, s) {
+    var puffs = [[0, 6, 6], [8, 0, 9], [20, 4, 7], [28, 8, 5]];
+    ctx.fillStyle = pal.nubeSombra;
+    puffs.forEach(function (p) { pixBlob(x + p[0] * s + P, y + p[1] * s + P, p[2] * s); });
+    ctx.fillStyle = pal.nube;
+    puffs.forEach(function (p) { pixBlob(x + p[0] * s, y + p[1] * s, p[2] * s); });
+  }
+
   function updateGroundY() {
     var piso = document.getElementById("admHomeGround");
-    if (piso) { groundY = piso.getBoundingClientRect().top - canvas.getBoundingClientRect().top + 2; return; }
-    var card = document.getElementById("admHeroCard");
-    if (!card) { groundY = Math.min(120, height - 14); return; }
-    var cy = card.getBoundingClientRect().bottom - canvas.getBoundingClientRect().top;
-    // Línea de piso en el hueco (46px) entre la tarjeta hero y "DASH BOARD",
-    // bien despegada del borde de la tarjeta para que no los tape.
-    groundY = Math.max(24, Math.min(cy + 32, height - 14));
-  }
-  function drawWalker(w) {
-    var px = Math.round(w.x);
-    var yOff;
-    if (w.move === "hop")        yOff = -Math.abs(Math.sin(w.phase * 0.13)) * 8;
-    else if (w.move === "float") yOff = -12 - Math.sin(w.phase * 0.06) * 3;
-    else                         yOff = -Math.abs(Math.sin(w.phase * 0.10)) * 2; // balanceo mínimo al caminar
-    var y = groundY + yOff;
-
-    ctx.save();
-    ctx.globalAlpha = 0.78;
-    ctx.font = EMOJI_FONT;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    if (w.move !== "float" && w.dir < 0) {   // mira hacia donde camina
-      ctx.translate(px, 0); ctx.scale(-1, 1); ctx.translate(-px, 0);
-    }
-    ctx.fillText(w.e, px, y);
-    ctx.restore();
+    if (piso) groundY = piso.getBoundingClientRect().top - canvas.getBoundingClientRect().top;
+    else groundY = height - 14;
   }
 
-  function makeNodes() {
-    var count = Math.max(14, Math.min(45, Math.round((width * height) / 15000)));
-    nodes = [];
-    for (var i = 0; i < count; i++) {
-      nodes.push({
-        x: Math.random() * width, y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.15, vy: (Math.random() - 0.5) * 0.15,
-        r: 1.8 + Math.random() * 2, pink: Math.random() < 0.25
-      });
+  function makeScene() {
+    clouds = [];
+    var nc = Math.max(3, Math.round(width / 260));
+    for (var i = 0; i < nc; i++) {
+      clouds.push({ x: Math.random() * width, y: 24 + Math.random() * Math.min(160, height * 0.25),
+                    s: 0.6 + Math.random() * 0.5, v: 0.08 + Math.random() * 0.1 });
     }
+    stars = [];
+    var ns = Math.round(width * Math.min(height, 500) / 9000);
+    for (var j = 0; j < ns; j++) {
+      stars.push({ x: Math.round(Math.random() * width / P) * P, y: Math.round(Math.random() * Math.min(height, 500) / P) * P,
+                   ph: Math.random() * 6.28, big: Math.random() < 0.2 });
+    }
+    walkers = [
+      { k: "bichito",  x: width * 0.2, dir: 1,  v: 0.35 },
+      { k: "caracol",  x: width * 0.65, dir: -1, v: 0.15 },
+      { k: "pajarito", x: width * 0.4, dir: 1,  v: 0.5, vuela: true }
+    ];
+    if (width < 500) walkers.pop();
   }
 
   function draw() {
     ctx.clearRect(0, 0, width, height);
-    var i, j;
-    for (i = 0; i < nodes.length; i++) {
-      for (j = i + 1; j < nodes.length; j++) {
-        var a = nodes[i], b = nodes[j], dx = a.x - b.x, dy = a.y - b.y;
-        var d = Math.sqrt(dx * dx + dy * dy);
-        if (d < 100) {
-          ctx.strokeStyle = "rgba(" + INK + "," + (0.12 * (1 - d / 100)) + ")";
-          ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-        }
+    updateGroundY();
+
+    if (momento === "noche") {
+      for (var s = 0; s < stars.length; s++) {
+        var st = stars[s];
+        var a = reduceMotion ? 0.8 : 0.45 + 0.45 * Math.sin(t * 0.04 + st.ph);
+        ctx.fillStyle = "rgba(255,246,214," + a.toFixed(2) + ")";
+        ctx.fillRect(st.x, st.y, P, P);
+        if (st.big) { ctx.fillRect(st.x - P, st.y, P * 3, P); ctx.fillRect(st.x, st.y - P, P, P * 3); }
       }
     }
-    for (i = 0; i < nodes.length; i++) {
-      var n = nodes[i];
-      ctx.fillStyle = "rgba(" + (n.pink ? GOLD : INK) + "," + (n.pink ? 0.55 : 0.25) + ")";
-      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.fill();
+    for (var c = 0; c < clouds.length; c++) pixCloud(clouds[c].x, clouds[c].y, clouds[c].s);
+
+    // Colinas lejanas y cercanas, con un corrimiento lento (efecto de profundidad)
+    var far = (t * 0.05) % 360, near = (t * 0.12) % 300, x;
+    for (x = -360; x < width + 360; x += 360) pixHill(x - far + 120, groundY, 120, pal.lejos);
+    for (x = -300; x < width + 300; x += 300) pixHill(x - near + 40, groundY, 70, pal.cerca);
+    for (x = -260; x < width + 260; x += 260) {
+      var bx = x - near + 200;
+      ctx.fillStyle = pal.arbusto[0];
+      pixBlob(bx, groundY - 6, 14); pixBlob(bx + 20, groundY - 10, 16); pixBlob(bx + 42, groundY - 6, 12);
+      ctx.fillStyle = pal.arbusto[1];
+      pixBlob(bx, groundY - 8, 11); pixBlob(bx + 20, groundY - 12, 13); pixBlob(bx + 42, groundY - 8, 9);
     }
-    updateGroundY();
-    for (i = 0; i < walkers.length; i++) drawWalker(walkers[i]);
+
+    for (var k = 0; k < walkers.length; k++) {
+      var w = walkers[k];
+      var frame = SPR[w.k][Math.floor(t / (w.vuela ? 10 : 14)) % 2];
+      var y = w.vuela ? 70 + Math.sin(t * 0.03 + w.x * 0.01) * 14 : groundY - frame.length * P;
+      drawSprite(frame, w.x, y, w.dir < 0);
+    }
   }
 
   function resize(w, h) {
     if (!(w > 20) || !(h > 20)) return;
-    width = w; height = h;
-    canvas.width = w * dpr; canvas.height = h * dpr;
+    width = Math.round(w); height = Math.round(h);
+    canvas.width = width * dpr; canvas.height = height * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    makeNodes();
-    makeWalkers();
+    ctx.imageSmoothingEnabled = false;
+    makeScene();
     draw();
   }
 
-  var parent = canvas.parentElement;
-  resize(parent.clientWidth, parent.clientHeight);
+  aplicarMomento();
+  resize(wrap.clientWidth, wrap.clientHeight);
   if (window.ResizeObserver) {
-    new ResizeObserver(function (entries) {
-      var box = entries[0].contentRect;
-      resize(box.width, box.height);
-    }).observe(parent);
+    // clientWidth/clientHeight (con padding), no contentRect: el canvas cubre
+    // todo el contenedor y si no se estira y los personajes se hunden en el piso.
+    new ResizeObserver(function () { resize(wrap.clientWidth, wrap.clientHeight); }).observe(wrap);
   }
 
   if (reduceMotion) return;
 
   function tick() {
-    for (var i = 0; i < nodes.length; i++) {
-      var n = nodes[i];
-      n.x += n.vx; n.y += n.vy;
-      if (n.x < 0 || n.x > width) n.vx *= -1;
-      if (n.y < 0 || n.y > height) n.vy *= -1;
+    t++;
+    if (t % 1800 === 0) aplicarMomento();   // ~cada 30 s revisa si cambió el momento del día
+    for (var i = 0; i < clouds.length; i++) {
+      clouds[i].x -= clouds[i].v;
+      if (clouds[i].x < -140) clouds[i].x = width + 20;
     }
     for (var k = 0; k < walkers.length; k++) {
       var w = walkers[k];
-      w.x += w.dir * w.speed;
-      w.phase += 0.7 + w.speed * 3;   // animación siempre viva; algo atada a la velocidad
-      if (w.x < -30) w.x = width + 16;
-      else if (w.x > width + 30) w.x = -16;
+      w.x += w.dir * w.v;
+      if (w.x > width + 40) w.x = -40;
+      else if (w.x < -40) w.x = width + 40;
       if (Math.random() < 0.0009) w.dir *= -1;
     }
     draw();
