@@ -2391,31 +2391,31 @@ body, .login-card, .portal-card, .home-wrap, .cheque-list, .hist-newspaper,
   </div>
 </div>
 
-<script src="js/datos.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/portal-render.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/backup.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/admin-home.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/gastos-obra.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/coberturas.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/presentacion.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/sueldo-b.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/comprobantes-pdf.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/importar-liquidacion.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/gasto-destiempo.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/retencion-reporte.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/dla.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/redsom.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/conciliacion.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/nun-data.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/accesos-debitos.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/tareas-hoy.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/estadisticas-datos.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/estadisticas.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/estadisticas-secretarias.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/estadisticas-export.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/estadisticas-reportes.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/buzon.js?v=2026-11-21-inicio-fondo-pixel"></script>
-<script src="js/gastos-casa.js?v=2026-11-21-inicio-fondo-pixel"></script>
+<script src="js/datos.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/portal-render.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/backup.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/admin-home.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/gastos-obra.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/coberturas.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/presentacion.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/sueldo-b.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/comprobantes-pdf.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/importar-liquidacion.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/gasto-destiempo.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/retencion-reporte.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/dla.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/redsom.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/conciliacion.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/nun-data.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/accesos-debitos.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/tareas-hoy.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/estadisticas-datos.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/estadisticas.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/estadisticas-secretarias.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/estadisticas-export.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/estadisticas-reportes.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/buzon.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
+<script src="js/gastos-casa.js?v=2026-11-22-aportes-prestamos-no-cpsm"></script>
 <script>
 // ══════ ARRANQUE ════════════════════════════════════════════
 // Datos, config, endpoints y helpers base viven en js/datos.js (carga arriba).
@@ -7129,38 +7129,58 @@ function prestAportesResumenHtml() {
   var filas = prestAportesLeerSoloLectura();
   if (!filas.length) return '';
   var n = function (x) { return Number(x) || 0; };
-  var tot = { p: 0, s: 0, c: 0, t: 0, q: 0, T: 0, X: 0 };
+  // Préstamos que NO financian el 2º aporte CPSM (ej. Mercadolibre de Bruni):
+  // también son aportes de capital del socio, por cuotaPersonal × cuotas.
+  // Los CPSM (principal/León/Mazzola) ya están dentro del 2º aporte.
+  var PREST_CPSM_IDS = ['principal', 'leon', 'mazzola'];
+  var prestExtra = {}; // socio -> { monto, tags[] }
+  ((typeof PRESTAMOS_CASA !== 'undefined') ? PRESTAMOS_CASA : []).forEach(function (p) {
+    if (!p || PREST_CPSM_IDS.indexOf(p.id) !== -1) return;
+    var monto = n(p.cuotaPersonal) * n(p.cuotas);
+    if (!monto) return;
+    (p.socios || []).forEach(function (s) {
+      var e = prestExtra[s] || (prestExtra[s] = { monto: 0, tags: [] });
+      e.monto += monto;
+      e.tags.push((p.tag || 'Préstamo') + ' ' + p.cuotas + ' × ' + fmt(p.cuotaPersonal));
+    });
+  });
+  var tot = { p: 0, s: 0, c: 0, t: 0, q: 0, o: 0, T: 0, X: 0 };
   var th = 'style="text-align:right"';
   var rows = filas.map(function (r) {
     var primer = r.k === 'GARMENDIA' ? Math.round(n(r.primerUsd) * 1450) : n(r.primer);
-    tot.p += primer; tot.s += n(r.segundo); tot.t += n(r.tercer); tot.q += n(r.cuarto); tot.T += n(r.total);
+    var extra = prestExtra[r.k] || { monto: 0, tags: [] };
+    var total = n(r.total) + extra.monto;
+    tot.p += primer; tot.s += n(r.segundo); tot.t += n(r.tercer); tot.q += n(r.cuarto); tot.o += extra.monto; tot.T += total;
     if (r.segundoCpsm) tot.c += n(r.segundo);
-    var sinCpsm = n(r.total) - (r.segundoCpsm ? n(r.segundo) : 0);
+    var sinCpsm = total - (r.segundoCpsm ? n(r.segundo) : 0);
     tot.X += sinCpsm;
     var dev = [];
     dev.push(r.k === 'GARMENDIA' ? '1º entrada (sin devolución)' : '1º sin definir');
     if (n(r.segundo)) dev.push(r.segundoCpsm ? '2º por cuotas CPSM' : '2º sin definir');
     if (n(r.tercer)) dev.push('3º sin definir');
     if (n(r.cuarto)) dev.push('4º sin definir');
+    if (extra.monto) dev.push(extra.tags.join(', ') + ' sin definir');
     return '<tr><td style="font-weight:700">' + r.n + '</td>'
       + '<td class="ipt-num">' + fmt(primer) + '</td>'
       + '<td class="ipt-num">' + (n(r.segundo) ? fmt(r.segundo) + (r.segundoCpsm ? ' <span style="font-size:.6rem;font-weight:700;color:#1d6b62">CPSM</span>' : '') : '—') + '</td>'
       + '<td class="ipt-num">' + (n(r.tercer) ? fmt(r.tercer) : '—') + '</td>'
       + '<td class="ipt-num">' + (n(r.cuarto) ? fmt(r.cuarto) : '—') + '</td>'
-      + '<td class="ipt-num" style="font-weight:800">' + fmt(r.total) + '</td>'
+      + '<td class="ipt-num">' + (extra.monto ? fmt(extra.monto) + '<div style="font-size:.6rem;color:rgba(32,36,31,.55)">' + extra.tags.join('<br>') + '</div>' : '—') + '</td>'
+      + '<td class="ipt-num" style="font-weight:800">' + fmt(total) + '</td>'
       + '<td class="ipt-num" style="font-weight:800;color:#1d6b62">' + fmt(sinCpsm) + '</td>'
       + '<td style="font-size:.66rem;color:rgba(32,36,31,.65)">' + dev.join(' · ') + '</td></tr>';
   }).join('');
   return '<div style="margin-top:22px;font-weight:700;font-size:.85rem">Aportes de capital — resumen completo</div>'
-    + '<div style="font-size:.68rem;color:rgba(32,36,31,.5);margin:3px 0 8px">Solo lectura; se editan en Gastos Casa. La marca CPSM es el 2º aporte financiado con préstamo, que se devuelve por las cuotas de arriba. El resto todavía no tiene criterio de devolución.</div>'
+    + '<div style="font-size:.68rem;color:rgba(32,36,31,.5);margin:3px 0 8px">Solo lectura; se editan en Gastos Casa. La marca CPSM es el 2º aporte financiado con préstamo, que se devuelve por las cuotas de arriba. Los demás préstamos de arriba (ej. Mercadolibre) suman como aporte del socio (cuota × cuotas), sin CPSM. El resto todavía no tiene criterio de devolución.</div>'
     + '<div class="adm-table-wrap"><table class="adm-table"><thead><tr>'
-    +   '<th>Profesional</th><th ' + th + '>1er aporte</th><th ' + th + '>2º aporte</th><th ' + th + '>3er aporte</th><th ' + th + '>4º aporte</th><th ' + th + '>Total</th><th ' + th + '>Aportes sin CPSM</th><th>Devolución</th>'
+    +   '<th>Profesional</th><th ' + th + '>1er aporte</th><th ' + th + '>2º aporte</th><th ' + th + '>3er aporte</th><th ' + th + '>4º aporte</th><th ' + th + '>Préstamos (no CPSM)</th><th ' + th + '>Total</th><th ' + th + '>Aportes sin CPSM</th><th>Devolución</th>'
     + '</tr></thead><tbody>' + rows + '</tbody><tfoot><tr class="adm-totals">'
     +   '<td style="text-align:right;font-weight:800">Total general</td>'
     +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.p) + '</td>'
     +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.s) + '<div style="font-size:.6rem;color:#1d6b62">CPSM ' + fmt(tot.c) + '</div></td>'
     +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.t) + '</td>'
     +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.q) + '</td>'
+    +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.o) + '</td>'
     +   '<td class="ipt-num" style="font-weight:800">' + fmt(tot.T) + '</td><td class="ipt-num" style="font-weight:800;color:#1d6b62">' + fmt(tot.X) + '</td><td></td>'
     + '</tr></tfoot></table></div>';
 }
@@ -8489,7 +8509,7 @@ async function restaurarAporteCeotPct() {
 // IMPORTANTE al deployar: bumpear CURRENT_BUILD acá Y el contenido de version.txt
 // juntos, a un valor nuevo (fecha-hora alcanza), o este chequeo nunca detecta nada.
 (function () {
-  var CURRENT_BUILD = '2026-11-21-inicio-fondo-pixel';
+  var CURRENT_BUILD = '2026-11-22-aportes-prestamos-no-cpsm';
   function mostrarBannerActualizacion() {
     if (document.getElementById('updBanner')) return;
     var b = document.createElement('div');
