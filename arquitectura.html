@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arquitectura CEOT</title>
+<style>
+:root {
+  --bg:#f2ecda; --card:#fbf8f0; --ink:#20241f; --ink-dim:#6b6a5a; --ink-faint:rgba(32,36,31,.45);
+  --line:#d9d0b8; --green:#1f3a2e; --positive:#16a34a; --negative:#b13a2c; --warn:#92610f; --gold:#c9933a;
+  --positive-soft:#eef2ea; --warn-soft:#f6ecd6; --negative-soft:#f7e6e2; --band:#efe7d2;
+  --serif:Georgia,"Iowan Old Style","Times New Roman",serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#15130f; --card:#26221a; --ink:#f1ede2; --ink-dim:#a39c88; --ink-faint:#8f8873; --line:#3a362c;
+    --green:#3f6b4a; --positive:#4ade80; --positive-soft:#1d2a1f; --warn-soft:#2e2615; --negative-soft:#2e1a17; --band:#1e1b15;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#15130f; --card:#26221a; --ink:#f1ede2; --ink-dim:#a39c88; --ink-faint:#8f8873; --line:#3a362c;
+  --green:#3f6b4a; --positive:#4ade80; --positive-soft:#1d2a1f; --warn-soft:#2e2615; --negative-soft:#2e1a17; --band:#1e1b15;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.5; }
+.wrap { max-width:1100px; margin:0 auto; padding:28px 16px 64px; }
+header.top { border-bottom:2px solid var(--green); padding-bottom:16px; margin-bottom:22px; display:flex; gap:16px; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; }
+h1 { font-family:var(--serif); font-size:1.75rem; margin:0 0 4px; letter-spacing:.01em; }
+h2 { font-family:var(--serif); font-size:1.2rem; margin:38px 0 12px; color:var(--green); display:flex; align-items:baseline; gap:10px; }
+h2 .n { font-family:var(--mono); font-size:.75rem; color:var(--gold); }
+h3 { font-size:.95rem; margin:0 0 8px; }
+p.lead { margin:0; color:var(--ink-dim); max-width:70ch; }
+.meta { font-family:var(--mono); font-size:.78rem; color:var(--ink-dim); text-align:right; }
+.meta a { color:var(--green); font-weight:700; }
+.toolbar { position:sticky; top:0; z-index:5; background:var(--bg); padding:10px 0; display:flex; gap:10px; flex-wrap:wrap; align-items:center; border-bottom:1px solid var(--line); }
+.toolbar input { flex:1; min-width:200px; padding:8px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); font-size:.9rem; }
+.toolbar nav { display:flex; gap:4px; flex-wrap:wrap; }
+.toolbar nav a { font-size:.78rem; color:var(--ink-dim); text-decoration:none; padding:4px 8px; border-radius:6px; }
+.toolbar nav a:hover { background:var(--card); color:var(--ink); }
+.btn { border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:8px; padding:7px 12px; font-size:.8rem; cursor:pointer; text-decoration:none; }
+
+/* Diagrama de capas */
+.layers { display:flex; flex-direction:column; align-items:stretch; gap:0; }
+.layer { background:var(--card); border:1px solid var(--line); border-left:4px solid var(--green); border-radius:10px; padding:12px 14px; display:grid; grid-template-columns:200px 1fr; gap:12px; align-items:center; }
+.layer.backend { border-left-color:var(--gold); }
+.layer.externos { border-left-color:var(--ink-dim); }
+.layer.estado { border-left-color:var(--warn); }
+.layer .ln { font-family:var(--serif); font-weight:700; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { font-size:.78rem; background:var(--band); border:1px solid var(--line); border-radius:999px; padding:2px 10px; }
+.chip.mono { font-family:var(--mono); font-size:.72rem; }
+.arrow { display:flex; justify-content:center; align-items:center; gap:8px; height:30px; color:var(--ink-faint); font-size:.72rem; font-family:var(--mono); }
+.arrow svg { width:14px; height:22px; }
+
+/* Flujos */
+.grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+ol.steps { margin:0; padding:0; list-style:none; counter-reset:s; }
+ol.steps li { counter-increment:s; position:relative; padding:4px 0 4px 30px; font-size:.86rem; border-bottom:1px dashed var(--line); }
+ol.steps li:last-child { border-bottom:none; }
+ol.steps li::before { content:counter(s); position:absolute; left:0; top:5px; width:20px; height:20px; border-radius:50%; background:var(--green); color:#fff; font-size:.7rem; font-weight:700; display:flex; align-items:center; justify-content:center; }
+
+/* Tablas */
+.tw { overflow-x:auto; background:var(--card); border:1px solid var(--line); border-radius:10px; }
+table { width:100%; border-collapse:collapse; font-size:.85rem; }
+th { text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-dim); padding:9px 12px; border-bottom:1px solid var(--line); background:var(--band); white-space:nowrap; }
+td { padding:8px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+tr:last-child td { border-bottom:none; }
+td.grp { font-family:var(--serif); font-weight:700; color:var(--green); background:var(--band); font-size:.82rem; }
+code, .mono { font-family:var(--mono); font-size:.78rem; }
+td.num { text-align:right; font-family:var(--mono); white-space:nowrap; }
+.bar { height:6px; background:var(--positive-soft); border-radius:3px; margin-top:4px; overflow:hidden; }
+.bar > i { display:block; height:100%; background:var(--green); }
+.tag { display:inline-block; font-size:.68rem; font-weight:700; padding:1px 7px; border-radius:4px; background:var(--warn-soft); color:var(--warn); white-space:nowrap; }
+.tag.cf { background:var(--negative-soft); color:var(--negative); }
+.tag.gas { background:var(--positive-soft); color:var(--green); }
+.kv { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:.85rem; }
+.kv dt { color:var(--ink-dim); }
+.kv dd { margin:0; }
+.hide { display:none !important; }
+mark { background:var(--warn-soft); color:inherit; padding:0 1px; }
+footer { margin-top:40px; font-size:.75rem; color:var(--ink-faint); border-top:1px solid var(--line); padding-top:12px; }
+
+@media (max-width:640px) {
+  .layer { grid-template-columns:1fr; gap:6px; }
+  h1 { font-size:1.4rem; }
+  .meta { text-align:left; }
+  .toolbar nav { display:none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1 id="t-app">Arquitectura CEOT</h1>
+      <p class="lead" id="t-desc"></p>
+    </div>
+    <div class="meta" id="t-meta"></div>
+  </header>
+
+  <div class="toolbar">
+    <input id="q" type="search" placeholder="Buscar pantalla, archivo, función, endpoint o clave…" autocomplete="off">
+    <nav>
+      <a href="#capas">Capas</a><a href="#flujos">Flujos</a><a href="#admin">Admin</a><a href="#portal">Portal</a>
+      <a href="#archivos">Archivos</a><a href="#backends">Backends</a><a href="#datos">Datos</a><a href="#glosario">Glosario</a>
+    </nav>
+    <a class="btn" href="arquitectura.json" download>⬇ JSON</a>
+  </div>
+
+  <section id="capas"><h2><span class="n">01</span>Capas</h2><div class="layers" id="layers"></div></section>
+  <section id="flujos"><h2><span class="n">02</span>Flujos principales</h2><div class="grid2" id="flows"></div></section>
+  <section id="admin"><h2><span class="n">03</span>Pantallas del Panel Admin</h2><div class="tw"><table id="tb-admin"></table></div></section>
+  <section id="portal"><h2><span class="n">04</span>Portal Profesional</h2><div class="tw"><table id="tb-portal"></table></div></section>
+  <section id="archivos"><h2><span class="n">05</span>Archivos del repo</h2><div class="tw"><table id="tb-files"></table></div></section>
+  <section id="backends"><h2><span class="n">06</span>Backends y servicios</h2><div class="tw"><table id="tb-back"></table></div>
+    <h3 style="margin-top:18px">Librerías por CDN</h3><div class="tw"><table id="tb-libs"></table></div></section>
+  <section id="datos"><h2><span class="n">07</span>Estado local (localStorage) y sincronización</h2><div class="grid2" id="storage"></div></section>
+  <section id="glosario"><h2><span class="n">08</span>Glosario de negocio</h2><div class="tw"><table id="tb-glos"></table></div></section>
+
+  <footer>Mapa generado desde <code>arquitectura.json</code>. Para actualizar líneas y versión: <code>node tools/arquitectura.mjs</code>.</footer>
+</div>
+
+<!-- ARQ-DATA:START -->
+<script type="application/json" id="arq-data">{"app":"CEOT — Panel Admin y Portal Profesional","descripcion":"Aplicación web de una sola página (sin build) para CEOT, clínica de traumatología de Mar del Plata. Liquida honorarios, cheques y gastos de los profesionales, lleva la administración de la casa/obra y muestra a cada profesional su portal con netos mes a mes.","version":"2026-11-22-aportes-prestamos-no-cpsm","generado":"2026-11-22","hosting":{"tipo":"GitHub Pages (estático)","repo":"Febo983/ceot-admin-panel","rama_publicada":"master","url":"https://febo983.github.io/ceot-admin-panel/","build":"Ninguno: lo que está en master es lo que se sirve","cache_busting":"version.txt + CURRENT_BUILD en index.html + ?v= en cada \u003cscript src> local (tools/bump.mjs). La página consulta version.txt y avisa cuando hay versión nueva."},"capas":[{"id":"usuarios","nombre":"Usuarios","items":["Admin (Marcelo)","Profesionales / socios (portal)"]},{"id":"frontend","nombre":"Navegador — index.html + js/*.js","items":["Login y sesión (token)","Panel Admin (sidenav + home de accesos)","Portal Profesional (pestañas por mes)","Cálculos compartidos (netos, cheques, sueldo director)"]},{"id":"estado","nombre":"Estado local","items":["localStorage (claves ceot_*, deb_*, redsom_*, conc_*)","Datos semilla en el código (js/datos.js, gastos-casa.js, estadisticas-datos.js, nun-data.js)"]},{"id":"backend","nombre":"Backend — Google Apps Script","items":["Liquidación (login, nómina, importación)","Sync (clave/valor entre PCs)","Gastos A","Cirugías","Cajas","Licencias","Buzón (Gmail)"]},{"id":"externos","nombre":"Servicios externos","items":["Google Sheets / Drive / Gmail (detrás de Apps Script)","Cloudflare Worker: auditor de débitos","Google Calendar (embed)","corsproxy.io (presentación)","CDNs: jsPDF, html2canvas, SheetJS, pdf.js, Chart.js, Lucide"]}],"flujos":[{"id":"login","nombre":"Login","pasos":["Usuario + clave en loginView","GET LIQUIDACION_ENDPOINT?action=login","Respuesta { ok, token, role: admin | profesional }","entrarConSesion(): carga Gastos A, liquidación, % aporte, aportes cerrados y nómina en paralelo","role=admin → adminView · si no → portal del profesional (DOCTORES)","Sesión guardada en ceot_sesion; restaurarSesion() la reusa tras F5"]},{"id":"sync","nombre":"Sincronización entre PCs","pasos":["El módulo guarda en localStorage","syncPush(clave): POST text/plain a SYNC_ENDPOINT { accion:set, clave, valor, token } (solo admin; un envío por clave a la vez, fallback JSONP)","syncPull(clave): JSONP desde SYNC_ENDPOINT, reemplaza lo local y repinta","Lo que no está en el servidor arranca desde la semilla del código"]},{"id":"liquidacion","nombre":"Liquidación mensual","pasos":["abrirImportModal(): pegar/subir Excel o CSV de la clínica","Parseo + MAPE_MAP + validación + vista previa","Guarda en Apps Script (action=import) con respaldo previo (action=leer)","Efectos secundarios: registros REDSOM y Débitos","Admin: Liquidaciones del mes, CPSM, Total CEOT, Transferencias del Mes","Portal: renderIndividual() calcula neto y cheques de cada profesional"]},{"id":"publicar","nombre":"Publicación","pasos":["node tools/bump.mjs \u003cnombre>","node tools/preflight.mjs (conflictos, sintaxis, versión)","Harness de regresión opcional (tools/regression)","git push a master → GitHub Pages"]}],"pantallas_admin":[{"grupo":"Liquidaciones","nombre":"Liquidaciones del mes","funcion":"renderAdminPanelPage(periodo)","archivo":"index.html"},{"grupo":"Liquidaciones","nombre":"CPSM","funcion":"renderCpsm()","archivo":"js/accesos-debitos.js"},{"grupo":"Liquidaciones","nombre":"Total CEOT","funcion":"renderTotalCeot()","archivo":"index.html"},{"grupo":"Liquidaciones","nombre":"Seguimiento REDSOM","funcion":"renderSeguimientoRedsom()","archivo":"js/redsom.js"},{"grupo":"Mes","nombre":"Débitos","funcion":"renderDebitos()","archivo":"js/accesos-debitos.js"},{"grupo":"Mes","nombre":"Pendientes","funcion":"renderPendientes()","archivo":"js/admin-home.js"},{"grupo":"Mes","nombre":"Facturas","funcion":"renderFacturas()","archivo":"js/gastos-obra.js"},{"grupo":"Mes","nombre":"Presentación (dashboard mes a mes)","funcion":"renderPresentacion()","archivo":"js/presentacion.js"},{"grupo":"Mes","nombre":"Retención Ganancias","funcion":"renderAporteCeot()","archivo":"index.html + js/retencion-reporte.js"},{"grupo":"Transferencias del Mes","nombre":"Transferencias","funcion":"abrirSueldoDirectorMesActual() → renderSueldoDirector()","archivo":"index.html"},{"grupo":"Transferencias del Mes","nombre":"Gastos A","funcion":"abrirSdVista('gastosa')","archivo":"index.html"},{"grupo":"Transferencias del Mes","nombre":"Inversiones","funcion":"abrirSdVista('inv')","archivo":"index.html"},{"grupo":"Transferencias del Mes","nombre":"Préstamos Casa + resumen de aportes","funcion":"abrirSdVista('prestamos')","archivo":"index.html + js/datos.js"},{"grupo":"Transferencias del Mes","nombre":"Fondo CEOT (ayudantía cruzada)","funcion":"abrirSdVista('fondoceot')","archivo":"index.html"},{"grupo":"Transferencias del Mes","nombre":"Gasto de Equipos (Storz)","funcion":"abrirSdVista('gastoequipo')","archivo":"index.html"},{"grupo":"Casa","nombre":"Gastos Casa (aportes de capital + gastos obra)","funcion":"renderGastosCasa()","archivo":"js/gastos-casa.js"},{"grupo":"Casa","nombre":"Gastos y Pagos","funcion":"renderGastosPagos()","archivo":"js/gastos-obra.js"},{"grupo":"Casa","nombre":"Conciliación bancaria (BBVA ↔ ARCA)","funcion":"renderConciliacion()","archivo":"js/conciliacion.js"},{"grupo":"Gente","nombre":"Sueldo B","funcion":"renderSueldoB()","archivo":"js/sueldo-b.js"},{"grupo":"Gente","nombre":"Premios por desempeño","funcion":"renderPremios()","archivo":"js/presentacion.js"},{"grupo":"Gente","nombre":"Licencias (Honorarios)","funcion":"renderLicenciasHon()","archivo":"index.html"},{"grupo":"Gente","nombre":"Licencias del personal","funcion":"renderLicencias()","archivo":"js/gastos-obra.js"},{"grupo":"Gente","nombre":"Coberturas de licencias/vacaciones","funcion":"renderCoberturas()","archivo":"js/coberturas.js"},{"grupo":"Clínica","nombre":"Estadísticas CEOT","funcion":"renderEstadisticasCeot()","archivo":"js/estadisticas*.js"},{"grupo":"Clínica","nombre":"Buzón (contadora + siniestros REDSOM)","funcion":"renderBuzon()","archivo":"js/buzon.js"},{"grupo":"Sistema","nombre":"Home de accesos + checklist + agenda","funcion":"renderAdmHome()","archivo":"js/admin-home.js"},{"grupo":"Sistema","nombre":"Tareas de hoy (aviso diario)","funcion":"tareas-hoy","archivo":"js/tareas-hoy.js"},{"grupo":"Sistema","nombre":"Accesos (hub de links)","funcion":"renderAccesos()","archivo":"js/accesos-debitos.js"},{"grupo":"Sistema","nombre":"Copia de seguridad","funcion":"backupExportar()","archivo":"js/backup.js"}],"portal_profesional":[{"nombre":"Meses (Enero 2026 … 2027)","funcion":"renderEnero / renderMayo / renderIndividual","archivo":"js/portal-render.js","detalle":"Neto del mes, cheques Colón, OSDE, diferidos, descuentos (IIBB, CPSM, Gastos A, retención, préstamos)"},{"nombre":"Historial","funcion":"renderHistorial()","archivo":"js/portal-render.js","detalle":"Comprobantes descargables en PDF (comprobantes-pdf.js)"},{"nombre":"Mi Panel","funcion":"renderMiPanel()","archivo":"js/portal-render.js","detalle":"Resumen personal y notificaciones"},{"nombre":"Estadísticas","funcion":"renderEstadisticasProf()","archivo":"js/estadisticas.js","detalle":"Consultas y cirugías propias"},{"nombre":"REDSOM","funcion":"renderRedsomProf()","archivo":"js/redsom.js","detalle":"Detalle de lo facturado a REDSOM por paciente"},{"nombre":"Convenios","funcion":"tab-convenios","archivo":"index.html","detalle":"Valores y normas de convenios"}],"archivos":[{"ruta":"index.html","rol":"Shell de la app: HTML de login/admin/portal, CSS, y script principal (login, liquidaciones, Total CEOT, Retención, Transferencias del Mes, Préstamos, Licencias Hon., versión).","lineas":8546},{"ruta":"js/datos.js","rol":"Datos base: DOCTORES, liquidaciones por mes, IIBB/CPSM, Gastos A, PRESTAMOS_CASA_BASE, endpoints de Apps Script, syncPush/syncPull, authURL, cargar*Remoto().","lineas":1398},{"ruta":"js/portal-render.js","rol":"Render del portal profesional + cálculos compartidos (calcularNetoLocal, calcularDetalleChequesProfesional, calcularSueldoDirector).","lineas":1345},{"ruta":"js/importar-liquidacion.js","rol":"Modal de importación de liquidación: parseo Excel/CSV, MAPE_MAP, validación, preview y guardado.","lineas":1858},{"ruta":"js/admin-home.js","rol":"Home del admin: accesos, fondo retro, checklist mensual, pendientes, agenda Google.","lineas":1471},{"ruta":"js/accesos-debitos.js","rol":"Accesos (links), WhatsApp Gastos A, Débitos (importador + auditor) y CPSM / nota constancia CEM.","lineas":2403},{"ruta":"js/gastos-casa.js","rol":"Gastos Casa: aportes de capital y gastos de la obra 14 de Julio.","lineas":996},{"ruta":"js/gastos-obra.js","rol":"Gastos y Pagos (espejo del Sheet), pagos de obra, facturas, licencias y asistencias.","lineas":495},{"ruta":"js/conciliacion.js","rol":"Conciliación bancaria BBVA ↔ ARCA desde PDFs y Excel.","lineas":1116},{"ruta":"js/redsom.js","rol":"Seguimiento de liquidaciones REDSOM por profesional y paciente.","lineas":1095},{"ruta":"js/presentacion.js","rol":"Presentación mes a mes, Premios por desempeño, CSV de cirugías, gráficos.","lineas":1231},{"ruta":"js/sueldo-b.js","rol":"Sueldo B: personal, tarifas, recibos e impresión.","lineas":579},{"ruta":"js/retencion-reporte.js","rol":"Reporte PDF individual de Retención Ganancias.","lineas":438},{"ruta":"js/gasto-destiempo.js","rol":"Cargar un gasto después de importada la liquidación, repartido en cheques no acreditados.","lineas":313},{"ruta":"js/dla.js","rol":"Parser del PDF 'Detalle de Liquidación de Cuenta' (DLA) de la clínica.","lineas":220},{"ruta":"js/buzon.js","rol":"Buzón: PDFs de la contadora y mails de siniestros REDSOM, con descarga ZIP.","lineas":534},{"ruta":"js/coberturas.js","rol":"Coberturas de licencias y vacaciones del personal.","lineas":265},{"ruta":"js/tareas-hoy.js","rol":"Aviso diario con todo lo que hay que hacer hoy.","lineas":231},{"ruta":"js/backup.js","rol":"Exporta todo el localStorage a .json y avisa desde el día 21.","lineas":84},{"ruta":"js/comprobantes-pdf.js","rol":"Marcado persistente de botones de acción + PDF de comprobantes.","lineas":176},{"ruta":"js/estadisticas.js","rol":"Módulo Estadísticas CEOT (admin y portal) + import del Excel mensual.","lineas":1097},{"ruta":"js/estadisticas-datos.js","rol":"Semilla histórica de consultas y cirugías.","lineas":295},{"ruta":"js/estadisticas-secretarias.js","rol":"Vistas de asignación de turnos y atención en ventanilla.","lineas":470},{"ruta":"js/estadisticas-export.js","rol":"Export PDF/JPG de Estadísticas.","lineas":409},{"ruta":"js/estadisticas-reportes.js","rol":"PDFs por profesional de Estadísticas.","lineas":301},{"ruta":"js/nun-data.js","rol":"Nomenclador Único Nacional (AAOT, 6ª ed.) para validar códigos en Débitos.","lineas":709},{"ruta":"tools/bump.mjs","rol":"Sube la versión en version.txt, CURRENT_BUILD y los ?v=.","lineas":73},{"ruta":"tools/preflight.mjs","rol":"Chequeo antes de publicar: conflictos, sintaxis, versión.","lineas":110},{"ruta":"tools/regression/harness.js","rol":"Harness de regresión de renders contra golden.json.","lineas":72},{"ruta":"tools/saldo-fondo-retencion.js","rol":"Script auxiliar de saldo del fondo de retención.","lineas":66},{"ruta":"tools/arquitectura.mjs","rol":"Actualiza este mapa (líneas, versión) y lo embebe en arquitectura.html.","lineas":34},{"ruta":"DESIGN.md","rol":"Sistema de diseño 'Comprobante Oficial'.","lineas":221},{"ruta":"PUBLICAR.md","rol":"Pasos para publicar.","lineas":51},{"ruta":"version.txt","rol":"Versión publicada (la lee el auto-chequeo).","lineas":1}],"backends":[{"id":"LIQUIDACION_ENDPOINT","tipo":"Google Apps Script","definido_en":"js/datos.js","acciones":["login","whoami","leerNomina","leer","import","honorarios","leerAportePct","setAportePct","leerAporteCerrados","setAporteCerrados"],"uso":"Login, nómina y lectura/escritura de liquidaciones por mes y tipo"},{"id":"SYNC_ENDPOINT","tipo":"Google Apps Script","definido_en":"js/datos.js","acciones":["set (POST)","get (JSONP)"],"uso":"Almacén clave/valor que sincroniza el localStorage entre PCs"},{"id":"GASTOS_A_ENDPOINT","tipo":"Google Apps Script","definido_en":"js/datos.js","acciones":["leer"],"uso":"Gastos A del mes"},{"id":"CIRUGIAS_ENDPOINT","tipo":"Google Apps Script","definido_en":"js/datos.js","acciones":["leer"],"uso":"Cirugías"},{"id":"CAJAS_ENDPOINT","tipo":"Google Apps Script","definido_en":"js/datos.js","acciones":["leer"],"uso":"Cajas"},{"id":"LIC_ENDPOINT","tipo":"Google Apps Script","definido_en":"js/gastos-obra.js","acciones":["leer","guardar"],"uso":"Licencias y asistencias del personal"},{"id":"BUZON_ENDPOINT","tipo":"Google Apps Script (Gmail)","definido_en":"js/buzon.js","acciones":["listar","adjunto"],"uso":"Mails de la contadora y de siniestros"},{"id":"DEBITOS_AUDITOR_ENDPOINT","tipo":"Cloudflare Worker","definido_en":"js/accesos-debitos.js","acciones":["POST /analizar"],"uso":"Análisis automático de débitos"},{"id":"PRES_CX_PROXY","tipo":"corsproxy.io","definido_en":"js/presentacion.js","acciones":["GET"],"uso":"Lectura de CSV de cirugías cuando falla CORS"},{"id":"Google Calendar","tipo":"iframe embed","definido_en":"js/admin-home.js","acciones":["embed"],"uso":"Agenda de hoy en el home"}],"librerias_cdn":[{"nombre":"jsPDF","version":"2.5.1","uso":"PDFs (comprobantes, reportes)"},{"nombre":"html2canvas","version":"1.4.1","uso":"Capturas a imagen/PDF"},{"nombre":"SheetJS (xlsx)","version":"0.18.5","uso":"Leer/escribir Excel"},{"nombre":"pdf.js","version":"3.11.174","uso":"Leer PDFs (BBVA, DLA)"},{"nombre":"Chart.js","version":"4.4.4","uso":"Gráficos"},{"nombre":"Lucide","version":"1.26.0","uso":"Íconos"}],"almacenamiento_local":[{"grupo":"Sesión y UI","claves":["ceot_sesion","ceot_admin_dark","ceot_home_theme","ceot_home_fijados","ceot_home_mod_labels","ceot_home_ver_todo","ceot_home_checklist_abierto","ceot_home_checklist_abierto_v2","ceot_usage_count","ceot_action_done","ceot_sd_acc_open","ceot_gcal_abierto","ceot_gcal_src","ceot_agenda_hoy_url","ceot_tareas_hoy_visto","ceot_aviso_transf_visto","ceot_buzon_visto","ceot_voice_unrecognized","ceot_backup_ultimo"]},{"grupo":"Liquidación y cheques","claves":["ceot_imp_cheques_hist","ceot_fac_last","ceot_neto_override","ceot_gastos_destiempo","ceot_gastos_extra_default","ceot_gastos_a_calc","ceot_gastos_a_publicado","ceot_cpsm_calculado","ceot_cpsm_total_mes","ceot_dla"]},{"grupo":"Transferencias del Mes","claves":["ceot_sueldo_director_hecho","ceot_sueldo_bbva_hecho","ceot_resto_prof_hecho","ceot_transf_familiares","ceot_transf_familiares_default","ceot_transf_familiares_hecho","ceot_transf_derivados","ceot_movimientos_libro","ceot_aporte_links"]},{"grupo":"Casa, préstamos e inversiones","claves":["ceot_prestamos_casa","ceot_gastos_casa","ceot_gastos_casa_aportes","ceot_gastos_casa_cfg","ceot_inversiones","ceot_inversion_tipos","ceot_inversion_retiros","ceot_ayud_cruzada","ceot_gasto_equipo_hist","ceot_incidencia_pagos","ceot_incidencia_plan","ceot_incidencia_total"]},{"grupo":"Gente","claves":["ceot_sb_tarifa_override","ceot_premios","ceot_licencias_hon","ceot_coberturas"]},{"grupo":"Clínica y sistema","claves":["ceot_estadisticas_import","ceot_accesos_all","ceot_accesos_custom","ceot_checklist_done","ceot_checklist_seeded"]},{"grupo":"Débitos (prefijos)","claves":["deb_guardados","deb_guardados_pend","deb_estados","deb_imp_\u003cmes>","deb_est_\u003cid>","deb_analisis_\u003cid>","deb_analisis_idx","deb_auditor_form_\u003cid>","ceot_deb_nota_\u003cmes>"]},{"grupo":"REDSOM (prefijos)","claves":["redsom_guardados","redsom_imp_\u003cmes>"]},{"grupo":"Conciliación (prefijos)","claves":["conc_guardados","conc_cuits","conc_manual","conc_mov_\u003cmes>","conc_arca_\u003cmes>"]}],"conceptos_de_negocio":[{"termino":"Cheques Colón","significado":"Pagos de la Clínica Colón que se reparten entre profesionales; se depositan por fecha."},{"termino":"CPSM","significado":"Aporte del 5% (Labayen exento); también marca el 2º aporte de capital financiado con préstamo."},{"termino":"Gastos A","significado":"Gastos comunes del mes cubiertos con cheques/OSDE y descontados a cada profesional."},{"termino":"Retención Ganancias","significado":"Porcentaje retenido (15% desde Ago 2026) para cubrir vencimientos de Ganancias."},{"termino":"Préstamos Casa","significado":"Cuotas de préstamos de la obra; los CPSM (Principal, León, Mazzola) financian el 2º aporte; los demás (ej. Mercadolibre) suman como aporte."},{"termino":"Fondo CEOT / Ayudantía cruzada","significado":"Fondo común que compensa ayudantías entre profesionales."},{"termino":"REDSOM","significado":"Prestador cuyas liquidaciones y siniestros se siguen por paciente."},{"termino":"DLA","significado":"PDF mensual 'Detalle de Liquidación de Cuenta' de la clínica."}]}</script>
+<!-- ARQ-DATA:END -->
+
+<script>
+(function () {
+  var D = JSON.parse(document.getElementById('arq-data').textContent || '{}');
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]; }); };
+  var fmtN = function (n) { return Number(n || 0).toLocaleString('es-AR'); };
+
+  $('t-app').textContent = D.app || 'Arquitectura';
+  $('t-desc').textContent = D.descripcion || '';
+  var h = D.hosting || {};
+  $('t-meta').innerHTML = 'versión <b>' + esc(D.version || '—') + '</b><br>generado ' + esc(D.generado || '—')
+    + '<br>' + esc(h.tipo || '') + ' · rama <code>' + esc(h.rama_publicada || '') + '</code>'
+    + (h.url ? '<br><a href="' + esc(h.url) + '">abrir la app ↗</a>' : '');
+
+  // 01 Capas
+  var arrowSvg = '<svg viewBox="0 0 14 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 1v19M2 15l5 5 5-5"/></svg>';
+  var labels = ['usa', 'lee / escribe', 'syncPush · syncPull · fetch', 'Sheets · Gmail · Drive'];
+  $('layers').innerHTML = (D.capas || []).map(function (c, i) {
+    var a = i < D.capas.length - 1 ? '<div class="arrow">' + arrowSvg + '<span>' + esc(labels[i] || '') + '</span></div>' : '';
+    return '<div class="layer ' + esc(c.id) + '" data-s="' + esc((c.nombre + ' ' + c.items.join(' ')).toLowerCase()) + '">'
+      + '<div class="ln">' + esc(c.nombre) + '</div>'
+      + '<div class="chips">' + c.items.map(function (x) { return '<span class="chip">' + esc(x) + '</span>'; }).join('') + '</div></div>' + a;
+  }).join('');
+
+  // 02 Flujos
+  $('flows').innerHTML = (D.flujos || []).map(function (f) {
+    return '<div class="card" data-s="' + esc((f.nombre + ' ' + f.pasos.join(' ')).toLowerCase()) + '"><h3>' + esc(f.nombre) + '</h3><ol class="steps">'
+      + f.pasos.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ol></div>';
+  }).join('');
+
+  // 03 Admin (agrupado)
+  var g = null;
+  $('tb-admin').innerHTML = '<thead><tr><th>Pantalla</th><th>Función de entrada</th><th>Archivo</th></tr></thead><tbody>'
+    + (D.pantallas_admin || []).map(function (p) {
+      var head = '';
+      if (p.grupo !== g) { g = p.grupo; head = '<tr class="grp-row" data-grp="' + esc(g) + '"><td class="grp" colspan="3">' + esc(g) + '</td></tr>'; }
+      return head + '<tr data-g="' + esc(g) + '" data-s="' + esc((p.grupo + ' ' + p.nombre + ' ' + p.funcion + ' ' + p.archivo).toLowerCase()) + '"><td>' + esc(p.nombre) + '</td><td><code>' + esc(p.funcion) + '</code></td><td><code>' + esc(p.archivo) + '</code></td></tr>';
+    }).join('') + '</tbody>';
+
+  // 04 Portal
+  $('tb-portal').innerHTML = '<thead><tr><th>Pestaña</th><th>Qué muestra</th><th>Función</th><th>Archivo</th></tr></thead><tbody>'
+    + (D.portal_profesional || []).map(function (p) {
+      return '<tr data-s="' + esc((p.nombre + ' ' + p.detalle + ' ' + p.funcion + ' ' + p.archivo).toLowerCase()) + '"><td><b>' + esc(p.nombre) + '</b></td><td>' + esc(p.detalle) + '</td><td><code>' + esc(p.funcion) + '</code></td><td><code>' + esc(p.archivo) + '</code></td></tr>';
+    }).join('') + '</tbody>';
+
+  // 05 Archivos
+  var files = D.archivos || [];
+  var maxL = Math.max.apply(null, files.map(function (f) { return f.lineas || 0; }).concat([1]));
+  var totL = files.reduce(function (a, f) { return a + (f.lineas || 0); }, 0);
+  $('tb-files').innerHTML = '<thead><tr><th>Archivo</th><th>Rol</th><th style="text-align:right">Líneas</th></tr></thead><tbody>'
+    + files.map(function (f) {
+      return '<tr data-s="' + esc((f.ruta + ' ' + f.rol).toLowerCase()) + '"><td><code>' + esc(f.ruta) + '</code></td><td>' + esc(f.rol) + '</td>'
+        + '<td class="num" style="min-width:110px">' + fmtN(f.lineas) + '<div class="bar"><i style="width:' + (100 * (f.lineas || 0) / maxL).toFixed(1) + '%"></i></div></td></tr>';
+    }).join('') + '<tr><td colspan="2" style="text-align:right;font-weight:700">Total</td><td class="num" style="font-weight:700">' + fmtN(totL) + '</td></tr></tbody>';
+
+  // 06 Backends
+  var tagCls = function (t) { return /Apps Script/.test(t) ? 'gas' : /Cloudflare/.test(t) ? 'cf' : ''; };
+  $('tb-back').innerHTML = '<thead><tr><th>Nombre</th><th>Tipo</th><th>Acciones</th><th>Uso</th><th>Definido en</th></tr></thead><tbody>'
+    + (D.backends || []).map(function (b) {
+      return '<tr data-s="' + esc((b.id + ' ' + b.tipo + ' ' + b.uso + ' ' + b.acciones.join(' ') + ' ' + b.definido_en).toLowerCase()) + '"><td><code>' + esc(b.id) + '</code></td><td><span class="tag ' + tagCls(b.tipo) + '">' + esc(b.tipo) + '</span></td>'
+        + '<td><div class="chips">' + b.acciones.map(function (a) { return '<span class="chip mono">' + esc(a) + '</span>'; }).join('') + '</div></td><td>' + esc(b.uso) + '</td><td><code>' + esc(b.definido_en) + '</code></td></tr>';
+    }).join('') + '</tbody>';
+  $('tb-libs').innerHTML = '<thead><tr><th>Librería</th><th>Versión</th><th>Uso</th></tr></thead><tbody>'
+    + (D.librerias_cdn || []).map(function (l) {
+      return '<tr data-s="' + esc((l.nombre + ' ' + l.uso).toLowerCase()) + '"><td>' + esc(l.nombre) + '</td><td><code>' + esc(l.version) + '</code></td><td>' + esc(l.uso) + '</td></tr>';
+    }).join('') + '</tbody>';
+
+  // 07 Storage
+  $('storage').innerHTML = (D.almacenamiento_local || []).map(function (s) {
+    return '<div class="card" data-s="' + esc((s.grupo + ' ' + s.claves.join(' ')).toLowerCase()) + '"><h3>' + esc(s.grupo) + ' <span class="mono" style="color:var(--ink-faint)">· ' + s.claves.length + '</span></h3><div class="chips">'
+      + s.claves.map(function (k) { return '<span class="chip mono">' + esc(k) + '</span>'; }).join('') + '</div></div>';
+  }).join('');
+
+  // 08 Glosario
+  $('tb-glos').innerHTML = '<thead><tr><th>Término</th><th>Significado</th></tr></thead><tbody>'
+    + (D.conceptos_de_negocio || []).map(function (c) {
+      return '<tr data-s="' + esc((c.termino + ' ' + c.significado).toLowerCase()) + '"><td><b>' + esc(c.termino) + '</b></td><td>' + esc(c.significado) + '</td></tr>';
+    }).join('') + '</tbody>';
+
+  // Buscador
+  var q = $('q');
+  q.addEventListener('input', function () {
+    var v = q.value.trim().toLowerCase();
+    var visGrp = {};
+    document.querySelectorAll('[data-s]').forEach(function (el) {
+      var ok = !v || el.getAttribute('data-s').indexOf(v) !== -1;
+      el.classList.toggle('hide', !ok);
+      if (ok && el.dataset.g) visGrp[el.dataset.g] = 1;
+    });
+    document.querySelectorAll('.grp-row').forEach(function (el) { el.classList.toggle('hide', !!v && !visGrp[el.dataset.grp]); });
+    document.querySelectorAll('.arrow').forEach(function (el) { el.classList.toggle('hide', !!v); });
+  });
+})();
+</script>
+</body>
+</html>
