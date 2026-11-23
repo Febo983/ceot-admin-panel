@@ -27,7 +27,7 @@ var ACCESOS_DATA = [
   { id:9,  cat:"mes", title:"CC CEM MDP",               desc:"Sistema privado del Centro Médico MDP",                     url:"https://privado.centromedicomdp.org.ar/" },
   { id:10, cat:"clinica", title:"Programación CX (Sheet)",  desc:"Calendario de cirugías — Google Sheets",                    url:"https://docs.google.com/spreadsheets/d/1VYIarOpfCgqinj5Uy2dAYCSsx6c5GL9J7YbAYKvCbdk/edit?usp=sharing" },
   { id:12, cat:"clinica", title:"Generador de Órdenes CX", desc:"PDFs de órdenes de cirugía con sello del médico",            url:"https://febo983.github.io/generador-de-ordenes-ceot/" },
-  { id:16, cat:"clinica", title:"Cirugías Programadas",     desc:"Agenda de cirugías programadas",                            url:"https://cirugias-progamadas.netlify.app/" },
+  { id:16, cat:"clinica", title:"Cirugías Programadas",     desc:"Agenda de cirugías programadas",                            url:"https://cirugias-progamadas.netlify.app/", fn:"renderCxProgramadas()" },  // abre el módulo del panel (la página de Netlify no pedía login)
   // ── Administración
   { id:24, cat:"clinica", title:"App para caja GACI",         desc:"Registro de consultas: caja diaria por secretaria, cola de turnos y cierre",  url:"https://ceot-agenda.netlify.app/" },
   { id:27, cat:"gente", title:"Horarios y Asistencias",     desc:"Registro de horarios, asistencias y licencias",             url:"https://docs.google.com/spreadsheets/d/1M-l1KHAoRRFL7MLpmQY4tXCtY0SLj14Dm0ucQWsR5fA/edit?usp=sharing" },
