@@ -1,7 +1,7 @@
 {
   "app": "CEOT — Panel Admin y Portal Profesional",
   "descripcion": "Aplicación web de una sola página (sin build) para CEOT, clínica de traumatología de Mar del Plata. Liquida honorarios, cheques y gastos de los profesionales, lleva la administración de la casa/obra y muestra a cada profesional su portal con netos mes a mes.",
-  "version": "2026-11-23-convenios-portal-oscuro",
+  "version": "2026-11-23-cirugias-programadas",
   "generado": "2026-11-23",
   "hosting": {
     "tipo": "GitHub Pages (estático)",
@@ -250,6 +250,12 @@
     },
     {
       "grupo": "Clínica",
+      "nombre": "Cirugías programadas",
+      "funcion": "renderCxProgramadas()",
+      "archivo": "js/cirugias.js"
+    },
+    {
+      "grupo": "Clínica",
       "nombre": "Convenios (aranceles por obra social, importación de archivos)",
       "funcion": "renderConvenios()",
       "archivo": "js/convenios.js + js/convenios-datos.js"
@@ -327,13 +333,19 @@
       "funcion": "portalConveniosRender()",
       "archivo": "js/convenios.js",
       "detalle": "Aranceles por obra social (solo lectura, desde ceot_convenios): tabla NUN 1-10, artroscopía, neuro y vigencia; link a Normas operativas"
+    },
+    {
+      "nombre": "Mis cirugías",
+      "funcion": "cxPortalRender()",
+      "archivo": "js/cirugias.js",
+      "detalle": "Cirugías programadas del médico logueado (calendario, próximas, detalle por día). Reemplaza la página de Netlify."
     }
   ],
   "archivos": [
     {
       "ruta": "index.html",
       "rol": "Shell de la app: HTML de login/admin/portal, CSS, y script principal (login, liquidaciones, Total CEOT, Retención, Transferencias del Mes, Préstamos, Licencias Hon., versión).",
-      "lineas": 8548
+      "lineas": 8554
     },
     {
       "ruta": "js/datos.js",
@@ -353,7 +365,7 @@
     {
       "ruta": "js/admin-home.js",
       "rol": "Home del admin: accesos, fondo retro, checklist mensual, pendientes, agenda Google.",
-      "lineas": 1472
+      "lineas": 1473
     },
     {
       "ruta": "js/accesos-debitos.js",
@@ -509,6 +521,11 @@
       "ruta": "js/convenios.js",
       "rol": "Convenios: lista, detalle con historial/restaurar, comparar/ranking, importación de Excel/CSV/TXT/PDF con vista previa, aumento %, export/planilla modelo. Guarda en ceot_convenios (sync).",
       "lineas": 1011
+    },
+    {
+      "ruta": "js/cirugias.js",
+      "rol": "Cirugías programadas: calendario + detalle por día desde el Apps Script de cirugías (JSONP). Portal: solo las del médico logueado. Admin: selector de médico. Datos solo en memoria.",
+      "lineas": 239
     }
   ],
   "backends": [
