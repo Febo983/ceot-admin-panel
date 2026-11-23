@@ -32,8 +32,10 @@ function cxNombreDe(doc) {
 }
 
 // JSONP (Apps Script no contesta CORS). Separado para poder probarlo.
+var _cxSeq = 0;
+var CX_TIMEOUT_MS = 60000;   // Apps Script atiende de a uno: con varios en cola, 30 s no alcanzaban
 function cxJsonp(url, cb) {
-  var cbName = "_cxProgCb" + Date.now() + Math.floor(Math.random() * 1000), script, listo = false;
+  var cbName = "_cxProgCb" + Date.now() + "_" + (_cxSeq++), script, listo = false;
   var fin = function (resp) {
     if (listo) return; listo = true;
     clearTimeout(t);
@@ -41,10 +43,10 @@ function cxJsonp(url, cb) {
     if (script && script.parentNode) script.parentNode.removeChild(script);
     cb(resp);
   };
-  var t = setTimeout(function () { fin({ status: "error", message: "El servidor tardó demasiado en responder." }); }, 30000);
+  var t = setTimeout(function () { fin({ status: "error", message: "el servidor tardó demasiado en responder" }); }, CX_TIMEOUT_MS);
   window[cbName] = fin;
   script = document.createElement("script");
-  script.onerror = function () { fin({ status: "error", message: "No se pudo conectar con el servidor de cirugías." }); };
+  script.onerror = function () { fin({ status: "error", message: "no se pudo conectar con el servidor" }); };
   script.src = url + (url.indexOf("?") === -1 ? "?" : "&") + "callback=" + cbName;
   document.body.appendChild(script);
 }
@@ -196,18 +198,25 @@ var _cxTodos = { lunes: null, cargando: false, hechos: 0, errores: {}, gen: 0 };
 function cxLunes(d) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; }
 function cxTodosMontar(forzar) {
   if (!_cxTodos.lunes) _cxTodos.lunes = cxLunes(new Date());
-  var gen = ++_cxTodos.gen, cola = CX_DOCTORES.slice(), activos = 0;
+  // De a 2 pedidos a la vez (con 4, Apps Script los encolaba y los últimos
+  // vencían). Los que fallan se reintentan una vez al final, de a uno.
+  var gen = ++_cxTodos.gen, cola = CX_DOCTORES.slice(), activos = 0, reintentos = [], fase = 1;
   _cxTodos.cargando = true; _cxTodos.hechos = 0; _cxTodos.errores = {};
   cxTodosPintar();
   var siguiente = function () {
     if (gen !== _cxTodos.gen) return;            // se eligió otra cosa mientras cargaba
-    if (!cola.length && !activos) { _cxTodos.cargando = false; cxTodosPintar(); return; }
-    while (activos < 4 && cola.length) {
+    if (!cola.length && !activos) {
+      if (fase === 1 && reintentos.length) { fase = 2; cola = reintentos; reintentos = []; }
+      else { _cxTodos.cargando = false; cxTodosPintar(); return; }
+    }
+    var max = fase === 1 ? 2 : 1;
+    while (activos < max && cola.length) {
       var n = cola.shift(); activos++;
-      cxCargar(n, forzar, function (n) { return function (err) {
+      cxCargar(n, forzar || fase === 2, function (n) { return function (err) {
         if (gen !== _cxTodos.gen) return;
-        activos--; _cxTodos.hechos++;
-        if (err) _cxTodos.errores[n] = err;
+        activos--;
+        if (err && fase === 1) reintentos.push(n);
+        else { _cxTodos.hechos++; if (err) _cxTodos.errores[n] = err; else delete _cxTodos.errores[n]; }
         if (_cxTodos.cargando) cxTodosPintar();
         siguiente();
       }; }(n));
@@ -232,9 +241,10 @@ function cxTodosPintar() {
     + '<div class="cx-semnav"><button class="cx-btn" onclick="cxTodosNav(-7)">‹ Semana anterior</button>'
     + '<b>' + lun.getDate() + " " + CX_MESES[lun.getMonth()].slice(0, 3) + " – " + fin.getDate() + " " + CX_MESES[fin.getMonth()].slice(0, 3) + " " + fin.getFullYear() + "</b>"
     + '<button class="cx-btn" onclick="cxTodosNav(0)">Hoy</button><button class="cx-btn" onclick="cxTodosNav(7)">Semana siguiente ›</button></div>';
-  if (_cxTodos.cargando) h += '<div class="cx-vacio">Cargando cirugías… ' + _cxTodos.hechos + " de " + CX_DOCTORES.length + " médicos</div>";
+  if (_cxTodos.cargando) h += '<div class="cx-vacio">' + (Object.keys(_cxCache).length ? "Actualizando" : "Cargando") + " cirugías… " + _cxTodos.hechos + " de " + CX_DOCTORES.length + " médicos (puede tardar hasta un minuto)</div>";
   var errs = Object.keys(_cxTodos.errores);
-  if (errs.length) h += '<div class="cx-err">No se pudieron traer las cirugías de: ' + errs.map(cxEsc).join(", ") + ' <button class="cx-btn" onclick="cxTodosMontar(true)">Reintentar</button></div>';
+  if (errs.length && !_cxTodos.cargando) h += '<div class="cx-err">No se pudieron traer las cirugías de: ' + errs.map(function (n) { return "<b>" + cxEsc(n) + "</b> (" + cxEsc(_cxTodos.errores[n]) + ")"; }).join(", ")
+    + (errs.some(function (n) { return _cxCache[n]; }) ? ". Se muestran sus últimos datos traídos." : "") + ' <button class="cx-btn" onclick="cxTodosMontar(true)">Reintentar</button></div>';
   // Juntar las cirugías de la semana, con el médico.
   var porDia = {}, porDoc = {}, total = 0;
   dias.forEach(function (k) { porDia[k] = []; });
