@@ -1,7 +1,7 @@
 {
   "app": "CEOT — Panel Admin y Portal Profesional",
   "descripcion": "Aplicación web de una sola página (sin build) para CEOT, clínica de traumatología de Mar del Plata. Liquida honorarios, cheques y gastos de los profesionales, lleva la administración de la casa/obra y muestra a cada profesional su portal con netos mes a mes.",
-  "version": "2026-11-23-convenios-importacion",
+  "version": "2026-11-23-convenios-portal",
   "generado": "2026-11-23",
   "hosting": {
     "tipo": "GitHub Pages (estático)",
@@ -324,16 +324,16 @@
     },
     {
       "nombre": "Convenios",
-      "funcion": "tab-convenios",
-      "archivo": "index.html",
-      "detalle": "Valores y normas de convenios"
+      "funcion": "portalConveniosRender()",
+      "archivo": "js/convenios.js",
+      "detalle": "Aranceles por obra social (solo lectura, desde ceot_convenios): tabla NUN 1-10, artroscopía, neuro y vigencia; link a Normas operativas"
     }
   ],
   "archivos": [
     {
       "ruta": "index.html",
       "rol": "Shell de la app: HTML de login/admin/portal, CSS, y script principal (login, liquidaciones, Total CEOT, Retención, Transferencias del Mes, Préstamos, Licencias Hon., versión).",
-      "lineas": 8549
+      "lineas": 8548
     },
     {
       "ruta": "js/datos.js",
@@ -508,7 +508,7 @@
     {
       "ruta": "js/convenios.js",
       "rol": "Convenios: lista, detalle con historial/restaurar, comparar/ranking, importación de Excel/CSV/TXT/PDF con vista previa, aumento %, export/planilla modelo. Guarda en ceot_convenios (sync).",
-      "lineas": 957
+      "lineas": 1006
     }
   ],
   "backends": [

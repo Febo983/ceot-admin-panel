@@ -78,7 +78,7 @@ function convVigMeses(v) {
   return (h.getFullYear() - d.getFullYear()) * 12 + (h.getMonth() - d.getMonth());
 }
 function convVigHtml(v) {
-  if (!v) return '<span class="conv-dim">sin dato</span>';
+  if (!v) return '<span class="conv-tag conv-dim">sin dato</span>';
   var m = convVigMeses(v), cls = m == null ? "" : m > 6 ? "conv-tag-neg" : m > 3 ? "conv-tag-warn" : "conv-tag-ok";
   var tit = m == null ? "" : ' title="' + (m <= 0 ? "Vigente desde este mes" : "Hace " + m + (m === 1 ? " mes" : " meses")) + '"';
   return '<span class="conv-tag ' + cls + '"' + tit + ">" + (m != null && m > 3 ? "⚠ " : "") + convEsc(v) + "</span>";
@@ -120,6 +120,7 @@ function convCargar() {
     syncPull(CONV_KEY, function () {
       convLeerLocal();
       if (document.getElementById("convRoot") && !convEd) convRepintar();
+      if (document.getElementById("portalConvLista")) portalConvPintar();
     });
   }
 }
@@ -903,6 +904,50 @@ function convPlanillaModelo() {
   XLSX.writeFile(wb, "Planilla_convenio_CEOT.xlsx");
 }
 
+// ══════ PORTAL PROFESIONAL (solo lectura) ═══════════════════════════════
+// Pestaña "Convenios" del portal: los mismos valores que carga el admin
+// (ceot_convenios, o la semilla si todavía no se guardó nada). Sin notas
+// internas ni alertas de carga: solo valores y vigencia.
+var portalConvBusca = "", portalConvAbierto = null;
+function portalConveniosRender() {
+  var root = document.getElementById("portalConv");
+  if (!root) return;
+  convInyectarEstilos();
+  convCargar();
+  root.innerHTML = '<input class="conv-input" style="width:100%;box-sizing:border-box;margin-bottom:8px" placeholder="Buscar obra social…" value="' + convEsc(portalConvBusca) + '" oninput="portalConvBusca=this.value;portalConvPintar()">'
+    + '<div id="portalConvLista"></div>'
+    + '<div class="conv-pie">Valores en pesos, sin centavos en la tabla. Honorarios por complejidad NUN (cirujano, ayudantes y total del equipo), artroscopía y módulos neuro. Los carga la administración; ante dudas, consultá antes de facturar.</div>';
+  portalConvPintar();
+}
+function portalConvPintar() {
+  var el = document.getElementById("portalConvLista");
+  if (!el) return;
+  var q = convNorm(portalConvBusca);
+  var lista = CONV.os.filter(function (o) { return (o.nun || o.art || o.neuro) && (!q || convNorm(o.os).indexOf(q) !== -1); })
+    .sort(function (a, b) { return a.os.localeCompare(b.os, "es"); });
+  if (!lista.length) { el.innerHTML = '<div class="conv-vacio">Ninguna obra social coincide.</div>'; return; }
+  el.innerHTML = lista.map(function (o) {
+    var abierto = portalConvAbierto === o.id;
+    var tipos = [o.nun ? "NUN" : "", o.art ? "Artroscopía" : "", o.neuro ? "Neuro" : ""].filter(Boolean).join(" · ");
+    var h = '<div class="conv-pcard' + (abierto ? " on" : "") + '">'
+      + '<div class="conv-phd" onclick="portalConvAbierto=portalConvAbierto===\'' + convEsc(o.id) + '\'?null:\'' + convEsc(o.id) + '\';portalConvPintar()">'
+      + '<div style="flex:1;min-width:0"><div class="conv-pnom">' + convEsc(o.os) + '</div><div class="conv-dim" style="font-size:.66rem">' + tipos + "</div></div>"
+      + convVigHtml(o.vigencia) + '<span class="conv-dim" style="font-size:.8rem">' + (abierto ? "▴" : "▾") + "</span></div>";
+    if (abierto) {
+      if (o.nun) {
+        h += '<div class="adm-table-wrap" style="margin-top:8px"><table class="adm-table conv-ptabla"><thead><tr><th>C</th><th>Cirujano</th><th>1° Ay.</th><th>2° Ay.</th><th>Total</th></tr></thead><tbody>';
+        var k0 = function (n) { return n == null ? "—" : Math.round(n).toLocaleString("es-AR"); };
+        for (var c = 1; c <= 10; c++) { var f = o.nun[String(c)] || []; h += "<tr><td>C" + c + "</td><td>" + k0(f[0]) + "</td><td>" + k0(f[1]) + "</td><td>" + k0(f[2]) + "</td><td><b>" + k0(f[3]) + "</b></td></tr>"; }
+        h += "</tbody></table></div>";
+      }
+      if (o.art) h += '<div class="conv-sub">Artroscopía</div><div class="conv-kv"><span>Sin material</span><b>' + convFmt(o.art[0]) + '</b></div><div class="conv-kv"><span>Con material</span><b>' + convFmt(o.art[1]) + "</b></div>";
+      if (o.neuro) h += '<div class="conv-sub">Módulos neuro</div>' + CONV_NEURO.map(function (L, i) { return o.neuro[i] == null ? "" : '<div class="conv-kv"><span>Módulo ' + L + "</span><b>" + convFmt(o.neuro[i]) + "</b></div>"; }).join("");
+      h += '<div class="conv-dim" style="font-size:.64rem;margin-top:6px">Actualizado ' + convPeriodoTxt(o.periodo) + "</div>";
+    }
+    return h + "</div>";
+  }).join("");
+}
+
 // ── Estilos del módulo (usan los tokens --co-* del tema claro/oscuro) ─────
 function convInyectarEstilos() {
   if (document.getElementById("convStyles")) return;
@@ -951,6 +996,10 @@ function convInyectarEstilos() {
     "#convRoot .conv-vacio{padding:24px;text-align:center;color:var(--co-ink-dim);font-size:.82rem;line-height:1.6}",
     "#convRoot .conv-acciones{display:flex;gap:8px;justify-content:flex-end;padding:10px 0}",
     "#convRoot .conv-ed input.conv-num{width:120px;padding:4px 6px}"
-  ].join("\n");
+    ,"#convRoot .conv-pcard{background:var(--co-card);border:1px solid var(--co-line);border-radius:10px;padding:10px 12px;margin-bottom:6px}"
+    ,"#convRoot .conv-phd{display:flex;gap:8px;align-items:center;cursor:pointer}"
+    ,"#convRoot .conv-ptabla th,#convRoot .conv-ptabla td{padding:5px 5px;font-size:.66rem}"
+    ,"#convRoot .conv-pnom{font-weight:700;font-size:.82rem;color:var(--co-ink)}"
+  ].join("\n").replace(/#convRoot /g, ":is(#convRoot,#portalConv) ");
   document.head.appendChild(st);
 }
