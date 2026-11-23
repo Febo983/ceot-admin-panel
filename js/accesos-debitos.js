@@ -21,7 +21,7 @@ var ACCESOS_DATA = [
   { id:1, cat:"casa", title:"Gastos casa y liquidaciones Clínica", desc:"Control de liquidaciones y estado de cheques",               url:"https://docs.google.com/spreadsheets/d/1NjHxZTUy3hVinrhR09Cq22gjcMiHQuSG8P4sSIPJa98/edit?usp=sharing" },
   { id:3, cat:"casa", title:"Gastos y Sueldos",         desc:"Gastos fijos y planillas de sueldos del personal",           url:"https://docs.google.com/spreadsheets/d/1BjKNOWI4TpijG_56XFbSVz1u5QNWVQE53SD5gA1LPAc/edit?usp=sharing" },
   { id:4, cat:"casa", title:"Caja Gerling",             desc:"Seguimiento y control de la caja Gerling",                   url:"https://docs.google.com/spreadsheets/d/13IYGUkv2FjZ8aGUxVuly7uL14b6MyQI4C9YiISXxHUY/edit?usp=drive_link" },
-  { id:6, cat:"clinica", title:"Valores Convenios",        desc:"Honorarios NUN por complejidad, por convenio y obra social",  url:"https://valores-convenios-ceot-2026.netlify.app/" },
+  { id:6, cat:"clinica", title:"Valores Convenios",        desc:"Honorarios NUN por complejidad, por convenio y obra social",  url:"https://valores-convenios-ceot-2026.netlify.app/", fn:"renderConvenios()" },  // abre el módulo Convenios (la página de Netlify quedó en desuso)
   // ── Clínica
   { id:8,  cat:"mes", title:"CC Clínica Colón",         desc:"Sistema interno de la Clínica Colón",                        url:"https://coloncc.com.ar/" },
   { id:9,  cat:"mes", title:"CC CEM MDP",               desc:"Sistema privado del Centro Médico MDP",                     url:"https://privado.centromedicomdp.org.ar/" },
@@ -79,7 +79,7 @@ function renderSidenavLinks(q) {
       } else {
         var ico = LUCIDE_ACC_ICON[a.title] || 'link';
         var cls = ACC_CAT_CLASS[a.cat] || 'cat-otros';
-        html += '<a class="adm-sidenav-link" href="' + a.url + '" target="_blank" title="' + a.desc + '">'
+        html += (a.fn ? '<a class="adm-sidenav-link" href="#" onclick="' + a.fn + ';return false" title="' + a.desc + '">' : '<a class="adm-sidenav-link" href="' + a.url + '" target="_blank" title="' + a.desc + '">')
           + '<div class="acc-ico ' + cls + '"><i data-lucide="' + ico + '" style="width:14px;height:14px" stroke-width="2"></i></div>'
           + '<span class="acc-lbl">' + a.title + '</span>'
           + '</a>';

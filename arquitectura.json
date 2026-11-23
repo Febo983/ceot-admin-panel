@@ -1,7 +1,7 @@
 {
   "app": "CEOT — Panel Admin y Portal Profesional",
   "descripcion": "Aplicación web de una sola página (sin build) para CEOT, clínica de traumatología de Mar del Plata. Liquida honorarios, cheques y gastos de los profesionales, lleva la administración de la casa/obra y muestra a cada profesional su portal con netos mes a mes.",
-  "version": "2026-11-23-convenios-portal",
+  "version": "2026-11-23-convenios-atajo",
   "generado": "2026-11-23",
   "hosting": {
     "tipo": "GitHub Pages (estático)",
