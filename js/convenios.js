@@ -999,6 +999,11 @@ function convInyectarEstilos() {
     ,"#convRoot .conv-pcard{background:var(--co-card);border:1px solid var(--co-line);border-radius:10px;padding:10px 12px;margin-bottom:6px}"
     ,"#convRoot .conv-phd{display:flex;gap:8px;align-items:center;cursor:pointer}"
     ,"#convRoot .conv-ptabla th,#convRoot .conv-ptabla td{padding:5px 5px;font-size:.66rem}"
+    ,"#convRoot .adm-table-wrap{border-color:var(--co-line)}"
+    ,"#convRoot .adm-table thead tr{background:var(--co-accent-soft)}"
+    ,"#convRoot .adm-table th,#convRoot .adm-table td{color:var(--co-ink);border-color:var(--co-line)}"
+    ,"#convRoot .adm-table td:first-child{color:var(--co-ink)}"
+    ,"#convRoot .adm-table tbody tr:nth-child(even) td{background:var(--co-accent-soft)}"
     ,"#convRoot .conv-pnom{font-weight:700;font-size:.82rem;color:var(--co-ink)}"
   ].join("\n").replace(/#convRoot /g, ":is(#convRoot,#portalConv) ");
   document.head.appendChild(st);
