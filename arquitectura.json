@@ -1,8 +1,8 @@
 {
   "app": "CEOT — Panel Admin y Portal Profesional",
   "descripcion": "Aplicación web de una sola página (sin build) para CEOT, clínica de traumatología de Mar del Plata. Liquida honorarios, cheques y gastos de los profesionales, lleva la administración de la casa/obra y muestra a cada profesional su portal con netos mes a mes.",
-  "version": "2026-11-22-aportes-prestamos-no-cpsm",
-  "generado": "2026-11-22",
+  "version": "2026-11-23-convenios-portal",
+  "generado": "2026-11-23",
   "hosting": {
     "tipo": "GitHub Pages (estático)",
     "repo": "Febo983/ceot-admin-panel",
@@ -250,6 +250,12 @@
     },
     {
       "grupo": "Clínica",
+      "nombre": "Convenios (aranceles por obra social, importación de archivos)",
+      "funcion": "renderConvenios()",
+      "archivo": "js/convenios.js + js/convenios-datos.js"
+    },
+    {
+      "grupo": "Clínica",
       "nombre": "Estadísticas CEOT",
       "funcion": "renderEstadisticasCeot()",
       "archivo": "js/estadisticas*.js"
@@ -318,16 +324,16 @@
     },
     {
       "nombre": "Convenios",
-      "funcion": "tab-convenios",
-      "archivo": "index.html",
-      "detalle": "Valores y normas de convenios"
+      "funcion": "portalConveniosRender()",
+      "archivo": "js/convenios.js",
+      "detalle": "Aranceles por obra social (solo lectura, desde ceot_convenios): tabla NUN 1-10, artroscopía, neuro y vigencia; link a Normas operativas"
     }
   ],
   "archivos": [
     {
       "ruta": "index.html",
       "rol": "Shell de la app: HTML de login/admin/portal, CSS, y script principal (login, liquidaciones, Total CEOT, Retención, Transferencias del Mes, Préstamos, Licencias Hon., versión).",
-      "lineas": 8546
+      "lineas": 8548
     },
     {
       "ruta": "js/datos.js",
@@ -347,7 +353,7 @@
     {
       "ruta": "js/admin-home.js",
       "rol": "Home del admin: accesos, fondo retro, checklist mensual, pendientes, agenda Google.",
-      "lineas": 1471
+      "lineas": 1472
     },
     {
       "ruta": "js/accesos-debitos.js",
@@ -493,6 +499,16 @@
       "ruta": "version.txt",
       "rol": "Versión publicada (la lee el auto-chequeo).",
       "lineas": 1
+    },
+    {
+      "ruta": "js/convenios-datos.js",
+      "rol": "Semilla de Convenios: aranceles NUN 1-10, artroscopía y neuro por obra social (copiados de la página de Netlify, 07/09/2026).",
+      "lineas": 70
+    },
+    {
+      "ruta": "js/convenios.js",
+      "rol": "Convenios: lista, detalle con historial/restaurar, comparar/ranking, importación de Excel/CSV/TXT/PDF con vista previa, aumento %, export/planilla modelo. Guarda en ceot_convenios (sync).",
+      "lineas": 1006
     }
   ],
   "backends": [
@@ -718,7 +734,8 @@
         "ceot_accesos_all",
         "ceot_accesos_custom",
         "ceot_checklist_done",
-        "ceot_checklist_seeded"
+        "ceot_checklist_seeded",
+        "ceot_convenios"
       ]
     },
     {
