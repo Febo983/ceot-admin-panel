@@ -1,7 +1,7 @@
 {
   "app": "CEOT — Panel Admin y Portal Profesional",
   "descripcion": "Aplicación web de una sola página (sin build) para CEOT, clínica de traumatología de Mar del Plata. Liquida honorarios, cheques y gastos de los profesionales, lleva la administración de la casa/obra y muestra a cada profesional su portal con netos mes a mes.",
-  "version": "2026-11-23-cirugias-programadas",
+  "version": "2026-11-23-cirugias-agenda-semanal",
   "generado": "2026-11-23",
   "hosting": {
     "tipo": "GitHub Pages (estático)",
@@ -250,7 +250,7 @@
     },
     {
       "grupo": "Clínica",
-      "nombre": "Cirugías programadas",
+      "nombre": "Cirugías programadas (agenda semanal de todo el equipo + calendario por médico)",
       "funcion": "renderCxProgramadas()",
       "archivo": "js/cirugias.js"
     },
@@ -525,7 +525,7 @@
     {
       "ruta": "js/cirugias.js",
       "rol": "Cirugías programadas: calendario + detalle por día desde el Apps Script de cirugías (JSONP). Portal: solo las del médico logueado. Admin: selector de médico. Datos solo en memoria.",
-      "lineas": 239
+      "lineas": 334
     }
   ],
   "backends": [

@@ -17,7 +17,8 @@ var CX_DOW = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"];
 var CX_CACHE_MS = 5 * 60 * 1000;
 var _cxCache = {};            // nombre → { t, cirugias }
 var _cxEstado = {};           // rootId → { nombre, anio, mes, dia, admin, cargando, error }
-var cxAdminDoctor = "";
+var CX_TODOS = "__todos__";
+var cxAdminDoctor = CX_TODOS;   // el admin abre en la agenda semanal de todo el equipo
 
 function cxEsc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
 function cxKey(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
@@ -174,15 +175,101 @@ function renderCxProgramadas() {
   document.getElementById("adm-content").innerHTML = '<div class="adm-sec-title">Cirugías programadas</div>'
     + '<div id="cxAdmDocs" class="cx-docs"></div><div id="cxAdmin"></div>';
   cxAdminPintarDocs();
-  cxMontar("cxAdmin", cxAdminDoctor, true);
+  if (cxAdminDoctor === CX_TODOS) cxTodosMontar(false); else cxMontar("cxAdmin", cxAdminDoctor, true);
 }
 function cxAdminPintarDocs() {
   var el = document.getElementById("cxAdmDocs"); if (!el) return;
-  el.innerHTML = CX_DOCTORES.map(function (n) {
+  el.innerHTML = '<span class="cx-chip' + (cxAdminDoctor === CX_TODOS ? " on" : "") + '" onclick="cxAdminElegir(CX_TODOS)">👥 Todos · semana</span>'
+    + CX_DOCTORES.map(function (n) {
     return '<span class="cx-chip' + (n === cxAdminDoctor ? " on" : "") + '" onclick="cxAdminElegir(\'' + cxEsc(n) + '\')">' + cxEsc(n) + "</span>";
   }).join("");
 }
-function cxAdminElegir(n) { cxAdminDoctor = n; cxAdminPintarDocs(); cxMontar("cxAdmin", n, true); }
+function cxAdminElegir(n) {
+  cxAdminDoctor = n; cxAdminPintarDocs();
+  if (n === CX_TODOS) { delete _cxEstado.cxAdmin; cxTodosMontar(false); } else cxMontar("cxAdmin", n, true);
+}
+
+// ── Admin: agenda semanal de todo el equipo ──────────────────────────────
+// El Script devuelve por médico, así que se pide a cada uno (de a 4 a la vez
+// para no saturar Apps Script) y se juntan en una semana lunes-domingo.
+var _cxTodos = { lunes: null, cargando: false, hechos: 0, errores: {}, gen: 0 };
+function cxLunes(d) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; }
+function cxTodosMontar(forzar) {
+  if (!_cxTodos.lunes) _cxTodos.lunes = cxLunes(new Date());
+  var gen = ++_cxTodos.gen, cola = CX_DOCTORES.slice(), activos = 0;
+  _cxTodos.cargando = true; _cxTodos.hechos = 0; _cxTodos.errores = {};
+  cxTodosPintar();
+  var siguiente = function () {
+    if (gen !== _cxTodos.gen) return;            // se eligió otra cosa mientras cargaba
+    if (!cola.length && !activos) { _cxTodos.cargando = false; cxTodosPintar(); return; }
+    while (activos < 4 && cola.length) {
+      var n = cola.shift(); activos++;
+      cxCargar(n, forzar, function (n) { return function (err) {
+        if (gen !== _cxTodos.gen) return;
+        activos--; _cxTodos.hechos++;
+        if (err) _cxTodos.errores[n] = err;
+        if (_cxTodos.cargando) cxTodosPintar();
+        siguiente();
+      }; }(n));
+    }
+  };
+  siguiente();
+}
+function cxTodosNav(dias) {
+  if (dias === 0) _cxTodos.lunes = cxLunes(new Date());
+  else { var d = new Date(_cxTodos.lunes); d.setDate(d.getDate() + dias); _cxTodos.lunes = d; }
+  cxTodosPintar();
+}
+function cxTodosPintar() {
+  var root = document.getElementById("cxAdmin");
+  if (!root || cxAdminDoctor !== CX_TODOS) return;
+  var lun = _cxTodos.lunes, dias = [];
+  for (var i = 0; i < 7; i++) { var d = new Date(lun); d.setDate(d.getDate() + i); dias.push(cxKey(d)); }
+  var fin = new Date(lun); fin.setDate(fin.getDate() + 6);
+  var h = '<div class="cx-hd"><div class="cx-tit">Agenda semanal · todo el equipo</div>'
+    + '<button class="cx-btn" onclick="cxTodosMontar(true)" title="Volver a traer del servidor">↻ Actualizar</button>'
+    + '<button class="cx-btn" onclick="window.print()">🖶 Imprimir</button></div>'
+    + '<div class="cx-semnav"><button class="cx-btn" onclick="cxTodosNav(-7)">‹ Semana anterior</button>'
+    + '<b>' + lun.getDate() + " " + CX_MESES[lun.getMonth()].slice(0, 3) + " – " + fin.getDate() + " " + CX_MESES[fin.getMonth()].slice(0, 3) + " " + fin.getFullYear() + "</b>"
+    + '<button class="cx-btn" onclick="cxTodosNav(0)">Hoy</button><button class="cx-btn" onclick="cxTodosNav(7)">Semana siguiente ›</button></div>';
+  if (_cxTodos.cargando) h += '<div class="cx-vacio">Cargando cirugías… ' + _cxTodos.hechos + " de " + CX_DOCTORES.length + " médicos</div>";
+  var errs = Object.keys(_cxTodos.errores);
+  if (errs.length) h += '<div class="cx-err">No se pudieron traer las cirugías de: ' + errs.map(cxEsc).join(", ") + ' <button class="cx-btn" onclick="cxTodosMontar(true)">Reintentar</button></div>';
+  // Juntar las cirugías de la semana, con el médico.
+  var porDia = {}, porDoc = {}, total = 0;
+  dias.forEach(function (k) { porDia[k] = []; });
+  CX_DOCTORES.forEach(function (n) {
+    ((_cxCache[n] || {}).cirugias || []).forEach(function (c) {
+      if (!porDia[c.fechaIso]) return;
+      porDia[c.fechaIso].push({ c: c, doc: n }); porDoc[n] = (porDoc[n] || 0) + 1; total++;
+    });
+  });
+  if (!_cxTodos.cargando || total) {
+    h += '<div class="cx-prox"><b>' + total + " cirugía" + (total === 1 ? "" : "s") + "</b> en la semana"
+      + (total ? ' <span class="cx-dim">·</span> ' + Object.keys(porDoc).sort(function (a, b) { return porDoc[b] - porDoc[a]; })
+        .map(function (n) { return '<span class="cx-chip" onclick="cxAdminElegir(\'' + cxEsc(n) + '\')" title="Ver el calendario de ' + cxEsc(n) + '">' + cxEsc(n) + " · " + porDoc[n] + "</span>"; }).join("") : "")
+      + "</div>";
+    var hoy = cxHoyKey(), DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+    dias.forEach(function (k, i) {
+      var l = porDia[k];
+      if (!l.length && i >= 5) return;           // fin de semana vacío: no se muestra
+      var p = k.split("-");
+      h += '<div class="cx-sem-dia' + (k === hoy ? " cx-sem-hoy" : "") + '"><div class="cx-dia-hd">' + DIAS[i] + " " + +p[2] + "/" + +p[1]
+        + (k === hoy ? " · HOY" : "") + ' <span class="cx-dim">· ' + (l.length ? l.length + " cirugía" + (l.length === 1 ? "" : "s") : "sin cirugías") + "</span></div>";
+      l.sort(function (a, b) { return String(a.c.hs || "99").localeCompare(String(b.c.hs || "99")) || String(a.c.qx || "").localeCompare(String(b.c.qx || "")); });
+      h += l.map(function (x) {
+        var c = x.c;
+        var check = c.check ? (String(c.check).toUpperCase() === "OK" ? '<span class="cx-badge cx-ok">✓ OK</span>' : '<span class="cx-badge cx-pend">' + cxEsc(c.check) + "</span>") : "";
+        return '<div class="cx-sem-fila"><div class="cx-sem-hora">' + cxEsc(c.hs ? c.hs + " hs" : "—") + (c.qx ? "<small>QX " + cxEsc(c.qx) + "</small>" : "") + "</div>"
+          + '<div style="flex:1;min-width:0"><div class="cx-sem-doc">Dr. ' + cxEsc(x.doc) + '</div><div class="cx-pac">' + cxEsc(c.paciente || "(sin nombre)")
+          + ' <span class="cx-dim cx-meta">' + [c.ooss, c.edad ? c.edad + " años" : ""].filter(Boolean).map(cxEsc).join(" · ") + "</span></div>"
+          + '<div class="cx-prac">' + cxEsc(c.practica || "—") + "</div></div>" + check + "</div>";
+      }).join("");
+      h += "</div>";
+    });
+  }
+  root.innerHTML = h;
+}
 
 // ── Estilos (tokens --co-* → se ven bien en claro y en oscuro) ────────────
 function cxInyectarEstilos() {
@@ -226,7 +313,15 @@ function cxInyectarEstilos() {
     ".cx-det{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:0 12px 12px;border-top:1px solid var(--co-line);padding-top:10px}",
     ".cx-it{display:flex;flex-direction:column;font-size:.74rem}",
     ".cx-it span{font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;color:var(--co-ink-dim)}",
-    ".cx-it.full{grid-column:1/-1}"
+    ".cx-it.full{grid-column:1/-1}",
+    ".cx-semnav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;color:var(--co-ink)}",
+    ".cx-semnav b{flex:1;text-align:center;min-width:150px}",
+    ".cx-sem-dia{background:var(--co-card);border:1px solid var(--co-line);border-radius:10px;padding:8px 12px;margin-bottom:8px}",
+    ".cx-sem-hoy{border-color:var(--co-gold);box-shadow:0 0 0 1px var(--co-gold)}",
+    ".cx-sem-fila{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--co-line);color:var(--co-ink)}",
+    ".cx-sem-hora{width:62px;flex-shrink:0;font-family:var(--font-num);font-weight:800;font-size:.8rem}",
+    ".cx-sem-hora small{display:block;font-size:.62rem;color:var(--co-ink-dim);font-weight:700}",
+    ".cx-sem-doc{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#3f6b4a}"
   ].map(function (r) { return r.split("}").filter(Boolean).map(function (x) { return R + x + "}"; }).join(""); }).join("\n");
   document.head.appendChild(st);
 }
