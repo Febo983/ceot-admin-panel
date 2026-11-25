@@ -727,11 +727,76 @@ function ceotAyudCruzadaCargar(onDone) {
       syncPush('ceot_ayud_cruzada');
     }
   } catch (e) {}
+  ceotAyudExtrCargarLocal_();
   if (onDone) onDone();
   if (!_ceotAyudPulled) {
     _ceotAyudPulled = true;
     syncPull('ceot_ayud_cruzada', function() { ceotAyudCruzadaCargar(onDone); });
+    syncPull(CEOT_AYUD_EXTR_KEY, function() { ceotAyudCruzadaCargar(onDone); });
   }
+}
+
+// ── Extracciones del Fondo CEOT ──
+// Pedido de Marcelo, 25/11/2026: "cada tanto voy a usar ese dinero" — cada
+// extracción lleva fecha, monto y motivo, y el saldo del fondo es lo ingresado
+// por ayudantías cruzadas menos lo extraído. Nada se borra: anular una
+// extracción la marca como anulada (deja de restar) pero queda en el historial.
+// Se guarda en su propia clave (localStorage + Sheet) para no mezclarse con los
+// períodos que reescribe el importador.
+var CEOT_AYUD_EXTR_KEY = 'ceot_ayud_cruzada_extr';
+var CEOT_AYUD_EXTRACCIONES = [];
+// Une por id (nunca pierde un registro de ningún lado); si el mismo id está en
+// los dos, gana el de "actualizado" más nuevo (ej. una anulación).
+function ceotAyudExtrMerge_(base, extra) {
+  var porId = {}, orden = [];
+  (base || []).concat(extra || []).forEach(function(r) {
+    if (!r || !r.id) return;
+    var a = porId[r.id];
+    if (!a) { porId[r.id] = r; orden.push(r.id); return; }
+    if (String(r.actualizado || '') > String(a.actualizado || '')) porId[r.id] = r;
+  });
+  return orden.map(function(id) { return porId[id]; });
+}
+function ceotAyudExtrCargarLocal_() {
+  try {
+    var raw = localStorage.getItem(CEOT_AYUD_EXTR_KEY);
+    var guardado = raw ? (JSON.parse(raw) || []) : [];
+    var unido = ceotAyudExtrMerge_(CEOT_AYUD_EXTRACCIONES, guardado);
+    CEOT_AYUD_EXTRACCIONES = unido;
+    var unidoJson = JSON.stringify(unido);
+    if (unido.length && unidoJson !== raw) {
+      localStorage.setItem(CEOT_AYUD_EXTR_KEY, unidoJson);
+      syncPush(CEOT_AYUD_EXTR_KEY);
+    }
+  } catch (e) {}
+}
+function ceotAyudExtrGuardar_() {
+  try { localStorage.setItem(CEOT_AYUD_EXTR_KEY, JSON.stringify(CEOT_AYUD_EXTRACCIONES)); } catch (e) {}
+  syncPush(CEOT_AYUD_EXTR_KEY);
+}
+function ceotAyudExtrAgregar(fecha, monto, motivo) {
+  ceotAyudExtrCargarLocal_();
+  var ahora = new Date().toISOString();
+  CEOT_AYUD_EXTRACCIONES.push({ id: 'extr_' + Date.now(), fecha: fecha, monto: monto, motivo: motivo, creado: ahora, actualizado: ahora });
+  ceotAyudExtrGuardar_();
+}
+function ceotAyudExtrAnular(id, anular) {
+  ceotAyudExtrCargarLocal_();
+  CEOT_AYUD_EXTRACCIONES = CEOT_AYUD_EXTRACCIONES.map(function(r) {
+    if (r.id !== id) return r;
+    var c = {}; Object.keys(r).forEach(function(k) { c[k] = r[k]; });
+    c.anulada = !!anular;
+    c.actualizado = new Date().toISOString();
+    return c;
+  });
+  ceotAyudExtrGuardar_();
+}
+function ceotAyudExtraidoTotal() {
+  return CEOT_AYUD_EXTRACCIONES.reduce(function(s, r) { return s + (r.anulada ? 0 : (r.monto || 0)); }, 0);
+}
+// Lo que queda en el fondo: ingresado por ayudantías cruzadas − extracciones.
+function ceotAyudCruzadaSaldo() {
+  return ceotAyudCruzadaTotal() - ceotAyudExtraidoTotal();
 }
 // Total acumulado histórico de todos los períodos — usado tanto en el panel
 // admin (detalle completo) como en la home del portal profesional (solo el
