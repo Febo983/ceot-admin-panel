@@ -1145,7 +1145,7 @@ function renderMiPanel(doctor) {
   html += '<div class="mp-card" style="margin-top:7px;">'
     + '<div class="mp-label">Fondo CEOT — Ayudantía cruzada</div>'
     + '<div id="mp-fondo-ceot" style="font-size:1.1rem;font-weight:800;color:rgba(32,36,31,.35);">...</div>'
-    + '<div class="mp-sub">Acumulado histórico</div>'
+    + '<div class="mp-sub">Saldo disponible (ingresado − extracciones)</div>'
     + '</div>';
 
   pane.innerHTML = html;
@@ -1178,15 +1178,15 @@ function renderMiPanel(doctor) {
     });
   }
 
-  // Fondo CEOT — Ayudantía cruzada: mismo total que ve el admin en "Sueldo
-  // Director" (ceotAyudCruzadaTotal, js/importar-liquidacion.js), sin el
-  // detalle por profesional/práctica.
+  // Fondo CEOT — Ayudantía cruzada: el saldo que ve el admin en "Fondo CEOT"
+  // (ingresado − extracciones, ceotAyudCruzadaSaldo en js/importar-liquidacion.js),
+  // sin el detalle por profesional/práctica.
   var elFondoCeot = document.getElementById('mp-fondo-ceot');
   if (elFondoCeot && typeof ceotAyudCruzadaCargar === 'function') {
     var repintarFondoCeot = function() {
       var elLive = document.getElementById('mp-fondo-ceot');
       if (!elLive) return;
-      elLive.textContent = fmt(ceotAyudCruzadaTotal());
+      elLive.textContent = fmt(ceotAyudCruzadaSaldo());
       elLive.style.color = '#1c78b0';
     };
     ceotAyudCruzadaCargar(repintarFondoCeot);
