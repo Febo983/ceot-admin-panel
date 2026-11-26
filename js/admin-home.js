@@ -105,6 +105,7 @@ var ADM_HOME_MODULOS = [
   { key:"gastoscasa",       ico:"home",            lbl:"Gastos Casa",   cat:"casa", fn:"renderGastosCasa()" },
   { key:"gastospagos",      ico:"wallet",          lbl:"Gastos y Pagos",cat:"casa", fn:"renderGastosPagos()" },
   { key:"convenios",        ico:"file-check",      lbl:"Convenios",     cat:"clinica", fn:"renderConvenios()" },
+  { key:"protocolos",       ico:"clipboard-check", lbl:"Protocolos NUN", cat:"clinica", fn:"renderProtocolosNun()" },
   { key:"cxprog",           ico:"calendar-clock",  lbl:"Cirugías programadas", cat:"clinica", fn:"renderCxProgramadas()" },
   { key:"estadisticas",     ico:"line-chart",      lbl:"Estadísticas CEOT", cat:"clinica", fn:"renderEstadisticasCeot()" },
   { key:"buzon",            ico:"mail",            lbl:"Buzón",         cat:"clinica", fn:"renderBuzon()" },
