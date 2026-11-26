@@ -103,6 +103,9 @@ function pnEdadEnFecha(nac, ref) {
 // ══════ PARSER: texto del protocolo → datos ══════════════════════
 // Devuelve { datos:{...}, evid:{campo: fragmento} }
 function pnParsear(textoOriginal) {
+  // OCR: corrige O/o leídas en lugar de 0 cuando están pegadas a dígitos (MS.O6.O2, 22:4O)
+  textoOriginal = String(textoOriginal || "").replace(/(\d[.:\/]?)[Oo]|[Oo](?=[.:\/]?\d)/g, function(m){ return m.replace(/[Oo]/, "0"); })
+    .replace(/\b(CO|MS|PC|RO|PP)\s*[.\-]?\s*[Oo](\d)/gi, "$1.0$2");
   var txt = pnNorm(textoOriginal);
   var datos = {}, evid = {};
   var F = "(\\d{1,2}[\\/\\-.]\\d{1,2}[\\/\\-.]\\d{2,4})";
@@ -340,19 +343,20 @@ function pnRepintar() {
   if (!root) return;
   var h = '<div class="adm-sec-title">Protocolos · adicionales NUN 6ª ed.</div>'
     + '<div class="deb-toolbar" style="flex-wrap:wrap;gap:6px;margin-bottom:8px">'
-    +   '<button class="deb-btn deb-btn-pri" onclick="document.getElementById(\'pnFile\').click()">⬆ Importar protocolo (PDF)</button>'
+    +   '<button class="deb-btn deb-btn-pri" onclick="pnModoAgregar=false;document.getElementById(\'pnFile\').click()">⬆ Importar protocolo (capturas o PDF)</button>'
+    +   (pnActual ? '<button class="deb-btn" onclick="pnModoAgregar=true;document.getElementById(\'pnFile\').click()" title="Si el protocolo ocupa más de una captura">＋ Agregar otra captura</button>' : '')
     +   '<button class="deb-btn" onclick="pnPegarTexto()">📋 Pegar texto</button>'
     +   (pnActual ? '<button class="deb-btn" onclick="pnGuardarHist()">💾 Guardar en historial</button>' : '')
     +   '<span style="flex:1"></span>'
     +   '<button class="deb-btn" onclick="pnVerHistorial()">🗂 Historial (' + pnHist().length + ')</button>'
     +   (typeof debAbrirNormas === "function" ? '<button class="deb-btn" onclick="debAbrirNormas()">📖 Normas</button>' : '')
     + '</div>'
-    + '<input type="file" id="pnFile" accept="application/pdf,.pdf,.txt" multiple style="display:none" onchange="pnCargarArchivos(this.files);this.value=\'\'">';
+    + '<input type="file" id="pnFile" accept="image/*,application/pdf,.pdf,.txt" multiple style="display:none" onchange="pnCargarArchivos(this.files);this.value=\'\'">';
 
   if (!pnActual) {
-    h += '<div class="pn-drop" id="pnDrop" onclick="document.getElementById(\'pnFile\').click()" ondragover="event.preventDefault();this.classList.add(\'on\')" ondragleave="this.classList.remove(\'on\')" ondrop="event.preventDefault();this.classList.remove(\'on\');pnCargarArchivos(event.dataTransfer.files)">'
-      + '<div style="font-size:1.6rem">📄</div><div style="font-weight:700;margin-top:4px">Arrastrá acá el PDF del protocolo quirúrgico</div>'
-      + '<div style="font-size:.72rem;color:#6b6a5a;margin-top:4px">Se lee en tu navegador (no se sube a ningún lado). Detecta edad, fecha/hora, urgencia, radioscopía, injerto, reintervención, doble vía, ayudantes y códigos NUN.</div></div>'
+    h += '<div class="pn-drop" id="pnDrop" onclick="pnModoAgregar=false;document.getElementById(\'pnFile\').click()" ondragover="event.preventDefault();this.classList.add(\'on\')" ondragleave="this.classList.remove(\'on\')" ondrop="event.preventDefault();this.classList.remove(\'on\');pnCargarArchivos(event.dataTransfer.files)">'
+      + '<div style="font-size:1.6rem">📸</div><div style="font-weight:700;margin-top:4px">Arrastrá acá las capturas del protocolo quirúrgico — o pegalas con Ctrl+V</div>'
+      + '<div style="font-size:.72rem;color:#6b6a5a;margin-top:4px">Podés subir varias capturas juntas (se leen en orden). También acepta PDF. Se lee en tu navegador (no se sube a ningún lado). Detecta edad, fecha/hora, urgencia, radioscopía, injerto, reintervención, doble vía, ayudantes y códigos NUN.</div></div>'
       + '<div id="pnMsg"></div>';
     root.innerHTML = h;
     return;
@@ -362,7 +366,8 @@ function pnRepintar() {
   var res = pnEvaluar(d, pnActual.ov);
   h += '<div style="font-size:.78rem;margin-bottom:4px"><b>' + pnEsc(pnActual.nombre) + '</b>'
     + (d.paciente ? ' · Paciente: ' + pnEsc(d.paciente) : '') + '</div>'
-    + (pnActual.escaneado ? '<div class="pn-aviso pn-err">Este PDF no tiene texto (está escaneado). Completá los datos a mano abajo, o pegá el texto del protocolo.</div>' : '')
+    + (pnActual.ocr ? '<div class="pn-aviso" style="background:rgba(32,36,31,.05);font-size:.7rem">Leído de ' + pnActual.ocr + ' captura(s) con reconocimiento de texto (OCR): revisá que fecha, hora, edad y código estén bien leídos.</div>' : '')
+    + (pnActual.escaneado ? '<div class="pn-aviso pn-err">No se pudo leer texto (captura borrosa o muy chica). Probá con una captura más grande/nítida, o completá los datos a mano abajo.</div>' : '')
     + '<div id="pnMsg"></div>';
 
   // Datos editables
@@ -446,6 +451,7 @@ function pnSetCampo(campo, v) {
     d[campo] = v === "" ? null : +v;
   } else d[campo] = v;
   pnActual.evid[campo] = pnActual.evid[campo] || "";
+  (pnActual.manuales = pnActual.manuales || {})[campo] = true;
   pnRepintar();
 }
 function pnSetOv(clave, v) {
@@ -480,24 +486,113 @@ async function pnExtraerPdf(file) {
   return texto.replace(/[ \t]+/g, " ").trim();
 }
 
+// ── OCR (capturas de pantalla) con Tesseract.js, cargado bajo demanda
+var PN_TESS_SRC = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+var pnModoAgregar = false;
+var pnTessWorker = null;
+function pnCargarTesseract() {
+  if (window.Tesseract) return Promise.resolve();
+  return new Promise(function(ok, ko) {
+    var sc = document.createElement("script");
+    sc.src = PN_TESS_SRC; sc.onload = ok; sc.onerror = function(){ ko(new Error("no se pudo cargar el lector de texto (OCR) — revisá la conexión")); };
+    document.head.appendChild(sc);
+  });
+}
+async function pnOcrWorker() {
+  await pnCargarTesseract();
+  if (!pnTessWorker) pnTessWorker = await Tesseract.createWorker("spa");
+  return pnTessWorker;
+}
+// Imagen/canvas → canvas agrandado en escala de grises (mejora mucho el OCR de capturas chicas)
+async function pnPrepararImagen(src) {
+  var img = src;
+  if (src instanceof Blob) {
+    img = await new Promise(function(ok, ko) {
+      var im = new Image(); im.onload = function(){ ok(im); }; im.onerror = function(){ ko(new Error("imagen inválida")); };
+      im.src = URL.createObjectURL(src);
+    });
+  }
+  var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  var k = w < 1600 ? Math.min(3, 1600 / w) : 1;
+  var cv = document.createElement("canvas");
+  cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+  var cx = cv.getContext("2d");
+  cx.imageSmoothingQuality = "high";
+  cx.drawImage(img, 0, 0, cv.width, cv.height);
+  var px = cx.getImageData(0, 0, cv.width, cv.height), dd = px.data;
+  for (var i = 0; i < dd.length; i += 4) { var g = 0.299 * dd[i] + 0.587 * dd[i+1] + 0.114 * dd[i+2]; dd[i] = dd[i+1] = dd[i+2] = g; }
+  cx.putImageData(px, 0, 0);
+  return cv;
+}
+async function pnOcr(src, etiqueta) {
+  pnMsg("Leyendo " + pnEsc(etiqueta) + " (OCR)… la primera vez tarda unos segundos más.", "falta");
+  var wk = await pnOcrWorker();
+  var r = await wk.recognize(await pnPrepararImagen(src));
+  return r.data.text || "";
+}
+// PDF escaneado: renderiza cada página y la pasa por OCR
+async function pnOcrPdf(file) {
+  var pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise, out = "";
+  for (var p = 1; p <= Math.min(pdf.numPages, 6); p++) {
+    var pg = await pdf.getPage(p), vp = pg.getViewport({ scale: 2.5 });
+    var cv = document.createElement("canvas"); cv.width = vp.width; cv.height = vp.height;
+    await pg.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
+    out += (await pnOcr(cv, file.name + " pág. " + p)) + "\n";
+  }
+  return out;
+}
+
 async function pnCargarArchivos(files) {
   files = Array.prototype.slice.call(files || []);
   if (!files.length) return;
-  var f = files[0];
-  pnMsg("Leyendo " + pnEsc(f.name) + "…", "falta");
+  var agregar = pnModoAgregar && pnActual; pnModoAgregar = false;
   try {
-    var texto = /\.txt$/i.test(f.name) ? await f.text() : await pnExtraerPdf(f);
-    pnAnalizarTexto(f.name, texto);
-    if (files.length > 1) pnMsg("Se analizó solo el primero (" + pnEsc(f.name) + "). Importá los demás de a uno.", "falta");
+    var textos = [], nOcr = 0;
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      if (/^image\//.test(f.type)) { textos.push(await pnOcr(f, f.name || "captura " + (i + 1))); nOcr++; }
+      else if (/\.txt$/i.test(f.name)) textos.push(await f.text());
+      else {
+        pnMsg("Leyendo " + pnEsc(f.name) + "…", "falta");
+        var t = await pnExtraerPdf(f);
+        if (t.replace(/\s/g, "").length < 80) { t = await pnOcrPdf(f); nOcr++; }
+        textos.push(t);
+      }
+    }
+    var nombre = files.length === 1 ? (files[0].name || "Captura") : files.length + " capturas";
+    if (agregar) pnAgregarTexto(textos.join("\n"), nOcr);
+    else pnAnalizarTexto(nombre, textos.join("\n"), nOcr);
   } catch (e) {
     pnMsg("Error leyendo el archivo: " + pnEsc(e.message), "err");
   }
 }
 
-function pnAnalizarTexto(nombre, texto) {
+// Ctrl+V de una captura (recorte de Windows / Mac) mientras el módulo está abierto
+if (typeof document !== "undefined") document.addEventListener("paste", function(e) {
+  if (!document.getElementById("pnRoot") || !e.clipboardData) return;
+  var t = e.target; if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+  var imgs = Array.prototype.slice.call(e.clipboardData.items || []).filter(function(it){ return /^image\//.test(it.type); }).map(function(it){ return it.getAsFile(); }).filter(Boolean);
+  if (!imgs.length) return;
+  e.preventDefault();
+  pnModoAgregar = !!pnActual && confirm("¿Agregar esta captura al protocolo actual?\n\nAceptar = es la continuación del mismo protocolo\nCancelar = es un protocolo nuevo");
+  pnCargarArchivos(imgs);
+});
+
+function pnAnalizarTexto(nombre, texto, nOcr) {
   var escaneado = texto.replace(/\s/g, "").length < 80;
   var p = pnParsear(texto);
-  pnActual = { nombre: nombre, texto: texto, datos: p.datos, evid: p.evid, ov: {}, facturado: null, valor: "", escaneado: escaneado, ts: Date.now() };
+  pnActual = { nombre: nombre, texto: texto, datos: p.datos, evid: p.evid, ov: {}, facturado: null, valor: "", escaneado: escaneado, ocr: nOcr || 0, ts: Date.now() };
+  pnRepintar();
+}
+// Suma texto de otra captura: re-detecta todo pero conserva lo cargado/decidido a mano
+function pnAgregarTexto(texto, nOcr) {
+  var prev = pnActual, manual = {};
+  ["codigos", "fecha", "horaInicio", "edad", "ayudantes"].forEach(function(k){ if (prev.manuales && prev.manuales[k]) manual[k] = prev.datos[k]; });
+  var tx = (prev.texto || "") + "\n" + texto, p = pnParsear(tx);
+  for (var k in manual) p.datos[k] = manual[k];
+  pnActual = { nombre: prev.nombre.replace(/^(\d+) capturas$/, function(_, n){ return (+n + 1) + " capturas"; }) + (/capturas$/.test(prev.nombre) ? "" : " + captura"),
+    texto: tx, datos: p.datos, evid: p.evid, ov: prev.ov, facturado: prev.facturado, valor: prev.valor, manuales: prev.manuales,
+    escaneado: tx.replace(/\s/g, "").length < 80, ocr: (prev.ocr || 0) + (nOcr || 0), ts: prev.ts };
   pnRepintar();
 }
 
