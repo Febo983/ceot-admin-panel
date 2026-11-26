@@ -104,7 +104,7 @@ function pnEdadEnFecha(nac, ref) {
 // Devuelve { datos:{...}, evid:{campo: fragmento} }
 function pnParsear(textoOriginal) {
   // OCR: corrige O/o leídas en lugar de 0 cuando están pegadas a dígitos (MS.O6.O2, 22:4O)
-  textoOriginal = String(textoOriginal || "").replace(/(\d[.:\/]?)[Oo]|[Oo](?=[.:\/]?\d)/g, function(m){ return m.replace(/[Oo]/, "0"); })
+  textoOriginal = String(textoOriginal || "").replace(/(?<![A-Za-z])[Oo](?=[.:\/]?\d)|(?<=\d[.:\/]?)[Oo](?![A-Za-z])/g, "0")
     .replace(/\b(CO|MS|PC|RO|PP)\s*[.\-]?\s*[Oo](\d)/gi, "$1.0$2");
   var txt = pnNorm(textoOriginal);
   var datos = {}, evid = {};
@@ -318,6 +318,7 @@ function pnInyectarEstilos() {
     + ".pn-total{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:12px 14px;border:2px solid #1f3a2e;border-radius:8px;background:#fbf8f0;margin:12px 0}"
     + ".pn-total .big{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1.5rem;font-weight:800;color:#16a34a}"
     + ".pn-aviso{padding:8px 12px;border-radius:7px;font-size:.78rem;margin:8px 0}"
+    + ".pn-exceso-chip{background:#f7e6e2;color:#b13a2c}"
     + ".pn-ok{background:#eef2ea;color:#166534}.pn-falta{background:#f6ecd6;color:#92610f}.pn-exceso,.pn-err{background:#f7e6e2;color:#b13a2c}"
     + ".pn-sel{font-size:.72rem;padding:3px 4px;border:1px solid rgba(32,36,31,.18);border-radius:5px;background:#fbf8f0;color:#20241f;font-family:inherit}"
     + "[data-theme=dark] .pn-drop{background:#26221a;border-color:#3a362c}"
@@ -345,7 +346,8 @@ function pnRepintar() {
     + '<div class="deb-toolbar" style="flex-wrap:wrap;gap:6px;margin-bottom:8px">'
     +   '<button class="deb-btn deb-btn-pri" onclick="pnModoAgregar=false;document.getElementById(\'pnFile\').click()">⬆ Importar protocolo (capturas o PDF)</button>'
     +   (pnActual ? '<button class="deb-btn" onclick="pnModoAgregar=true;document.getElementById(\'pnFile\').click()" title="Si el protocolo ocupa más de una captura">＋ Agregar otra captura</button>' : '')
-    +   '<button class="deb-btn" onclick="pnPegarTexto()">📋 Pegar texto</button>'
+    +   '<button class="deb-btn" onclick="pnPegarTexto()">⌨ Pegar texto</button>'
+    +   '<button class="deb-btn" onclick="pnVerPlanilla()" title="Revisar los % adicionales pedidos en la planilla de Cirugías (generador de órdenes)">📋 Planilla de Cirugías</button>'
     +   (pnActual ? '<button class="deb-btn" onclick="pnGuardarHist()">💾 Guardar en historial</button>' : '')
     +   '<span style="flex:1"></span>'
     +   '<button class="deb-btn" onclick="pnVerHistorial()">🗂 Historial (' + pnHist().length + ')</button>'
@@ -366,6 +368,9 @@ function pnRepintar() {
   var res = pnEvaluar(d, pnActual.ov);
   h += '<div style="font-size:.78rem;margin-bottom:4px"><b>' + pnEsc(pnActual.nombre) + '</b>'
     + (d.paciente ? ' · Paciente: ' + pnEsc(d.paciente) : '') + '</div>'
+    + (pnActual.fila ? pnFilaResumenHtml(pnActual.fila)
+        : '<div style="font-size:.72rem;margin-bottom:6px"><button class="deb-btn" style="font-size:.7rem;padding:3px 9px" onclick="pnVincularPlanilla()">🔗 Vincular con la planilla de Cirugías</button> <span style="color:#6b6a5a">trae edad, código, urgencia y el % que se pidió en la orden</span></div>')
+    + (pnActual.base && !pnActual.texto ? '<div class="pn-aviso pn-falta">Datos tomados de la planilla. Para confirmar horario, radioscopía, injerto y ayudantes, pegá (Ctrl+V) o subí las capturas del protocolo quirúrgico.</div>' : '')
     + (pnActual.ocr ? '<div class="pn-aviso" style="background:rgba(32,36,31,.05);font-size:.7rem">Leído de ' + pnActual.ocr + ' captura(s) con reconocimiento de texto (OCR): revisá que fecha, hora, edad y código estén bien leídos.</div>' : '')
     + (pnActual.escaneado ? '<div class="pn-aviso pn-err">No se pudo leer texto (captura borrosa o muy chica). Probá con una captura más grande/nítida, o completá los datos a mano abajo.</div>' : '')
     + '<div id="pnMsg"></div>';
@@ -417,7 +422,7 @@ function pnRepintar() {
   var cmp = pnComparar(res.totalPct, pnActual.facturado);
   var valor = +pnActual.valor || 0;
   h += '<div class="pn-total"><div><div style="font-size:.62rem;font-weight:700;text-transform:uppercase;color:#6b6a5a">Recargo que corresponde</div><div class="big">+' + res.totalPct + '%</div></div>'
-    + '<div><label style="display:block;font-size:.62rem;font-weight:700;text-transform:uppercase;color:#6b6a5a">% facturado</label><input class="pn-inp" style="width:90px" type="number" step="1" value="' + pnEsc(pnActual.facturado == null ? "" : pnActual.facturado) + '" onchange="pnActual.facturado=this.value;pnRepintar()"></div>'
+    + '<div><label style="display:block;font-size:.62rem;font-weight:700;text-transform:uppercase;color:#6b6a5a">% facturado / pedido</label><input class="pn-inp" style="width:90px" type="number" step="1" value="' + pnEsc(pnActual.facturado == null ? "" : pnActual.facturado) + '" onchange="pnActual.facturado=this.value;pnRepintar()"></div>'
     + '<div><label style="display:block;font-size:.62rem;font-weight:700;text-transform:uppercase;color:#6b6a5a">Valor del código $ (opcional)</label><input class="pn-inp" style="width:130px" type="number" step="0.01" value="' + pnEsc(pnActual.valor || "") + '" onchange="pnActual.valor=this.value;pnRepintar()"></div>'
     + (valor ? '<div style="font-family:ui-monospace,Menlo,monospace;font-size:.8rem">Código $' + pnFmt(valor) + '<br>Recargo $' + pnFmt(valor * res.totalPct / 100) + '<br><b>Total $' + pnFmt(valor * (1 + res.totalPct / 100)) + '</b>'
         + (res.ayudantes.esperados ? '<br>Ayudante c/u $' + pnFmt(valor * 0.2) : '') + '</div>' : '')
@@ -444,15 +449,13 @@ function pnEvidencia(clave, ev) {
 }
 
 function pnSetCampo(campo, v) {
-  var d = pnActual.datos;
-  if (campo === "codigos") {
-    d.codigos = String(v).split(/[,;\s]+(?=[a-zA-Z]{2})|[,;]/).map(function(x){ return nunNormalizarCodigo(x.trim()) || x.trim().toUpperCase(); }).filter(Boolean);
-  } else if (campo === "edad" || campo === "ayudantes") {
-    d[campo] = v === "" ? null : +v;
-  } else d[campo] = v;
-  pnActual.evid[campo] = pnActual.evid[campo] || "";
-  (pnActual.manuales = pnActual.manuales || {})[campo] = true;
-  pnRepintar();
+  var val;
+  if (campo === "codigos") val = String(v).split(/[,;+]|\s+(?=[a-zA-Z]{2}\s?[.\-]?\d)/).map(function(x){ return nunNormalizarCodigo(x.trim()) || x.trim().toUpperCase(); }).filter(Boolean);
+  else if (campo === "edad" || campo === "ayudantes") val = v === "" ? null : +v;
+  else val = v;
+  pnActual.manualVals = pnActual.manualVals || {};
+  pnActual.manualVals[campo] = val;
+  pnRecalc(); pnRepintar();
 }
 function pnSetOv(clave, v) {
   if (v === "auto") delete pnActual.ov[clave]; else pnActual.ov[clave] = (v === "si");
@@ -560,7 +563,7 @@ async function pnCargarArchivos(files) {
       }
     }
     var nombre = files.length === 1 ? (files[0].name || "Captura") : files.length + " capturas";
-    if (agregar) pnAgregarTexto(textos.join("\n"), nOcr);
+    if (agregar || (pnActual && pnActual.base && !pnActual.texto)) pnAgregarTexto(textos.join("\n"), nOcr);
     else pnAnalizarTexto(nombre, textos.join("\n"), nOcr);
   } catch (e) {
     pnMsg("Error leyendo el archivo: " + pnEsc(e.message), "err");
@@ -578,24 +581,37 @@ if (typeof document !== "undefined") document.addEventListener("paste", function
   pnCargarArchivos(imgs);
 });
 
+// datos = planilla (base) ⊕ protocolo (texto) ⊕ correcciones manuales
+function pnRecalc() {
+  var a = pnActual, p = pnParsear(a.texto || ""), b = a.base || {}, d = {}, ev = p.evid;
+  var k;
+  for (k in b) d[k] = b[k];
+  for (k in p.datos) {
+    var v = p.datos[k];
+    if (k === "edad" || k === "codigos" || k === "paciente") { if (d[k] == null || (k === "codigos" && !d[k].length)) d[k] = v; }
+    else if (v === true || (v != null && v !== "")) d[k] = v;
+  }
+  // de la planilla, sin evidencia en el texto: lo indicamos
+  if (a.base) ["edad","codigos","emergencia","injerto","dobleVia","reintervencion","radioscopia"].forEach(function(c){
+    if (b[c] != null && b[c] !== false && !(c in p.datos && p.datos[c] === b[c] && ev[c])) ev[c] = (ev[c] ? ev[c] + " · " : "") + "Planilla: " + (a.baseEvid && a.baseEvid[c] || String(b[c]));
+  });
+  var mv = a.manualVals || {};
+  for (k in mv) { d[k] = mv[k]; ev[k] = (ev[k] ? ev[k] + " · " : "") + "cargado a mano"; }
+  a.datos = d; a.evid = ev;
+  a.escaneado = !a.base && (a.texto || "").replace(/\s/g, "").length < 80 && !Object.keys(mv).length;
+}
 function pnAnalizarTexto(nombre, texto, nOcr) {
-  var escaneado = texto.replace(/\s/g, "").length < 80;
-  var p = pnParsear(texto);
-  pnActual = { nombre: nombre, texto: texto, datos: p.datos, evid: p.evid, ov: {}, facturado: null, valor: "", escaneado: escaneado, ocr: nOcr || 0, ts: Date.now() };
-  pnRepintar();
+  pnActual = { nombre: nombre, texto: texto, base: null, fila: null, manualVals: {}, ov: {}, facturado: null, valor: "", ocr: nOcr || 0, ts: Date.now() };
+  pnRecalc(); pnRepintar();
 }
-// Suma texto de otra captura: re-detecta todo pero conserva lo cargado/decidido a mano
+// Suma texto de otra captura al protocolo actual (conserva planilla, decisiones y correcciones)
 function pnAgregarTexto(texto, nOcr) {
-  var prev = pnActual, manual = {};
-  ["codigos", "fecha", "horaInicio", "edad", "ayudantes"].forEach(function(k){ if (prev.manuales && prev.manuales[k]) manual[k] = prev.datos[k]; });
-  var tx = (prev.texto || "") + "\n" + texto, p = pnParsear(tx);
-  for (var k in manual) p.datos[k] = manual[k];
-  pnActual = { nombre: prev.nombre.replace(/^(\d+) capturas$/, function(_, n){ return (+n + 1) + " capturas"; }) + (/capturas$/.test(prev.nombre) ? "" : " + captura"),
-    texto: tx, datos: p.datos, evid: p.evid, ov: prev.ov, facturado: prev.facturado, valor: prev.valor, manuales: prev.manuales,
-    escaneado: tx.replace(/\s/g, "").length < 80, ocr: (prev.ocr || 0) + (nOcr || 0), ts: prev.ts };
-  pnRepintar();
+  var a = pnActual;
+  a.texto = (a.texto ? a.texto + "\n" : "") + texto;
+  a.ocr = (a.ocr || 0) + (nOcr || 0);
+  if (!/captura/.test(a.nombre)) a.nombre += " + captura";
+  pnRecalc(); pnRepintar();
 }
-
 function pnPegarTexto() {
   var t = prompt("Pegá el texto del protocolo quirúrgico:");
   if (t && t.trim()) pnAnalizarTexto("Texto pegado", t);
@@ -609,7 +625,8 @@ function pnGuardarHist() {
   var h = pnHist().filter(function(x){ return x.ts !== pnActual.ts; });
   h.unshift({ ts: pnActual.ts, nombre: pnActual.nombre, paciente: pnActual.datos.paciente || "", fecha: pnActual.datos.fecha || "",
     codigos: pnActual.datos.codigos || [], totalPct: res.totalPct, facturado: pnActual.facturado,
-    datos: pnActual.datos, evid: pnActual.evid, ov: pnActual.ov, valor: pnActual.valor, texto: (pnActual.texto || "").slice(0, 20000) });
+    datos: pnActual.datos, evid: pnActual.evid, ov: pnActual.ov, valor: pnActual.valor, texto: (pnActual.texto || "").slice(0, 20000),
+    base: pnActual.base, baseEvid: pnActual.baseEvid, fila: pnActual.fila, manualVals: pnActual.manualVals });
   try { localStorage.setItem(PN_HIST_KEY, JSON.stringify(h.slice(0, 200))); pnMsg("Guardado en el historial.", "ok"); }
   catch (e) { pnMsg("No se pudo guardar: " + pnEsc(e.message), "err"); }
   var b = document.querySelector('[onclick="pnVerHistorial()"]'); if (b) b.textContent = "🗂 Historial (" + h.length + ")";
@@ -632,8 +649,9 @@ function pnVerHistorial() {
 }
 function pnAbrirHist(i) {
   var x = pnHist()[i]; if (!x) return;
-  pnActual = { nombre: x.nombre, texto: x.texto, datos: x.datos, evid: x.evid || {}, ov: x.ov || {}, facturado: x.facturado, valor: x.valor, ts: x.ts };
-  pnRepintar();
+  pnActual = { nombre: x.nombre, texto: x.texto || "", base: x.base || null, baseEvid: x.baseEvid, fila: x.fila || null, manualVals: x.manualVals || {}, ov: x.ov || {}, facturado: x.facturado, valor: x.valor, ts: x.ts };
+  if (!x.manualVals && !x.base) pnActual.manualVals = { codigos: x.datos.codigos, edad: x.datos.edad, fecha: x.datos.fecha, horaInicio: x.datos.horaInicio };
+  pnRecalc(); pnRepintar();
 }
 function pnBorrarHist(i) {
   if (!confirm("¿Borrar este protocolo del historial?")) return;
@@ -642,6 +660,235 @@ function pnBorrarHist(i) {
   pnVerHistorial();
 }
 
+
+// ══════════════════════════════════════════════════════════════════
+// PLANILLA DE CIRUGÍAS (la del generador de órdenes)
+// "Cirugias" → hoja "Respuestas de formulario 1". El formulario se escribió en dos
+// bloques de columnas: B..T (viejo) y W..AM (actual). Se toma el que tenga paciente.
+// ══════════════════════════════════════════════════════════════════
+var PN_CX_SHEET_ID = "1VYIarOpfCgqinj5Uy2dAYCSsx6c5GL9J7YbAYKvCbdk";
+var PN_CX_SHEET = "Respuestas de formulario 1";
+var PN_BLOQUE_NUEVO = { paciente:22, entidad:23, afiliado:24, dx:25, materiales:26, nn:27, nun:28, fecha:29, dr:30, dni:31, edad:33, lado:34, obs:38 };
+var PN_BLOQUE_VIEJO = { paciente:1, entidad:2, afiliado:3, dx:4, materiales:5, nn:6, nun:7, dni:8, dr:9, fecha:10, edad:12, lado:13, obs:19 };
+var pnPlan = null;       // { filas:[...], ts }
+var pnPlanFiltro = { q: "", dr: "", soloDif: true, desde: "" };
+
+var PN_MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+// "6/11/2025", "6 11 2025", "25/11", "20/11/25", "18 noviembre", "13 de noviembre", "11/11/2025 URGENTE!"
+function pnFechaLibre(s, ref) {
+  var t = pnNorm(s), y0 = ref ? ref.getFullYear() : new Date().getFullYear(), m;
+  var arma = function(d, mes, y) {
+    if (y == null) { y = y0; if (ref && mes < ref.getMonth() - 6) y++; }
+    if (y < 100) y += 2000;
+    var f = new Date(y, mes, d);
+    return f.getMonth() === mes ? pnIso(f) : "";
+  };
+  if ((m = t.match(/(\d{1,2})\s*[\/\-. ]\s*(\d{1,2})\s*[\/\-. ]\s*(\d{2,4})/))) return arma(+m[1], +m[2] - 1, +m[3]);
+  if ((m = t.match(/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\b/))) return arma(+m[1], +m[2] - 1, null);
+  if ((m = t.match(/(\d{1,2})\s*(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(?:\s*(?:de\s*)?(\d{4}))?/))) {
+    var mi = m[2] === "setiembre" ? 8 : PN_MESES.indexOf(m[2]);
+    return arma(+m[1], mi, m[3] ? +m[3] : null);
+  }
+  return "";
+}
+
+// Texto de la columna "NUN + % adicional" → códigos, % pedido y qué conceptos menciona
+function pnPedidoParse(txt) {
+  var t = pnNorm(txt), pct = 0, m, re = /(\d{1,3}(?:[.,]\d+)?)\s*%|%\s*(\d{1,3})/g;
+  while ((m = re.exec(t))) pct += parseFloat((m[1] || m[2]).replace(",", "."));
+  return {
+    codigos: pnParsear(txt).datos.codigos || [],
+    pct: pct,
+    x2: /\bx\s?2\b|ambas|ambos|bilateral/.test(t),
+    conc: { edad: /edad|extrema/.test(t), rx: /\brx\b|radiosc|intensif|\brayos\b/.test(t), injerto: /injerto|banco|sustituto/.test(t),
+            urg: /urgen|emergen/.test(t), doble: /doble|2 vias|dos vias|abordaje/.test(t), reint: /reinterv|recidiva|complicacion/.test(t),
+            horario: /noctur|feriado|fin de semana|sabado|domingo/.test(t) }
+  };
+}
+
+// Fila de la planilla (array de celdas en texto) → registro
+function pnFilaPlanilla(cel, idx) {
+  var B = (cel[PN_BLOQUE_NUEVO.paciente] || "").trim() ? PN_BLOQUE_NUEVO : PN_BLOQUE_VIEJO;
+  var g = function(k){ return String(cel[B[k]] == null ? "" : cel[B[k]]).trim(); };
+  var r = { idx: idx, marca: String(cel[0] || ""), paciente: g("paciente"), entidad: g("entidad"), afiliado: g("afiliado"), dx: g("dx"),
+    materiales: g("materiales"), nn: g("nn"), nunTxt: g("nun"), fechaTxt: g("fecha"), dr: g("dr"), dni: g("dni"), lado: g("lado"), obs: g("obs") };
+  if (!r.paciente || /^apellido y nombre/i.test(r.paciente)) return null;
+  var ref = pnParseFecha(r.marca);
+  r.fecha = pnFechaLibre(r.fechaTxt, ref);
+  var e = parseInt(g("edad"), 10); r.edad = isNaN(e) || e > 110 ? null : e;
+  var ped = pnPedidoParse(r.nunTxt);
+  r.codigos = ped.codigos; r.pedidoPct = ped.pct; r.pedidoConc = ped.conc; r.x2 = ped.x2;
+  return r;
+}
+
+// Registro de planilla → datos base para el motor (+ de dónde salió cada uno)
+function pnBaseDesdeFila(r) {
+  var b = { paciente: r.paciente, edad: r.edad, codigos: r.codigos.slice(), fecha: r.fecha }, ev = {};
+  if (r.edad != null) ev.edad = "edad " + r.edad;
+  if (r.codigos.length) ev.codigos = r.nunTxt;
+  var todo = pnNorm([r.dx, r.fechaTxt, r.obs, r.nunTxt].join(" | "));
+  var mat = pnNorm(r.materiales + " | " + r.dx);
+  if (/urgen|emergen/.test(todo)) { b.emergencia = true; ev.emergencia = "marcada URGENTE en la orden"; }
+  if (/aloinjerto|banco de (hueso|tejido)|injerto (oseo )?(de )?banco|hueso (de )?banco|chips? (oseos? )?(de )?banco/.test(mat) && !/aloinjerto de tendon/.test(mat)) { b.injerto = "banco"; ev.injerto = "materiales: " + r.materiales; }
+  else if (/injerto (oseo )?autologo|autoinjerto oseo|cresta iliaca/.test(mat)) { b.injerto = "autologo"; ev.injerto = "materiales: " + r.materiales; }
+  else if (/sustituto|hidroxiapatita|fosfato (tri)?calcico|sulfato de calcio|\bdbm\b|matriz osea|chronos|cerament|biovidrio/.test(mat)) { b.injerto = "sustituto"; ev.injerto = "materiales: " + r.materiales; }
+  if (/doble (abordaje|via|incision)|dos (abordajes|vias)/.test(todo) && !r.x2) { b.dobleVia = true; ev.dobleVia = r.nunTxt; }
+  if (/\bre ?-?ruptura|rerruptura|recidiva|reinterv|revision|recambio|infeccion (protesica|de protesis|del material)|aflojamiento|pseudoartrosis|seudoartrosis|refractura/.test(pnNorm(r.dx))) r.reintSosp = true; // solo como observación: se confirma con el protocolo
+  if (r.pedidoConc.rx) { b.radioscopia = true; ev.radioscopia = "la orden pide +5% rx (confirmar en el protocolo)"; }
+  return { base: b, baseEvid: ev };
+}
+
+// Evalúa una fila: lo que corresponde según la planilla vs lo pedido
+function pnEvaluarFila(r) {
+  var bb = pnBaseDesdeFila(r), res = pnEvaluar(bb.base, {}), notas = [], c = r.pedidoConc;
+  var it = {}; res.items.forEach(function(x){ it[x.clave] = x; });
+  if (r.edad != null) {
+    if (c.edad && !it.edad.aplica) notas.push("Pidió edad extrema con " + r.edad + " años: corresponde solo hasta 10 o MAYORES de 65.");
+    if (!c.edad && it.edad.aplica && !(it.emergencia.aplica && c.urg)) notas.push("Paciente de " + r.edad + " años: corresponde +20% edad extrema y no figura.");
+  } else if (c.edad) notas.push("Pidió edad extrema pero la orden no tiene la edad.");
+  if (it.emergencia.aplica && !c.urg && !it.emergencia.excluida && !c.edad) notas.push("Orden marcada URGENTE: puede corresponder +20% emergencia (si cumple la definición del NUN).");
+  if (c.urg && c.edad) notas.push("Pidió urgencia y edad extrema juntas: no son acumulables (NS 3).");
+  if (bb.base.injerto && !c.injerto && it.injerto.aplica) notas.push("Materiales con injerto (" + bb.base.injerto + "): puede corresponder +" + it.injerto.pct + "%.");
+  var txCod = pnNorm(res.codigos.map(function(x){ return x.texto; }).join(" "));
+  if (r.reintSosp && !c.reint && !/revision|recambio|reconversion|segundo tiempo|infectad|recidiva|biopsia|punci/.test(txCod)) notas.push("El diagnóstico sugiere reintervención: si lo es, corresponde +30% (NP 3). Confirmar con el protocolo.");
+  if (c.reint && !r.reintSosp) notas.push("Pidió reintervención: confirmar en el protocolo que sea revisión de recidiva o complicación.");
+  if (r.x2) notas.push("Bilateral / x2: cada lado se factura al 100% (NP 2a), no +50%.");
+  if (!r.codigos.length) notas.push("Sin código NUN reconocible en la orden.");
+  if (c.horario) notas.push("Pidió recargo horario: confirmar la hora en el protocolo.");
+  var cmp = pnComparar(res.totalPct, r.pedidoPct);
+  var estado = cmp.tipo === "ok" && !notas.length ? "ok" : (cmp.tipo === "ok" ? "nota" : cmp.tipo);
+  return { res: res, esperado: res.totalPct, cmp: cmp, notas: notas, estado: estado };
+}
+
+// gviz JSONP (igual que CPSM): la planilla tiene que estar compartida "cualquiera con el link"
+function pnCargarPlanilla(cb) {
+  var cbName = "__pnCx" + Date.now(), done = false;
+  var fin = function(x, err) { if (done) return; done = true; clearTimeout(to); window[cbName] = function(){}; var sc0 = document.getElementById(cbName); if (sc0) sc0.remove(); cb(x, err); };
+  var to = setTimeout(function(){ fin(null, "La planilla no respondió (15 s)."); }, 15000);
+  window[cbName] = function(resp) {
+    try {
+      if (!resp || resp.status === "error") return fin(null, "Google devolvió error: " + ((resp && resp.errors && resp.errors[0] && resp.errors[0].detailed_message) || "sin acceso — ¿la planilla está compartida con el link?"));
+      var txt = function(c) { return c ? String(c.f != null ? c.f : (c.v != null ? c.v : "")) : ""; };
+      var filas = [];
+      (resp.table.rows || []).forEach(function(row, i) {
+        var r = pnFilaPlanilla((row.c || []).map(txt), i + 2);
+        if (r) { r.ev = pnEvaluarFila(r); filas.push(r); }
+      });
+      filas.reverse(); // más nuevas primero
+      fin({ filas: filas, ts: Date.now() });
+    } catch (e) { fin(null, "No pude interpretar la planilla: " + e.message); }
+  };
+  var sc = document.createElement("script");
+  sc.id = cbName;
+  sc.onerror = function(){ fin(null, "No se pudo conectar con Google Sheets."); };
+  sc.src = "https://docs.google.com/spreadsheets/d/" + PN_CX_SHEET_ID + "/gviz/tq?sheet=" + encodeURIComponent(PN_CX_SHEET)
+    + "&headers=1&tq=" + encodeURIComponent("select *") + "&tqx=out:json;responseHandler:" + cbName + "&_=" + Date.now();
+  document.head.appendChild(sc);
+}
+
+function pnConPlanilla(fn, forzar) {
+  if (pnPlan && !forzar) return fn();
+  var root = document.getElementById("pnRoot");
+  if (root) root.innerHTML = '<div class="adm-sec-title">Planilla de Cirugías</div><div style="padding:20px;color:#6b6a5a">Leyendo la planilla de Cirugías…</div>';
+  pnCargarPlanilla(function(x, err) {
+    if (!x) { if (root) root.innerHTML = '<div class="adm-sec-title">Planilla de Cirugías</div><div class="pn-aviso pn-err">' + pnEsc(err) + '</div><button class="deb-btn" onclick="pnRepintar()">← Volver</button>'; return; }
+    pnPlan = x; fn();
+  });
+}
+
+function pnVerPlanilla(forzar) { pnConPlanilla(pnPintarPlanilla, forzar); }
+
+var PN_ESTADO = { ok: ["pn-si", "✓ OK"], nota: ["pn-ex", "Revisar"], falta: ["pn-ex", "Falta %"], exceso: ["pn-exceso-chip", "Pidió de más"] };
+function pnPintarPlanilla() {
+  var root = document.getElementById("pnRoot"); if (!root) return;
+  var f = pnPlanFiltro, q = pnNorm(f.q), todas = pnPlan.filas;
+  var drs = {}; todas.forEach(function(r){ if (r.dr) drs[r.dr.trim()] = 1; });
+  var lista = todas.filter(function(r) {
+    if (f.dr && r.dr.trim() !== f.dr) return false;
+    if (f.desde && (!r.fecha || r.fecha < f.desde)) return false;
+    if (f.soloDif && r.ev.estado === "ok") return false;
+    if (q && pnNorm([r.paciente, r.dni, r.dr, r.nunTxt, r.dx].join(" ")).indexOf(q) < 0) return false;
+    return true;
+  });
+  var nDif = todas.filter(function(r){ return r.ev.estado !== "ok"; }).length;
+  var h = '<div class="adm-sec-title">Planilla de Cirugías · % adicionales pedidos</div>'
+    + '<div class="deb-toolbar" style="flex-wrap:wrap;gap:6px;margin-bottom:8px">'
+    +   '<button class="deb-btn" onclick="pnRepintar()">← Volver</button>'
+    +   '<input class="pn-inp" style="width:200px" placeholder="Buscar paciente, DNI, código…" value="' + pnEsc(f.q) + '" oninput="pnPlanFiltro.q=this.value;clearTimeout(window._pnQ);window._pnQ=setTimeout(pnPintarPlanilla,250)">'
+    +   '<select class="pn-sel" style="padding:6px" onchange="pnPlanFiltro.dr=this.value;pnPintarPlanilla()"><option value="">Todos los Dr.</option>'
+    +     Object.keys(drs).sort().map(function(d){ return '<option' + (d === f.dr ? ' selected' : '') + '>' + pnEsc(d) + '</option>'; }).join("") + '</select>'
+    +   '<label style="font-size:.72rem">Cirugías desde <input class="pn-inp" style="width:140px" type="date" value="' + f.desde + '" onchange="pnPlanFiltro.desde=this.value;pnPintarPlanilla()"></label>'
+    +   '<label style="font-size:.72rem;display:flex;align-items:center;gap:4px"><input type="checkbox"' + (f.soloDif ? ' checked' : '') + ' onchange="pnPlanFiltro.soloDif=this.checked;pnPintarPlanilla()"> Solo con observaciones</label>'
+    +   '<span style="flex:1"></span><button class="deb-btn" onclick="pnVerPlanilla(true)">↻ Recargar</button>'
+    + '</div>'
+    + '<div style="font-size:.72rem;color:#6b6a5a;margin-bottom:6px">' + todas.length + ' órdenes · <b>' + nDif + '</b> con observaciones · mostrando ' + Math.min(lista.length, 300) + (lista.length > 300 ? ' de ' + lista.length : '') + '. La planilla no tiene la hora ni el detalle de la cirugía: horario, radioscopía y ayudantes se confirman con el protocolo (botón Analizar).</div>';
+  h += '<table class="pn-tab"><thead><tr><th>Fecha cx</th><th>Paciente</th><th>Dr</th><th style="text-align:right">Edad</th><th>NUN pedido</th><th style="text-align:right">Pedido</th><th style="text-align:right">Corresponde</th><th>Estado</th><th></th></tr></thead><tbody>';
+  lista.slice(0, 300).forEach(function(r) {
+    var es = PN_ESTADO[r.ev.estado] || PN_ESTADO.nota;
+    h += '<tr><td style="white-space:nowrap">' + pnEsc(r.fecha ? r.fecha.split("-").reverse().join("/") : r.fechaTxt) + '</td>'
+      + '<td>' + pnEsc(r.paciente) + '<div class="pn-ev" style="font-style:normal">' + pnEsc(r.entidad) + ' · ' + pnEsc(r.dx) + '</div></td>'
+      + '<td>' + pnEsc(r.dr) + '</td><td class="num">' + (r.edad != null ? r.edad : '—') + '</td>'
+      + '<td>' + pnEsc(r.nunTxt) + '</td><td class="num">' + (r.pedidoPct ? '+' + r.pedidoPct + '%' : '—') + '</td>'
+      + '<td class="num">' + (r.ev.esperado ? '+' + r.ev.esperado + '%' : '—') + '</td>'
+      + '<td><span class="pn-chip ' + es[0] + '">' + es[1] + '</span>'
+      + (r.ev.cmp.tipo !== "ok" ? '<div class="pn-ev" style="font-style:normal">' + pnEsc(r.ev.cmp.txt) + '</div>' : '')
+      + r.ev.notas.map(function(n){ return '<div class="pn-ev" style="font-style:normal">• ' + pnEsc(n) + '</div>'; }).join("") + '</td>'
+      + '<td><button class="deb-btn" style="font-size:.7rem;padding:3px 8px" onclick="pnAbrirFila(' + r.idx + ')">Analizar</button></td></tr>';
+  });
+  h += '</tbody></table>';
+  root.innerHTML = h;
+}
+
+function pnFilaPorIdx(idx) { return (pnPlan && pnPlan.filas || []).filter(function(r){ return r.idx === idx; })[0] || null; }
+function pnFilaCompacta(r) {
+  return { idx: r.idx, paciente: r.paciente, entidad: r.entidad, dx: r.dx, materiales: r.materiales, nunTxt: r.nunTxt, fechaTxt: r.fechaTxt, fecha: r.fecha, dr: r.dr, dni: r.dni, edad: r.edad, pedidoPct: r.pedidoPct };
+}
+function pnAbrirFila(idx) {
+  var r = pnFilaPorIdx(idx); if (!r) return;
+  var bb = pnBaseDesdeFila(r);
+  pnActual = { nombre: "Orden de " + r.paciente, texto: "", base: bb.base, baseEvid: bb.baseEvid, fila: pnFilaCompacta(r), manualVals: {}, ov: {}, facturado: r.pedidoPct, valor: "", ocr: 0, ts: Date.now() };
+  pnRecalc(); pnRepintar(); window.scrollTo(0, 0);
+}
+function pnFilaResumenHtml(r) {
+  return '<div class="pn-aviso" style="background:rgba(31,58,46,.07);font-size:.72rem">📋 <b>Planilla de Cirugías</b> (fila ' + r.idx + '): ' + pnEsc(r.paciente) + ' · ' + pnEsc(r.entidad) + ' · Dr ' + pnEsc(r.dr)
+    + ' · edad ' + (r.edad != null ? r.edad : '—') + ' · cx ' + pnEsc(r.fechaTxt) + '<br>Dx: ' + pnEsc(r.dx) + (r.materiales ? ' · Materiales: ' + pnEsc(r.materiales) : '')
+    + '<br>Pedido en la orden: <b>' + pnEsc(r.nunTxt) + '</b> <button class="deb-btn" style="font-size:.65rem;padding:1px 7px;margin-left:6px" onclick="pnDesvincular()">desvincular</button></div>';
+}
+function pnDesvincular() { pnActual.base = null; pnActual.baseEvid = null; pnActual.fila = null; pnRecalc(); pnRepintar(); }
+
+// Busca en la planilla la orden del paciente del protocolo actual
+function pnVincularPlanilla() {
+  pnConPlanilla(function() {
+    pnRepintar();
+    var root = document.getElementById("pnRoot");
+    var pac = (pnActual.datos && pnActual.datos.paciente) || "";
+    var div = document.createElement("div");
+    div.id = "pnVinc";
+    div.className = "pn-aviso";
+    div.style.background = "rgba(32,36,31,.05)";
+    div.innerHTML = '<b>Elegí la orden de la planilla:</b> <input class="pn-inp" style="width:240px;margin:0 6px" id="pnVincQ" value="' + pnEsc(pac.split(/[ ,]+/)[0] || "") + '" oninput="pnVincListar()" placeholder="Apellido o DNI"> <button class="deb-btn" style="font-size:.7rem;padding:3px 8px" onclick="pnRepintar()">Cancelar</button><div id="pnVincList" style="margin-top:6px"></div>';
+    root.insertBefore(div, root.children[2] || null);
+    pnVincListar();
+  });
+}
+function pnVincListar() {
+  var q = pnNorm((document.getElementById("pnVincQ") || {}).value || ""), el = document.getElementById("pnVincList");
+  if (!el) return;
+  var toks = q.split(/\s+/).filter(function(t){ return t.length > 1; });
+  var m = pnPlan.filas.filter(function(r){ var t = pnNorm(r.paciente + " " + r.dni.replace(/\D/g, "")); return toks.length && toks.every(function(k){ return t.indexOf(k) >= 0; }); }).slice(0, 12);
+  el.innerHTML = m.length ? m.map(function(r){
+    return '<div style="padding:4px 0;border-bottom:1px solid #d9d0b8;font-size:.74rem"><button class="deb-btn" style="font-size:.68rem;padding:2px 8px;margin-right:6px" onclick="pnVincularFila(' + r.idx + ')">Usar</button>'
+      + pnEsc(r.paciente) + ' · ' + pnEsc(r.fechaTxt) + ' · Dr ' + pnEsc(r.dr) + ' · ' + pnEsc(r.nunTxt) + '</div>';
+  }).join("") : '<div style="font-size:.72rem;color:#6b6a5a">Sin coincidencias.</div>';
+}
+function pnVincularFila(idx) {
+  var r = pnFilaPorIdx(idx); if (!r) return;
+  var bb = pnBaseDesdeFila(r);
+  pnActual.base = bb.base; pnActual.baseEvid = bb.baseEvid; pnActual.fila = pnFilaCompacta(r);
+  if (pnActual.facturado == null || pnActual.facturado === "") pnActual.facturado = r.pedidoPct;
+  pnRecalc(); pnRepintar();
+}
+
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { pnParsear: pnParsear, pnEvaluar: pnEvaluar, pnHorario: pnHorario, pnComparar: pnComparar };
+  module.exports = { pnParsear: pnParsear, pnEvaluar: pnEvaluar, pnHorario: pnHorario, pnComparar: pnComparar, pnFilaPlanilla: pnFilaPlanilla, pnEvaluarFila: pnEvaluarFila, pnFechaLibre: pnFechaLibre };
 }
