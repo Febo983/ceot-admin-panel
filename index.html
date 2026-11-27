@@ -7100,6 +7100,87 @@ function transfResumenChequeTexto(periodo, fecha) {
   return L.join('\n');
 }
 
+// Resumen MENSUAL por profesional: todos los cheques del mes con su neto
+// (respetando "Neto cheque editable"), y lo que sigue pendiente — en especial
+// la Acreditación CEM (Centro Médico) y el Cheque OSDE. ap = null → todos.
+function transfResumenMensualTexto(periodo, apFiltro) {
+  var inf = periodoInfo(periodo);
+  var perTxt = inf ? inf.largo + ' ' + inf.anio : periodoNombre(periodo);
+  function money(n) { return fmt(n).replace(/[  ]/g, ' '); }
+  function pad(s, n) { s = String(s); while (s.length < n) s += ' '; return s; }
+  function padL(s, n) { s = String(s); while (s.length < n) s = ' ' + s; return s; }
+  function docDe(ap) { return DOCTORES.filter(function(d) { return d.apellido === ap; })[0]; }
+  var ahora = new Date();
+  var fh = ('0' + ahora.getDate()).slice(-2) + '/' + ('0' + (ahora.getMonth() + 1)).slice(-2) + '/' + ahora.getFullYear()
+    + ' ' + ('0' + ahora.getHours()).slice(-2) + ':' + ('0' + ahora.getMinutes()).slice(-2);
+  var L = [];
+  L.push('RESUMEN MENSUAL' + (apFiltro ? ' - ' + apFiltro.toUpperCase() : ' POR PROFESIONAL') + ' - ' + perTxt.toUpperCase());
+  L.push('Armado el ' + fh);
+  L.push('========================================================');
+
+  var lista = apFiltro ? [apFiltro] : SUELDO_DIRECTOR_LISTA.concat(PRESTAMO_CASA_SOCIOS.filter(function(ap) { return SUELDO_DIRECTOR_LISTA.indexOf(ap) === -1; }));
+  var tot = { neto: 0, cem: 0, osde: 0, otros: 0 }, sinDatos = [], resumen = [];
+
+  lista.forEach(function(ap) {
+    var doc = docDe(ap);
+    var base = doc ? calcularDetalleChequesProfesional(periodo, doc) : null;
+    if (!base) { sinDatos.push(ap); return; }
+    var neto = 0, acum = 0, pend = [];
+    L.push('');
+    L.push(ap.toUpperCase());
+    L.push('  ' + pad('Cheque', 44) + padL('Neto', 16) + padL('Acumulado', 16) + '   Estado');
+    base.detalle.forEach(function(d) {
+      if (d.pendiente) {
+        var tipo = d.fecha.indexOf('Acreditación CEM') === 0 ? 'cem' : (d.fecha.indexOf('Cheque OSDE') === 0 ? 'osde' : 'otros');
+        pend.push({ t: d.fecha, tipo: tipo });
+        tot[tipo]++;
+        L.push('  ' + pad(d.fecha, 44) + padL('-', 16) + padL('', 16) + '   PENDIENTE');
+        return;
+      }
+      var n = netoEfectivo(transfFamKey(periodo, ap, d.fecha), d.neto);
+      neto += n; acum += n;
+      var desc = [];
+      if (d.retencion) desc.push('ret. ' + money(d.retencion));
+      if (d.prestamo) desc.push((d.prestamo > 0 ? 'prestamo ' : 'credito prestamo ') + money(Math.abs(d.prestamo)));
+      if (d.iibb) desc.push('IIBB ' + money(d.iibb));
+      if (d.cpsm) desc.push('CPSM ' + money(d.cpsm));
+      if (n !== d.neto) desc.push('neto editado a mano');
+      var est;
+      if (/^\d{1,2}\/\d{1,2}$/.test(d.fecha)) est = chequeAcreditado(d.fecha) ? 'acreditado' : 'por acreditar';
+      else est = 'cobrado';
+      L.push('  ' + pad(d.fecha, 44) + padL(money(n), 16) + padL(money(acum), 16) + '   ' + est + (desc.length ? ' (' + desc.join(', ') + ')' : ''));
+    });
+    L.push('  ' + pad('= NETO DEL MES (sin lo pendiente)', 44) + padL(money(neto), 16));
+    if (pend.length) {
+      L.push('  Pendiente de cobro:');
+      pend.forEach(function(p) {
+        var lbl = p.tipo === 'cem' ? 'Centro Medico' : (p.tipo === 'osde' ? 'OSDE' : 'Otro');
+        L.push('    - ' + pad(lbl, 14) + p.t);
+      });
+    } else {
+      L.push('  Pendiente de cobro: nada (CEM y OSDE ya cargados)');
+    }
+    tot.neto += neto;
+    var pendCorto = pend.map(function(p) { return p.tipo === 'cem' ? 'CEM' : (p.tipo === 'osde' ? 'OSDE' : p.t.split(' ')[0]); });
+    resumen.push(pad(ap, 16) + padL(money(neto), 16) + '   ' + (pendCorto.length ? 'falta ' + pendCorto.join(' + ') : 'completo'));
+  });
+
+  if (!apFiltro) {
+    L.splice(3, 0, '', pad('Profesional', 16) + padL('Neto del mes', 16) + '   Pendiente');
+    var at = 5;
+    resumen.forEach(function(x) { L.splice(at++, 0, x); });
+    L.splice(at, 0, '', '--- DETALLE POR PROFESIONAL ---');
+  }
+  if (sinDatos.length) { L.push(''); L.push('Sin datos cargados: ' + sinDatos.join(', ')); }
+  L.push('');
+  L.push('--------------------------------------------------------');
+  L.push('Neto del mes' + (apFiltro ? '' : ' (todos)') + ', sin lo pendiente: ' + money(tot.neto));
+  L.push('Pendientes Centro Medico (CEM): ' + tot.cem + (apFiltro ? '' : ' profesional(es)'));
+  L.push('Pendientes OSDE: ' + tot.osde + (apFiltro ? '' : ' profesional(es)'));
+  if (tot.otros) L.push('Otros pendientes (IIBB/CPSM sin cheque): ' + tot.otros);
+  return L.join('\n');
+}
+
 function transfResumenSeleccion() {
   var el = document.getElementById('transfResumenSel');
   return el ? el.value : '';
@@ -7107,6 +7188,8 @@ function transfResumenSeleccion() {
 function transfResumenTextoActual() {
   var periodo = adminPeriodoAct || tabMesActual();
   var f = transfResumenSeleccion();
+  if (f === 'mes:*') return transfResumenMensualTexto(periodo, null);
+  if (f.indexOf('mes:') === 0) return transfResumenMensualTexto(periodo, f.slice(4));
   return f ? transfResumenChequeTexto(periodo, f) : transfResumenTexto(periodo);
 }
 function transfResumenDescargar(btn) {
@@ -7117,7 +7200,11 @@ function transfResumenDescargar(btn) {
   var a = document.createElement('a');
   var inf = periodoInfo(periodo);
   a.href = URL.createObjectURL(blob);
-  a.download = (f ? 'cheque-' + f.replace(/[^0-9a-zA-Z]+/g, '-') : 'transferencias') + '-' + (inf ? inf.largo.toLowerCase() + '-' + inf.anio : periodo) + '.txt';
+  var base = !f ? 'transferencias'
+    : f === 'mes:*' ? 'mensual-todos'
+    : f.indexOf('mes:') === 0 ? 'mensual-' + f.slice(4).replace(/[^0-9a-zA-Z]+/g, '-').toLowerCase()
+    : 'cheque-' + f.replace(/[^0-9a-zA-Z]+/g, '-');
+  a.download = base + '-' + (inf ? inf.largo.toLowerCase() + '-' + inf.anio : periodo) + '.txt';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
 }
@@ -7132,10 +7219,17 @@ function transfResumenBotonesHtml(periodo) {
   fechas.forEach(function(f) { if (sueldoDirectorFechaPaso(f)) defecto = f; });
   if (!defecto && fechas.length) defecto = fechas[0];
   var rec = window._transfResumenSelVal;
-  if (typeof rec === 'string' && (rec === '' || fechas.indexOf(rec) !== -1)) defecto = rec;
-  var opts = fechas.map(function(f) {
-    return '<option value="' + escAttr(f) + '"' + (f === defecto ? ' selected' : '') + '>Cheque ' + escAttr(f) + '</option>';
-  }).join('') + '<option value=""' + (defecto === '' ? ' selected' : '') + '>Todo lo que falta del mes</option>';
+  var profs = SUELDO_DIRECTOR_LISTA.concat(PRESTAMO_CASA_SOCIOS.filter(function(ap) { return SUELDO_DIRECTOR_LISTA.indexOf(ap) === -1; }));
+  var mensuales = ['mes:*'].concat(profs.map(function(ap) { return 'mes:' + ap; }));
+  if (typeof rec === 'string' && (rec === '' || fechas.indexOf(rec) !== -1 || mensuales.indexOf(rec) !== -1)) defecto = rec;
+  function opt(v, txt) { return '<option value="' + escAttr(v) + '"' + (v === defecto ? ' selected' : '') + '>' + escAttr(txt) + '</option>'; }
+  var opts = '<optgroup label="Cheque por cheque">'
+    + fechas.map(function(f) { return opt(f, 'Cheque ' + f); }).join('')
+    + opt('', 'Todo lo que falta del mes')
+    + '</optgroup><optgroup label="Mensual por profesional (netos y pendientes CEM / OSDE)">'
+    + opt('mes:*', 'Mensual — todos los profesionales')
+    + profs.map(function(ap) { return opt('mes:' + ap, 'Mensual — ' + ap); }).join('')
+    + '</optgroup>';
   return '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:-6px 0 14px 0">'
     + '<select id="transfResumenSel" onchange="window._transfResumenSelVal=this.value" style="padding:5px 8px;border:1px solid rgba(32,36,31,.25);border-radius:6px;font-family:inherit;font-size:.74rem;font-weight:600;background:var(--co-card,#fbf8f0)">' + opts + '</select>'
     + '<button type="button" onclick="transfResumenDescargar(this)" style="' + css + '">📄 Bajar reparto (.txt)</button>'
